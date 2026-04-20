@@ -1,1 +1,16 @@
-
+{
+  "nav": {
+    "home": "Home",
+    "features": "Features",
+    "pricing": "Pricing",
+    "login": "Login",
+    "register": "Register"
+  },
+  "hero": {
+    "title": "Smart Accounting",
+    "subtitle": "A Professional SaaS Financial System",
+    "desc": "A simple and efficient financial management solution for individuals and businesses",
+    "cta1": "Start Free Trial",
+    "cta2": "View Plans"
+  }
+}
