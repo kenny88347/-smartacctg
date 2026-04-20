@@ -1,1 +1,16 @@
-
+{
+  "nav": {
+    "home": "Laman Utama",
+    "features": "Ciri-ciri",
+    "pricing": "Harga",
+    "login": "Log Masuk",
+    "register": "Daftar"
+  },
+  "hero": {
+    "title": "Perakaunan Pintar",
+    "subtitle": "Sistem Pengurusan Kewangan SaaS",
+    "desc": "Penyelesaian kewangan yang mudah dan cekap untuk individu dan perniagaan",
+    "cta1": "Mulakan Percubaan",
+    "cta2": "Lihat Pelan"
+  }
+}
