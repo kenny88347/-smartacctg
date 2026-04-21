@@ -1,28 +1,10 @@
-import zh from "@/messages/zh.json";
-
 export default function Page() {
-  const t = zh;
-
   return (
-    <main style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 40,
-          flexWrap: "wrap",
-          gap: 16,
-        }}
-      >
-        <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
-          <b>SmartAcctg</b>
-          <span>{t.nav.home}</span>
-          <span>{t.nav.features}</span>
-          <span>{t.nav.pricing}</span>
-          <span>{t.nav.login}</span>
-          <span>{t.nav.register}</span>
-        </div>
+    <main style={{ padding: 20, fontFamily: "Arial", background: "#f8fafc" }}>
+      
+      {/* Navbar */}
+      <nav style={{ display: "flex", justifyContent: "space-between", marginBottom: 30 }}>
+        <b style={{ fontSize: 20 }}>SmartAcctg</b>
 
         <div style={{ display: "flex", gap: 10 }}>
           <a href="/zh">中</a>
@@ -31,37 +13,83 @@ export default function Page() {
         </div>
       </nav>
 
-      <section style={{ padding: "40px 0" }}>
-        <h1 style={{ fontSize: 40, marginBottom: 10 }}>{t.hero.title}</h1>
-        <h2 style={{ fontSize: 24, marginBottom: 16 }}>{t.hero.subtitle}</h2>
-        <p style={{ fontSize: 18, marginBottom: 24 }}>{t.hero.desc}</p>
+      {/* Hero */}
+      <section style={{ marginBottom: 40 }}>
+        <h1 style={{ fontSize: 36 }}>智能记账 SaaS 系统</h1>
+        <p>支持个人与商业用户｜记账｜发票｜客户管理｜PDF｜WhatsApp</p>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <button
-            style={{
-              padding: "12px 20px",
-              borderRadius: 8,
-              border: "none",
-              cursor: "pointer",
-              background: "#0f766e",
-              color: "white",
-            }}
-          >
-            {t.hero.cta1}
-          </button>
-          <button
-            style={{
-              padding: "12px 20px",
-              borderRadius: 8,
-              border: "1px solid #ccc",
-              background: "white",
-              cursor: "pointer",
-            }}
-          >
-            {t.hero.cta2}
-          </button>
+        <div style={{ marginTop: 20 }}>
+          <button style={{ marginRight: 10 }}>免费试用</button>
+          <button>登录</button>
         </div>
       </section>
+
+      {/* Personal Plan */}
+      <section style={{ marginBottom: 40 }}>
+        <h2>👤 個人使用</h2>
+
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+          
+          {/* Free */}
+          <div style={{ border: "1px solid #ccc", padding: 20, borderRadius: 10 }}>
+            <h3>免費版</h3>
+            <p>普通記帳</p>
+            <p>結餘價格</p>
+            <p>本月收入</p>
+            <p>本月支出</p>
+          </div>
+
+          {/* Pro */}
+          <div style={{ border: "2px solid #0f766e", padding: 20, borderRadius: 10 }}>
+            <h3>訂閱版</h3>
+            <p>多帳號管理</p>
+            <p>本月收入 / 支出</p>
+            <p>結餘價格</p>
+            <p>WhatsApp快速記帳</p>
+
+            <h4>RM10/月</h4>
+            <h4>RM100/年（-16%）</h4>
+
+            <button>訂閱</button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* Business Plan */}
+      <section>
+        <h2>🏢 商業使用</h2>
+
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+          
+          {/* Free */}
+          <div style={{ border: "1px solid #ccc", padding: 20, borderRadius: 10 }}>
+            <h3>免費版</h3>
+            <p>每日記帳</p>
+            <p>結餘價格</p>
+            <p>本月收入</p>
+            <p>本月支出</p>
+          </div>
+
+          {/* Pro */}
+          <div style={{ border: "2px solid #0f766e", padding: 20, borderRadius: 10 }}>
+            <h3>訂閱版</h3>
+            <p>多帳號管理</p>
+            <p>WhatsApp記帳</p>
+            <p>導出PDF</p>
+            <p>發票系統</p>
+            <p>客戶管理</p>
+            <p>貨源管理</p>
+
+            <h4>RM31.99/月</h4>
+            <h4>RM307.10/年（-20%）</h4>
+
+            <button>訂閱</button>
+          </div>
+
+        </div>
+      </section>
+
     </main>
   );
 }
