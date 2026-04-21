@@ -1,4 +1,4 @@
-import ms from "../../messages/ms.json";
+import ms from "@/messages/ms.json";
 
 export default function Page() {
   const t = ms;
