@@ -1,104 +1,114 @@
-export default function Page() {
+export default function HomePage() {
   return (
-    <main style={{ fontFamily: "Arial", background: "#f1f5f9", minHeight: "100vh" }}>
-
-      {/* Navbar */}
-      <nav style={{
+    <main style={{ fontFamily: "sans-serif", background: "#f8fafc" }}>
+      
+      {/* Header */}
+      <header style={{
         display: "flex",
         justifyContent: "space-between",
-        padding: "16px 24px",
-        background: "white",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.05)"
+        padding: "20px",
+        alignItems: "center"
       }}>
-        <b style={{ fontSize: 20, color: "#0f172a" }}>SmartAcctg</b>
-
-        <div style={{ display: "flex", gap: 12 }}>
-          <a href="/zh">中</a>
-          <a href="/en">EN</a>
-          <a href="/ms">BM</a>
+        <h2 style={{ color: "#0f172a" }}>SmartAcctg</h2>
+        <div>
+          <span style={{ marginRight: 10 }}>中</span>
+          <span style={{ marginRight: 10 }}>EN</span>
+          <span>BM</span>
         </div>
-      </nav>
+      </header>
 
       {/* Hero */}
-      <section style={{ padding: "50px 20px", textAlign: "center" }}>
-        <h1 style={{ fontSize: 36, fontWeight: "bold", color: "#0f172a" }}>
+      <section style={{
+        textAlign: "center",
+        padding: "40px 20px"
+      }}>
+        <h1 style={{ fontSize: 32, fontWeight: "bold", color: "#0f172a" }}>
           智能记账 SaaS 系统
         </h1>
-
-        <p style={{ marginTop: 10, color: "#475569" }}>
+        <p style={{ marginTop: 10, color: "#64748b" }}>
           支持个人与商业用户｜记账｜发票｜客户管理｜PDF｜WhatsApp
         </p>
 
         <div style={{ marginTop: 20 }}>
           <button style={{
-            background: "#0F766E",
-            color: "white",
-            padding: "12px 24px",
+            padding: "10px 20px",
+            marginRight: 10,
             borderRadius: 8,
             border: "none",
-            marginRight: 10,
-            fontWeight: "bold"
+            background: "#0F766E",
+            color: "white"
           }}>
             免费试用
           </button>
 
           <button style={{
-            background: "white",
-            border: "1px solid #ccc",
-            padding: "12px 24px",
-            borderRadius: 8
+            padding: "10px 20px",
+            borderRadius: 8,
+            border: "1px solid #cbd5f5",
+            background: "white"
           }}>
             登录
           </button>
         </div>
       </section>
 
-      {/* Personal */}
+      {/* 個人使用 */}
       <section style={{ padding: 20 }}>
-        <h2 style={{ marginBottom: 20 }}>👤 個人使用</h2>
+        <h3 style={{ marginBottom: 20 }}>👤 個人使用</h3>
 
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-
-          {/* Free */}
+          
+          {/* 免費 */}
           <div style={{
             flex: 1,
-            background: "white",
             padding: 20,
-            borderRadius: 12,
-            boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+            background: "white",
+            borderRadius: 12
           }}>
-            <h3>免費版</h3>
+            <h4>免費版</h4>
             <p>普通記帳</p>
             <p>結餘價格</p>
             <p>本月收入</p>
             <p>本月支出</p>
           </div>
 
-          {/* Pro */}
+          {/* 訂閱 */}
           <div style={{
             flex: 1,
-            background: "white",
             padding: 20,
+            background: "white",
             borderRadius: 12,
-            border: "2px solid #0F766E",
-            boxShadow: "0 6px 14px rgba(0,0,0,0.08)"
+            border: "2px solid #0F766E"
           }}>
-            <h3>訂閱版</h3>
+            <h4>訂閱版</h4>
             <p>多帳號管理</p>
             <p>本月收入 / 支出</p>
             <p>結餘價格</p>
             <p>WhatsApp快速記帳</p>
 
             <h4 style={{ marginTop: 10 }}>RM10/月</h4>
-            <h4>RM100/年（-16%）</h4>
+            <h4>
+              RM100/年{" "}
+              <span style={{
+                background: "#0F766E",
+                color: "white",
+                padding: "2px 8px",
+                borderRadius: 6,
+                fontSize: 12,
+                marginLeft: 6
+              }}>
+                -16%
+              </span>
+            </h4>
 
             <button style={{
               marginTop: 10,
+              padding: "10px",
+              width: "100%",
               background: "#0F766E",
               color: "white",
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none"
+              border: "none",
+              borderRadius: 8
             }}>
               訂閱
             </button>
@@ -107,37 +117,35 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Business */}
+      {/* 商業使用 */}
       <section style={{ padding: 20 }}>
-        <h2 style={{ marginBottom: 20 }}>🏢 商業使用</h2>
+        <h3 style={{ marginBottom: 20 }}>🏢 商業使用</h3>
 
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-
-          {/* Free */}
+          
+          {/* 免費 */}
           <div style={{
             flex: 1,
-            background: "white",
             padding: 20,
-            borderRadius: 12,
-            boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+            background: "white",
+            borderRadius: 12
           }}>
-            <h3>免費版</h3>
+            <h4>免費版</h4>
             <p>每日記帳</p>
             <p>結餘價格</p>
             <p>本月收入</p>
             <p>本月支出</p>
           </div>
 
-          {/* Pro */}
+          {/* 訂閱 */}
           <div style={{
             flex: 1,
-            background: "white",
             padding: 20,
+            background: "white",
             borderRadius: 12,
-            border: "2px solid #0F766E",
-            boxShadow: "0 6px 14px rgba(0,0,0,0.08)"
+            border: "2px solid #0F766E"
           }}>
-            <h3>訂閱版</h3>
+            <h4>訂閱版</h4>
             <p>多帳號管理</p>
             <p>WhatsApp記帳</p>
             <p>導出PDF</p>
@@ -146,15 +154,28 @@ export default function Page() {
             <p>貨源管理</p>
 
             <h4 style={{ marginTop: 10 }}>RM31.99/月</h4>
-            <h4>RM307.10/年（-20%）</h4>
+            <h4>
+              RM307.10/年{" "}
+              <span style={{
+                background: "#0F766E",
+                color: "white",
+                padding: "2px 8px",
+                borderRadius: 6,
+                fontSize: 12,
+                marginLeft: 6
+              }}>
+                -20%
+              </span>
+            </h4>
 
             <button style={{
               marginTop: 10,
+              padding: "10px",
+              width: "100%",
               background: "#0F766E",
               color: "white",
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none"
+              border: "none",
+              borderRadius: 8
             }}>
               訂閱
             </button>
@@ -162,6 +183,17 @@ export default function Page() {
 
         </div>
       </section>
+
+      {/* Footer */}
+      <footer style={{
+        textAlign: "center",
+        padding: "30px 10px",
+        marginTop: 40,
+        fontSize: 14,
+        color: "#64748b"
+      }}>
+        © NK DIGITAL HUB. All rights reserved.
+      </footer>
 
     </main>
   );
