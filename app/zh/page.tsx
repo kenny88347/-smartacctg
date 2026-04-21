@@ -43,6 +43,18 @@ export default function HomePage() {
           <p>結餘價格</p>
           <p>本月收入</p>
           <p>本月支出</p>
+
+          <button style={{
+            marginTop: 15,
+            width: "100%",
+            padding: 10,
+            background: "#e2e8f0",
+            color: "#0f172a",
+            borderRadius: 8,
+            border: "none"
+          }}>
+            開始使用
+          </button>
         </div>
 
         {/* 訂閱 */}
@@ -121,6 +133,18 @@ export default function HomePage() {
           <p>結餘價格</p>
           <p>本月收入</p>
           <p>本月支出</p>
+
+          <button style={{
+            marginTop: 15,
+            width: "100%",
+            padding: 10,
+            background: "#e2e8f0",
+            color: "#0f172a",
+            borderRadius: 8,
+            border: "none"
+          }}>
+            開始使用
+          </button>
         </div>
 
         {/* 訂閱 */}
