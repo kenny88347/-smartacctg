@@ -1,28 +1,8 @@
-import en from "@/messages/en.json";
-
 export default function Page() {
-  const t = en;
-
   return (
-    <main style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 40,
-          flexWrap: "wrap",
-          gap: 16,
-        }}
-      >
-        <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
-          <b>SmartAcctg</b>
-          <span>{t.nav.home}</span>
-          <span>{t.nav.features}</span>
-          <span>{t.nav.pricing}</span>
-          <span>{t.nav.login}</span>
-          <span>{t.nav.register}</span>
-        </div>
+    <main style={{ padding: 20, fontFamily: "Arial", background: "#f8fafc" }}>
+      <nav style={{ display: "flex", justifyContent: "space-between", marginBottom: 30 }}>
+        <b style={{ fontSize: 20 }}>SmartAcctg</b>
 
         <div style={{ display: "flex", gap: 10 }}>
           <a href="/zh">中</a>
@@ -31,35 +11,69 @@ export default function Page() {
         </div>
       </nav>
 
-      <section style={{ padding: "40px 0" }}>
-        <h1 style={{ fontSize: 40, marginBottom: 10 }}>{t.hero.title}</h1>
-        <h2 style={{ fontSize: 24, marginBottom: 16 }}>{t.hero.subtitle}</h2>
-        <p style={{ fontSize: 18, marginBottom: 24 }}>{t.hero.desc}</p>
+      <section style={{ marginBottom: 40 }}>
+        <h1 style={{ fontSize: 36 }}>Smart Accounting SaaS System</h1>
+        <p>For personal and business users | Bookkeeping | Invoices | Customer Management | PDF | WhatsApp</p>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <button
-            style={{
-              padding: "12px 20px",
-              borderRadius: 8,
-              border: "none",
-              cursor: "pointer",
-              background: "#0f766e",
-              color: "white",
-            }}
-          >
-            {t.hero.cta1}
-          </button>
-          <button
-            style={{
-              padding: "12px 20px",
-              borderRadius: 8,
-              border: "1px solid #ccc",
-              background: "white",
-              cursor: "pointer",
-            }}
-          >
-            {t.hero.cta2}
-          </button>
+        <div style={{ marginTop: 20 }}>
+          <button style={{ marginRight: 10 }}>Start Free Trial</button>
+          <button>Login</button>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: 40 }}>
+        <h2>👤 Personal Use</h2>
+
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+          <div style={{ border: "1px solid #ccc", padding: 20, borderRadius: 10 }}>
+            <h3>Free Plan</h3>
+            <p>Basic Bookkeeping</p>
+            <p>Balance</p>
+            <p>Monthly Income</p>
+            <p>Monthly Expense</p>
+          </div>
+
+          <div style={{ border: "2px solid #0f766e", padding: 20, borderRadius: 10 }}>
+            <h3>Subscription Plan</h3>
+            <p>Multi-Account Management</p>
+            <p>Monthly Income / Expense</p>
+            <p>Balance</p>
+            <p>WhatsApp Quick Bookkeeping</p>
+
+            <h4>RM10 / month</h4>
+            <h4>RM100 / year (-16%)</h4>
+
+            <button>Subscribe</button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>🏢 Business Use</h2>
+
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+          <div style={{ border: "1px solid #ccc", padding: 20, borderRadius: 10 }}>
+            <h3>Free Plan</h3>
+            <p>Daily Bookkeeping</p>
+            <p>Balance</p>
+            <p>Monthly Income</p>
+            <p>Monthly Expense</p>
+          </div>
+
+          <div style={{ border: "2px solid #0f766e", padding: 20, borderRadius: 10 }}>
+            <h3>Subscription Plan</h3>
+            <p>Multi-Account Management</p>
+            <p>WhatsApp Bookkeeping</p>
+            <p>Export PDF</p>
+            <p>Invoice System</p>
+            <p>Customer Management</p>
+            <p>Inventory Management</p>
+
+            <h4>RM31.99 / month</h4>
+            <h4>RM307.10 / year (-20%)</h4>
+
+            <button>Subscribe</button>
+          </div>
         </div>
       </section>
     </main>
