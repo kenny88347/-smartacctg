@@ -27,20 +27,20 @@ export default function HomePage() {
         </p>
       </section>
 
-      {/* 個人使用 */}
+      {/* 个人使用 */}
       <section style={{ padding: 20 }}>
-        <h3>👤 個人使用</h3>
+        <h3>👤 个人使用</h3>
 
-        {/* 免費 */}
+        {/* 免费 */}
         <div style={{
           background: "white",
           padding: 20,
           borderRadius: 12,
           marginTop: 15
         }}>
-          <h4>免費版</h4>
-          <p>普通記帳</p>
-          <p>結餘價格</p>
+          <h4>免费版</h4>
+          <p>普通记账</p>
+          <p>余额价格</p>
           <p>本月收入</p>
           <p>本月支出</p>
 
@@ -48,16 +48,16 @@ export default function HomePage() {
             marginTop: 15,
             width: "100%",
             padding: 10,
-            background: "#e2e8f0",
-            color: "#0f172a",
+            background: "#0F766E",
+            color: "white",
             borderRadius: 8,
             border: "none"
           }}>
-            開始使用
+            开始使用
           </button>
         </div>
 
-        {/* 訂閱 */}
+        {/* 订阅 */}
         <div style={{
           background: "white",
           padding: 20,
@@ -65,30 +65,38 @@ export default function HomePage() {
           marginTop: 15,
           border: "2px solid #0F766E"
         }}>
-          <h4>訂閱版</h4>
-          <p>多帳號管理</p>
+          <h4>订阅版</h4>
+          <p>多账号管理</p>
           <p>本月收入 / 支出</p>
-          <p>結餘價格</p>
-          <p>WhatsApp快速記帳</p>
+          <p>余额价格</p>
+          <p>WhatsApp快速记账</p>
 
           {/* 月 */}
-          <div style={{ marginTop: 15 }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 15
+          }}>
             <h4>RM10/月</h4>
             <button style={{
-              marginTop: 6,
-              width: "100%",
-              padding: 10,
+              padding: "6px 14px",
               background: "#0F766E",
               color: "white",
-              borderRadius: 8,
+              borderRadius: 6,
               border: "none"
             }}>
-              訂閱（月）
+              订阅
             </button>
           </div>
 
           {/* 年 */}
-          <div style={{ marginTop: 15 }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 10
+          }}>
             <h4>
               RM100/年{" "}
               <span style={{
@@ -103,34 +111,32 @@ export default function HomePage() {
             </h4>
 
             <button style={{
-              marginTop: 6,
-              width: "100%",
-              padding: 10,
+              padding: "6px 14px",
               background: "#0F766E",
               color: "white",
-              borderRadius: 8,
+              borderRadius: 6,
               border: "none"
             }}>
-              訂閱（年）
+              订阅
             </button>
           </div>
         </div>
       </section>
 
-      {/* 商業使用 */}
+      {/* 商业使用 */}
       <section style={{ padding: 20 }}>
-        <h3>🏢 商業使用</h3>
+        <h3>🏢 商业使用</h3>
 
-        {/* 免費 */}
+        {/* 免费 */}
         <div style={{
           background: "white",
           padding: 20,
           borderRadius: 12,
           marginTop: 15
         }}>
-          <h4>免費版</h4>
-          <p>每日記帳</p>
-          <p>結餘價格</p>
+          <h4>免费版</h4>
+          <p>每日记账</p>
+          <p>余额价格</p>
           <p>本月收入</p>
           <p>本月支出</p>
 
@@ -138,16 +144,16 @@ export default function HomePage() {
             marginTop: 15,
             width: "100%",
             padding: 10,
-            background: "#e2e8f0",
-            color: "#0f172a",
+            background: "#0F766E",
+            color: "white",
             borderRadius: 8,
             border: "none"
           }}>
-            開始使用
+            开始使用
           </button>
         </div>
 
-        {/* 訂閱 */}
+        {/* 订阅 */}
         <div style={{
           background: "white",
           padding: 20,
@@ -155,32 +161,40 @@ export default function HomePage() {
           marginTop: 15,
           border: "2px solid #0F766E"
         }}>
-          <h4>訂閱版</h4>
-          <p>多帳號管理</p>
-          <p>WhatsApp記帳</p>
-          <p>導出PDF</p>
-          <p>發票系統</p>
-          <p>客戶管理</p>
-          <p>貨源管理</p>
+          <h4>订阅版</h4>
+          <p>多账号管理</p>
+          <p>WhatsApp记账</p>
+          <p>导出PDF</p>
+          <p>发票系统</p>
+          <p>客户管理</p>
+          <p>货源管理</p>
 
           {/* 月 */}
-          <div style={{ marginTop: 15 }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 15
+          }}>
             <h4>RM31.99/月</h4>
             <button style={{
-              marginTop: 6,
-              width: "100%",
-              padding: 10,
+              padding: "6px 14px",
               background: "#0F766E",
               color: "white",
-              borderRadius: 8,
+              borderRadius: 6,
               border: "none"
             }}>
-              訂閱（月）
+              订阅
             </button>
           </div>
 
           {/* 年 */}
-          <div style={{ marginTop: 15 }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 10
+          }}>
             <h4>
               RM307.10/年{" "}
               <span style={{
@@ -195,15 +209,13 @@ export default function HomePage() {
             </h4>
 
             <button style={{
-              marginTop: 6,
-              width: "100%",
-              padding: 10,
+              padding: "6px 14px",
               background: "#0F766E",
               color: "white",
-              borderRadius: 8,
+              borderRadius: 6,
               border: "none"
             }}>
-              訂閱（年）
+              订阅
             </button>
           </div>
         </div>
