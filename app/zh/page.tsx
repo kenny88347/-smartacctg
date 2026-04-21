@@ -86,32 +86,54 @@ export default function HomePage() {
             <p>結餘價格</p>
             <p>WhatsApp快速記帳</p>
 
-            <h4 style={{ marginTop: 10 }}>RM10/月</h4>
-            <h4>
-              RM100/年{" "}
-              <span style={{
-                background: "#0F766E",
-                color: "white",
-                padding: "2px 8px",
-                borderRadius: 6,
-                fontSize: 12,
-                marginLeft: 6
-              }}>
-                -16%
-              </span>
-            </h4>
+            <div style={{ marginTop: 15 }}>
 
-            <button style={{
-              marginTop: 10,
-              padding: "10px",
-              width: "100%",
-              background: "#0F766E",
-              color: "white",
-              border: "none",
-              borderRadius: 8
-            }}>
-              訂閱
-            </button>
+              {/* 月費 */}
+              <div style={{ marginBottom: 15 }}>
+                <h4>RM10/月</h4>
+                <button style={{
+                  marginTop: 6,
+                  padding: "10px",
+                  width: "100%",
+                  background: "#0F766E",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8
+                }}>
+                  訂閱（月）
+                </button>
+              </div>
+
+              {/* 年費 */}
+              <div>
+                <h4>
+                  RM100/年{" "}
+                  <span style={{
+                    background: "#0F766E",
+                    color: "white",
+                    padding: "2px 8px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    marginLeft: 6
+                  }}>
+                    -16%
+                  </span>
+                </h4>
+
+                <button style={{
+                  marginTop: 6,
+                  padding: "10px",
+                  width: "100%",
+                  background: "#0F766E",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8
+                }}>
+                  訂閱（年）
+                </button>
+              </div>
+
+            </div>
           </div>
 
         </div>
@@ -153,32 +175,54 @@ export default function HomePage() {
             <p>客戶管理</p>
             <p>貨源管理</p>
 
-            <h4 style={{ marginTop: 10 }}>RM31.99/月</h4>
-            <h4>
-              RM307.10/年{" "}
-              <span style={{
-                background: "#0F766E",
-                color: "white",
-                padding: "2px 8px",
-                borderRadius: 6,
-                fontSize: 12,
-                marginLeft: 6
-              }}>
-                -20%
-              </span>
-            </h4>
+            <div style={{ marginTop: 15 }}>
 
-            <button style={{
-              marginTop: 10,
-              padding: "10px",
-              width: "100%",
-              background: "#0F766E",
-              color: "white",
-              border: "none",
-              borderRadius: 8
-            }}>
-              訂閱
-            </button>
+              {/* 月費 */}
+              <div style={{ marginBottom: 15 }}>
+                <h4>RM31.99/月</h4>
+                <button style={{
+                  marginTop: 6,
+                  padding: "10px",
+                  width: "100%",
+                  background: "#0F766E",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8
+                }}>
+                  訂閱（月）
+                </button>
+              </div>
+
+              {/* 年費 */}
+              <div>
+                <h4>
+                  RM307.10/年{" "}
+                  <span style={{
+                    background: "#0F766E",
+                    color: "white",
+                    padding: "2px 8px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    marginLeft: 6
+                  }}>
+                    -20%
+                  </span>
+                </h4>
+
+                <button style={{
+                  marginTop: 6,
+                  padding: "10px",
+                  width: "100%",
+                  background: "#0F766E",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8
+                }}>
+                  訂閱（年）
+                </button>
+              </div>
+
+            </div>
           </div>
 
         </div>
