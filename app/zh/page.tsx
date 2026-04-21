@@ -1,4 +1,4 @@
-import zh from "../../messages/zh.json";
+import zh from "@/messages/zh.json";
 
 export default function Page() {
   const t = zh;
