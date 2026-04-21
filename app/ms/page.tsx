@@ -8,18 +8,27 @@ export default function Page() {
       <nav
         style={{
           display: "flex",
-          gap: 20,
+          justifyContent: "space-between",
           alignItems: "center",
           marginBottom: 40,
           flexWrap: "wrap",
+          gap: 16,
         }}
       >
-        <b>SmartAcctg</b>
-        <span>{t.nav.home}</span>
-        <span>{t.nav.features}</span>
-        <span>{t.nav.pricing}</span>
-        <span>{t.nav.login}</span>
-        <span>{t.nav.register}</span>
+        <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+          <b>SmartAcctg</b>
+          <span>{t.nav.home}</span>
+          <span>{t.nav.features}</span>
+          <span>{t.nav.pricing}</span>
+          <span>{t.nav.login}</span>
+          <span>{t.nav.register}</span>
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <a href="/zh">中</a>
+          <a href="/en">EN</a>
+          <a href="/ms">BM</a>
+        </div>
       </nav>
 
       <section style={{ padding: "40px 0" }}>
@@ -34,6 +43,8 @@ export default function Page() {
               borderRadius: 8,
               border: "none",
               cursor: "pointer",
+              background: "#0f766e",
+              color: "white",
             }}
           >
             {t.hero.cta1}
