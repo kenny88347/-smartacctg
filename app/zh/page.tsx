@@ -10,18 +10,44 @@ const supabase = createClient(
 
 export default function Page() {
   const [showRegister, setShowRegister] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("");
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+
+  function resetForm() {
+    setEmail("");
+    setPassword("");
+    setMessage("");
+    setMessageType("");
+  }
+
+  function openRegister(plan: string) {
+    setSelectedPlan(plan);
+    setShowLogin(false);
+    setShowRegister(true);
+    resetForm();
+  }
+
+  function openLogin() {
+    setShowRegister(false);
+    setShowLogin(true);
+    resetForm();
+  }
 
   async function handleSignUp() {
     if (!email || !password) {
-      alert("请输入邮箱和密码");
+      setMessage("请输入邮箱和密码");
+      setMessageType("error");
       return;
     }
 
     setLoading(true);
+    setMessage("");
+    setMessageType("");
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -34,20 +60,45 @@ export default function Page() {
     setLoading(false);
 
     if (error) {
-      alert("注册失败：" + error.message);
+      setMessage("注册失败：" + error.message);
+      setMessageType("error");
       return;
     }
 
-    alert("注册成功！请检查邮箱确认账号。");
-    setShowRegister(false);
-    setEmail("");
-    setPassword("");
-    setSelectedPlan("");
+    setMessage("注册成功！请检查邮箱确认账号。");
+    setMessageType("success");
   }
 
-  function openRegister(plan: string) {
-    setSelectedPlan(plan);
-    setShowRegister(true);
+  async function handleLogin() {
+    if (!email || !password) {
+      setMessage("请输入邮箱和密码");
+      setMessageType("error");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+    setMessageType("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setMessage("登录失败：" + error.message);
+      setMessageType("error");
+      return;
+    }
+
+    setMessage("登录成功！");
+    setMessageType("success");
+
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 800);
   }
 
   return (
@@ -90,7 +141,7 @@ export default function Page() {
             免费试用
           </button>
 
-          <button style={btnSecondary}>
+          <button onClick={openLogin} style={btnSecondary}>
             登录
           </button>
         </div>
@@ -127,9 +178,7 @@ export default function Page() {
 
           <div style={priceBlock}>
             <div style={priceRow}>
-              <div>
-                <div style={priceText}>RM10 / 月</div>
-              </div>
+              <div style={priceText}>RM10 / 月</div>
               <button onClick={() => openRegister("个人订阅（月）")} style={smallBtn}>
                 订阅
               </button>
@@ -138,10 +187,8 @@ export default function Page() {
             <div style={divider} />
 
             <div style={priceRow}>
-              <div>
-                <div style={priceText}>
-                  RM100 / 年 <span style={badge}>-16%</span>
-                </div>
+              <div style={priceText}>
+                RM100 / 年 <span style={badge}>-16%</span>
               </div>
               <button onClick={() => openRegister("个人订阅（年）")} style={smallBtn}>
                 订阅
@@ -184,9 +231,7 @@ export default function Page() {
 
           <div style={priceBlock}>
             <div style={priceRow}>
-              <div>
-                <div style={priceText}>RM31.99 / 月</div>
-              </div>
+              <div style={priceText}>RM31.99 / 月</div>
               <button onClick={() => openRegister("商业订阅（月）")} style={smallBtn}>
                 订阅
               </button>
@@ -195,10 +240,8 @@ export default function Page() {
             <div style={divider} />
 
             <div style={priceRow}>
-              <div>
-                <div style={priceText}>
-                  RM307.10 / 年 <span style={badge}>-20%</span>
-                </div>
+              <div style={priceText}>
+                RM307.10 / 年 <span style={badge}>-20%</span>
               </div>
               <button onClick={() => openRegister("商业订阅（年）")} style={smallBtn}>
                 订阅
@@ -229,10 +272,7 @@ export default function Page() {
                   {selectedPlan ? `当前选择：${selectedPlan}` : "创建你的 SmartAcctg 账号"}
                 </p>
               </div>
-              <button
-                onClick={() => setShowRegister(false)}
-                style={closeBtn}
-              >
+              <button onClick={() => setShowRegister(false)} style={closeBtn}>
                 ×
               </button>
             </div>
@@ -257,6 +297,21 @@ export default function Page() {
               />
             </div>
 
+            {message ? (
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  background: messageType === "error" ? "#fee2e2" : "#dcfce7",
+                  color: messageType === "error" ? "#b91c1c" : "#166534",
+                  fontSize: 14,
+                }}
+              >
+                {message}
+              </div>
+            ) : null}
+
             <button
               onClick={handleSignUp}
               disabled={loading}
@@ -272,6 +327,83 @@ export default function Page() {
 
             <button
               onClick={() => setShowRegister(false)}
+              style={{
+                ...btnSecondary,
+                width: "100%",
+                marginTop: 10,
+              }}
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showLogin && (
+        <div style={overlay}>
+          <div style={modal}>
+            <div style={modalTop}>
+              <div>
+                <h3 style={{ margin: 0 }}>登录账号</h3>
+                <p style={{ ...mutedText, marginTop: 6 }}>
+                  登录你的 SmartAcctg 账号
+                </p>
+              </div>
+              <button onClick={() => setShowLogin(false)} style={closeBtn}>
+                ×
+              </button>
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+              <label style={label}>邮箱</label>
+              <input
+                type="email"
+                placeholder="请输入邮箱"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={input}
+              />
+
+              <label style={{ ...label, marginTop: 14 }}>密码</label>
+              <input
+                type="password"
+                placeholder="请输入密码"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={input}
+              />
+            </div>
+
+            {message ? (
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  background: messageType === "error" ? "#fee2e2" : "#dcfce7",
+                  color: messageType === "error" ? "#b91c1c" : "#166534",
+                  fontSize: 14,
+                }}
+              >
+                {message}
+              </div>
+            ) : null}
+
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              style={{
+                ...btnPrimary,
+                width: "100%",
+                marginTop: 18,
+                opacity: loading ? 0.7 : 1,
+              }}
+            >
+              {loading ? "登录中..." : "确认登录"}
+            </button>
+
+            <button
+              onClick={() => setShowLogin(false)}
               style={{
                 ...btnSecondary,
                 width: "100%",
