@@ -1,235 +1,189 @@
-export default function HomePage() {
+"use client";
+
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+export default function Page() {
   return (
-    <main style={{ fontFamily: "sans-serif", background: "#f8fafc" }}>
+    <div style={{ padding: 20, fontFamily: "sans-serif" }}>
       
-      {/* Header */}
-      <header style={{
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "20px",
-        alignItems: "center"
-      }}>
-        <h2>SmartAcctg</h2>
-        <div>
-          <span style={{ marginRight: 10 }}>中</span>
-          <span style={{ marginRight: 10 }}>EN</span>
-          <span>BM</span>
-        </div>
-      </header>
+      {/* 标题 */}
+      <h1 style={{ fontSize: 28, fontWeight: "bold" }}>
+        智能记账 SaaS 系统
+      </h1>
 
-      {/* Hero */}
-      <section style={{ textAlign: "center", padding: "40px 20px" }}>
-        <h1 style={{ fontSize: 32, fontWeight: "bold" }}>
-          智能记账 SaaS 系统
-        </h1>
-        <p style={{ color: "#64748b", marginTop: 10 }}>
-          支持个人与商业用户｜记账｜发票｜客户管理｜PDF｜WhatsApp
-        </p>
-      </section>
+      <p style={{ color: "#666" }}>
+        支持个人与商业用户｜记账｜发票｜客户管理｜PDF｜WhatsApp
+      </p>
 
-      {/* 个人使用 */}
-      <section style={{ padding: 20 }}>
-        <h3>👤 个人使用</h3>
+      {/* ========================= */}
+      {/* 👤 个人使用 */}
+      {/* ========================= */}
+      <h2 style={{ marginTop: 30 }}>👤 个人使用</h2>
 
-        {/* 免费 */}
-        <div style={{
-          background: "white",
-          padding: 20,
-          borderRadius: 12,
-          marginTop: 15
-        }}>
-          <h4>免费版</h4>
-          <p>普通记账</p>
-          <p>余额价格</p>
-          <p>本月收入</p>
-          <p>本月支出</p>
+      {/* 免费版 */}
+      <div style={card}>
+        <h3>免费版</h3>
+        <p>普通记账</p>
+        <p>结余价格</p>
+        <p>本月收入</p>
+        <p>本月支出</p>
 
-          <button style={{
-            marginTop: 15,
-            width: "100%",
-            padding: 10,
-            background: "#0F766E",
-            color: "white",
-            borderRadius: 8,
-            border: "none"
-          }}>
-            开始使用
-          </button>
-        </div>
+        <button style={btnOutline}>
+          免费使用
+        </button>
+      </div>
 
-        {/* 订阅 */}
-        <div style={{
-          background: "white",
-          padding: 20,
-          borderRadius: 12,
-          marginTop: 15,
-          border: "2px solid #0F766E"
-        }}>
-          <h4>订阅版</h4>
-          <p>多账号管理</p>
-          <p>本月收入 / 支出</p>
-          <p>余额价格</p>
-          <p>WhatsApp快速记账</p>
+      {/* 订阅版（月） */}
+      <div style={cardPrimary}>
+        <h3>订阅版（月）</h3>
+        <p>多账号管理</p>
+        <p>本月收入 / 支出</p>
+        <p>结余价格</p>
+        <p>WhatsApp快速记账</p>
 
-          {/* 月 */}
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: 15
-          }}>
-            <h4>RM10/月</h4>
-            <button style={{
-              padding: "6px 14px",
-              background: "#0F766E",
-              color: "white",
-              borderRadius: 6,
-              border: "none"
-            }}>
-              订阅
-            </button>
-          </div>
+        <h3>RM10/月</h3>
 
-          {/* 年 */}
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: 10
-          }}>
-            <h4>
-              RM100/年{" "}
-              <span style={{
-                background: "#0F766E",
-                color: "white",
-                padding: "2px 8px",
-                borderRadius: 6,
-                fontSize: 12
-              }}>
-                -16%
-              </span>
-            </h4>
+        <button onClick={handleSignUp} style={btnPrimary}>
+          订阅（月）
+        </button>
+      </div>
 
-            <button style={{
-              padding: "6px 14px",
-              background: "#0F766E",
-              color: "white",
-              borderRadius: 6,
-              border: "none"
-            }}>
-              订阅
-            </button>
-          </div>
-        </div>
-      </section>
+      {/* 订阅版（年） */}
+      <div style={cardPrimary}>
+        <h3>订阅版（年）</h3>
+        <p>全部功能</p>
 
-      {/* 商业使用 */}
-      <section style={{ padding: 20 }}>
-        <h3>🏢 商业使用</h3>
+        <h3>
+          RM100/年 
+          <span style={badge}>-16%</span>
+        </h3>
 
-        {/* 免费 */}
-        <div style={{
-          background: "white",
-          padding: 20,
-          borderRadius: 12,
-          marginTop: 15
-        }}>
-          <h4>免费版</h4>
-          <p>每日记账</p>
-          <p>余额价格</p>
-          <p>本月收入</p>
-          <p>本月支出</p>
+        <button onClick={handleSignUp} style={btnPrimary}>
+          订阅（年）
+        </button>
+      </div>
 
-          <button style={{
-            marginTop: 15,
-            width: "100%",
-            padding: 10,
-            background: "#0F766E",
-            color: "white",
-            borderRadius: 8,
-            border: "none"
-          }}>
-            开始使用
-          </button>
-        </div>
+      {/* ========================= */}
+      {/* 🏢 商业使用 */}
+      {/* ========================= */}
+      <h2 style={{ marginTop: 40 }}>🏢 商业使用</h2>
 
-        {/* 订阅 */}
-        <div style={{
-          background: "white",
-          padding: 20,
-          borderRadius: 12,
-          marginTop: 15,
-          border: "2px solid #0F766E"
-        }}>
-          <h4>订阅版</h4>
-          <p>多账号管理</p>
-          <p>WhatsApp记账</p>
-          <p>导出PDF</p>
-          <p>发票系统</p>
-          <p>客户管理</p>
-          <p>货源管理</p>
+      {/* 免费版 */}
+      <div style={card}>
+        <h3>免费版</h3>
+        <p>每日记账</p>
+        <p>结余价格</p>
+        <p>本月收入</p>
+        <p>本月支出</p>
 
-          {/* 月 */}
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: 15
-          }}>
-            <h4>RM31.99/月</h4>
-            <button style={{
-              padding: "6px 14px",
-              background: "#0F766E",
-              color: "white",
-              borderRadius: 6,
-              border: "none"
-            }}>
-              订阅
-            </button>
-          </div>
+        <button style={btnOutline}>
+          免费使用
+        </button>
+      </div>
 
-          {/* 年 */}
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: 10
-          }}>
-            <h4>
-              RM307.10/年{" "}
-              <span style={{
-                background: "#0F766E",
-                color: "white",
-                padding: "2px 8px",
-                borderRadius: 6,
-                fontSize: 12
-              }}>
-                -20%
-              </span>
-            </h4>
+      {/* 订阅（月） */}
+      <div style={cardPrimary}>
+        <h3>订阅版（月）</h3>
+        <p>多账号管理</p>
+        <p>WhatsApp记账</p>
+        <p>导出PDF</p>
+        <p>发票系统</p>
+        <p>客户管理</p>
+        <p>货源管理</p>
 
-            <button style={{
-              padding: "6px 14px",
-              background: "#0F766E",
-              color: "white",
-              borderRadius: 6,
-              border: "none"
-            }}>
-              订阅
-            </button>
-          </div>
-        </div>
-      </section>
+        <h3>RM31.99/月</h3>
 
-      {/* Footer */}
-      <footer style={{
-        textAlign: "center",
-        padding: 30,
-        color: "#64748b"
-      }}>
+        <button onClick={handleSignUp} style={btnPrimary}>
+          订阅（月）
+        </button>
+      </div>
+
+      {/* 订阅（年） */}
+      <div style={cardPrimary}>
+        <h3>订阅版（年）</h3>
+
+        <h3>
+          RM307.10/年 
+          <span style={badge}>-20%</span>
+        </h3>
+
+        <button onClick={handleSignUp} style={btnPrimary}>
+          订阅（年）
+        </button>
+      </div>
+
+      {/* 底部 */}
+      <p style={{ textAlign: "center", marginTop: 40, color: "#999" }}>
         © NK DIGITAL HUB. All rights reserved.
-      </footer>
+      </p>
 
-    </main>
+    </div>
   );
 }
+
+/* ========================= */
+/* 🔥 注册功能 */
+/* ========================= */
+async function handleSignUp() {
+  const email = prompt("请输入邮箱");
+  const password = prompt("请输入密码");
+
+  if (!email || !password) return;
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (error) {
+    alert("注册失败：" + error.message);
+  } else {
+    alert("注册成功！请检查邮箱");
+  }
+}
+
+/* ========================= */
+/* 🎨 UI样式 */
+/* ========================= */
+const card = {
+  background: "#fff",
+  padding: 20,
+  borderRadius: 12,
+  marginTop: 15,
+};
+
+const cardPrimary = {
+  ...card,
+  border: "2px solid #0F766E",
+};
+
+const btnPrimary = {
+  width: "100%",
+  padding: 12,
+  background: "#0F766E",
+  color: "#fff",
+  border: "none",
+  borderRadius: 10,
+  marginTop: 10,
+};
+
+const btnOutline = {
+  ...btnPrimary,
+  background: "#fff",
+  color: "#0F766E",
+  border: "2px solid #0F766E",
+};
+
+const badge = {
+  marginLeft: 10,
+  background: "#0F766E",
+  color: "#fff",
+  padding: "2px 8px",
+  borderRadius: 8,
+  fontSize: 12,
+};
