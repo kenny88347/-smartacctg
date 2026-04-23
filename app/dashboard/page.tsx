@@ -13,24 +13,101 @@ type TrialInfo = {
   expiresAt: number;
 };
 
+type TabKey = "overview" | "daily" | "settings" | "themes";
+
 type Txn = {
   id: string;
   date: string;
-  type: string;
-  amount: string;
+  type: "收款" | "付款";
+  amount: number;
   category: string;
   note: string;
 };
 
-type TabKey =
-  | "daily"
-  | "income"
-  | "expense"
-  | "pdf"
-  | "invoice"
-  | "customer";
+type CompanyProfile = {
+  companyName: string;
+  regNo: string;
+  phone: string;
+  email: string;
+  address: string;
+  logoDataUrl: string;
+};
 
-const STORAGE_KEY = "smartacctg_trial_records";
+type ThemePackKey =
+  | "cutePink"
+  | "blackGold"
+  | "pandaChina"
+  | "nature";
+
+const TRIAL_KEY = "smartacctg_trial";
+const RECORDS_KEY = "smartacctg_trial_records";
+const PROFILE_KEY = "smartacctg_trial_profile";
+const THEME_KEY = "smartacctg_theme_pack";
+
+const THEME_PACKS: Record<
+  ThemePackKey,
+  {
+    name: string;
+    pageBg: string;
+    heroBg: string;
+    cardBg: string;
+    cardBorder: string;
+    accent: string;
+    text: string;
+    subText: string;
+    bannerText: string;
+    preview: string;
+  }
+> = {
+  cutePink: {
+    name: "可爱粉色",
+    pageBg: "#fff7fb",
+    heroBg: "linear-gradient(135deg, #ffd6e7 0%, #ffeaf3 100%)",
+    cardBg: "#ffffff",
+    cardBorder: "#f9a8d4",
+    accent: "#db2777",
+    text: "#4a044e",
+    subText: "#831843",
+    bannerText: "#831843",
+    preview: "粉嫩、柔和、可爱",
+  },
+  blackGold: {
+    name: "黑金商务",
+    pageBg: "#0f0f10",
+    heroBg: "linear-gradient(135deg, #1c1c1f 0%, #2a2112 100%)",
+    cardBg: "#17171a",
+    cardBorder: "#d4af37",
+    accent: "#d4af37",
+    text: "#f8f5ee",
+    subText: "#d6c8a4",
+    bannerText: "#f8f5ee",
+    preview: "高端、稳重、商务",
+  },
+  pandaChina: {
+    name: "熊猫中国风",
+    pageBg: "#f6f4ef",
+    heroBg: "linear-gradient(135deg, #ffffff 0%, #ece7dc 100%)",
+    cardBg: "#ffffff",
+    cardBorder: "#111827",
+    accent: "#b91c1c",
+    text: "#111827",
+    subText: "#57534e",
+    bannerText: "#111827",
+    preview: "东方、干净、书卷感",
+  },
+  nature: {
+    name: "风景自然系",
+    pageBg: "#f0fdf4",
+    heroBg: "linear-gradient(135deg, #d9f99d 0%, #bae6fd 100%)",
+    cardBg: "#ffffff",
+    cardBorder: "#16a34a",
+    accent: "#0f766e",
+    text: "#14532d",
+    subText: "#166534",
+    bannerText: "#14532d",
+    preview: "清新、自然、舒服",
+  },
+};
 
 export default function DashboardPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -39,44 +116,57 @@ export default function DashboardPage() {
   const [trialLeft, setTrialLeft] = useState("");
   const [trialPercent, setTrialPercent] = useState(100);
 
-  const [activeTab, setActiveTab] = useState<TabKey>("daily");
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
   const [records, setRecords] = useState<Txn[]>([]);
   const [date, setDate] = useState("");
-  const [type, setType] = useState("收款");
+  const [type, setType] = useState<"收款" | "付款">("收款");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [note, setNote] = useState("");
 
-  const [customers, setCustomers] = useState<
-    { id: string; name: string; phone: string; address: string; note: string }[]
-  >([]);
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [customerAddress, setCustomerAddress] = useState("");
-  const [customerNote, setCustomerNote] = useState("");
+  const [company, setCompany] = useState<CompanyProfile>({
+    companyName: "",
+    regNo: "",
+    phone: "",
+    email: "",
+    address: "",
+    logoDataUrl: "",
+  });
 
-  const [invoices, setInvoices] = useState<
-    { id: string; customer: string; item: string; amount: string }[]
-  >([]);
-  const [invoiceCustomer, setInvoiceCustomer] = useState("");
-  const [invoiceItem, setInvoiceItem] = useState("");
-  const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [settingsMsg, setSettingsMsg] = useState("");
+  const [settingsMsgType, setSettingsMsgType] = useState<"success" | "error" | "">("");
+
+  const [themePack, setThemePack] = useState<ThemePackKey>("nature");
+
+  const theme = THEME_PACKS[themePack];
 
   useEffect(() => {
     let interval: number | undefined;
 
     const init = async () => {
-      const trialRaw = localStorage.getItem("smartacctg_trial");
-      const trial = trialRaw ? (JSON.parse(trialRaw) as TrialInfo) : null;
-
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setRecords(parsed.records || []);
-        setCustomers(parsed.customers || []);
-        setInvoices(parsed.invoices || []);
+      const savedTheme = localStorage.getItem(THEME_KEY) as ThemePackKey | null;
+      if (savedTheme && THEME_PACKS[savedTheme]) {
+        setThemePack(savedTheme);
       }
+
+      const savedRecords = localStorage.getItem(RECORDS_KEY);
+      if (savedRecords) {
+        try {
+          setRecords(JSON.parse(savedRecords));
+        } catch {}
+      }
+
+      const savedProfile = localStorage.getItem(PROFILE_KEY);
+      if (savedProfile) {
+        try {
+          setCompany(JSON.parse(savedProfile));
+        } catch {}
+      }
+
+      const trialRaw = localStorage.getItem(TRIAL_KEY);
+      const trial = trialRaw ? (JSON.parse(trialRaw) as TrialInfo) : null;
 
       const { data } = await supabase.auth.getSession();
       const currentSession = data.session ?? null;
@@ -100,7 +190,7 @@ export default function DashboardPage() {
         updateTrialBar(trial);
 
         interval = window.setInterval(() => {
-          const latestRaw = localStorage.getItem("smartacctg_trial");
+          const latestRaw = localStorage.getItem(TRIAL_KEY);
           const latestTrial = latestRaw ? (JSON.parse(latestRaw) as TrialInfo) : null;
 
           if (!latestTrial) {
@@ -133,20 +223,25 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        records,
-        customers,
-        invoices,
-      })
-    );
-  }, [records, customers, invoices]);
+    if (isTrial) {
+      localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+    }
+  }, [records, isTrial]);
+
+  useEffect(() => {
+    if (isTrial) {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(company));
+    }
+  }, [company, isTrial]);
+
+  useEffect(() => {
+    localStorage.setItem(THEME_KEY, themePack);
+  }, [themePack]);
 
   function clearTrialData() {
-    localStorage.removeItem("smartacctg_trial");
-    localStorage.removeItem("smartacctg_trial_records");
-    localStorage.removeItem("smartacctg_trial_profile");
+    localStorage.removeItem(TRIAL_KEY);
+    localStorage.removeItem(RECORDS_KEY);
+    localStorage.removeItem(PROFILE_KEY);
   }
 
   function updateTrialBar(trial: TrialInfo) {
@@ -170,11 +265,14 @@ export default function DashboardPage() {
   function addRecord() {
     if (!date || !amount || !category) return;
 
+    const parsedAmount = Number(amount);
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) return;
+
     const newRecord: Txn = {
       id: String(Date.now()),
       date,
       type,
-      amount,
+      amount: parsedAmount,
       category,
       note,
     };
@@ -187,58 +285,89 @@ export default function DashboardPage() {
     setNote("");
   }
 
-  function addCustomer() {
-    if (!customerName) return;
-
-    setCustomers((prev) => [
-      {
-        id: String(Date.now()),
-        name: customerName,
-        phone: customerPhone,
-        address: customerAddress,
-        note: customerNote,
-      },
-      ...prev,
-    ]);
-
-    setCustomerName("");
-    setCustomerPhone("");
-    setCustomerAddress("");
-    setCustomerNote("");
+  function removeRecord(id: string) {
+    setRecords((prev) => prev.filter((r) => r.id !== id));
   }
 
-  function addInvoice() {
-    if (!invoiceCustomer || !invoiceItem || !invoiceAmount) return;
+  async function handleChangePassword() {
+    setSettingsMsg("");
+    setSettingsMsgType("");
 
-    setInvoices((prev) => [
-      {
-        id: String(Date.now()),
-        customer: invoiceCustomer,
-        item: invoiceItem,
-        amount: invoiceAmount,
-      },
-      ...prev,
-    ]);
+    if (!newPassword || newPassword.length < 6) {
+      setSettingsMsg("新密码至少 6 位");
+      setSettingsMsgType("error");
+      return;
+    }
 
-    setInvoiceCustomer("");
-    setInvoiceItem("");
-    setInvoiceAmount("");
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      setSettingsMsg("修改密码失败：" + error.message);
+      setSettingsMsgType("error");
+      return;
+    }
+
+    setSettingsMsg("密码修改成功");
+    setSettingsMsgType("success");
+    setNewPassword("");
   }
+
+  function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCompany((prev) => ({
+        ...prev,
+        logoDataUrl: String(reader.result || ""),
+      }));
+    };
+    reader.readAsDataURL(file);
+  }
+
+  const currentMonthRecords = useMemo(() => {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    return records.filter((r) => r.date.startsWith(ym));
+  }, [records]);
 
   const totalIncome = useMemo(() => {
     return records
       .filter((r) => r.type === "收款")
-      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      .reduce((sum, r) => sum + r.amount, 0);
   }, [records]);
 
   const totalExpense = useMemo(() => {
     return records
       .filter((r) => r.type === "付款")
-      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      .reduce((sum, r) => sum + r.amount, 0);
   }, [records]);
 
+  const monthIncome = useMemo(() => {
+    return currentMonthRecords
+      .filter((r) => r.type === "收款")
+      .reduce((sum, r) => sum + r.amount, 0);
+  }, [currentMonthRecords]);
+
+  const monthExpense = useMemo(() => {
+    return currentMonthRecords
+      .filter((r) => r.type === "付款")
+      .reduce((sum, r) => sum + r.amount, 0);
+  }, [currentMonthRecords]);
+
+  const balance = useMemo(() => totalIncome - totalExpense, [totalIncome, totalExpense]);
+
   return (
-    <main style={pageStyle}>
+    <main
+      style={{
+        ...pageStyle,
+        background: theme.pageBg,
+        color: theme.text,
+      }}
+    >
       {isTrial && (
         <div style={trialWrapStyle}>
           <div style={trialTopRowStyle}>
@@ -256,49 +385,103 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div style={topBarStyle}>
+      <div
+        style={{
+          ...heroCardStyle,
+          background: theme.heroBg,
+          color: theme.bannerText,
+        }}
+      >
         <div>
-          <h1 style={titleStyle}>欢迎来到 Dashboard</h1>
-          <p style={subTitleStyle}>
+          <h1 style={titleStyle}>Dashboard</h1>
+          <p style={{ ...subTitleStyle, color: theme.subText }}>
             {isTrial
               ? "你正在使用免费试用版，全部功能已开放"
               : `你已经成功登录 SmartAcctg${userEmail ? `（${userEmail}）` : ""}`}
           </p>
         </div>
 
-        <button onClick={handleLogout} style={logoutBtnStyle}>
+        <button
+          onClick={handleLogout}
+          style={{
+            ...logoutBtnStyle,
+            background: theme.accent,
+          }}
+        >
           退出登录
         </button>
       </div>
 
+      <div style={statsGridStyle}>
+        <div style={{ ...statCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
+          <div style={statLabelStyle}>当前余额</div>
+          <div style={{ ...statValueStyle, color: theme.accent }}>RM {balance.toFixed(2)}</div>
+        </div>
+
+        <div style={{ ...statCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
+          <div style={statLabelStyle}>本月收入</div>
+          <div style={{ ...statValueStyle, color: "#16a34a" }}>RM {monthIncome.toFixed(2)}</div>
+        </div>
+
+        <div style={{ ...statCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
+          <div style={statLabelStyle}>本月支出</div>
+          <div style={{ ...statValueStyle, color: "#dc2626" }}>RM {monthExpense.toFixed(2)}</div>
+        </div>
+      </div>
+
       <div style={menuGridStyle}>
-        <button style={menuBtn(activeTab === "daily")} onClick={() => setActiveTab("daily")}>
+        <button style={menuBtn(activeTab === "overview", theme)} onClick={() => setActiveTab("overview")}>
+          总览
+        </button>
+        <button style={menuBtn(activeTab === "daily", theme)} onClick={() => setActiveTab("daily")}>
           每日记账
         </button>
-        <button style={menuBtn(activeTab === "income")} onClick={() => setActiveTab("income")}>
-          本月收入
+        <button style={menuBtn(activeTab === "settings", theme)} onClick={() => setActiveTab("settings")}>
+          设定
         </button>
-        <button style={menuBtn(activeTab === "expense")} onClick={() => setActiveTab("expense")}>
-          本月支出
-        </button>
-        <button style={menuBtn(activeTab === "pdf")} onClick={() => setActiveTab("pdf")}>
-          导出 PDF
-        </button>
-        <button style={menuBtn(activeTab === "invoice")} onClick={() => setActiveTab("invoice")}>
-          发票系统
-        </button>
-        <button style={menuBtn(activeTab === "customer")} onClick={() => setActiveTab("customer")}>
-          客户管理
+        <button style={menuBtn(activeTab === "themes", theme)} onClick={() => setActiveTab("themes")}>
+          主题切换
         </button>
       </div>
 
+      {activeTab === "overview" && (
+        <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
+          <h3>总览</h3>
+          <p style={{ ...mutedTextStyle, color: theme.subText }}>
+            这里会根据你的记账记录自动更新金额。
+          </p>
+
+          <div style={overviewBoxGridStyle}>
+            <div style={previewBox(theme)}>
+              <h4>首页 Banner 预览</h4>
+              <div style={bannerPreview(theme)}>SmartAcctg Banner</div>
+            </div>
+
+            <div style={previewBox(theme)}>
+              <h4>个人卡片背景预览</h4>
+              <div style={smallCardPreview(theme)}>个人卡片背景</div>
+            </div>
+
+            <div style={previewBox(theme)}>
+              <h4>名片封面预览</h4>
+              <div style={nameCardPreview(theme)}>名片封面</div>
+            </div>
+
+            <div style={previewBox(theme)}>
+              <h4>Container 背景预览</h4>
+              <div style={containerPreview(theme)}>某些 container 背景图</div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {activeTab === "daily" && (
-        <section style={sectionCardStyle}>
+        <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
           <h3>每日记账</h3>
 
           <div style={formGridStyle}>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
-            <select value={type} onChange={(e) => setType(e.target.value)} style={inputStyle}>
+            <select value={type} onChange={(e) => setType(e.target.value as "收款" | "付款")} style={inputStyle}>
               <option value="收款">收款</option>
               <option value="付款">付款</option>
             </select>
@@ -322,158 +505,211 @@ export default function DashboardPage() {
             />
           </div>
 
-          <button onClick={addRecord} style={primaryBtnStyle}>
+          <button
+            onClick={addRecord}
+            style={{
+              ...primaryBtnStyle,
+              background: theme.accent,
+            }}
+          >
             新增记录
           </button>
 
           <div style={{ marginTop: 18 }}>
             {records.length === 0 ? (
-              <p style={emptyTextStyle}>还没有记录</p>
+              <p style={{ ...emptyTextStyle, color: theme.subText }}>还没有记录</p>
             ) : (
               records.map((r) => (
                 <div key={r.id} style={listItemStyle}>
                   <div>
                     <strong>{r.type}</strong> · {r.category}
-                    <div style={mutedTextStyle}>
+                    <div style={{ ...mutedTextStyle, color: theme.subText }}>
                       {r.date} {r.note ? `· ${r.note}` : ""}
                     </div>
                   </div>
-                  <strong>RM {r.amount}</strong>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-      )}
 
-      {activeTab === "income" && (
-        <section style={sectionCardStyle}>
-          <h3>本月收入</h3>
-          <div style={bigStatStyle}>RM {totalIncome.toFixed(2)}</div>
-          <p style={mutedTextStyle}>这里统计所有「收款」记录。</p>
-        </section>
-      )}
-
-      {activeTab === "expense" && (
-        <section style={sectionCardStyle}>
-          <h3>本月支出</h3>
-          <div style={bigStatStyle}>RM {totalExpense.toFixed(2)}</div>
-          <p style={mutedTextStyle}>这里统计所有「付款」记录。</p>
-        </section>
-      )}
-
-      {activeTab === "pdf" && (
-        <section style={sectionCardStyle}>
-          <h3>导出 PDF</h3>
-          <p style={mutedTextStyle}>当前先做可点击版本，后面再接真正 PDF 导出。</p>
-          <button
-            style={primaryBtnStyle}
-            onClick={() => {
-              alert("导出 PDF 功能下一步可继续接上");
-            }}
-          >
-            导出 PDF
-          </button>
-        </section>
-      )}
-
-      {activeTab === "invoice" && (
-        <section style={sectionCardStyle}>
-          <h3>发票系统</h3>
-
-          <div style={formGridStyle}>
-            <input
-              placeholder="客户名称"
-              value={invoiceCustomer}
-              onChange={(e) => setInvoiceCustomer(e.target.value)}
-              style={inputStyle}
-            />
-            <input
-              placeholder="项目 / 产品"
-              value={invoiceItem}
-              onChange={(e) => setInvoiceItem(e.target.value)}
-              style={inputStyle}
-            />
-            <input
-              placeholder="金额（RM）"
-              value={invoiceAmount}
-              onChange={(e) => setInvoiceAmount(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-
-          <button onClick={addInvoice} style={primaryBtnStyle}>
-            新增发票
-          </button>
-
-          <div style={{ marginTop: 18 }}>
-            {invoices.length === 0 ? (
-              <p style={emptyTextStyle}>还没有发票</p>
-            ) : (
-              invoices.map((inv) => (
-                <div key={inv.id} style={listItemStyle}>
-                  <div>
-                    <strong>{inv.customer}</strong>
-                    <div style={mutedTextStyle}>{inv.item}</div>
-                  </div>
-                  <strong>RM {inv.amount}</strong>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-      )}
-
-      {activeTab === "customer" && (
-        <section style={sectionCardStyle}>
-          <h3>客户管理</h3>
-
-          <div style={formGridStyle}>
-            <input
-              placeholder="姓名"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              style={inputStyle}
-            />
-            <input
-              placeholder="电话号码"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              style={inputStyle}
-            />
-            <input
-              placeholder="地址"
-              value={customerAddress}
-              onChange={(e) => setCustomerAddress(e.target.value)}
-              style={inputStyle}
-            />
-            <input
-              placeholder="备注"
-              value={customerNote}
-              onChange={(e) => setCustomerNote(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-
-          <button onClick={addCustomer} style={primaryBtnStyle}>
-            新增客户
-          </button>
-
-          <div style={{ marginTop: 18 }}>
-            {customers.length === 0 ? (
-              <p style={emptyTextStyle}>还没有客户资料</p>
-            ) : (
-              customers.map((c) => (
-                <div key={c.id} style={listItemStyle}>
-                  <div>
-                    <strong>{c.name}</strong>
-                    <div style={mutedTextStyle}>
-                      {c.phone || "未填电话"} {c.address ? `· ${c.address}` : ""}
-                    </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <strong>RM {r.amount.toFixed(2)}</strong>
+                    <button
+                      onClick={() => removeRecord(r.id)}
+                      style={deleteBtnStyle}
+                    >
+                      删除
+                    </button>
                   </div>
                 </div>
               ))
             )}
+          </div>
+        </section>
+      )}
+
+      {activeTab === "settings" && (
+        <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
+          <h3>设定</h3>
+
+          <div style={settingsBlockStyle}>
+            <h4>修改密码</h4>
+            <input
+              type="password"
+              placeholder="请输入新密码"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              style={inputStyle}
+            />
+            <button
+              onClick={handleChangePassword}
+              style={{
+                ...primaryBtnStyle,
+                background: theme.accent,
+              }}
+            >
+              更新密码
+            </button>
+          </div>
+
+          <div style={settingsBlockStyle}>
+            <h4>公司资料（发票会显示）</h4>
+
+            <div style={formGridStyle}>
+              <input
+                placeholder="公司名称"
+                value={company.companyName}
+                onChange={(e) => setCompany((p) => ({ ...p, companyName: e.target.value }))}
+                style={inputStyle}
+              />
+              <input
+                placeholder="公司注册号"
+                value={company.regNo}
+                onChange={(e) => setCompany((p) => ({ ...p, regNo: e.target.value }))}
+                style={inputStyle}
+              />
+              <input
+                placeholder="公司电话"
+                value={company.phone}
+                onChange={(e) => setCompany((p) => ({ ...p, phone: e.target.value }))}
+                style={inputStyle}
+              />
+              <input
+                placeholder="公司 Email"
+                value={company.email}
+                onChange={(e) => setCompany((p) => ({ ...p, email: e.target.value }))}
+                style={inputStyle}
+              />
+              <input
+                placeholder="公司地址"
+                value={company.address}
+                onChange={(e) => setCompany((p) => ({ ...p, address: e.target.value }))}
+                style={inputStyle}
+              />
+            </div>
+
+            <div style={{ marginTop: 14 }}>
+              <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+                上传公司 Logo
+              </label>
+              <input type="file" accept="image/*" onChange={handleLogoUpload} />
+            </div>
+
+            <div style={companyPreviewCard(theme)}>
+              <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+                {company.logoDataUrl ? (
+                  <img
+                    src={company.logoDataUrl}
+                    alt="company-logo"
+                    style={{
+                      width: 68,
+                      height: 68,
+                      borderRadius: 12,
+                      objectFit: "cover",
+                      border: `1px solid ${theme.cardBorder}`,
+                    }}
+                  />
+                ) : (
+                  <div style={logoPlaceholderStyle}>Logo</div>
+                )}
+
+                <div>
+                  <h4 style={{ margin: 0 }}>{company.companyName || "你的公司名称"}</h4>
+                  <div style={{ ...mutedTextStyle, color: theme.subText }}>
+                    {company.regNo || "公司注册号"}
+                  </div>
+                  <div style={{ ...mutedTextStyle, color: theme.subText }}>
+                    {company.phone || "公司电话"}
+                  </div>
+                  <div style={{ ...mutedTextStyle, color: theme.subText }}>
+                    {company.email || "公司 Email"}
+                  </div>
+                  <div style={{ ...mutedTextStyle, color: theme.subText }}>
+                    {company.address || "公司地址"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {settingsMsg ? (
+            <div
+              style={{
+                ...messageBoxStyle,
+                background: settingsMsgType === "error" ? "#fee2e2" : "#dcfce7",
+                color: settingsMsgType === "error" ? "#b91c1c" : "#166534",
+              }}
+            >
+              {settingsMsg}
+            </div>
+          ) : null}
+        </section>
+      )}
+
+      {activeTab === "themes" && (
+        <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
+          <h3>主题切换</h3>
+          <p style={{ ...mutedTextStyle, color: theme.subText }}>
+            目前只做 4 套视觉风格包，并保存到浏览器本地。
+          </p>
+
+          <div style={themeGridStyle}>
+            {(Object.keys(THEME_PACKS) as ThemePackKey[]).map((key) => {
+              const pack = THEME_PACKS[key];
+              const active = key === themePack;
+
+              return (
+                <div
+                  key={key}
+                  style={{
+                    ...themeCardStyle,
+                    border: active ? `2px solid ${pack.accent}` : "1px solid #d1d5db",
+                    background: pack.pageBg,
+                    color: pack.text,
+                  }}
+                >
+                  <div
+                    style={{
+                      ...themeHeroPreviewStyle,
+                      background: pack.heroBg,
+                      color: pack.bannerText,
+                    }}
+                  >
+                    {pack.name}
+                  </div>
+
+                  <div style={{ fontWeight: 700, marginTop: 10 }}>{pack.name}</div>
+                  <div style={{ fontSize: 13, marginTop: 6, color: pack.subText }}>{pack.preview}</div>
+
+                  <button
+                    onClick={() => setThemePack(key)}
+                    style={{
+                      ...primaryBtnStyle,
+                      background: pack.accent,
+                      width: "100%",
+                    }}
+                  >
+                    {active ? "当前使用中" : "切换主题"}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -483,10 +719,20 @@ export default function DashboardPage() {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
-  background: "#f8fafc",
   padding: "20px",
   fontFamily: "sans-serif",
-  color: "#0f172a",
+};
+
+const heroCardStyle: CSSProperties = {
+  borderRadius: 22,
+  padding: 20,
+  marginBottom: 18,
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 16,
+  flexWrap: "wrap",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
 };
 
 const trialWrapStyle: CSSProperties = {
@@ -531,32 +777,46 @@ const trialBarFillStyle: CSSProperties = {
   transition: "width 1s linear",
 };
 
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 16,
-  flexWrap: "wrap",
-  marginBottom: 20,
-};
-
 const titleStyle: CSSProperties = {
   fontSize: 30,
   margin: 0,
 };
 
 const subTitleStyle: CSSProperties = {
-  color: "#64748b",
   marginTop: 10,
 };
 
 const logoutBtnStyle: CSSProperties = {
   padding: "10px 18px",
-  background: "#0F766E",
   color: "#fff",
   border: "none",
   borderRadius: 10,
-  fontWeight: 600,
+  fontWeight: 700,
+};
+
+const statsGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 12,
+  marginBottom: 18,
+};
+
+const statCardStyle: CSSProperties = {
+  borderRadius: 18,
+  padding: 18,
+  border: "2px solid",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+};
+
+const statLabelStyle: CSSProperties = {
+  fontSize: 14,
+  color: "#64748b",
+};
+
+const statValueStyle: CSSProperties = {
+  fontSize: 28,
+  fontWeight: 900,
+  marginTop: 8,
 };
 
 const menuGridStyle: CSSProperties = {
@@ -566,19 +826,22 @@ const menuGridStyle: CSSProperties = {
   marginBottom: 18,
 };
 
-const menuBtn = (active: boolean): CSSProperties => ({
+const menuBtn = (
+  active: boolean,
+  theme: (typeof THEME_PACKS)[ThemePackKey]
+): CSSProperties => ({
   padding: "14px 12px",
   borderRadius: 12,
-  border: active ? "2px solid #0F766E" : "1px solid #cbd5e1",
+  border: active ? `2px solid ${theme.accent}` : "1px solid #cbd5e1",
   background: active ? "#ecfdf5" : "#fff",
-  color: active ? "#0F766E" : "#0f172a",
+  color: active ? theme.accent : "#0f172a",
   fontWeight: 700,
 });
 
 const sectionCardStyle: CSSProperties = {
-  background: "#fff",
   borderRadius: 18,
   padding: 20,
+  border: "2px solid",
   boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
 };
 
@@ -600,7 +863,6 @@ const inputStyle: CSSProperties = {
 const primaryBtnStyle: CSSProperties = {
   marginTop: 14,
   padding: "12px 18px",
-  background: "#0F766E",
   color: "#fff",
   border: "none",
   borderRadius: 10,
@@ -617,18 +879,121 @@ const listItemStyle: CSSProperties = {
 };
 
 const mutedTextStyle: CSSProperties = {
-  color: "#64748b",
   fontSize: 14,
   marginTop: 4,
 };
 
-const emptyTextStyle: CSSProperties = {
-  color: "#64748b",
-};
+const emptyTextStyle: CSSProperties = {};
 
 const bigStatStyle: CSSProperties = {
   fontSize: 36,
   fontWeight: 900,
-  color: "#0F766E",
   marginTop: 14,
+};
+
+const deleteBtnStyle: CSSProperties = {
+  padding: "8px 10px",
+  background: "#fee2e2",
+  color: "#b91c1c",
+  border: "none",
+  borderRadius: 8,
+  fontWeight: 700,
+};
+
+const settingsBlockStyle: CSSProperties = {
+  marginTop: 18,
+};
+
+const companyPreviewCard = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
+  marginTop: 16,
+  padding: 16,
+  borderRadius: 16,
+  background: "#ffffff",
+  border: `1px solid ${theme.cardBorder}`,
+});
+
+const logoPlaceholderStyle: CSSProperties = {
+  width: 68,
+  height: 68,
+  borderRadius: 12,
+  background: "#e5e7eb",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 700,
+  color: "#475569",
+};
+
+const messageBoxStyle: CSSProperties = {
+  marginTop: 16,
+  padding: "10px 12px",
+  borderRadius: 10,
+  fontSize: 14,
+  fontWeight: 500,
+};
+
+const overviewBoxGridStyle: CSSProperties = {
+  display: "grid",
+  gap: 14,
+};
+
+const previewBox = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
+  background: "#ffffff",
+  borderRadius: 16,
+  padding: 16,
+  border: `1px solid ${theme.cardBorder}`,
+});
+
+const bannerPreview = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
+  marginTop: 10,
+  padding: "20px 16px",
+  borderRadius: 14,
+  background: theme.heroBg,
+  color: theme.bannerText,
+  fontWeight: 800,
+  textAlign: "center",
+});
+
+const smallCardPreview = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
+  marginTop: 10,
+  padding: "18px 14px",
+  borderRadius: 14,
+  background: theme.cardBg,
+  border: `2px solid ${theme.cardBorder}`,
+  color: theme.text,
+});
+
+const nameCardPreview = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
+  marginTop: 10,
+  padding: "22px 16px",
+  borderRadius: 14,
+  background: theme.heroBg,
+  color: theme.bannerText,
+  fontWeight: 700,
+});
+
+const containerPreview = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
+  marginTop: 10,
+  padding: "18px 14px",
+  borderRadius: 14,
+  background: theme.pageBg,
+  border: `1px dashed ${theme.cardBorder}`,
+  color: theme.text,
+});
+
+const themeGridStyle: CSSProperties = {
+  display: "grid",
+  gap: 14,
+};
+
+const themeCardStyle: CSSProperties = {
+  borderRadius: 16,
+  padding: 14,
+};
+
+const themeHeroPreviewStyle: CSSProperties = {
+  borderRadius: 12,
+  padding: "18px 12px",
+  textAlign: "center",
+  fontWeight: 800,
 };
