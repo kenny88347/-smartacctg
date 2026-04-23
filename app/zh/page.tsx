@@ -64,13 +64,22 @@ export default function Page() {
     resetForm();
   }
 
-  function openFreeTrialLogin() {
-    setSelectedPlan("免费试用");
-    setShowRegister(false);
-    setShowLogin(true);
-    resetForm();
-    setMessage("免费试用请先登录账号");
-    setMessageType("success");
+  function startFreeTrial() {
+    const now = Date.now();
+    const expiresAt = now + 30 * 60 * 1000; // 30分钟
+
+    localStorage.setItem(
+      "smartacctg_trial",
+      JSON.stringify({
+        startedAt: now,
+        expiresAt,
+      })
+    );
+
+    // 清空旧的试用记录，再进入
+    localStorage.removeItem("smartacctg_trial_records");
+    localStorage.removeItem("smartacctg_trial_profile");
+    window.location.href = "/dashboard?mode=trial";
   }
 
   async function handleSignUp() {
@@ -183,6 +192,9 @@ export default function Page() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
+    localStorage.removeItem("smartacctg_trial");
+    localStorage.removeItem("smartacctg_trial_records");
+    localStorage.removeItem("smartacctg_trial_profile");
     window.location.href = "/zh";
   }
 
@@ -192,15 +204,9 @@ export default function Page() {
         <h2 style={brandStyle}>SmartAcctg</h2>
 
         <div style={headerRightStyle}>
-          <a href="/zh" style={langLink}>
-            中
-          </a>
-          <a href="/en" style={langLink}>
-            EN
-          </a>
-          <a href="/ms" style={langLink}>
-            BM
-          </a>
+          <a href="/zh" style={langLink}>中</a>
+          <a href="/en" style={langLink}>EN</a>
+          <a href="/ms" style={langLink}>BM</a>
         </div>
       </header>
 
@@ -213,7 +219,7 @@ export default function Page() {
         <div style={heroButtonsWrap}>
           {!session ? (
             <>
-              <button onClick={openFreeTrialLogin} style={btnPrimary}>
+              <button onClick={startFreeTrial} style={btnPrimary}>
                 免费试用
               </button>
 
@@ -413,11 +419,7 @@ export default function Page() {
             <div style={modalHeaderStyle}>
               <div>
                 <h3 style={{ margin: 0 }}>登录账号</h3>
-                <p style={{ ...mutedText, marginTop: 6 }}>
-                  {selectedPlan === "免费试用"
-                    ? "免费试用请先登录账号"
-                    : "登录你的 SmartAcctg 账号"}
-                </p>
+                <p style={{ ...mutedText, marginTop: 6 }}>登录你的 SmartAcctg 账号</p>
               </div>
               <button onClick={() => setShowLogin(false)} style={closeBtnStyle}>
                 ×
