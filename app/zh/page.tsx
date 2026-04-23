@@ -64,6 +64,15 @@ export default function Page() {
     resetForm();
   }
 
+  function openFreeTrialLogin() {
+    setSelectedPlan("免费试用");
+    setShowRegister(false);
+    setShowLogin(true);
+    resetForm();
+    setMessage("免费试用请先登录账号");
+    setMessageType("success");
+  }
+
   async function handleSignUp() {
     if (!email || !password) {
       setMessage("请输入邮箱和密码");
@@ -204,7 +213,7 @@ export default function Page() {
         <div style={heroButtonsWrap}>
           {!session ? (
             <>
-              <button onClick={() => openRegister("免费试用")} style={btnPrimary}>
+              <button onClick={openFreeTrialLogin} style={btnPrimary}>
                 免费试用
               </button>
 
@@ -233,18 +242,6 @@ export default function Page() {
 
       <section style={sectionWrap}>
         <h3 style={sectionTitle}>👤 个人使用</h3>
-
-        <div style={cardStyle}>
-          <h4 style={cardTitle}>免费版</h4>
-          <p>普通记账</p>
-          <p>余额价格</p>
-          <p>本月收入</p>
-          <p>本月支出</p>
-
-          <button onClick={() => openRegister("个人免费版")} style={btnOutlineFull}>
-            免费使用
-          </button>
-        </div>
 
         <div style={cardPrimaryStyle}>
           <div style={planHeaderStyle}>
@@ -284,18 +281,6 @@ export default function Page() {
 
       <section style={sectionWrap}>
         <h3 style={sectionTitle}>🏢 商业使用</h3>
-
-        <div style={cardStyle}>
-          <h4 style={cardTitle}>免费版</h4>
-          <p>每日记账</p>
-          <p>余额价格</p>
-          <p>本月收入</p>
-          <p>本月支出</p>
-
-          <button onClick={() => openRegister("商业免费版")} style={btnOutlineFull}>
-            免费使用
-          </button>
-        </div>
 
         <div style={cardPrimaryStyle}>
           <div style={planHeaderStyle}>
@@ -428,7 +413,11 @@ export default function Page() {
             <div style={modalHeaderStyle}>
               <div>
                 <h3 style={{ margin: 0 }}>登录账号</h3>
-                <p style={{ ...mutedText, marginTop: 6 }}>登录你的 SmartAcctg 账号</p>
+                <p style={{ ...mutedText, marginTop: 6 }}>
+                  {selectedPlan === "免费试用"
+                    ? "免费试用请先登录账号"
+                    : "登录你的 SmartAcctg 账号"}
+                </p>
               </div>
               <button onClick={() => setShowLogin(false)} style={closeBtnStyle}>
                 ×
@@ -564,16 +553,12 @@ const sectionTitle: CSSProperties = {
   marginBottom: 16,
 };
 
-const cardStyle: CSSProperties = {
+const cardPrimaryStyle: CSSProperties = {
   background: "#fff",
   padding: 20,
   borderRadius: 16,
   marginTop: 15,
   boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
-};
-
-const cardPrimaryStyle: CSSProperties = {
-  ...cardStyle,
   border: "2px solid #0F766E",
 };
 
@@ -596,17 +581,6 @@ const btnSecondary: CSSProperties = {
   color: "#0F766E",
   border: "2px solid #0F766E",
   borderRadius: 10,
-  fontWeight: 600,
-};
-
-const btnOutlineFull: CSSProperties = {
-  width: "100%",
-  padding: 12,
-  background: "#fff",
-  color: "#0F766E",
-  border: "2px solid #0F766E",
-  borderRadius: 10,
-  marginTop: 10,
   fontWeight: 600,
 };
 
