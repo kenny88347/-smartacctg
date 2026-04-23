@@ -8,28 +8,97 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+type TrialInfo = {
+  startedAt: number;
+  expiresAt: number;
+};
+
 export default function DashboardPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [userEmail, setUserEmail] = useState("");
+  const [isTrial, setIsTrial] = useState(false);
+  const [trialLeft, setTrialLeft] = useState("");
 
   useEffect(() => {
+    let interval: number | undefined;
+
     const init = async () => {
+      const trialRaw = localStorage.getItem("smartacctg_trial");
+      const trial = trialRaw ? (JSON.parse(trialRaw) as TrialInfo) : null;
+
       const { data } = await supabase.auth.getSession();
       const currentSession = data.session ?? null;
 
-      if (!currentSession) {
-        window.location.href = "/zh";
+      // 有正式登录
+      if (currentSession) {
+        setSession(currentSession);
+        setUserEmail(currentSession.user.email ?? "");
         return;
       }
 
-      setSession(currentSession);
-      setUserEmail(currentSession.user.email ?? "");
+      // 没登录，但有试用
+      if (trial) {
+        const expired = Date.now() >= trial.expiresAt;
+
+        if (expired) {
+          clearTrialData();
+          window.location.href = "/zh";
+          return;
+        }
+
+        setIsTrial(true);
+        updateTrialLeft(trial);
+
+        interval = window.setInterval(() => {
+          const latestRaw = localStorage.getItem("smartacctg_trial");
+          const latestTrial = latestRaw ? (JSON.parse(latestRaw) as TrialInfo) : null;
+
+          if (!latestTrial) {
+            window.location.href = "/zh";
+            return;
+          }
+
+          const isExpired = Date.now() >= latestTrial.expiresAt;
+
+          if (isExpired) {
+            clearTrialData();
+            window.location.href = "/zh";
+            return;
+          }
+
+          updateTrialLeft(latestTrial);
+        }, 1000);
+
+        return;
+      }
+
+      // 两个都没有，回首页
+      window.location.href = "/zh";
     };
 
     init();
+
+    return () => {
+      if (interval) window.clearInterval(interval);
+    };
   }, []);
 
+  function clearTrialData() {
+    localStorage.removeItem("smartacctg_trial");
+    localStorage.removeItem("smartacctg_trial_records");
+    localStorage.removeItem("smartacctg_trial_profile");
+  }
+
+  function updateTrialLeft(trial: TrialInfo) {
+    const ms = Math.max(trial.expiresAt - Date.now(), 0);
+    const totalSec = Math.floor(ms / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    setTrialLeft(`${min}分 ${sec}秒`);
+  }
+
   async function handleLogout() {
+    clearTrialData();
     await supabase.auth.signOut();
     window.location.href = "/zh";
   }
@@ -40,7 +109,9 @@ export default function DashboardPage() {
         <div>
           <h1 style={titleStyle}>欢迎来到 Dashboard</h1>
           <p style={subTitleStyle}>
-            你已经成功登录 SmartAcctg{userEmail ? `（${userEmail}）` : ""}
+            {isTrial
+              ? `你正在使用免费试用版，剩余时间：${trialLeft}`
+              : `你已经成功登录 SmartAcctg${userEmail ? `（${userEmail}）` : ""}`}
           </p>
         </div>
 
