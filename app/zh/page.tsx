@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { CSSProperties, useEffect, useState } from "react";
+import { createClient, Session } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,20 +9,45 @@ const supabase = createClient(
 );
 
 export default function Page() {
+  const [session, setSession] = useState<Session | null>(null);
+
   const [showRegister, setShowRegister] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("");
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+  const [showLoginHint, setShowLoginHint] = useState(false);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session ?? null);
+    };
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   function resetForm() {
     setEmail("");
     setPassword("");
     setMessage("");
     setMessageType("");
+    setShowLoginHint(false);
+    setLoading(false);
   }
 
   function openRegister(plan: string) {
@@ -33,9 +58,26 @@ export default function Page() {
   }
 
   function openLogin() {
+    setSelectedPlan("");
     setShowRegister(false);
     setShowLogin(true);
     resetForm();
+  }
+
+  function startFreeTrial() {
+    const now = Date.now();
+    const expiresAt = now + 60 * 60 * 1000;
+
+    localStorage.setItem(
+      "smartacctg_trial",
+      JSON.stringify({
+        startedAt: now,
+        expiresAt,
+      })
+    );
+
+    localStorage.removeItem("smartacctg_trial_records");
+    window.location.href = "/dashboard?mode=trial";
   }
 
   async function handleSignUp() {
@@ -48,8 +90,9 @@ export default function Page() {
     setLoading(true);
     setMessage("");
     setMessageType("");
+    setShowLoginHint(false);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -60,12 +103,29 @@ export default function Page() {
     setLoading(false);
 
     if (error) {
+      if (
+        error.message.includes("User already registered") ||
+        error.message.includes("already registered")
+      ) {
+        setMessage("这个 email 已经注册过了，请直接登录");
+        setMessageType("error");
+        setShowLoginHint(true);
+        return;
+      }
+
       setMessage("注册失败：" + error.message);
       setMessageType("error");
       return;
     }
 
-    setMessage("注册成功！请检查邮箱确认账号。");
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setMessage("这个 email 已经注册过了，请直接登录");
+      setMessageType("error");
+      setShowLoginHint(true);
+      return;
+    }
+
+    setMessage("注册成功，请检查邮箱确认账号");
     setMessageType("success");
   }
 
@@ -98,77 +158,119 @@ export default function Page() {
 
     setTimeout(() => {
       window.location.href = "/dashboard";
-    }, 800);
+    }, 900);
+  }
+
+  async function handleResetPassword() {
+    if (!email) {
+      setMessage("请先输入邮箱");
+      setMessageType("error");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+    setMessageType("");
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://smartacctg.vercel.app/zh",
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setMessage("发送重设密码邮件失败：" + error.message);
+      setMessageType("error");
+      return;
+    }
+
+    setMessage("重设密码邮件已发送，请检查邮箱");
+    setMessageType("success");
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    localStorage.removeItem("smartacctg_trial");
+    localStorage.removeItem("smartacctg_trial_records");
+    window.location.href = "/zh";
   }
 
   return (
-    <main
-      style={{
-        fontFamily: "sans-serif",
-        background: "#f8fafc",
-        minHeight: "100vh",
-        color: "#0f172a",
-      }}
-    >
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px",
-        }}
-      >
-        <h2 style={{ margin: 0 }}>SmartAcctg</h2>
+    <main style={pageStyle}>
+      <header style={headerStyle}>
+        <h2 style={brandStyle}>SmartAcctg</h2>
 
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <a href="/zh" style={langLink}>中</a>
-          <a href="/en" style={langLink}>EN</a>
-          <a href="/ms" style={langLink}>BM</a>
+        <div style={headerRightStyle}>
+          <a href="/zh" style={langLink}>
+            中
+          </a>
+          <a href="/en" style={langLink}>
+            EN
+          </a>
+          <a href="/ms" style={langLink}>
+            BM
+          </a>
         </div>
       </header>
 
-      <section style={{ padding: "20px 20px 10px 20px", textAlign: "center" }}>
-        <h1 style={{ fontSize: 32, fontWeight: "bold", marginBottom: 12 }}>
-          智能记账 SaaS 系统
-        </h1>
-
-        <p style={{ color: "#64748b", margin: "0 auto 18px", maxWidth: 680 }}>
+      <section style={heroStyle}>
+        <h1 style={heroTitleStyle}>智能记账 SaaS 系统</h1>
+        <p style={heroDescStyle}>
           支持个人与商业用户｜记账｜发票｜客户管理｜PDF｜WhatsApp
         </p>
 
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => openRegister("免费试用")} style={btnPrimary}>
-            免费试用
-          </button>
+        <div style={heroButtonsWrap}>
+          {!session ? (
+            <>
+              <button onClick={startFreeTrial} style={btnPrimary}>
+                免费试用
+              </button>
 
-          <button onClick={openLogin} style={btnSecondary}>
-            登录
-          </button>
+              <button onClick={openLogin} style={btnSecondary}>
+                登录
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  window.location.href = "/dashboard";
+                }}
+                style={btnPrimary}
+              >
+                进入后台
+              </button>
+
+              <button onClick={handleLogout} style={btnSecondary}>
+                Logout
+              </button>
+            </>
+          )}
         </div>
       </section>
 
-      <section style={{ padding: 20 }}>
+      <section style={sectionWrap}>
         <h3 style={sectionTitle}>👤 个人使用</h3>
 
-        <div style={card}>
-          <h4>免费版</h4>
+        <div style={cardStyle}>
+          <h4 style={cardTitle}>免费版</h4>
           <p>普通记账</p>
           <p>余额价格</p>
           <p>本月收入</p>
           <p>本月支出</p>
 
-          <button onClick={() => openRegister("个人免费版")} style={btnOutline}>
+          <button onClick={startFreeTrial} style={btnOutlineFull}>
             免费使用
           </button>
         </div>
 
-        <div style={cardPrimary}>
-          <div style={planHeader}>
+        <div style={cardPrimaryStyle}>
+          <div style={planHeaderStyle}>
             <div>
-              <h4 style={{ margin: 0 }}>订阅版</h4>
+              <h4 style={cardTitle}>订阅版</h4>
               <p style={mutedText}>多账号管理 / 收支统计 / WhatsApp快速记账</p>
             </div>
-            <span style={planBadge}>推荐</span>
+            <span style={planBadgeStyle}>推荐</span>
           </div>
 
           <p>多账号管理</p>
@@ -176,21 +278,21 @@ export default function Page() {
           <p>余额价格</p>
           <p>WhatsApp快速记账</p>
 
-          <div style={priceBlock}>
-            <div style={priceRow}>
-              <div style={priceText}>RM10 / 月</div>
-              <button onClick={() => openRegister("个人订阅（月）")} style={smallBtn}>
+          <div style={priceBlockStyle}>
+            <div style={priceRowStyle}>
+              <div style={priceTextStyle}>RM10 / 月</div>
+              <button onClick={() => openRegister("个人订阅（月）")} style={smallBtnStyle}>
                 订阅
               </button>
             </div>
 
-            <div style={divider} />
+            <div style={dividerStyle} />
 
-            <div style={priceRow}>
-              <div style={priceText}>
-                RM100 / 年 <span style={badge}>-16%</span>
+            <div style={priceRowStyle}>
+              <div style={priceTextStyle}>
+                RM100 / 年 <span style={badgeStyle}>-16%</span>
               </div>
-              <button onClick={() => openRegister("个人订阅（年）")} style={smallBtn}>
+              <button onClick={() => openRegister("个人订阅（年）")} style={smallBtnStyle}>
                 订阅
               </button>
             </div>
@@ -198,28 +300,28 @@ export default function Page() {
         </div>
       </section>
 
-      <section style={{ padding: 20 }}>
+      <section style={sectionWrap}>
         <h3 style={sectionTitle}>🏢 商业使用</h3>
 
-        <div style={card}>
-          <h4>免费版</h4>
+        <div style={cardStyle}>
+          <h4 style={cardTitle}>免费版</h4>
           <p>每日记账</p>
           <p>余额价格</p>
           <p>本月收入</p>
           <p>本月支出</p>
 
-          <button onClick={() => openRegister("商业免费版")} style={btnOutline}>
+          <button onClick={startFreeTrial} style={btnOutlineFull}>
             免费使用
           </button>
         </div>
 
-        <div style={cardPrimary}>
-          <div style={planHeader}>
+        <div style={cardPrimaryStyle}>
+          <div style={planHeaderStyle}>
             <div>
-              <h4 style={{ margin: 0 }}>订阅版</h4>
+              <h4 style={cardTitle}>订阅版</h4>
               <p style={mutedText}>适合门店 / 小团队 / 商业用户</p>
             </div>
-            <span style={planBadge}>热门</span>
+            <span style={planBadgeStyle}>热门</span>
           </div>
 
           <p>多账号管理</p>
@@ -229,21 +331,21 @@ export default function Page() {
           <p>客户管理</p>
           <p>货源管理</p>
 
-          <div style={priceBlock}>
-            <div style={priceRow}>
-              <div style={priceText}>RM31.99 / 月</div>
-              <button onClick={() => openRegister("商业订阅（月）")} style={smallBtn}>
+          <div style={priceBlockStyle}>
+            <div style={priceRowStyle}>
+              <div style={priceTextStyle}>RM31.99 / 月</div>
+              <button onClick={() => openRegister("商业订阅（月）")} style={smallBtnStyle}>
                 订阅
               </button>
             </div>
 
-            <div style={divider} />
+            <div style={dividerStyle} />
 
-            <div style={priceRow}>
-              <div style={priceText}>
-                RM307.10 / 年 <span style={badge}>-20%</span>
+            <div style={priceRowStyle}>
+              <div style={priceTextStyle}>
+                RM307.10 / 年 <span style={badgeStyle}>-20%</span>
               </div>
-              <button onClick={() => openRegister("商业订阅（年）")} style={smallBtn}>
+              <button onClick={() => openRegister("商业订阅（年）")} style={smallBtnStyle}>
                 订阅
               </button>
             </div>
@@ -251,66 +353,69 @@ export default function Page() {
         </div>
       </section>
 
-      <footer
-        style={{
-          textAlign: "center",
-          padding: "30px 12px 40px",
-          color: "#64748b",
-          fontSize: 14,
-        }}
-      >
-        © NK DIGITAL HUB. All rights reserved.
-      </footer>
+      <footer style={footerStyle}>© NK DIGITAL HUB. All rights reserved.</footer>
 
       {showRegister && (
-        <div style={overlay}>
-          <div style={modal}>
-            <div style={modalTop}>
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            <div style={modalHeaderStyle}>
               <div>
                 <h3 style={{ margin: 0 }}>注册账号</h3>
                 <p style={{ ...mutedText, marginTop: 6 }}>
-                  {selectedPlan ? `当前选择：${selectedPlan}` : "创建你的 SmartAcctg 账号"}
+                  当前选择：{selectedPlan || "订阅方案"}
                 </p>
               </div>
-              <button onClick={() => setShowRegister(false)} style={closeBtn}>
+              <button onClick={() => setShowRegister(false)} style={closeBtnStyle}>
                 ×
               </button>
             </div>
 
             <div style={{ marginTop: 18 }}>
-              <label style={label}>邮箱</label>
+              <label style={labelStyle}>邮箱</label>
               <input
                 type="email"
                 placeholder="请输入邮箱"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={input}
+                style={inputStyle}
               />
 
-              <label style={{ ...label, marginTop: 14 }}>密码</label>
+              <label style={{ ...labelStyle, marginTop: 14 }}>密码</label>
               <input
                 type="password"
                 placeholder="请输入密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={input}
+                style={inputStyle}
               />
             </div>
 
             {message ? (
               <div
                 style={{
-                  marginTop: 14,
-                  padding: "10px 12px",
-                  borderRadius: 10,
+                  ...messageBoxStyle,
                   background: messageType === "error" ? "#fee2e2" : "#dcfce7",
                   color: messageType === "error" ? "#b91c1c" : "#166534",
-                  fontSize: 14,
                 }}
               >
                 {message}
               </div>
             ) : null}
+
+            {showLoginHint && (
+              <button
+                onClick={() => {
+                  setShowRegister(false);
+                  setShowLogin(true);
+                  setMessage("");
+                  setMessageType("");
+                  setShowLoginHint(false);
+                }}
+                style={{ ...btnPrimary, width: "100%", marginTop: 12 }}
+              >
+                去登录
+              </button>
+            )}
 
             <button
               onClick={handleSignUp}
@@ -327,11 +432,7 @@ export default function Page() {
 
             <button
               onClick={() => setShowRegister(false)}
-              style={{
-                ...btnSecondary,
-                width: "100%",
-                marginTop: 10,
-              }}
+              style={{ ...btnSecondary, width: "100%", marginTop: 10 }}
             >
               取消
             </button>
@@ -340,49 +441,44 @@ export default function Page() {
       )}
 
       {showLogin && (
-        <div style={overlay}>
-          <div style={modal}>
-            <div style={modalTop}>
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            <div style={modalHeaderStyle}>
               <div>
                 <h3 style={{ margin: 0 }}>登录账号</h3>
-                <p style={{ ...mutedText, marginTop: 6 }}>
-                  登录你的 SmartAcctg 账号
-                </p>
+                <p style={{ ...mutedText, marginTop: 6 }}>登录你的 SmartAcctg 账号</p>
               </div>
-              <button onClick={() => setShowLogin(false)} style={closeBtn}>
+              <button onClick={() => setShowLogin(false)} style={closeBtnStyle}>
                 ×
               </button>
             </div>
 
             <div style={{ marginTop: 18 }}>
-              <label style={label}>邮箱</label>
+              <label style={labelStyle}>邮箱</label>
               <input
                 type="email"
                 placeholder="请输入邮箱"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={input}
+                style={inputStyle}
               />
 
-              <label style={{ ...label, marginTop: 14 }}>密码</label>
+              <label style={{ ...labelStyle, marginTop: 14 }}>密码</label>
               <input
                 type="password"
                 placeholder="请输入密码"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={input}
+                style={inputStyle}
               />
             </div>
 
             {message ? (
               <div
                 style={{
-                  marginTop: 14,
-                  padding: "10px 12px",
-                  borderRadius: 10,
+                  ...messageBoxStyle,
                   background: messageType === "error" ? "#fee2e2" : "#dcfce7",
                   color: messageType === "error" ? "#b91c1c" : "#166534",
-                  fontSize: 14,
                 }}
               >
                 {message}
@@ -403,12 +499,16 @@ export default function Page() {
             </button>
 
             <button
+              onClick={handleResetPassword}
+              disabled={loading}
+              style={resetPasswordBtnStyle}
+            >
+              忘记密码？
+            </button>
+
+            <button
               onClick={() => setShowLogin(false)}
-              style={{
-                ...btnSecondary,
-                width: "100%",
-                marginTop: 10,
-              }}
+              style={{ ...btnSecondary, width: "100%", marginTop: 10 }}
             >
               取消
             </button>
@@ -419,12 +519,70 @@ export default function Page() {
   );
 }
 
-const sectionTitle = {
+const pageStyle: CSSProperties = {
+  fontFamily: "sans-serif",
+  background: "#f8fafc",
+  minHeight: "100vh",
+  color: "#0f172a",
+};
+
+const headerStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "20px",
+};
+
+const brandStyle: CSSProperties = {
+  margin: 0,
+  color: "#0F766E",
+  fontSize: 40,
+  fontWeight: 900,
+  letterSpacing: 0.5,
+  textShadow:
+    "0 1px 0 #d1fae5, 0 2px 0 #a7f3d0, 0 3px 8px rgba(15,118,110,0.18)",
+};
+
+const headerRightStyle: CSSProperties = {
+  display: "flex",
+  gap: 12,
+  alignItems: "center",
+};
+
+const heroStyle: CSSProperties = {
+  padding: "20px 20px 10px 20px",
+  textAlign: "center",
+};
+
+const heroTitleStyle: CSSProperties = {
+  fontSize: 32,
+  fontWeight: "bold",
+  marginBottom: 12,
+};
+
+const heroDescStyle: CSSProperties = {
+  color: "#64748b",
+  margin: "0 auto 18px",
+  maxWidth: 680,
+};
+
+const heroButtonsWrap: CSSProperties = {
+  display: "flex",
+  gap: 12,
+  justifyContent: "center",
+  flexWrap: "wrap",
+};
+
+const sectionWrap: CSSProperties = {
+  padding: 20,
+};
+
+const sectionTitle: CSSProperties = {
   fontSize: 22,
   marginBottom: 16,
 };
 
-const card = {
+const cardStyle: CSSProperties = {
   background: "#fff",
   padding: 20,
   borderRadius: 16,
@@ -432,12 +590,16 @@ const card = {
   boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
 };
 
-const cardPrimary = {
-  ...card,
+const cardPrimaryStyle: CSSProperties = {
+  ...cardStyle,
   border: "2px solid #0F766E",
 };
 
-const btnPrimary = {
+const cardTitle: CSSProperties = {
+  marginTop: 0,
+};
+
+const btnPrimary: CSSProperties = {
   padding: "12px 22px",
   background: "#0F766E",
   color: "#fff",
@@ -446,7 +608,7 @@ const btnPrimary = {
   fontWeight: 600,
 };
 
-const btnSecondary = {
+const btnSecondary: CSSProperties = {
   padding: "12px 22px",
   background: "#fff",
   color: "#0F766E",
@@ -455,7 +617,7 @@ const btnSecondary = {
   fontWeight: 600,
 };
 
-const btnOutline = {
+const btnOutlineFull: CSSProperties = {
   width: "100%",
   padding: 12,
   background: "#fff",
@@ -466,7 +628,7 @@ const btnOutline = {
   fontWeight: 600,
 };
 
-const smallBtn = {
+const smallBtnStyle: CSSProperties = {
   padding: "8px 16px",
   background: "#0F766E",
   color: "#fff",
@@ -475,27 +637,27 @@ const smallBtn = {
   fontWeight: 600,
 };
 
-const priceBlock = {
+const priceBlockStyle: CSSProperties = {
   marginTop: 18,
   background: "#f8fafc",
   borderRadius: 12,
   padding: 14,
 };
 
-const priceRow = {
+const priceRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   gap: 12,
-  flexWrap: "wrap" as const,
+  flexWrap: "wrap",
 };
 
-const priceText = {
+const priceTextStyle: CSSProperties = {
   fontSize: 18,
   fontWeight: 700,
 };
 
-const badge = {
+const badgeStyle: CSSProperties = {
   background: "#0F766E",
   color: "#fff",
   padding: "2px 8px",
@@ -504,18 +666,18 @@ const badge = {
   marginLeft: 8,
 };
 
-const langLink = {
+const langLink: CSSProperties = {
   color: "#0F766E",
   textDecoration: "none",
   fontWeight: 600,
 };
 
-const mutedText = {
+const mutedText: CSSProperties = {
   color: "#64748b",
   fontSize: 14,
 };
 
-const planHeader = {
+const planHeaderStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",
@@ -523,7 +685,7 @@ const planHeader = {
   marginBottom: 10,
 };
 
-const planBadge = {
+const planBadgeStyle: CSSProperties = {
   background: "#DCFCE7",
   color: "#166534",
   padding: "4px 10px",
@@ -532,14 +694,21 @@ const planBadge = {
   fontWeight: 700,
 };
 
-const divider = {
+const dividerStyle: CSSProperties = {
   height: 1,
   background: "#e2e8f0",
   margin: "14px 0",
 };
 
-const overlay = {
-  position: "fixed" as const,
+const footerStyle: CSSProperties = {
+  textAlign: "center",
+  padding: "30px 12px 40px",
+  color: "#64748b",
+  fontSize: 14,
+};
+
+const overlayStyle: CSSProperties = {
+  position: "fixed",
   inset: 0,
   background: "rgba(15, 23, 42, 0.45)",
   display: "flex",
@@ -549,7 +718,7 @@ const overlay = {
   zIndex: 999,
 };
 
-const modal = {
+const modalStyle: CSSProperties = {
   width: "100%",
   maxWidth: 420,
   background: "#fff",
@@ -558,14 +727,14 @@ const modal = {
   boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
 };
 
-const modalTop = {
+const modalHeaderStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 12,
 };
 
-const closeBtn = {
+const closeBtnStyle: CSSProperties = {
   background: "transparent",
   border: "none",
   fontSize: 28,
@@ -574,18 +743,36 @@ const closeBtn = {
   color: "#64748b",
 };
 
-const label = {
+const labelStyle: CSSProperties = {
   display: "block",
   marginBottom: 6,
   fontWeight: 600,
 };
 
-const input = {
+const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: 10,
   border: "1px solid #cbd5e1",
   outline: "none",
   fontSize: 16,
-  boxSizing: "border-box" as const,
+  boxSizing: "border-box",
+};
+
+const messageBoxStyle: CSSProperties = {
+  marginTop: 14,
+  padding: "10px 12px",
+  borderRadius: 10,
+  fontSize: 14,
+  fontWeight: 500,
+};
+
+const resetPasswordBtnStyle: CSSProperties = {
+  background: "transparent",
+  border: "none",
+  color: "#0F766E",
+  fontWeight: 600,
+  marginTop: 12,
+  marginBottom: 4,
+  width: "100%",
 };
