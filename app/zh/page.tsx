@@ -1,12 +1,8 @@
 "use client";
 
 import { CSSProperties, useEffect, useState } from "react";
-import { createClient, Session } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { Session } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
 export default function Page() {
   const [session, setSession] = useState<Session | null>(null);
@@ -62,24 +58,6 @@ export default function Page() {
     setShowRegister(false);
     setShowLogin(true);
     resetForm();
-  }
-
-  function startFreeTrial() {
-    const now = Date.now();
-    const expiresAt = now + 30 * 60 * 1000; // 30分钟
-
-    localStorage.setItem(
-      "smartacctg_trial",
-      JSON.stringify({
-        startedAt: now,
-        expiresAt,
-      })
-    );
-
-    // 清空旧的试用记录，再进入
-    localStorage.removeItem("smartacctg_trial_records");
-    localStorage.removeItem("smartacctg_trial_profile");
-    window.location.href = "/dashboard?mode=trial";
   }
 
   async function handleSignUp() {
@@ -192,9 +170,6 @@ export default function Page() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    localStorage.removeItem("smartacctg_trial");
-    localStorage.removeItem("smartacctg_trial_records");
-    localStorage.removeItem("smartacctg_trial_profile");
     window.location.href = "/zh";
   }
 
@@ -204,9 +179,15 @@ export default function Page() {
         <h2 style={brandStyle}>SmartAcctg</h2>
 
         <div style={headerRightStyle}>
-          <a href="/zh" style={langLink}>中</a>
-          <a href="/en" style={langLink}>EN</a>
-          <a href="/ms" style={langLink}>BM</a>
+          <a href="/zh" style={langLink}>
+            中
+          </a>
+          <a href="/en" style={langLink}>
+            EN
+          </a>
+          <a href="/ms" style={langLink}>
+            BM
+          </a>
         </div>
       </header>
 
@@ -219,7 +200,7 @@ export default function Page() {
         <div style={heroButtonsWrap}>
           {!session ? (
             <>
-              <button onClick={startFreeTrial} style={btnPrimary}>
+              <button onClick={() => openRegister("免费试用")} style={btnPrimary}>
                 免费试用
               </button>
 
