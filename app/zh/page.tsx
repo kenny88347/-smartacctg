@@ -64,22 +64,6 @@ export default function Page() {
     resetForm();
   }
 
-  function startFreeTrial() {
-    const now = Date.now();
-    const expiresAt = now + 60 * 60 * 1000;
-
-    localStorage.setItem(
-      "smartacctg_trial",
-      JSON.stringify({
-        startedAt: now,
-        expiresAt,
-      })
-    );
-
-    localStorage.removeItem("smartacctg_trial_records");
-    window.location.href = "/dashboard?mode=trial";
-  }
-
   async function handleSignUp() {
     if (!email || !password) {
       setMessage("请输入邮箱和密码");
@@ -190,8 +174,6 @@ export default function Page() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    localStorage.removeItem("smartacctg_trial");
-    localStorage.removeItem("smartacctg_trial_records");
     window.location.href = "/zh";
   }
 
@@ -222,7 +204,7 @@ export default function Page() {
         <div style={heroButtonsWrap}>
           {!session ? (
             <>
-              <button onClick={startFreeTrial} style={btnPrimary}>
+              <button onClick={() => openRegister("免费试用")} style={btnPrimary}>
                 免费试用
               </button>
 
@@ -242,7 +224,7 @@ export default function Page() {
               </button>
 
               <button onClick={handleLogout} style={btnSecondary}>
-                Logout
+                退出登录
               </button>
             </>
           )}
@@ -259,7 +241,7 @@ export default function Page() {
           <p>本月收入</p>
           <p>本月支出</p>
 
-          <button onClick={startFreeTrial} style={btnOutlineFull}>
+          <button onClick={() => openRegister("个人免费版")} style={btnOutlineFull}>
             免费使用
           </button>
         </div>
@@ -310,7 +292,7 @@ export default function Page() {
           <p>本月收入</p>
           <p>本月支出</p>
 
-          <button onClick={startFreeTrial} style={btnOutlineFull}>
+          <button onClick={() => openRegister("商业免费版")} style={btnOutlineFull}>
             免费使用
           </button>
         </div>
@@ -536,11 +518,11 @@ const headerStyle: CSSProperties = {
 const brandStyle: CSSProperties = {
   margin: 0,
   color: "#0F766E",
-  fontSize: 40,
+  fontSize: 30,
   fontWeight: 900,
-  letterSpacing: 0.5,
+  letterSpacing: 0.3,
   textShadow:
-    "0 1px 0 #d1fae5, 0 2px 0 #a7f3d0, 0 3px 8px rgba(15,118,110,0.18)",
+    "0 1px 0 #d1fae5, 0 2px 0 #a7f3d0, 0 3px 8px rgba(15,118,110,0.15)",
 };
 
 const headerRightStyle: CSSProperties = {
