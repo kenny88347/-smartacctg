@@ -8,79 +8,28 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-type TrialInfo = {
-  startedAt: number;
-  expiresAt: number;
-};
-
 export default function DashboardPage() {
   const [session, setSession] = useState<Session | null>(null);
-  const [isTrial, setIsTrial] = useState(false);
-  const [trialLeft, setTrialLeft] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     const init = async () => {
-      const trialRaw = localStorage.getItem("smartacctg_trial");
-      const trial = trialRaw ? (JSON.parse(trialRaw) as TrialInfo) : null;
-
       const { data } = await supabase.auth.getSession();
       const currentSession = data.session ?? null;
 
-      if (!trial && !currentSession) {
+      if (!currentSession) {
         window.location.href = "/zh";
         return;
       }
 
-      if (currentSession) {
-        setSession(currentSession);
-        setUserEmail(currentSession.user.email ?? "");
-      }
-
-      if (trial) {
-        setIsTrial(true);
-        updateTrialLeft(trial);
-
-        const interval = window.setInterval(() => {
-          const currentRaw = localStorage.getItem("smartacctg_trial");
-          const currentTrial = currentRaw ? (JSON.parse(currentRaw) as TrialInfo) : null;
-
-          if (!currentTrial) {
-            window.location.href = "/zh";
-            return;
-          }
-
-          const expired = Date.now() >= currentTrial.expiresAt;
-
-          if (expired) {
-            localStorage.removeItem("smartacctg_trial");
-            localStorage.removeItem("smartacctg_trial_records");
-            supabase.auth.signOut();
-            window.location.href = "/zh";
-            return;
-          }
-
-          updateTrialLeft(currentTrial);
-        }, 1000);
-
-        return () => clearInterval(interval);
-      }
+      setSession(currentSession);
+      setUserEmail(currentSession.user.email ?? "");
     };
 
     init();
   }, []);
 
-  function updateTrialLeft(trial: TrialInfo) {
-    const ms = Math.max(trial.expiresAt - Date.now(), 0);
-    const totalSec = Math.floor(ms / 1000);
-    const min = Math.floor(totalSec / 60);
-    const sec = totalSec % 60;
-    setTrialLeft(`${min}分 ${sec}秒`);
-  }
-
   async function handleLogout() {
-    localStorage.removeItem("smartacctg_trial");
-    localStorage.removeItem("smartacctg_trial_records");
     await supabase.auth.signOut();
     window.location.href = "/zh";
   }
@@ -91,14 +40,12 @@ export default function DashboardPage() {
         <div>
           <h1 style={titleStyle}>欢迎来到 Dashboard</h1>
           <p style={subTitleStyle}>
-            {isTrial
-              ? `你正在使用免费试用版，剩余时间：${trialLeft}`
-              : `你已经成功登录 SmartAcctg${userEmail ? `（${userEmail}）` : ""}`}
+            你已经成功登录 SmartAcctg{userEmail ? `（${userEmail}）` : ""}
           </p>
         </div>
 
         <button onClick={handleLogout} style={logoutBtnStyle}>
-          Logout
+          退出登录
         </button>
       </div>
 
