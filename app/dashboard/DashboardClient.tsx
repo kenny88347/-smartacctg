@@ -337,7 +337,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   const monthKey = new Date().toISOString().slice(0, 7);
-
   const monthTx = transactions.filter((x) => x.txn_date?.startsWith(monthKey));
 
   const monthIncome = useMemo(() => {
@@ -458,25 +457,31 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             }}
           >
             <h1 style={titleStyle}>{t.dashboard}</h1>
-            <p>
-              {t.plan}: {expiryText}
-            </p>
+
+            {/* 这里预留给以后 admin page 控制通告 */}
+            <div style={noticeBoxStyle}></div>
           </section>
 
           <section style={statsGridStyle}>
             <div style={{ ...statCardStyle, borderColor: theme.border }}>
               <span>{t.balance}</span>
-              <strong style={{ color: theme.accent }}>RM {balance.toFixed(2)}</strong>
+              <strong style={{ ...statAmountStyle, color: theme.accent }}>
+                RM {balance.toFixed(2)}
+              </strong>
             </div>
 
             <div style={{ ...statCardStyle, borderColor: theme.border }}>
               <span>{t.monthIncome}</span>
-              <strong style={{ color: "#16a34a" }}>RM {monthIncome.toFixed(2)}</strong>
+              <strong style={{ ...statAmountStyle, color: "#16a34a" }}>
+                RM {monthIncome.toFixed(2)}
+              </strong>
             </div>
 
             <div style={{ ...statCardStyle, borderColor: theme.border }}>
               <span>{t.monthExpense}</span>
-              <strong style={{ color: "#dc2626" }}>RM {monthExpense.toFixed(2)}</strong>
+              <strong style={{ ...statAmountStyle, color: "#dc2626" }}>
+                RM {monthExpense.toFixed(2)}
+              </strong>
             </div>
           </section>
 
@@ -675,6 +680,11 @@ const titleStyle: CSSProperties = {
   margin: 0,
 };
 
+const noticeBoxStyle: CSSProperties = {
+  marginTop: 12,
+  minHeight: 36,
+};
+
 const statsGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
@@ -687,7 +697,14 @@ const statCardStyle: CSSProperties = {
   border: "3px solid",
   borderRadius: 20,
   padding: 14,
-  minHeight: 90,
+  minHeight: 110,
+};
+
+const statAmountStyle: CSSProperties = {
+  display: "block",
+  marginTop: 18,
+  fontSize: 28,
+  fontWeight: 900,
 };
 
 const menuGridStyle: CSSProperties = {
