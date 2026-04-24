@@ -4,14 +4,7 @@ import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
-type TabKey =
-  | "overview"
-  | "daily"
-  | "customers"
-  | "products"
-  | "invoices"
-  | "settings"
-  | "themes";
+type TabKey = "overview" | "daily" | "customers" | "products" | "invoices" | "settings" | "themes";
 
 type Txn = {
   id: string;
@@ -45,6 +38,7 @@ type Product = {
   price: number;
   cost: number;
   discount: number | null;
+  stock_qty?: number | null;
   image_url?: string | null;
   note: string | null;
 };
@@ -186,6 +180,7 @@ export default function DashboardPage() {
   const [productPrice, setProductPrice] = useState("");
   const [productCost, setProductCost] = useState("");
   const [productDiscount, setProductDiscount] = useState("");
+  const [productStockQty, setProductStockQty] = useState("");
   const [productNote, setProductNote] = useState("");
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
@@ -193,11 +188,24 @@ export default function DashboardPage() {
   const [priceProductId, setPriceProductId] = useState("");
   const [customPrice, setCustomPrice] = useState("");
 
+  const [invoiceCustomerMode, setInvoiceCustomerMode] = useState<"select" | "new">("select");
+  const [invoiceProductMode, setInvoiceProductMode] = useState<"select" | "new">("select");
+
   const [invoiceCustomerId, setInvoiceCustomerId] = useState("");
   const [invoiceProductId, setInvoiceProductId] = useState("");
   const [invoiceQty, setInvoiceQty] = useState("1");
   const [invoicePrice, setInvoicePrice] = useState(0);
   const [invoiceMsg, setInvoiceMsg] = useState("");
+
+  const [newInvoiceCustomerName, setNewInvoiceCustomerName] = useState("");
+  const [newInvoiceCustomerPhone, setNewInvoiceCustomerPhone] = useState("");
+  const [newInvoiceCustomerCompany, setNewInvoiceCustomerCompany] = useState("");
+  const [newInvoiceCustomerAddress, setNewInvoiceCustomerAddress] = useState("");
+
+  const [newInvoiceProductName, setNewInvoiceProductName] = useState("");
+  const [newInvoiceProductPrice, setNewInvoiceProductPrice] = useState("");
+  const [newInvoiceProductCost, setNewInvoiceProductCost] = useState("");
+  const [newInvoiceProductStockQty, setNewInvoiceProductStockQty] = useState("");
 
   const [companyName, setCompanyName] = useState("");
   const [companyRegNo, setCompanyRegNo] = useState("");
@@ -516,6 +524,8 @@ export default function DashboardPage() {
   async function addProduct() {
     if (!productName || !productPrice || !productCost) return;
 
+    const stock = Number(productStockQty || 0);
+
     if (isTrial) {
       const newProduct: Product = {
         id: String(Date.now()),
@@ -523,6 +533,7 @@ export default function DashboardPage() {
         price: Number(productPrice),
         cost: Number(productCost),
         discount: Number(productDiscount || 0),
+        stock_qty: stock,
         note: productNote,
       };
 
@@ -538,6 +549,7 @@ export default function DashboardPage() {
         price: Number(productPrice),
         cost: Number(productCost),
         discount: Number(productDiscount || 0),
+        stock_qty: stock,
         note: productNote,
       });
 
@@ -548,6 +560,7 @@ export default function DashboardPage() {
     setProductPrice("");
     setProductCost("");
     setProductDiscount("");
+    setProductStockQty("");
     setProductNote("");
   }
 
@@ -567,6 +580,7 @@ export default function DashboardPage() {
         price: p.price,
         cost: p.cost,
         discount: p.discount,
+        stock_qty: Number(p.stock_qty || 0),
         note: p.note,
       })
       .eq("id", p.id);
@@ -625,38 +639,151 @@ export default function DashboardPage() {
   async function createInvoice() {
     setInvoiceMsg("");
 
-    const customer = customers.find((c) => c.id === invoiceCustomerId);
-    const product = products.find((p) => p.id === invoiceProductId);
+    let customer = customers.find((c) => c.id === invoiceCustomerId);
+    let product = products.find((p) => p.id === invoiceProductId);
+
+    if (invoiceCustomerMode === "new") {
+      if (!newInvoiceCustomerName) {
+        setInvoiceMsg("请填写新客户名称");
+        return;
+      }
+
+      customer = {
+        id: String(Date.now()),
+        name: newInvoiceCustomerName,
+        phone: newInvoiceCustomerPhone,
+        company_name: newInvoiceCustomerCompany,
+        company_phone: "",
+        address: newInvoiceCustomerAddress,
+        note: "",
+      };
+
+      if (isTrial) {
+        const nextCustomers = [customer, ...customers];
+        setCustomers(nextCustomers);
+        saveTrialData(transactions, nextCustomers, products, customerPrices);
+      } else {
+        if (!session) return;
+
+        const { data: newCustomerData, error } = await supabase
+          .from("customers")
+          .insert({
+            user_id: session.user.id,
+            name: newInvoiceCustomerName,
+            phone: newInvoiceCustomerPhone,
+            company_name: newInvoiceCustomerCompany,
+            address: newInvoiceCustomerAddress,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          setInvoiceMsg("新增客户失败：" + error.message);
+          return;
+        }
+
+        customer = newCustomerData as Customer;
+        await loadCustomers(session.user.id);
+      }
+    }
+
+    if (invoiceProductMode === "new") {
+      if (!newInvoiceProductName || !newInvoiceProductPrice || !newInvoiceProductCost) {
+        setInvoiceMsg("请填写新产品名称、价格和成本");
+        return;
+      }
+
+      product = {
+        id: String(Date.now() + 1),
+        name: newInvoiceProductName,
+        price: Number(newInvoiceProductPrice),
+        cost: Number(newInvoiceProductCost),
+        discount: 0,
+        stock_qty: Number(newInvoiceProductStockQty || 0),
+        note: "发票新增产品",
+      };
+
+      if (isTrial) {
+        const nextProducts = [product, ...products];
+        setProducts(nextProducts);
+        saveTrialData(transactions, customers, nextProducts, customerPrices);
+      } else {
+        if (!session) return;
+
+        const { data: newProductData, error } = await supabase
+          .from("products")
+          .insert({
+            user_id: session.user.id,
+            name: newInvoiceProductName,
+            price: Number(newInvoiceProductPrice),
+            cost: Number(newInvoiceProductCost),
+            discount: 0,
+            stock_qty: Number(newInvoiceProductStockQty || 0),
+            note: "发票新增产品",
+          })
+          .select()
+          .single();
+
+        if (error) {
+          setInvoiceMsg("新增产品失败：" + error.message);
+          return;
+        }
+
+        product = newProductData as Product;
+        await loadProducts(session.user.id);
+      }
+    }
 
     if (!customer || !product) {
-      setInvoiceMsg("请选择客户和产品");
+      setInvoiceMsg("请选择或新增客户和产品");
       return;
     }
 
     const qty = Number(invoiceQty || 1);
-    const unitPrice = Number(invoicePrice || product.price || 0);
-    const unitCost = Number(product.cost || 0);
+    const currentStock = Number(product.stock_qty || 0);
+
+    if (currentStock < qty) {
+      setInvoiceMsg(`库存不足，目前库存：${currentStock}`);
+      return;
+    }
+
+    const unitPrice =
+      invoiceProductMode === "new"
+        ? Number(newInvoiceProductPrice || 0)
+        : Number(invoicePrice || product.price || 0);
+
+    const unitCost =
+      invoiceProductMode === "new"
+        ? Number(newInvoiceProductCost || 0)
+        : Number(product.cost || 0);
+
     const discount = Number(product.discount || 0);
     const total = unitPrice * qty - discount;
     const totalCost = unitCost * qty;
     const totalProfit = total - totalCost;
     const invoiceNo = `INV-${Date.now()}`;
+    const newStock = Math.max(currentStock - qty, 0);
 
     if (isTrial) {
+      const nextProducts = products.map((p) =>
+        p.id === product!.id ? { ...p, stock_qty: newStock } : p
+      );
+
       const newTx: Txn = {
-        id: String(Date.now()),
+        id: String(Date.now() + 2),
         txn_date: new Date().toISOString().slice(0, 10),
         txn_type: "income",
         amount: total,
         category_name: "发票收入",
         debt_amount: 0,
-        note: `${invoiceNo}｜${customer.name}｜${product.name}`,
+        note: `${invoiceNo}｜${customer.name}｜${product.name}｜出货 ${qty} 件`,
       };
 
       const nextTx = [newTx, ...transactions];
+      setProducts(nextProducts);
       setTransactions(nextTx);
-      saveTrialData(nextTx, customers, products, customerPrices);
-      setInvoiceMsg("试用版发票已生成，并已加入记账");
+      saveTrialData(nextTx, customers, nextProducts, customerPrices);
+      setInvoiceMsg("试用版发票已生成，已加入记账，并已自动扣库存");
     } else {
       if (!session) return;
 
@@ -693,6 +820,11 @@ export default function DashboardPage() {
         line_profit: totalProfit,
       });
 
+      await supabase
+        .from("products")
+        .update({ stock_qty: newStock })
+        .eq("id", product.id);
+
       await supabase.from("transactions").insert({
         user_id: session.user.id,
         txn_date: new Date().toISOString().slice(0, 10),
@@ -702,17 +834,26 @@ export default function DashboardPage() {
         debt_amount: 0,
         source_type: "invoice",
         source_id: invoiceData.id,
-        note: `${invoiceNo}｜${customer.name}｜${product.name}`,
+        note: `${invoiceNo}｜${customer.name}｜${product.name}｜出货 ${qty} 件`,
       });
 
       await loadTransactions(session.user.id);
-      setInvoiceMsg("发票已生成，并已自动加入记账");
+      await loadProducts(session.user.id);
+      setInvoiceMsg("发票已生成，已自动加入记账，并已扣除库存");
     }
 
     setInvoiceCustomerId("");
     setInvoiceProductId("");
     setInvoiceQty("1");
     setInvoicePrice(0);
+    setNewInvoiceCustomerName("");
+    setNewInvoiceCustomerPhone("");
+    setNewInvoiceCustomerCompany("");
+    setNewInvoiceCustomerAddress("");
+    setNewInvoiceProductName("");
+    setNewInvoiceProductPrice("");
+    setNewInvoiceProductCost("");
+    setNewInvoiceProductStockQty("");
   }
 
   async function saveProfile() {
@@ -892,23 +1033,11 @@ export default function DashboardPage() {
                   <input type="file" accept="image/*" onChange={uploadAvatar} style={{ display: "none" }} />
                 </label>
 
-                <button
-                  style={avatarMenuItemStyle}
-                  onClick={() => {
-                    setActiveTab("settings");
-                    setShowAvatarMenu(false);
-                  }}
-                >
+                <button style={avatarMenuItemStyle} onClick={() => { setActiveTab("settings"); setShowAvatarMenu(false); }}>
                   设置 / 公司资料
                 </button>
 
-                <button
-                  style={avatarMenuItemStyle}
-                  onClick={() => {
-                    setActiveTab("themes");
-                    setShowAvatarMenu(false);
-                  }}
-                >
+                <button style={avatarMenuItemStyle} onClick={() => { setActiveTab("themes"); setShowAvatarMenu(false); }}>
                   切换主题
                 </button>
 
@@ -961,12 +1090,10 @@ export default function DashboardPage() {
 
           <div style={formGridStyle}>
             <input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} style={dateInputStyle} />
-
             <select value={txType} onChange={(e) => setTxType(e.target.value as "income" | "expense")} style={inputStyle}>
               <option value="income">收款</option>
               <option value="expense">付款</option>
             </select>
-
             <input placeholder="金额（RM）" value={txAmount} onChange={(e) => setTxAmount(e.target.value)} style={inputStyle} />
             <input placeholder="分类 / 标签" value={txCategory} onChange={(e) => setTxCategory(e.target.value)} style={inputStyle} />
             <input placeholder="欠款（可留空）" value={txDebt} onChange={(e) => setTxDebt(e.target.value)} style={inputStyle} />
@@ -976,28 +1103,6 @@ export default function DashboardPage() {
           <button onClick={addTransaction} style={{ ...primaryBtnStyle, background: theme.accent }}>
             新增记录
           </button>
-
-          <div style={{ marginTop: 18 }}>
-            {transactions.length === 0 ? (
-              <p style={{ color: theme.subText }}>还没有记录</p>
-            ) : (
-              transactions.map((r) => (
-                <div key={r.id} style={listItemStyle}>
-                  <div>
-                    <strong>{r.txn_type === "income" ? "收款" : "付款"}</strong> · {r.category_name || "未分类"}
-                    <div style={{ ...mutedTextStyle, color: theme.subText }}>
-                      {r.txn_date} {r.note ? `· ${r.note}` : ""}
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <strong>RM {Number(r.amount).toFixed(2)}</strong>
-                    <button onClick={() => deleteTransaction(r.id)} style={deleteBtnStyle}>删除</button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
         </section>
       )}
 
@@ -1030,11 +1135,20 @@ export default function DashboardPage() {
                 <div key={c.id} style={listItemStyle}>
                   {editingCustomerId === c.id ? (
                     <div style={{ width: "100%" }}>
-                      <input value={c.name} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, name: e.target.value } : x))} style={inputStyle} />
-                      <input value={c.phone || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, phone: e.target.value } : x))} style={inputStyle} />
-                      <input value={c.company_name || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, company_name: e.target.value } : x))} style={inputStyle} />
-                      <input value={c.company_phone || c.note || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, company_phone: e.target.value } : x))} style={inputStyle} />
-                      <input value={c.address || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, address: e.target.value } : x))} style={inputStyle} />
+                      <label style={fieldLabelStyle}>名称</label>
+                      <input placeholder="名称" value={c.name} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, name: e.target.value } : x))} style={inputStyle} />
+
+                      <label style={fieldLabelStyle}>电话号码</label>
+                      <input placeholder="电话号码" value={c.phone || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, phone: e.target.value } : x))} style={inputStyle} />
+
+                      <label style={fieldLabelStyle}>公司名称</label>
+                      <input placeholder="公司名称" value={c.company_name || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, company_name: e.target.value } : x))} style={inputStyle} />
+
+                      <label style={fieldLabelStyle}>公司电话号码</label>
+                      <input placeholder="公司电话号码" value={c.company_phone || c.note || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, company_phone: e.target.value } : x))} style={inputStyle} />
+
+                      <label style={fieldLabelStyle}>公司地址</label>
+                      <input placeholder="公司地址" value={c.address || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, address: e.target.value } : x))} style={inputStyle} />
 
                       <button onClick={() => updateCustomer(c)} style={{ ...primaryBtnStyle, background: theme.accent }}>
                         保存修改
@@ -1072,6 +1186,7 @@ export default function DashboardPage() {
             <input placeholder="价格" value={productPrice} onChange={(e) => setProductPrice(e.target.value)} style={inputStyle} />
             <input placeholder="成本" value={productCost} onChange={(e) => setProductCost(e.target.value)} style={inputStyle} />
             <input placeholder="折扣" value={productDiscount} onChange={(e) => setProductDiscount(e.target.value)} style={inputStyle} />
+            <input placeholder="货数数量 / 库存" value={productStockQty} onChange={(e) => setProductStockQty(e.target.value)} style={inputStyle} />
             <input placeholder="备注" value={productNote} onChange={(e) => setProductNote(e.target.value)} style={inputStyle} />
           </div>
 
@@ -1111,11 +1226,23 @@ export default function DashboardPage() {
                 <div key={p.id} style={listItemStyle}>
                   {editingProductId === p.id ? (
                     <div style={{ width: "100%" }}>
-                      <input value={p.name} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, name: e.target.value } : x))} style={inputStyle} />
-                      <input value={String(p.price)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, price: Number(e.target.value) } : x))} style={inputStyle} />
-                      <input value={String(p.cost)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, cost: Number(e.target.value) } : x))} style={inputStyle} />
-                      <input value={String(p.discount || 0)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, discount: Number(e.target.value) } : x))} style={inputStyle} />
-                      <input value={p.note || ""} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, note: e.target.value } : x))} style={inputStyle} />
+                      <label style={fieldLabelStyle}>产品名称</label>
+                      <input placeholder="产品名称" value={p.name} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, name: e.target.value } : x))} style={inputStyle} />
+
+                      <label style={fieldLabelStyle}>价格</label>
+                      <input placeholder="价格" value={String(p.price)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, price: Number(e.target.value) } : x))} style={inputStyle} />
+
+                      <label style={fieldLabelStyle}>成本</label>
+                      <input placeholder="成本" value={String(p.cost)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, cost: Number(e.target.value) } : x))} style={inputStyle} />
+
+                      <label style={fieldLabelStyle}>折扣</label>
+                      <input placeholder="折扣" value={String(p.discount || 0)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, discount: Number(e.target.value) } : x))} style={inputStyle} />
+
+                      <label style={fieldLabelStyle}>货数数量 / 库存</label>
+                      <input placeholder="货数数量 / 库存" value={String(p.stock_qty || 0)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, stock_qty: Number(e.target.value) } : x))} style={inputStyle} />
+
+                      <label style={fieldLabelStyle}>备注</label>
+                      <input placeholder="备注" value={p.note || ""} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, note: e.target.value } : x))} style={inputStyle} />
 
                       <button onClick={() => updateProduct(p)} style={{ ...primaryBtnStyle, background: theme.accent }}>
                         保存修改
@@ -1129,7 +1256,7 @@ export default function DashboardPage() {
                           售价：RM {Number(p.price).toFixed(2)} · 成本：RM {Number(p.cost).toFixed(2)}
                         </div>
                         <div style={{ ...mutedTextStyle, color: theme.subText }}>
-                          折扣：RM {Number(p.discount || 0).toFixed(2)}
+                          库存：{Number(p.stock_qty || 0)} · 折扣：RM {Number(p.discount || 0).toFixed(2)}
                         </div>
                       </div>
 
@@ -1149,29 +1276,68 @@ export default function DashboardPage() {
         <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
           <h3>发票系统</h3>
 
-          <div style={formGridStyle}>
+          <h4>客户</h4>
+          <div style={switchRowStyle}>
+            <button onClick={() => setInvoiceCustomerMode("select")} style={modeBtn(invoiceCustomerMode === "select", theme)}>
+              选择客户管理
+            </button>
+            <button onClick={() => setInvoiceCustomerMode("new")} style={modeBtn(invoiceCustomerMode === "new", theme)}>
+              新增客户
+            </button>
+          </div>
+
+          {invoiceCustomerMode === "select" ? (
             <select value={invoiceCustomerId} onChange={(e) => setInvoiceCustomerId(e.target.value)} style={inputStyle}>
               <option value="">选择客户</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+          ) : (
+            <div style={formGridStyle}>
+              <input placeholder="新客户名称" value={newInvoiceCustomerName} onChange={(e) => setNewInvoiceCustomerName(e.target.value)} style={inputStyle} />
+              <input placeholder="新客户电话" value={newInvoiceCustomerPhone} onChange={(e) => setNewInvoiceCustomerPhone(e.target.value)} style={inputStyle} />
+              <input placeholder="新客户公司名称" value={newInvoiceCustomerCompany} onChange={(e) => setNewInvoiceCustomerCompany(e.target.value)} style={inputStyle} />
+              <input placeholder="新客户地址" value={newInvoiceCustomerAddress} onChange={(e) => setNewInvoiceCustomerAddress(e.target.value)} style={inputStyle} />
+            </div>
+          )}
 
+          <h4 style={{ marginTop: 18 }}>产品</h4>
+          <div style={switchRowStyle}>
+            <button onClick={() => setInvoiceProductMode("select")} style={modeBtn(invoiceProductMode === "select", theme)}>
+              选择产品管理
+            </button>
+            <button onClick={() => setInvoiceProductMode("new")} style={modeBtn(invoiceProductMode === "new", theme)}>
+              新增产品
+            </button>
+          </div>
+
+          {invoiceProductMode === "select" ? (
             <select value={invoiceProductId} onChange={(e) => setInvoiceProductId(e.target.value)} style={inputStyle}>
               <option value="">选择产品</option>
               {products.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>
+                  {p.name}｜库存 {Number(p.stock_qty || 0)}
+                </option>
               ))}
             </select>
+          ) : (
+            <div style={formGridStyle}>
+              <input placeholder="新产品名称" value={newInvoiceProductName} onChange={(e) => setNewInvoiceProductName(e.target.value)} style={inputStyle} />
+              <input placeholder="新产品价格" value={newInvoiceProductPrice} onChange={(e) => setNewInvoiceProductPrice(e.target.value)} style={inputStyle} />
+              <input placeholder="新产品成本" value={newInvoiceProductCost} onChange={(e) => setNewInvoiceProductCost(e.target.value)} style={inputStyle} />
+              <input placeholder="新产品货数数量 / 库存" value={newInvoiceProductStockQty} onChange={(e) => setNewInvoiceProductStockQty(e.target.value)} style={inputStyle} />
+            </div>
+          )}
 
-            <input placeholder="数量" value={invoiceQty} onChange={(e) => setInvoiceQty(e.target.value)} style={inputStyle} />
-          </div>
+          <label style={fieldLabelStyle}>出货数量</label>
+          <input placeholder="数量" value={invoiceQty} onChange={(e) => setInvoiceQty(e.target.value)} style={inputStyle} />
 
           <div style={invoiceSummaryStyle}>
-            <div>单价：RM {invoicePrice.toFixed(2)}</div>
+            <div>单价：RM {invoiceProductMode === "new" ? Number(newInvoiceProductPrice || 0).toFixed(2) : invoicePrice.toFixed(2)}</div>
             <div>产品折扣：RM {invoiceDiscount.toFixed(2)}</div>
-            <div>总价：RM {invoiceTotal.toFixed(2)}</div>
-            <div>预计差价 / 利润：RM {invoiceProfit.toFixed(2)}</div>
+            <div>总价：RM {invoiceProductMode === "new" ? Math.max(Number(newInvoiceProductPrice || 0) * invoiceQtyNumber, 0).toFixed(2) : invoiceTotal.toFixed(2)}</div>
+            <div>预计差价 / 利润：RM {invoiceProductMode === "new" ? ((Number(newInvoiceProductPrice || 0) - Number(newInvoiceProductCost || 0)) * invoiceQtyNumber).toFixed(2) : invoiceProfit.toFixed(2)}</div>
           </div>
 
           <button onClick={createInvoice} style={{ ...primaryBtnStyle, background: theme.accent }}>
@@ -1528,6 +1694,34 @@ const invoiceSummaryStyle: CSSProperties = {
   lineHeight: 1.8,
   fontWeight: 700,
 };
+
+const fieldLabelStyle: CSSProperties = {
+  display: "block",
+  marginTop: 12,
+  marginBottom: 2,
+  fontSize: 14,
+  fontWeight: 800,
+  color: "#14532d",
+};
+
+const switchRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 10,
+  marginBottom: 10,
+};
+
+const modeBtn = (
+  active: boolean,
+  theme: (typeof THEME_PACKS)[ThemePackKey]
+): CSSProperties => ({
+  padding: "12px 10px",
+  borderRadius: 10,
+  border: `2px solid ${theme.accent}`,
+  background: active ? theme.accent : "#ffffff",
+  color: active ? "#ffffff" : theme.accent,
+  fontWeight: 800,
+});
 
 const themeGridStyle: CSSProperties = {
   display: "grid",
