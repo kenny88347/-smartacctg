@@ -4,6 +4,11 @@ import { CSSProperties, useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
+const TRIAL_KEY = "smartacctg_trial";
+const TRIAL_TX_KEY = "smartacctg_trial_transactions";
+const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
+const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
+
 export default function Page() {
   const [session, setSession] = useState<Session | null>(null);
 
@@ -44,6 +49,32 @@ export default function Page() {
     setMessageType("");
     setShowLoginHint(false);
     setLoading(false);
+  }
+
+  function clearTrialData() {
+    localStorage.removeItem(TRIAL_KEY);
+    localStorage.removeItem(TRIAL_TX_KEY);
+    localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
+    localStorage.removeItem(TRIAL_PRODUCTS_KEY);
+  }
+
+  async function startFreeTrial() {
+    await supabase.auth.signOut();
+
+    clearTrialData();
+
+    const startedAt = Date.now();
+    const expiresAt = startedAt + 20 * 60 * 1000;
+
+    localStorage.setItem(
+      TRIAL_KEY,
+      JSON.stringify({
+        startedAt,
+        expiresAt,
+      })
+    );
+
+    window.location.href = "/dashboard?mode=trial";
   }
 
   function openRegister(plan: string) {
@@ -136,6 +167,8 @@ export default function Page() {
     setMessage("登录成功！");
     setMessageType("success");
 
+    clearTrialData();
+
     setTimeout(() => {
       window.location.href = "/dashboard";
     }, 900);
@@ -169,6 +202,7 @@ export default function Page() {
   }
 
   async function handleLogout() {
+    clearTrialData();
     await supabase.auth.signOut();
     window.location.href = "/zh";
   }
@@ -179,15 +213,9 @@ export default function Page() {
         <h2 style={brandStyle}>SmartAcctg</h2>
 
         <div style={headerRightStyle}>
-          <a href="/zh" style={langLink}>
-            中
-          </a>
-          <a href="/en" style={langLink}>
-            EN
-          </a>
-          <a href="/ms" style={langLink}>
-            BM
-          </a>
+          <a href="/zh" style={langLink}>中</a>
+          <a href="/en" style={langLink}>EN</a>
+          <a href="/ms" style={langLink}>BM</a>
         </div>
       </header>
 
@@ -200,7 +228,7 @@ export default function Page() {
         <div style={heroButtonsWrap}>
           {!session ? (
             <>
-              <button onClick={() => openRegister("免费试用")} style={btnPrimary}>
+              <button onClick={startFreeTrial} style={btnPrimary}>
                 免费试用
               </button>
 
@@ -210,12 +238,7 @@ export default function Page() {
             </>
           ) : (
             <>
-              <button
-                onClick={() => {
-                  window.location.href = "/dashboard";
-                }}
-                style={btnPrimary}
-              >
+              <button onClick={() => (window.location.href = "/dashboard")} style={btnPrimary}>
                 进入后台
               </button>
 
