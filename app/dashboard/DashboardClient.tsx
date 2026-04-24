@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 type PageKey = "home" | "accounting" | "customers" | "products" | "invoices";
 type Lang = "zh" | "en" | "ms";
-type ThemeKey = "pink" | "blackGold" | "panda" | "nature" | "sky";
+type ThemeKey = "pink" | "blackGold" | "panda" | "nature" | "sky" | "deepTeal";
 
 type Profile = {
   id: string;
@@ -43,7 +43,6 @@ const TXT = {
     settings: "设置",
     theme: "主题切换",
     logout: "退出登录",
-    plan: "订阅状态",
     expiry: "订阅期限",
     noSub: "未订阅",
     personal: "个人资料",
@@ -73,7 +72,6 @@ const TXT = {
     settings: "Settings",
     theme: "Theme",
     logout: "Logout",
-    plan: "Plan Status",
     expiry: "Expiry",
     noSub: "Not Subscribed",
     personal: "Personal Info",
@@ -103,7 +101,6 @@ const TXT = {
     settings: "Tetapan",
     theme: "Tema",
     logout: "Log Keluar",
-    plan: "Status Langganan",
     expiry: "Tarikh Tamat",
     noSub: "Belum Langgan",
     personal: "Maklumat Peribadi",
@@ -122,13 +119,15 @@ const TXT = {
   },
 };
 
+const MODERN_BORDER = "#22c55e";
+
 const THEMES: Record<ThemeKey, any> = {
   pink: {
     name: "可愛粉色",
     pageBg: "#fff7fb",
     banner: "linear-gradient(135deg,#ffd6e7,#fff1f2)",
     card: "#ffffff",
-    border: "#f9a8d4",
+    border: MODERN_BORDER,
     accent: "#db2777",
     text: "#4a044e",
   },
@@ -137,7 +136,7 @@ const THEMES: Record<ThemeKey, any> = {
     pageBg: "#111111",
     banner: "linear-gradient(135deg,#111111,#3b2f16)",
     card: "#1f1f1f",
-    border: "#d4af37",
+    border: MODERN_BORDER,
     accent: "#d4af37",
     text: "#fff7ed",
   },
@@ -146,7 +145,7 @@ const THEMES: Record<ThemeKey, any> = {
     pageBg: "#f7f3ea",
     banner: "linear-gradient(135deg,#ffffff,#e7e5df)",
     card: "#ffffff",
-    border: "#111827",
+    border: MODERN_BORDER,
     accent: "#b91c1c",
     text: "#111827",
   },
@@ -155,7 +154,7 @@ const THEMES: Record<ThemeKey, any> = {
     pageBg: "#f0fdf4",
     banner: "linear-gradient(135deg,#d9f99d,#bae6fd)",
     card: "#ffffff",
-    border: "#16a34a",
+    border: MODERN_BORDER,
     accent: "#0f766e",
     text: "#14532d",
   },
@@ -164,9 +163,18 @@ const THEMES: Record<ThemeKey, any> = {
     pageBg: "#eff6ff",
     banner: "linear-gradient(135deg,#bfdbfe,#e0f2fe)",
     card: "#ffffff",
-    border: "#38bdf8",
+    border: MODERN_BORDER,
     accent: "#0284c7",
     text: "#0f172a",
+  },
+  deepTeal: {
+    name: "深青色",
+    pageBg: "#ecfdf5",
+    banner: "linear-gradient(135deg,#0f766e,#14b8a6)",
+    card: "#ffffff",
+    border: MODERN_BORDER,
+    accent: "#0f766e",
+    text: "#064e3b",
   },
 };
 
@@ -180,7 +188,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showThemes, setShowThemes] = useState(false);
 
-  const [themeKey, setThemeKey] = useState<ThemeKey>("nature");
+  const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -211,7 +219,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     }
 
     setSession(data.session);
-
     const userId = data.session.user.id;
 
     const { data: profileData } = await supabase
@@ -364,13 +371,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     : t.noSub;
 
   return (
-    <main
-      style={{
-        ...pageStyle,
-        background: theme.pageBg,
-        color: theme.text,
-      }}
-    >
+    <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
       <header style={headerStyle}>
         <div style={leftTopStyle}>
           <div style={{ position: "relative" }}>
@@ -386,33 +387,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               <div style={avatarMenuStyle}>
                 <label style={menuItemStyle}>
                   {t.changeAvatar}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={uploadAvatar}
-                    style={{ display: "none" }}
-                  />
+                  <input type="file" accept="image/*" onChange={uploadAvatar} style={{ display: "none" }} />
                 </label>
 
-                <button
-                  style={menuItemStyle}
-                  onClick={() => {
-                    setShowSettings(true);
-                    setShowThemes(false);
-                    setShowMenu(false);
-                  }}
-                >
+                <button style={menuItemStyle} onClick={() => { setShowSettings(true); setShowThemes(false); setShowMenu(false); }}>
                   {t.settings}
                 </button>
 
-                <button
-                  style={menuItemStyle}
-                  onClick={() => {
-                    setShowThemes(true);
-                    setShowSettings(false);
-                    setShowMenu(false);
-                  }}
-                >
+                <button style={menuItemStyle} onClick={() => { setShowThemes(true); setShowSettings(false); setShowMenu(false); }}>
                   {t.theme}
                 </button>
 
@@ -436,29 +418,17 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       </header>
 
       <div style={langRowStyle}>
-        <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
-          中文
-        </button>
-        <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
-          English
-        </button>
-        <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
-          BM
-        </button>
+        <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>中文</button>
+        <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>English</button>
+        <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>BM</button>
       </div>
 
       {page === "home" && (
         <>
-          <section
-            style={{
-              ...bannerStyle,
-              background: theme.banner,
-              borderColor: theme.border,
-            }}
-          >
+          <section style={{ ...bannerStyle, background: theme.banner, borderColor: theme.border }}>
             <h1 style={titleStyle}>{t.dashboard}</h1>
 
-            {/* 这里预留给以后 admin page 控制通告 */}
+            {/* 以后 admin page 控制通告时，把文字放这里；通告字体已设为红色 */}
             <div style={noticeBoxStyle}></div>
           </section>
 
@@ -486,30 +456,16 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </section>
 
           <section style={menuGridStyle}>
-            <button onClick={() => go("/dashboard/accounting")} style={navBtnStyle}>
-              {t.accounting}
-            </button>
-            <button onClick={() => go("/dashboard/customers")} style={navBtnStyle}>
-              {t.customers}
-            </button>
-            <button onClick={() => go("/dashboard/products")} style={navBtnStyle}>
-              {t.products}
-            </button>
-            <button onClick={() => go("/dashboard/invoices")} style={navBtnStyle}>
-              {t.invoices}
-            </button>
+            <button onClick={() => go("/dashboard/accounting")} style={navBtnStyle}>{t.accounting}</button>
+            <button onClick={() => go("/dashboard/customers")} style={navBtnStyle}>{t.customers}</button>
+            <button onClick={() => go("/dashboard/products")} style={navBtnStyle}>{t.products}</button>
+            <button onClick={() => go("/dashboard/invoices")} style={navBtnStyle}>{t.invoices}</button>
           </section>
         </>
       )}
 
       {page !== "home" && (
-        <section
-          style={{
-            ...contentCardStyle,
-            background: theme.card,
-            borderColor: theme.border,
-          }}
-        >
+        <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border }}>
           <h1>
             {page === "accounting" && t.accounting}
             {page === "customers" && t.customers}
@@ -539,13 +495,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </button>
 
           <h3>{t.password}</h3>
-          <input
-            type="password"
-            placeholder={t.newPassword}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            style={inputStyle}
-          />
+          <input type="password" placeholder={t.newPassword} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={inputStyle} />
 
           <button onClick={changePassword} style={{ ...primaryBtnStyle, background: theme.accent }}>
             {t.updatePassword}
@@ -669,10 +619,11 @@ const langBtn = (active: boolean, theme: any): CSSProperties => ({
 });
 
 const bannerStyle: CSSProperties = {
-  border: "2px solid",
+  border: "3px solid",
   borderRadius: 24,
   padding: 20,
   marginBottom: 18,
+  boxShadow: "0 12px 30px rgba(34,197,94,0.16)",
 };
 
 const titleStyle: CSSProperties = {
@@ -683,6 +634,8 @@ const titleStyle: CSSProperties = {
 const noticeBoxStyle: CSSProperties = {
   marginTop: 12,
   minHeight: 36,
+  color: "#dc2626",
+  fontWeight: 900,
 };
 
 const statsGridStyle: CSSProperties = {
@@ -697,13 +650,14 @@ const statCardStyle: CSSProperties = {
   border: "3px solid",
   borderRadius: 20,
   padding: 14,
-  minHeight: 110,
+  minHeight: 105,
+  boxShadow: "0 10px 24px rgba(34,197,94,0.14)",
 };
 
 const statAmountStyle: CSSProperties = {
   display: "block",
-  marginTop: 18,
-  fontSize: 28,
+  marginTop: 16,
+  fontSize: 22,
   fontWeight: 900,
 };
 
@@ -715,11 +669,12 @@ const menuGridStyle: CSSProperties = {
 
 const navBtnStyle: CSSProperties = {
   background: "#fff",
-  border: "1px solid #cbd5e1",
+  border: `2px solid ${MODERN_BORDER}`,
   borderRadius: 16,
   padding: "18px",
   fontWeight: 900,
   fontSize: 18,
+  boxShadow: "0 10px 24px rgba(34,197,94,0.12)",
 };
 
 const contentCardStyle: CSSProperties = {
@@ -727,6 +682,7 @@ const contentCardStyle: CSSProperties = {
   borderRadius: 24,
   padding: 20,
   marginTop: 18,
+  boxShadow: "0 12px 30px rgba(34,197,94,0.16)",
 };
 
 const inputStyle: CSSProperties = {
@@ -734,7 +690,7 @@ const inputStyle: CSSProperties = {
   boxSizing: "border-box",
   padding: "14px",
   borderRadius: 12,
-  border: "1px solid #cbd5e1",
+  border: `2px solid ${MODERN_BORDER}`,
   marginBottom: 12,
   fontSize: 16,
 };
