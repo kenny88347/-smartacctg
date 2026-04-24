@@ -15,7 +15,7 @@ type TabKey =
 
 type Txn = {
   id: string;
-  user_id: string;
+  user_id?: string;
   txn_date: string;
   txn_type: "income" | "expense";
   amount: number;
@@ -26,25 +26,26 @@ type Txn = {
 
 type Customer = {
   id: string;
-  user_id: string;
+  user_id?: string;
   name: string;
   company_name: string | null;
   phone: string | null;
-  email: string | null;
+  company_phone?: string | null;
+  email?: string | null;
   address: string | null;
-  tags: string[] | null;
-  debt_amount: number | null;
-  note: string | null;
+  tags?: string[] | null;
+  debt_amount?: number | null;
+  note?: string | null;
 };
 
 type Product = {
   id: string;
-  user_id: string;
+  user_id?: string;
   name: string;
   price: number;
   cost: number;
   discount: number | null;
-  image_url: string | null;
+  image_url?: string | null;
   note: string | null;
 };
 
@@ -64,11 +65,17 @@ type Profile = {
   plan_expiry: string | null;
 };
 
-type ThemePackKey =
-  | "cutePink"
-  | "blackGold"
-  | "pandaChina"
-  | "nature";
+type ThemePackKey = "cutePink" | "blackGold" | "pandaChina" | "nature";
+
+type TrialInfo = {
+  startedAt: number;
+  expiresAt: number;
+};
+
+const TRIAL_KEY = "smartacctg_trial";
+const TRIAL_TX_KEY = "smartacctg_trial_transactions";
+const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
+const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 
 const THEME_PACKS: Record<
   ThemePackKey,
@@ -139,6 +146,10 @@ export default function DashboardPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
 
+  const [isTrial, setIsTrial] = useState(false);
+  const [trialLeft, setTrialLeft] = useState("");
+  const [trialPercent, setTrialPercent] = useState(100);
+
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
 
@@ -158,11 +169,8 @@ export default function DashboardPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerCompany, setCustomerCompany] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerCompanyPhone, setCustomerCompanyPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
-  const [customerTags, setCustomerTags] = useState("");
-  const [customerDebt, setCustomerDebt] = useState("");
-  const [customerNote, setCustomerNote] = useState("");
 
   const [productName, setProductName] = useState("");
   const [productPrice, setProductPrice] = useState("");
@@ -185,45 +193,113 @@ export default function DashboardPage() {
   const theme = THEME_PACKS[themePack];
 
   useEffect(() => {
+    let interval: number | undefined;
+
     const init = async () => {
+      const trialRaw = localStorage.getItem(TRIAL_KEY);
+      const trial = trialRaw ? (JSON.parse(trialRaw) as TrialInfo) : null;
+
       const { data } = await supabase.auth.getSession();
       const currentSession = data.session ?? null;
 
-      if (!currentSession) {
-        window.location.href = "/zh";
+      if (currentSession) {
+        setSession(currentSession);
+        const userId = currentSession.user.id;
+
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
+
+        if (profileData) {
+          setProfile(profileData);
+          setFullName(profileData.full_name || "");
+          setCompanyName(profileData.company_name || "");
+          setCompanyRegNo(profileData.company_reg_no || "");
+          setCompanyPhone(profileData.company_phone || "");
+          setCompanyEmail(profileData.company_email || "");
+          setCompanyAddress(profileData.company_address || "");
+          if (profileData.theme && THEME_PACKS[profileData.theme as ThemePackKey]) {
+            setThemePack(profileData.theme as ThemePackKey);
+          }
+        }
+
+        await loadTransactions(userId);
+        await loadCustomers(userId);
+        await loadProducts(userId);
         return;
       }
 
-      setSession(currentSession);
-
-      const userId = currentSession.user.id;
-
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (profileData) {
-        setProfile(profileData);
-        setFullName(profileData.full_name || "");
-        setCompanyName(profileData.company_name || "");
-        setCompanyRegNo(profileData.company_reg_no || "");
-        setCompanyPhone(profileData.company_phone || "");
-        setCompanyEmail(profileData.company_email || "");
-        setCompanyAddress(profileData.company_address || "");
-        if (profileData.theme && THEME_PACKS[profileData.theme as ThemePackKey]) {
-          setThemePack(profileData.theme as ThemePackKey);
+      if (trial) {
+        if (Date.now() >= trial.expiresAt) {
+          clearTrialData();
+          window.location.href = "/zh";
+          return;
         }
+
+        setIsTrial(true);
+        loadTrialData();
+        updateTrialBar(trial);
+
+        interval = window.setInterval(() => {
+          const raw = localStorage.getItem(TRIAL_KEY);
+          const latest = raw ? (JSON.parse(raw) as TrialInfo) : null;
+
+          if (!latest || Date.now() >= latest.expiresAt) {
+            clearTrialData();
+            window.location.href = "/zh";
+            return;
+          }
+
+          updateTrialBar(latest);
+        }, 1000);
+
+        return;
       }
 
-      await loadTransactions(userId);
-      await loadCustomers(userId);
-      await loadProducts(userId);
+      window.location.href = "/zh";
     };
 
     init();
+
+    return () => {
+      if (interval) window.clearInterval(interval);
+    };
   }, []);
+
+  function clearTrialData() {
+    localStorage.removeItem(TRIAL_KEY);
+    localStorage.removeItem(TRIAL_TX_KEY);
+    localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
+    localStorage.removeItem(TRIAL_PRODUCTS_KEY);
+  }
+
+  function loadTrialData() {
+    const tx = localStorage.getItem(TRIAL_TX_KEY);
+    const cs = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
+    const ps = localStorage.getItem(TRIAL_PRODUCTS_KEY);
+
+    if (tx) setTransactions(JSON.parse(tx));
+    if (cs) setCustomers(JSON.parse(cs));
+    if (ps) setProducts(JSON.parse(ps));
+  }
+
+  function saveTrialData(nextTx = transactions, nextCs = customers, nextPs = products) {
+    localStorage.setItem(TRIAL_TX_KEY, JSON.stringify(nextTx));
+    localStorage.setItem(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCs));
+    localStorage.setItem(TRIAL_PRODUCTS_KEY, JSON.stringify(nextPs));
+  }
+
+  function updateTrialBar(trial: TrialInfo) {
+    const totalMs = trial.expiresAt - trial.startedAt;
+    const leftMs = Math.max(trial.expiresAt - Date.now(), 0);
+    const totalSec = Math.floor(leftMs / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    setTrialLeft(`${min}分 ${sec}秒`);
+    setTrialPercent(Math.max((leftMs / totalMs) * 100, 0));
+  }
 
   async function loadTransactions(userId: string) {
     const { data } = await supabase
@@ -256,26 +332,46 @@ export default function DashboardPage() {
   }
 
   async function handleLogout() {
+    clearTrialData();
     await supabase.auth.signOut();
     window.location.href = "/zh";
   }
 
   async function addTransaction() {
-    if (!session) return;
     if (!txDate || !txAmount || !txCategory) return;
 
     const amount = Number(txAmount);
     const debt = Number(txDebt || 0);
 
-    await supabase.from("transactions").insert({
-      user_id: session.user.id,
-      txn_date: txDate,
-      txn_type: txType,
-      amount,
-      category_name: txCategory,
-      debt_amount: debt,
-      note: txNote,
-    });
+    if (isTrial) {
+      const newTx: Txn = {
+        id: String(Date.now()),
+        txn_date: txDate,
+        txn_type: txType,
+        amount,
+        category_name: txCategory,
+        debt_amount: debt,
+        note: txNote,
+      };
+
+      const next = [newTx, ...transactions];
+      setTransactions(next);
+      saveTrialData(next, customers, products);
+    } else {
+      if (!session) return;
+
+      await supabase.from("transactions").insert({
+        user_id: session.user.id,
+        txn_date: txDate,
+        txn_type: txType,
+        amount,
+        category_name: txCategory,
+        debt_amount: debt,
+        note: txNote,
+      });
+
+      await loadTransactions(session.user.id);
+    }
 
     setTxDate("");
     setTxType("income");
@@ -283,65 +379,98 @@ export default function DashboardPage() {
     setTxCategory("");
     setTxDebt("");
     setTxNote("");
-
-    await loadTransactions(session.user.id);
   }
 
   async function deleteTransaction(id: string) {
+    if (isTrial) {
+      const next = transactions.filter((x) => x.id !== id);
+      setTransactions(next);
+      saveTrialData(next, customers, products);
+      return;
+    }
+
     await supabase.from("transactions").delete().eq("id", id);
     if (session) await loadTransactions(session.user.id);
   }
 
   async function addCustomer() {
-    if (!session) return;
     if (!customerName) return;
 
-    await supabase.from("customers").insert({
-      user_id: session.user.id,
-      name: customerName,
-      company_name: customerCompany,
-      phone: customerPhone,
-      email: customerEmail,
-      address: customerAddress,
-      tags: customerTags
-        ? customerTags.split(",").map((x) => x.trim()).filter(Boolean)
-        : [],
-      debt_amount: Number(customerDebt || 0),
-      note: customerNote,
-    });
+    if (isTrial) {
+      const newCustomer: Customer = {
+        id: String(Date.now()),
+        name: customerName,
+        phone: customerPhone,
+        company_name: customerCompany,
+        company_phone: customerCompanyPhone,
+        address: customerAddress,
+        email: null,
+        tags: [],
+        debt_amount: 0,
+        note: null,
+      };
+
+      const next = [newCustomer, ...customers];
+      setCustomers(next);
+      saveTrialData(transactions, next, products);
+    } else {
+      if (!session) return;
+
+      await supabase.from("customers").insert({
+        user_id: session.user.id,
+        name: customerName,
+        phone: customerPhone,
+        company_name: customerCompany,
+        address: customerAddress,
+        note: `公司电话：${customerCompanyPhone}`,
+      });
+
+      await loadCustomers(session.user.id);
+    }
 
     setCustomerName("");
-    setCustomerCompany("");
     setCustomerPhone("");
-    setCustomerEmail("");
+    setCustomerCompany("");
+    setCustomerCompanyPhone("");
     setCustomerAddress("");
-    setCustomerTags("");
-    setCustomerDebt("");
-    setCustomerNote("");
-
-    await loadCustomers(session.user.id);
   }
 
   async function addProduct() {
-    if (!session) return;
     if (!productName || !productPrice || !productCost) return;
 
-    await supabase.from("products").insert({
-      user_id: session.user.id,
-      name: productName,
-      price: Number(productPrice),
-      cost: Number(productCost),
-      discount: Number(productDiscount || 0),
-      note: productNote,
-    });
+    if (isTrial) {
+      const newProduct: Product = {
+        id: String(Date.now()),
+        name: productName,
+        price: Number(productPrice),
+        cost: Number(productCost),
+        discount: Number(productDiscount || 0),
+        note: productNote,
+      };
+
+      const next = [newProduct, ...products];
+      setProducts(next);
+      saveTrialData(transactions, customers, next);
+    } else {
+      if (!session) return;
+
+      await supabase.from("products").insert({
+        user_id: session.user.id,
+        name: productName,
+        price: Number(productPrice),
+        cost: Number(productCost),
+        discount: Number(productDiscount || 0),
+        note: productNote,
+      });
+
+      await loadProducts(session.user.id);
+    }
 
     setProductName("");
     setProductPrice("");
     setProductCost("");
     setProductDiscount("");
     setProductNote("");
-
-    await loadProducts(session.user.id);
   }
 
   async function saveProfile() {
@@ -376,9 +505,7 @@ export default function DashboardPage() {
       return;
     }
 
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
 
     if (error) {
       setMsg("修改密码失败：" + error.message);
@@ -392,14 +519,11 @@ export default function DashboardPage() {
   }
 
   async function saveTheme(newTheme: ThemePackKey) {
-    if (!session) return;
-
     setThemePack(newTheme);
 
-    await supabase
-      .from("profiles")
-      .update({ theme: newTheme })
-      .eq("id", session.user.id);
+    if (session) {
+      await supabase.from("profiles").update({ theme: newTheme }).eq("id", session.user.id);
+    }
   }
 
   async function uploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
@@ -411,35 +535,15 @@ export default function DashboardPage() {
 
     const { error } = await supabase.storage
       .from("company-assets")
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: true,
-      });
+      .upload(filePath, file, { cacheControl: "3600", upsert: true });
 
-    if (error) {
-      setMsg("头像上传失败：" + error.message);
-      setMsgType("error");
-      return;
-    }
+    if (error) return;
 
     const { data } = supabase.storage.from("company-assets").getPublicUrl(filePath);
 
-    await supabase
-      .from("profiles")
-      .update({ avatar_url: data.publicUrl })
-      .eq("id", session.user.id);
+    await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", session.user.id);
 
-    setProfile((prev) =>
-      prev
-        ? {
-            ...prev,
-            avatar_url: data.publicUrl,
-          }
-        : prev
-    );
-
-    setMsg("头像上传成功");
-    setMsgType("success");
+    setProfile((prev) => (prev ? { ...prev, avatar_url: data.publicUrl } : prev));
   }
 
   async function uploadCompanyLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -451,16 +555,9 @@ export default function DashboardPage() {
 
     const { error } = await supabase.storage
       .from("company-assets")
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: true,
-      });
+      .upload(filePath, file, { cacheControl: "3600", upsert: true });
 
-    if (error) {
-      setMsg("公司标识上传失败：" + error.message);
-      setMsgType("error");
-      return;
-    }
+    if (error) return;
 
     const { data } = supabase.storage.from("company-assets").getPublicUrl(filePath);
 
@@ -469,17 +566,7 @@ export default function DashboardPage() {
       .update({ company_logo_url: data.publicUrl })
       .eq("id", session.user.id);
 
-    setProfile((prev) =>
-      prev
-        ? {
-            ...prev,
-            company_logo_url: data.publicUrl,
-          }
-        : prev
-    );
-
-    setMsg("公司标识上传成功");
-    setMsgType("success");
+    setProfile((prev) => (prev ? { ...prev, company_logo_url: data.publicUrl } : prev));
   }
 
   const totalIncome = useMemo(() => {
@@ -494,7 +581,7 @@ export default function DashboardPage() {
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
   }, [transactions]);
 
-  const balance = useMemo(() => totalIncome - totalExpense, [totalIncome, totalExpense]);
+  const balance = totalIncome - totalExpense;
 
   const currentMonthTransactions = useMemo(() => {
     const now = new Date();
@@ -502,61 +589,49 @@ export default function DashboardPage() {
     return transactions.filter((r) => r.txn_date.startsWith(ym));
   }, [transactions]);
 
-  const monthIncome = useMemo(() => {
-    return currentMonthTransactions
-      .filter((r) => r.txn_type === "income")
-      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
-  }, [currentMonthTransactions]);
+  const monthIncome = currentMonthTransactions
+    .filter((r) => r.txn_type === "income")
+    .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-  const monthExpense = useMemo(() => {
-    return currentMonthTransactions
-      .filter((r) => r.txn_type === "expense")
-      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
-  }, [currentMonthTransactions]);
+  const monthExpense = currentMonthTransactions
+    .filter((r) => r.txn_type === "expense")
+    .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-  const expiryText = profile?.plan_expiry
-    ? new Date(profile.plan_expiry).toLocaleDateString()
-    : "未订阅";
+  const expiryText = isTrial
+    ? "免费试用"
+    : profile?.plan_expiry
+      ? new Date(profile.plan_expiry).toLocaleDateString()
+      : "未订阅";
 
   return (
-    <main
-      style={{
-        ...pageStyle,
-        background: theme.pageBg,
-        color: theme.text,
-      }}
-    >
-      <div
-        style={{
-          ...heroCardStyle,
-          background: theme.heroBg,
-          color: theme.bannerText,
-        }}
-      >
+    <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
+      {isTrial && (
+        <div style={trialWrapStyle}>
+          <div style={trialTopRowStyle}>
+            <strong>免费试用版</strong>
+            <strong>剩余时间：{trialLeft}</strong>
+          </div>
+          <div style={trialBarBgStyle}>
+            <div style={{ ...trialBarFillStyle, width: `${trialPercent}%` }} />
+          </div>
+        </div>
+      )}
+
+      <div style={{ ...heroCardStyle, background: theme.heroBg, color: theme.bannerText }}>
         <div>
-          <h1 style={titleStyle}>Dashboard</h1>
+          <h1 style={titleStyle}>控制台</h1>
           <p style={{ ...subTitleStyle, color: theme.subText }}>
-            欢迎回来{profile?.full_name ? `，${profile.full_name}` : ""}，
-            订阅到期：{expiryText}
+            欢迎回来{profile?.full_name ? `，${profile.full_name}` : ""}，订阅到期：{expiryText}
           </p>
         </div>
 
         <div style={topRightStyle}>
-          <div style={{ color: theme.subText, fontWeight: 700 }}>
-            到期：{expiryText}
-          </div>
+          <div style={{ color: theme.subText, fontWeight: 700 }}>到期：{expiryText}</div>
 
           <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setShowAvatarMenu((v) => !v)}
-              style={avatarBtnStyle}
-            >
+            <button onClick={() => setShowAvatarMenu((v) => !v)} style={avatarBtnStyle}>
               {profile?.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt="avatar"
-                  style={avatarImgStyle}
-                />
+                <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} />
               ) : (
                 "👤"
               )}
@@ -569,12 +644,24 @@ export default function DashboardPage() {
                   <input type="file" accept="image/*" onChange={uploadAvatar} style={{ display: "none" }} />
                 </label>
 
-                <button style={avatarMenuItemStyle} onClick={() => setActiveTab("settings")}>
-                  公司资料 / 密码
+                <button
+                  style={avatarMenuItemStyle}
+                  onClick={() => {
+                    setActiveTab("settings");
+                    setShowAvatarMenu(false);
+                  }}
+                >
+                  设置 / 公司资料
                 </button>
 
-                <button style={avatarMenuItemStyle} onClick={() => setActiveTab("themes")}>
-                  换主题
+                <button
+                  style={avatarMenuItemStyle}
+                  onClick={() => {
+                    setActiveTab("themes");
+                    setShowAvatarMenu(false);
+                  }}
+                >
+                  切换主题
                 </button>
 
                 <button style={avatarMenuItemStyle} onClick={handleLogout}>
@@ -604,27 +691,11 @@ export default function DashboardPage() {
       </div>
 
       <div style={menuGridStyle}>
-        <button style={menuBtn(activeTab === "overview", theme)} onClick={() => setActiveTab("overview")}>
-          总览
-        </button>
-        <button style={menuBtn(activeTab === "daily", theme)} onClick={() => setActiveTab("daily")}>
-          每日记账
-        </button>
-        <button style={menuBtn(activeTab === "customers", theme)} onClick={() => setActiveTab("customers")}>
-          客户管理
-        </button>
-        <button style={menuBtn(activeTab === "products", theme)} onClick={() => setActiveTab("products")}>
-          产品管理
-        </button>
-        <button style={menuBtn(activeTab === "invoices", theme)} onClick={() => setActiveTab("invoices")}>
-          发票系统
-        </button>
-        <button style={menuBtn(activeTab === "settings", theme)} onClick={() => setActiveTab("settings")}>
-          设定
-        </button>
-        <button style={menuBtn(activeTab === "themes", theme)} onClick={() => setActiveTab("themes")}>
-          主题切换
-        </button>
+        <button style={menuBtn(activeTab === "overview", theme)} onClick={() => setActiveTab("overview")}>总览</button>
+        <button style={menuBtn(activeTab === "daily", theme)} onClick={() => setActiveTab("daily")}>每日记账</button>
+        <button style={menuBtn(activeTab === "customers", theme)} onClick={() => setActiveTab("customers")}>客户管理</button>
+        <button style={menuBtn(activeTab === "products", theme)} onClick={() => setActiveTab("products")}>产品管理</button>
+        <button style={menuBtn(activeTab === "invoices", theme)} onClick={() => setActiveTab("invoices")}>发票系统</button>
       </div>
 
       {activeTab === "overview" && (
@@ -635,25 +706,21 @@ export default function DashboardPage() {
           </p>
 
           <div style={overviewBoxGridStyle}>
-            <div style={previewBox(theme)}>
-              <h4>首页 Banner 预览</h4>
-              <div style={bannerPreview(theme)}>SmartAcctg Banner</div>
-            </div>
+            <button style={overviewBtn(theme)} onClick={() => setActiveTab("daily")}>
+              进入每日记账
+            </button>
 
-            <div style={previewBox(theme)}>
-              <h4>个人卡片背景预览</h4>
-              <div style={smallCardPreview(theme)}>个人卡片背景</div>
-            </div>
+            <button style={overviewBtn(theme)} onClick={() => setActiveTab("customers")}>
+              进入客户管理
+            </button>
 
-            <div style={previewBox(theme)}>
-              <h4>名片封面预览</h4>
-              <div style={nameCardPreview(theme)}>名片封面</div>
-            </div>
+            <button style={overviewBtn(theme)} onClick={() => setActiveTab("products")}>
+              进入产品管理
+            </button>
 
-            <div style={previewBox(theme)}>
-              <h4>Container 背景预览</h4>
-              <div style={containerPreview(theme)}>某些 container 背景图</div>
-            </div>
+            <button style={overviewBtn(theme)} onClick={() => setActiveTab("invoices")}>
+              进入发票系统
+            </button>
           </div>
         </section>
       )}
@@ -663,66 +730,44 @@ export default function DashboardPage() {
           <h3>每日记账</h3>
 
           <div style={formGridStyle}>
-            <input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} style={inputStyle} />
+            <input
+              type="date"
+              value={txDate}
+              onChange={(e) => setTxDate(e.target.value)}
+              style={dateInputStyle}
+            />
+
             <select value={txType} onChange={(e) => setTxType(e.target.value as "income" | "expense")} style={inputStyle}>
               <option value="income">收款</option>
               <option value="expense">付款</option>
             </select>
-            <input
-              placeholder="金额（RM）"
-              value={txAmount}
-              onChange={(e) => setTxAmount(e.target.value)}
-              style={inputStyle}
-            />
-            <input
-              placeholder="分类 / 标签"
-              value={txCategory}
-              onChange={(e) => setTxCategory(e.target.value)}
-              style={inputStyle}
-            />
-            <input
-              placeholder="欠款（可留空）"
-              value={txDebt}
-              onChange={(e) => setTxDebt(e.target.value)}
-              style={inputStyle}
-            />
-            <input
-              placeholder="备注"
-              value={txNote}
-              onChange={(e) => setTxNote(e.target.value)}
-              style={inputStyle}
-            />
+
+            <input placeholder="金额（RM）" value={txAmount} onChange={(e) => setTxAmount(e.target.value)} style={inputStyle} />
+            <input placeholder="分类 / 标签" value={txCategory} onChange={(e) => setTxCategory(e.target.value)} style={inputStyle} />
+            <input placeholder="欠款（可留空）" value={txDebt} onChange={(e) => setTxDebt(e.target.value)} style={inputStyle} />
+            <input placeholder="备注" value={txNote} onChange={(e) => setTxNote(e.target.value)} style={inputStyle} />
           </div>
 
-          <button
-            onClick={addTransaction}
-            style={{
-              ...primaryBtnStyle,
-              background: theme.accent,
-            }}
-          >
+          <button onClick={addTransaction} style={{ ...primaryBtnStyle, background: theme.accent }}>
             新增记录
           </button>
 
           <div style={{ marginTop: 18 }}>
             {transactions.length === 0 ? (
-              <p style={{ ...emptyTextStyle, color: theme.subText }}>还没有记录</p>
+              <p style={{ color: theme.subText }}>还没有记录</p>
             ) : (
               transactions.map((r) => (
                 <div key={r.id} style={listItemStyle}>
                   <div>
                     <strong>{r.txn_type === "income" ? "收款" : "付款"}</strong> · {r.category_name || "未分类"}
                     <div style={{ ...mutedTextStyle, color: theme.subText }}>
-                      {r.txn_date} {r.note ? `· ${r.note}` : ""}{" "}
-                      {Number(r.debt_amount || 0) > 0 ? `· 欠款 RM ${Number(r.debt_amount).toFixed(2)}` : ""}
+                      {r.txn_date} {r.note ? `· ${r.note}` : ""}
                     </div>
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <strong>RM {Number(r.amount).toFixed(2)}</strong>
-                    <button onClick={() => deleteTransaction(r.id)} style={deleteBtnStyle}>
-                      删除
-                    </button>
+                    <button onClick={() => deleteTransaction(r.id)} style={deleteBtnStyle}>删除</button>
                   </div>
                 </div>
               ))
@@ -735,15 +780,17 @@ export default function DashboardPage() {
         <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
           <h3>客户管理</h3>
 
+          <h4>个人资料</h4>
           <div style={formGridStyle}>
-            <input placeholder="姓名" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={inputStyle} />
-            <input placeholder="客户公司资料" value={customerCompany} onChange={(e) => setCustomerCompany(e.target.value)} style={inputStyle} />
+            <input placeholder="名称" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={inputStyle} />
             <input placeholder="电话号码" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={inputStyle} />
-            <input placeholder="Email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={inputStyle} />
-            <input placeholder="地址" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} style={inputStyle} />
-            <input placeholder="标签（逗号分隔，例如：VIP,欠款）" value={customerTags} onChange={(e) => setCustomerTags(e.target.value)} style={inputStyle} />
-            <input placeholder="欠款金额" value={customerDebt} onChange={(e) => setCustomerDebt(e.target.value)} style={inputStyle} />
-            <input placeholder="备注" value={customerNote} onChange={(e) => setCustomerNote(e.target.value)} style={inputStyle} />
+          </div>
+
+          <h4 style={{ marginTop: 18 }}>公司资料</h4>
+          <div style={formGridStyle}>
+            <input placeholder="公司名称" value={customerCompany} onChange={(e) => setCustomerCompany(e.target.value)} style={inputStyle} />
+            <input placeholder="公司电话号码" value={customerCompanyPhone} onChange={(e) => setCustomerCompanyPhone(e.target.value)} style={inputStyle} />
+            <input placeholder="公司地址" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} style={inputStyle} />
           </div>
 
           <button onClick={addCustomer} style={{ ...primaryBtnStyle, background: theme.accent }}>
@@ -752,20 +799,22 @@ export default function DashboardPage() {
 
           <div style={{ marginTop: 18 }}>
             {customers.length === 0 ? (
-              <p style={{ ...emptyTextStyle, color: theme.subText }}>还没有客户资料</p>
+              <p style={{ color: theme.subText }}>还没有客户资料</p>
             ) : (
               customers.map((c) => (
                 <div key={c.id} style={listItemStyle}>
                   <div>
                     <strong>{c.name}</strong>
                     <div style={{ ...mutedTextStyle, color: theme.subText }}>
-                      {c.company_name || "无公司资料"} · {c.phone || "无电话"}
+                      电话：{c.phone || "无"}
                     </div>
                     <div style={{ ...mutedTextStyle, color: theme.subText }}>
-                      标签：{(c.tags || []).join("、") || "无"}
+                      公司：{c.company_name || "无"} · 公司电话：{c.company_phone || c.note || "无"}
+                    </div>
+                    <div style={{ ...mutedTextStyle, color: theme.subText }}>
+                      地址：{c.address || "无"}
                     </div>
                   </div>
-                  <strong>欠款：RM {Number(c.debt_amount || 0).toFixed(2)}</strong>
                 </div>
               ))
             )}
@@ -788,73 +837,27 @@ export default function DashboardPage() {
           <button onClick={addProduct} style={{ ...primaryBtnStyle, background: theme.accent }}>
             新增产品
           </button>
-
-          <div style={{ marginTop: 18 }}>
-            {products.length === 0 ? (
-              <p style={{ ...emptyTextStyle, color: theme.subText }}>还没有产品</p>
-            ) : (
-              products.map((p) => (
-                <div key={p.id} style={listItemStyle}>
-                  <div>
-                    <strong>{p.name}</strong>
-                    <div style={{ ...mutedTextStyle, color: theme.subText }}>
-                      成本：RM {Number(p.cost).toFixed(2)} · 折扣：RM {Number(p.discount || 0).toFixed(2)}
-                    </div>
-                  </div>
-                  <strong>售价：RM {Number(p.price).toFixed(2)}</strong>
-                </div>
-              ))
-            )}
-          </div>
         </section>
       )}
 
       {activeTab === "invoices" && (
         <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
           <h3>发票系统</h3>
-          <p style={{ ...mutedTextStyle, color: theme.subText }}>
-            这版先把基础数据结构搭好。下一步我可以直接给你「可选客户 + 可选产品 +
-            自动算差价 + 自动进记账」的完整发票页。
-          </p>
-
-          <div style={previewBox(theme)}>
-            <h4>发票会显示以下公司资料</h4>
-            <div style={{ ...mutedTextStyle, color: theme.subText }}>
-              公司名称：{profile?.company_name || "未填写"}
-            </div>
-            <div style={{ ...mutedTextStyle, color: theme.subText }}>
-              注册号：{profile?.company_reg_no || "未填写"}
-            </div>
-            <div style={{ ...mutedTextStyle, color: theme.subText }}>
-              电话：{profile?.company_phone || "未填写"}
-            </div>
-            <div style={{ ...mutedTextStyle, color: theme.subText }}>
-              Email：{profile?.company_email || "未填写"}
-            </div>
-            <div style={{ ...mutedTextStyle, color: theme.subText }}>
-              地址：{profile?.company_address || "未填写"}
-            </div>
-          </div>
+          <p style={{ color: theme.subText }}>下一步可接客户 + 产品联动生成发票。</p>
         </section>
       )}
 
       {activeTab === "settings" && (
         <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
-          <h3>设定</h3>
+          <h3>设置</h3>
 
           <div style={settingsBlockStyle}>
             <h4>个人资料</h4>
-            <input
-              placeholder="你的名字"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              style={inputStyle}
-            />
+            <input placeholder="你的名字" value={fullName} onChange={(e) => setFullName(e.target.value)} style={inputStyle} />
           </div>
 
           <div style={settingsBlockStyle}>
             <h4>公司资料（发票时会显示）</h4>
-
             <div style={formGridStyle}>
               <input placeholder="公司名称" value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle} />
               <input placeholder="公司注册号" value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={inputStyle} />
@@ -870,21 +873,6 @@ export default function DashboardPage() {
               <input type="file" accept="image/*" onChange={uploadCompanyLogo} />
             </div>
 
-            {profile?.company_logo_url ? (
-              <img
-                src={profile.company_logo_url}
-                alt="company-logo"
-                style={{
-                  width: 80,
-                  height: 80,
-                  objectFit: "cover",
-                  borderRadius: 12,
-                  marginTop: 14,
-                  border: `1px solid ${theme.cardBorder}`,
-                }}
-              />
-            ) : null}
-
             <button onClick={saveProfile} style={{ ...primaryBtnStyle, background: theme.accent }}>
               保存资料
             </button>
@@ -892,26 +880,18 @@ export default function DashboardPage() {
 
           <div style={settingsBlockStyle}>
             <h4>修改密码</h4>
-            <input
-              type="password"
-              placeholder="请输入新密码"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              style={inputStyle}
-            />
+            <input type="password" placeholder="请输入新密码" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={inputStyle} />
             <button onClick={changePassword} style={{ ...primaryBtnStyle, background: theme.accent }}>
               更新密码
             </button>
           </div>
 
           {msg ? (
-            <div
-              style={{
-                ...messageBoxStyle,
-                background: msgType === "error" ? "#fee2e2" : "#dcfce7",
-                color: msgType === "error" ? "#b91c1c" : "#166534",
-              }}
-            >
+            <div style={{
+              ...messageBoxStyle,
+              background: msgType === "error" ? "#fee2e2" : "#dcfce7",
+              color: msgType === "error" ? "#b91c1c" : "#166534",
+            }}>
               {msg}
             </div>
           ) : null}
@@ -921,9 +901,6 @@ export default function DashboardPage() {
       {activeTab === "themes" && (
         <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
           <h3>主题切换</h3>
-          <p style={{ ...mutedTextStyle, color: theme.subText }}>
-            每位用户切换主题后，不会影响其他用户。
-          </p>
 
           <div style={themeGridStyle}>
             {(Object.keys(THEME_PACKS) as ThemePackKey[]).map((key) => {
@@ -931,36 +908,20 @@ export default function DashboardPage() {
               const active = key === themePack;
 
               return (
-                <div
-                  key={key}
-                  style={{
-                    ...themeCardStyle,
-                    border: active ? `2px solid ${pack.accent}` : "1px solid #d1d5db",
-                    background: pack.pageBg,
-                    color: pack.text,
-                  }}
-                >
-                  <div
-                    style={{
-                      ...themeHeroPreviewStyle,
-                      background: pack.heroBg,
-                      color: pack.bannerText,
-                    }}
-                  >
+                <div key={key} style={{
+                  ...themeCardStyle,
+                  border: active ? `2px solid ${pack.accent}` : "1px solid #d1d5db",
+                  background: pack.pageBg,
+                  color: pack.text,
+                }}>
+                  <div style={{ ...themeHeroPreviewStyle, background: pack.heroBg, color: pack.bannerText }}>
                     {pack.name}
                   </div>
 
                   <div style={{ fontWeight: 700, marginTop: 10 }}>{pack.name}</div>
                   <div style={{ fontSize: 13, marginTop: 6, color: pack.subText }}>{pack.preview}</div>
 
-                  <button
-                    onClick={() => saveTheme(key)}
-                    style={{
-                      ...primaryBtnStyle,
-                      background: pack.accent,
-                      width: "100%",
-                    }}
-                  >
+                  <button onClick={() => saveTheme(key)} style={{ ...primaryBtnStyle, background: pack.accent, width: "100%" }}>
                     {active ? "当前使用中" : "切换主题"}
                   </button>
                 </div>
@@ -975,8 +936,39 @@ export default function DashboardPage() {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
-  padding: "20px",
+  padding: "16px",
   fontFamily: "sans-serif",
+};
+
+const trialWrapStyle: CSSProperties = {
+  background: "#dcfce7",
+  border: "1px solid #86efac",
+  borderRadius: 16,
+  padding: 14,
+  marginBottom: 18,
+};
+
+const trialTopRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+  color: "#166534",
+  marginBottom: 10,
+};
+
+const trialBarBgStyle: CSSProperties = {
+  width: "100%",
+  height: 12,
+  background: "#bbf7d0",
+  borderRadius: 999,
+  overflow: "hidden",
+};
+
+const trialBarFillStyle: CSSProperties = {
+  height: "100%",
+  background: "#0F766E",
+  borderRadius: 999,
 };
 
 const heroCardStyle: CSSProperties = {
@@ -1055,37 +1047,31 @@ const subTitleStyle: CSSProperties = {
   marginTop: 10,
 };
 
-const logoutBtnStyle: CSSProperties = {
-  padding: "10px 18px",
-  color: "#fff",
-  border: "none",
-  borderRadius: 10,
-  fontWeight: 700,
-};
-
 const statsGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: 12,
+  gap: 10,
   marginBottom: 18,
 };
 
 const statCardStyle: CSSProperties = {
   borderRadius: 18,
-  padding: 18,
+  padding: 14,
   border: "2px solid",
   boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+  minWidth: 0,
 };
 
 const statLabelStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: 13,
   color: "#64748b",
 };
 
 const statValueStyle: CSSProperties = {
-  fontSize: 28,
+  fontSize: 20,
   fontWeight: 900,
   marginTop: 8,
+  wordBreak: "break-word",
 };
 
 const menuGridStyle: CSSProperties = {
@@ -1095,10 +1081,7 @@ const menuGridStyle: CSSProperties = {
   marginBottom: 18,
 };
 
-const menuBtn = (
-  active: boolean,
-  theme: (typeof THEME_PACKS)[ThemePackKey]
-): CSSProperties => ({
+const menuBtn = (active: boolean, theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
   padding: "14px 12px",
   borderRadius: 12,
   border: active ? `2px solid ${theme.accent}` : "1px solid #cbd5e1",
@@ -1112,22 +1095,33 @@ const sectionCardStyle: CSSProperties = {
   padding: 20,
   border: "2px solid",
   boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+  overflow: "hidden",
 };
 
 const formGridStyle: CSSProperties = {
   display: "grid",
   gap: 12,
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
   maxWidth: "100%",
+  minWidth: 0,
   padding: "12px 14px",
   borderRadius: 10,
   border: "1px solid #cbd5e1",
   outline: "none",
   fontSize: 16,
   boxSizing: "border-box",
+};
+
+const dateInputStyle: CSSProperties = {
+  ...inputStyle,
+  appearance: "none",
+  WebkitAppearance: "none",
 };
 
 const primaryBtnStyle: CSSProperties = {
@@ -1152,8 +1146,6 @@ const mutedTextStyle: CSSProperties = {
   fontSize: 14,
   marginTop: 4,
 };
-
-const emptyTextStyle: CSSProperties = {};
 
 const deleteBtnStyle: CSSProperties = {
   padding: "8px 10px",
@@ -1181,48 +1173,15 @@ const overviewBoxGridStyle: CSSProperties = {
   gap: 14,
 };
 
-const previewBox = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
-  background: "#ffffff",
-  borderRadius: 16,
-  padding: 16,
-  border: `1px solid ${theme.cardBorder}`,
-});
-
-const bannerPreview = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
-  marginTop: 10,
-  padding: "20px 16px",
+const overviewBtn = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
+  width: "100%",
+  padding: "18px 16px",
   borderRadius: 14,
-  background: theme.heroBg,
-  color: theme.bannerText,
-  fontWeight: 800,
-  textAlign: "center",
-});
-
-const smallCardPreview = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
-  marginTop: 10,
-  padding: "18px 14px",
-  borderRadius: 14,
-  background: theme.cardBg,
   border: `2px solid ${theme.cardBorder}`,
+  background: "#ffffff",
   color: theme.text,
-});
-
-const nameCardPreview = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
-  marginTop: 10,
-  padding: "22px 16px",
-  borderRadius: 14,
-  background: theme.heroBg,
-  color: theme.bannerText,
-  fontWeight: 700,
-});
-
-const containerPreview = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
-  marginTop: 10,
-  padding: "18px 14px",
-  borderRadius: 14,
-  background: theme.pageBg,
-  border: `1px dashed ${theme.cardBorder}`,
-  color: theme.text,
+  fontWeight: 800,
+  textAlign: "left",
 });
 
 const themeGridStyle: CSSProperties = {
