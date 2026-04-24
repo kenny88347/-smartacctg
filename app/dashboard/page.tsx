@@ -49,6 +49,14 @@ type Product = {
   note: string | null;
 };
 
+type CustomerPrice = {
+  id: string;
+  user_id?: string;
+  customer_id: string;
+  product_id: string;
+  custom_price: number;
+};
+
 type Profile = {
   id: string;
   email: string | null;
@@ -76,6 +84,7 @@ const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_TX_KEY = "smartacctg_trial_transactions";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
+const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
 
 const THEME_PACKS: Record<
   ThemePackKey,
@@ -152,12 +161,12 @@ export default function DashboardPage() {
 
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
-
   const [themePack, setThemePack] = useState<ThemePackKey>("nature");
 
   const [transactions, setTransactions] = useState<Txn[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [customerPrices, setCustomerPrices] = useState<CustomerPrice[]>([]);
 
   const [txDate, setTxDate] = useState("");
   const [txType, setTxType] = useState<"income" | "expense">("income");
@@ -167,26 +176,36 @@ export default function DashboardPage() {
   const [txNote, setTxNote] = useState("");
 
   const [customerName, setCustomerName] = useState("");
-  const [customerCompany, setCustomerCompany] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerCompany, setCustomerCompany] = useState("");
   const [customerCompanyPhone, setCustomerCompanyPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
 
   const [productName, setProductName] = useState("");
   const [productPrice, setProductPrice] = useState("");
   const [productCost, setProductCost] = useState("");
   const [productDiscount, setProductDiscount] = useState("");
   const [productNote, setProductNote] = useState("");
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+
+  const [priceCustomerId, setPriceCustomerId] = useState("");
+  const [priceProductId, setPriceProductId] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
+
+  const [invoiceCustomerId, setInvoiceCustomerId] = useState("");
+  const [invoiceProductId, setInvoiceProductId] = useState("");
+  const [invoiceQty, setInvoiceQty] = useState("1");
+  const [invoicePrice, setInvoicePrice] = useState(0);
+  const [invoiceMsg, setInvoiceMsg] = useState("");
 
   const [companyName, setCompanyName] = useState("");
   const [companyRegNo, setCompanyRegNo] = useState("");
   const [companyPhone, setCompanyPhone] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
-
   const [fullName, setFullName] = useState("");
   const [newPassword, setNewPassword] = useState("");
-
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState<"success" | "error" | "">("");
 
@@ -220,6 +239,7 @@ export default function DashboardPage() {
           setCompanyPhone(profileData.company_phone || "");
           setCompanyEmail(profileData.company_email || "");
           setCompanyAddress(profileData.company_address || "");
+
           if (profileData.theme && THEME_PACKS[profileData.theme as ThemePackKey]) {
             setThemePack(profileData.theme as ThemePackKey);
           }
@@ -228,6 +248,7 @@ export default function DashboardPage() {
         await loadTransactions(userId);
         await loadCustomers(userId);
         await loadProducts(userId);
+        await loadCustomerPrices(userId);
         return;
       }
 
@@ -268,27 +289,50 @@ export default function DashboardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const product = products.find((p) => p.id === invoiceProductId);
+    if (!product || !invoiceCustomerId) {
+      setInvoicePrice(0);
+      return;
+    }
+
+    const special = customerPrices.find(
+      (x) => x.customer_id === invoiceCustomerId && x.product_id === invoiceProductId
+    );
+
+    setInvoicePrice(Number(special?.custom_price || product.price || 0));
+  }, [invoiceCustomerId, invoiceProductId, products, customerPrices]);
+
   function clearTrialData() {
     localStorage.removeItem(TRIAL_KEY);
     localStorage.removeItem(TRIAL_TX_KEY);
     localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
     localStorage.removeItem(TRIAL_PRODUCTS_KEY);
+    localStorage.removeItem(TRIAL_CUSTOMER_PRICES_KEY);
   }
 
   function loadTrialData() {
     const tx = localStorage.getItem(TRIAL_TX_KEY);
     const cs = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
     const ps = localStorage.getItem(TRIAL_PRODUCTS_KEY);
+    const cps = localStorage.getItem(TRIAL_CUSTOMER_PRICES_KEY);
 
     if (tx) setTransactions(JSON.parse(tx));
     if (cs) setCustomers(JSON.parse(cs));
     if (ps) setProducts(JSON.parse(ps));
+    if (cps) setCustomerPrices(JSON.parse(cps));
   }
 
-  function saveTrialData(nextTx = transactions, nextCs = customers, nextPs = products) {
+  function saveTrialData(
+    nextTx = transactions,
+    nextCs = customers,
+    nextPs = products,
+    nextCp = customerPrices
+  ) {
     localStorage.setItem(TRIAL_TX_KEY, JSON.stringify(nextTx));
     localStorage.setItem(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCs));
     localStorage.setItem(TRIAL_PRODUCTS_KEY, JSON.stringify(nextPs));
+    localStorage.setItem(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextCp));
   }
 
   function updateTrialBar(trial: TrialInfo) {
@@ -297,6 +341,7 @@ export default function DashboardPage() {
     const totalSec = Math.floor(leftMs / 1000);
     const min = Math.floor(totalSec / 60);
     const sec = totalSec % 60;
+
     setTrialLeft(`${min}分 ${sec}秒`);
     setTrialPercent(Math.max((leftMs / totalMs) * 100, 0));
   }
@@ -331,6 +376,15 @@ export default function DashboardPage() {
     setProducts((data || []) as Product[]);
   }
 
+  async function loadCustomerPrices(userId: string) {
+    const { data } = await supabase
+      .from("customer_prices")
+      .select("*")
+      .eq("user_id", userId);
+
+    setCustomerPrices((data || []) as CustomerPrice[]);
+  }
+
   async function handleLogout() {
     clearTrialData();
     await supabase.auth.signOut();
@@ -356,7 +410,7 @@ export default function DashboardPage() {
 
       const next = [newTx, ...transactions];
       setTransactions(next);
-      saveTrialData(next, customers, products);
+      saveTrialData(next, customers, products, customerPrices);
     } else {
       if (!session) return;
 
@@ -385,7 +439,7 @@ export default function DashboardPage() {
     if (isTrial) {
       const next = transactions.filter((x) => x.id !== id);
       setTransactions(next);
-      saveTrialData(next, customers, products);
+      saveTrialData(next, customers, products, customerPrices);
       return;
     }
 
@@ -412,7 +466,7 @@ export default function DashboardPage() {
 
       const next = [newCustomer, ...customers];
       setCustomers(next);
-      saveTrialData(transactions, next, products);
+      saveTrialData(transactions, next, products, customerPrices);
     } else {
       if (!session) return;
 
@@ -422,7 +476,7 @@ export default function DashboardPage() {
         phone: customerPhone,
         company_name: customerCompany,
         address: customerAddress,
-        note: `公司电话：${customerCompanyPhone}`,
+        note: customerCompanyPhone,
       });
 
       await loadCustomers(session.user.id);
@@ -433,6 +487,30 @@ export default function DashboardPage() {
     setCustomerCompany("");
     setCustomerCompanyPhone("");
     setCustomerAddress("");
+  }
+
+  async function updateCustomer(c: Customer) {
+    if (isTrial) {
+      const next = customers.map((x) => (x.id === c.id ? c : x));
+      setCustomers(next);
+      saveTrialData(transactions, next, products, customerPrices);
+      setEditingCustomerId(null);
+      return;
+    }
+
+    await supabase
+      .from("customers")
+      .update({
+        name: c.name,
+        phone: c.phone,
+        company_name: c.company_name,
+        address: c.address,
+        note: c.company_phone || c.note || "",
+      })
+      .eq("id", c.id);
+
+    setEditingCustomerId(null);
+    if (session) await loadCustomers(session.user.id);
   }
 
   async function addProduct() {
@@ -450,7 +528,7 @@ export default function DashboardPage() {
 
       const next = [newProduct, ...products];
       setProducts(next);
-      saveTrialData(transactions, customers, next);
+      saveTrialData(transactions, customers, next, customerPrices);
     } else {
       if (!session) return;
 
@@ -471,6 +549,170 @@ export default function DashboardPage() {
     setProductCost("");
     setProductDiscount("");
     setProductNote("");
+  }
+
+  async function updateProduct(p: Product) {
+    if (isTrial) {
+      const next = products.map((x) => (x.id === p.id ? p : x));
+      setProducts(next);
+      saveTrialData(transactions, customers, next, customerPrices);
+      setEditingProductId(null);
+      return;
+    }
+
+    await supabase
+      .from("products")
+      .update({
+        name: p.name,
+        price: p.price,
+        cost: p.cost,
+        discount: p.discount,
+        note: p.note,
+      })
+      .eq("id", p.id);
+
+    setEditingProductId(null);
+    if (session) await loadProducts(session.user.id);
+  }
+
+  async function saveCustomerPrice() {
+    if (!priceCustomerId || !priceProductId || !customPrice) return;
+
+    if (isTrial) {
+      const exists = customerPrices.find(
+        (x) => x.customer_id === priceCustomerId && x.product_id === priceProductId
+      );
+
+      const next: CustomerPrice[] = exists
+        ? customerPrices.map((x) =>
+            x.customer_id === priceCustomerId && x.product_id === priceProductId
+              ? { ...x, custom_price: Number(customPrice) }
+              : x
+          )
+        : [
+            {
+              id: String(Date.now()),
+              customer_id: priceCustomerId,
+              product_id: priceProductId,
+              custom_price: Number(customPrice),
+            },
+            ...customerPrices,
+          ];
+
+      setCustomerPrices(next);
+      saveTrialData(transactions, customers, products, next);
+    } else {
+      if (!session) return;
+
+      await supabase.from("customer_prices").upsert(
+        {
+          user_id: session.user.id,
+          customer_id: priceCustomerId,
+          product_id: priceProductId,
+          custom_price: Number(customPrice),
+        },
+        {
+          onConflict: "customer_id,product_id",
+        }
+      );
+
+      await loadCustomerPrices(session.user.id);
+    }
+
+    setCustomPrice("");
+  }
+
+  async function createInvoice() {
+    setInvoiceMsg("");
+
+    const customer = customers.find((c) => c.id === invoiceCustomerId);
+    const product = products.find((p) => p.id === invoiceProductId);
+
+    if (!customer || !product) {
+      setInvoiceMsg("请选择客户和产品");
+      return;
+    }
+
+    const qty = Number(invoiceQty || 1);
+    const unitPrice = Number(invoicePrice || product.price || 0);
+    const unitCost = Number(product.cost || 0);
+    const discount = Number(product.discount || 0);
+    const total = unitPrice * qty - discount;
+    const totalCost = unitCost * qty;
+    const totalProfit = total - totalCost;
+    const invoiceNo = `INV-${Date.now()}`;
+
+    if (isTrial) {
+      const newTx: Txn = {
+        id: String(Date.now()),
+        txn_date: new Date().toISOString().slice(0, 10),
+        txn_type: "income",
+        amount: total,
+        category_name: "发票收入",
+        debt_amount: 0,
+        note: `${invoiceNo}｜${customer.name}｜${product.name}`,
+      };
+
+      const nextTx = [newTx, ...transactions];
+      setTransactions(nextTx);
+      saveTrialData(nextTx, customers, products, customerPrices);
+      setInvoiceMsg("试用版发票已生成，并已加入记账");
+    } else {
+      if (!session) return;
+
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from("invoices")
+        .insert({
+          user_id: session.user.id,
+          customer_id: customer.id,
+          customer_name: customer.name,
+          invoice_no: invoiceNo,
+          subtotal: total,
+          total,
+          total_cost: totalCost,
+          total_profit: totalProfit,
+          note: "由发票系统生成",
+        })
+        .select()
+        .single();
+
+      if (invoiceError) {
+        setInvoiceMsg("发票生成失败：" + invoiceError.message);
+        return;
+      }
+
+      await supabase.from("invoice_items").insert({
+        invoice_id: invoiceData.id,
+        product_id: product.id,
+        product_name: product.name,
+        qty,
+        unit_price: unitPrice,
+        unit_cost: unitCost,
+        discount,
+        line_total: total,
+        line_profit: totalProfit,
+      });
+
+      await supabase.from("transactions").insert({
+        user_id: session.user.id,
+        txn_date: new Date().toISOString().slice(0, 10),
+        txn_type: "income",
+        amount: total,
+        category_name: "发票收入",
+        debt_amount: 0,
+        source_type: "invoice",
+        source_id: invoiceData.id,
+        note: `${invoiceNo}｜${customer.name}｜${product.name}`,
+      });
+
+      await loadTransactions(session.user.id);
+      setInvoiceMsg("发票已生成，并已自动加入记账");
+    }
+
+    setInvoiceCustomerId("");
+    setInvoiceProductId("");
+    setInvoiceQty("1");
+    setInvoicePrice(0);
   }
 
   async function saveProfile() {
@@ -603,6 +845,12 @@ export default function DashboardPage() {
       ? new Date(profile.plan_expiry).toLocaleDateString()
       : "未订阅";
 
+  const invoiceProduct = products.find((p) => p.id === invoiceProductId);
+  const invoiceQtyNumber = Number(invoiceQty || 1);
+  const invoiceDiscount = Number(invoiceProduct?.discount || 0);
+  const invoiceTotal = Math.max(invoicePrice * invoiceQtyNumber - invoiceDiscount, 0);
+  const invoiceProfit = invoiceTotal - Number(invoiceProduct?.cost || 0) * invoiceQtyNumber;
+
   return (
     <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
       {isTrial && (
@@ -704,24 +952,6 @@ export default function DashboardPage() {
           <p style={{ ...mutedTextStyle, color: theme.subText }}>
             这里会根据你的记账记录自动更新金额。
           </p>
-
-          <div style={overviewBoxGridStyle}>
-            <button style={overviewBtn(theme)} onClick={() => setActiveTab("daily")}>
-              进入每日记账
-            </button>
-
-            <button style={overviewBtn(theme)} onClick={() => setActiveTab("customers")}>
-              进入客户管理
-            </button>
-
-            <button style={overviewBtn(theme)} onClick={() => setActiveTab("products")}>
-              进入产品管理
-            </button>
-
-            <button style={overviewBtn(theme)} onClick={() => setActiveTab("invoices")}>
-              进入发票系统
-            </button>
-          </div>
         </section>
       )}
 
@@ -730,12 +960,7 @@ export default function DashboardPage() {
           <h3>每日记账</h3>
 
           <div style={formGridStyle}>
-            <input
-              type="date"
-              value={txDate}
-              onChange={(e) => setTxDate(e.target.value)}
-              style={dateInputStyle}
-            />
+            <input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} style={dateInputStyle} />
 
             <select value={txType} onChange={(e) => setTxType(e.target.value as "income" | "expense")} style={inputStyle}>
               <option value="income">收款</option>
@@ -803,18 +1028,34 @@ export default function DashboardPage() {
             ) : (
               customers.map((c) => (
                 <div key={c.id} style={listItemStyle}>
-                  <div>
-                    <strong>{c.name}</strong>
-                    <div style={{ ...mutedTextStyle, color: theme.subText }}>
-                      电话：{c.phone || "无"}
+                  {editingCustomerId === c.id ? (
+                    <div style={{ width: "100%" }}>
+                      <input value={c.name} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, name: e.target.value } : x))} style={inputStyle} />
+                      <input value={c.phone || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, phone: e.target.value } : x))} style={inputStyle} />
+                      <input value={c.company_name || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, company_name: e.target.value } : x))} style={inputStyle} />
+                      <input value={c.company_phone || c.note || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, company_phone: e.target.value } : x))} style={inputStyle} />
+                      <input value={c.address || ""} onChange={(e) => setCustomers((prev) => prev.map((x) => x.id === c.id ? { ...x, address: e.target.value } : x))} style={inputStyle} />
+
+                      <button onClick={() => updateCustomer(c)} style={{ ...primaryBtnStyle, background: theme.accent }}>
+                        保存修改
+                      </button>
                     </div>
-                    <div style={{ ...mutedTextStyle, color: theme.subText }}>
-                      公司：{c.company_name || "无"} · 公司电话：{c.company_phone || c.note || "无"}
-                    </div>
-                    <div style={{ ...mutedTextStyle, color: theme.subText }}>
-                      地址：{c.address || "无"}
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div>
+                        <strong>{c.name}</strong>
+                        <div style={{ ...mutedTextStyle, color: theme.subText }}>电话：{c.phone || "无"}</div>
+                        <div style={{ ...mutedTextStyle, color: theme.subText }}>
+                          公司：{c.company_name || "无"} · 公司电话：{c.company_phone || c.note || "无"}
+                        </div>
+                        <div style={{ ...mutedTextStyle, color: theme.subText }}>地址：{c.address || "无"}</div>
+                      </div>
+
+                      <button onClick={() => setEditingCustomerId(c.id)} style={editBtnStyle}>
+                        编辑
+                      </button>
+                    </>
+                  )}
                 </div>
               ))
             )}
@@ -837,13 +1078,107 @@ export default function DashboardPage() {
           <button onClick={addProduct} style={{ ...primaryBtnStyle, background: theme.accent }}>
             新增产品
           </button>
+
+          <div style={priceSettingBoxStyle}>
+            <h4>客户专属价格</h4>
+
+            <select value={priceCustomerId} onChange={(e) => setPriceCustomerId(e.target.value)} style={inputStyle}>
+              <option value="">选择客户</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+
+            <select value={priceProductId} onChange={(e) => setPriceProductId(e.target.value)} style={inputStyle}>
+              <option value="">选择产品</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+
+            <input placeholder="这个客户的专属价格" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} style={inputStyle} />
+
+            <button onClick={saveCustomerPrice} style={{ ...primaryBtnStyle, background: theme.accent }}>
+              保存客户专属价格
+            </button>
+          </div>
+
+          <div style={{ marginTop: 18 }}>
+            {products.length === 0 ? (
+              <p style={{ color: theme.subText }}>还没有产品</p>
+            ) : (
+              products.map((p) => (
+                <div key={p.id} style={listItemStyle}>
+                  {editingProductId === p.id ? (
+                    <div style={{ width: "100%" }}>
+                      <input value={p.name} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, name: e.target.value } : x))} style={inputStyle} />
+                      <input value={String(p.price)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, price: Number(e.target.value) } : x))} style={inputStyle} />
+                      <input value={String(p.cost)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, cost: Number(e.target.value) } : x))} style={inputStyle} />
+                      <input value={String(p.discount || 0)} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, discount: Number(e.target.value) } : x))} style={inputStyle} />
+                      <input value={p.note || ""} onChange={(e) => setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, note: e.target.value } : x))} style={inputStyle} />
+
+                      <button onClick={() => updateProduct(p)} style={{ ...primaryBtnStyle, background: theme.accent }}>
+                        保存修改
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <strong>{p.name}</strong>
+                        <div style={{ ...mutedTextStyle, color: theme.subText }}>
+                          售价：RM {Number(p.price).toFixed(2)} · 成本：RM {Number(p.cost).toFixed(2)}
+                        </div>
+                        <div style={{ ...mutedTextStyle, color: theme.subText }}>
+                          折扣：RM {Number(p.discount || 0).toFixed(2)}
+                        </div>
+                      </div>
+
+                      <button onClick={() => setEditingProductId(p.id)} style={editBtnStyle}>
+                        编辑
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </section>
       )}
 
       {activeTab === "invoices" && (
         <section style={{ ...sectionCardStyle, background: theme.cardBg, borderColor: theme.cardBorder }}>
           <h3>发票系统</h3>
-          <p style={{ color: theme.subText }}>下一步可接客户 + 产品联动生成发票。</p>
+
+          <div style={formGridStyle}>
+            <select value={invoiceCustomerId} onChange={(e) => setInvoiceCustomerId(e.target.value)} style={inputStyle}>
+              <option value="">选择客户</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+
+            <select value={invoiceProductId} onChange={(e) => setInvoiceProductId(e.target.value)} style={inputStyle}>
+              <option value="">选择产品</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+
+            <input placeholder="数量" value={invoiceQty} onChange={(e) => setInvoiceQty(e.target.value)} style={inputStyle} />
+          </div>
+
+          <div style={invoiceSummaryStyle}>
+            <div>单价：RM {invoicePrice.toFixed(2)}</div>
+            <div>产品折扣：RM {invoiceDiscount.toFixed(2)}</div>
+            <div>总价：RM {invoiceTotal.toFixed(2)}</div>
+            <div>预计差价 / 利润：RM {invoiceProfit.toFixed(2)}</div>
+          </div>
+
+          <button onClick={createInvoice} style={{ ...primaryBtnStyle, background: theme.accent }}>
+            生成发票并加入记账
+          </button>
+
+          {invoiceMsg ? <p style={{ color: theme.accent, fontWeight: 700 }}>{invoiceMsg}</p> : null}
         </section>
       )}
 
@@ -1116,6 +1451,7 @@ const inputStyle: CSSProperties = {
   outline: "none",
   fontSize: 16,
   boxSizing: "border-box",
+  marginTop: 8,
 };
 
 const dateInputStyle: CSSProperties = {
@@ -1136,7 +1472,7 @@ const primaryBtnStyle: CSSProperties = {
 const listItemStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
+  alignItems: "flex-start",
   gap: 12,
   padding: "14px 0",
   borderBottom: "1px solid #e5e7eb",
@@ -1156,6 +1492,15 @@ const deleteBtnStyle: CSSProperties = {
   fontWeight: 700,
 };
 
+const editBtnStyle: CSSProperties = {
+  padding: "8px 12px",
+  background: "#ecfdf5",
+  color: "#0F766E",
+  border: "1px solid #0F766E",
+  borderRadius: 8,
+  fontWeight: 700,
+};
+
 const settingsBlockStyle: CSSProperties = {
   marginTop: 18,
 };
@@ -1168,21 +1513,21 @@ const messageBoxStyle: CSSProperties = {
   fontWeight: 500,
 };
 
-const overviewBoxGridStyle: CSSProperties = {
-  display: "grid",
-  gap: 14,
+const priceSettingBoxStyle: CSSProperties = {
+  marginTop: 20,
+  padding: 14,
+  border: "1px dashed #0F766E",
+  borderRadius: 14,
 };
 
-const overviewBtn = (theme: (typeof THEME_PACKS)[ThemePackKey]): CSSProperties => ({
-  width: "100%",
-  padding: "18px 16px",
+const invoiceSummaryStyle: CSSProperties = {
+  marginTop: 16,
+  padding: 14,
   borderRadius: 14,
-  border: `2px solid ${theme.cardBorder}`,
-  background: "#ffffff",
-  color: theme.text,
-  fontWeight: 800,
-  textAlign: "left",
-});
+  background: "#f8fafc",
+  lineHeight: 1.8,
+  fontWeight: 700,
+};
 
 const themeGridStyle: CSSProperties = {
   display: "grid",
