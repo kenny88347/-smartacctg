@@ -4,9 +4,9 @@ import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
-type PageKey = "home" | "accounting" | "customers" | "products" | "invoices";
+type PageKey = "home" | "accounting" | "customers" | "products" | "invoices" | "records";
 type Lang = "zh" | "en" | "ms";
-type ThemeKey = "pink" | "blackGold" | "panda" | "nature" | "sky" | "deepTeal";
+type ThemeKey = "pink" | "blackGold" | "lightRed" | "nature" | "deepTeal";
 
 type Profile = {
   id: string;
@@ -27,11 +27,14 @@ type Txn = {
   txn_date: string;
   txn_type: "income" | "expense";
   amount: number;
+  category_name?: string | null;
+  note?: string | null;
 };
 
 const TXT = {
   zh: {
     dashboard: "控制台",
+    records: "记录明细",
     balance: "当前余额",
     monthIncome: "本月收入",
     monthExpense: "本月支出",
@@ -58,9 +61,13 @@ const TXT = {
     save: "保存资料",
     updatePassword: "更新密码",
     saved: "保存成功",
+    income: "收入",
+    expense: "支出",
+    noRecord: "还没有记录",
   },
   en: {
     dashboard: "Dashboard",
+    records: "Records",
     balance: "Balance",
     monthIncome: "Monthly Income",
     monthExpense: "Monthly Expense",
@@ -87,9 +94,13 @@ const TXT = {
     save: "Save",
     updatePassword: "Update Password",
     saved: "Saved",
+    income: "Income",
+    expense: "Expense",
+    noRecord: "No records yet",
   },
   ms: {
     dashboard: "Papan Pemuka",
+    records: "Rekod",
     balance: "Baki",
     monthIncome: "Pendapatan Bulan Ini",
     monthExpense: "Perbelanjaan Bulan Ini",
@@ -116,18 +127,30 @@ const TXT = {
     save: "Simpan",
     updatePassword: "Kemas Kini Kata Laluan",
     saved: "Disimpan",
+    income: "Pendapatan",
+    expense: "Perbelanjaan",
+    noRecord: "Tiada rekod",
   },
 };
 
-const MODERN_BORDER = "#22c55e";
-
 const THEMES: Record<ThemeKey, any> = {
+  deepTeal: {
+    name: "深青色",
+    pageBg: "#ecfdf5",
+    banner: "linear-gradient(135deg,#064e3b,#0f766e,#14b8a6)",
+    card: "#ffffff",
+    border: "#14b8a6",
+    glow: "0 0 0 1px rgba(20,184,166,0.35), 0 14px 36px rgba(20,184,166,0.35)",
+    accent: "#0f766e",
+    text: "#064e3b",
+  },
   pink: {
     name: "可愛粉色",
     pageBg: "#fff7fb",
     banner: "linear-gradient(135deg,#ffd6e7,#fff1f2)",
     card: "#ffffff",
-    border: MODERN_BORDER,
+    border: "#f472b6",
+    glow: "0 0 0 1px rgba(244,114,182,0.35), 0 14px 36px rgba(244,114,182,0.24)",
     accent: "#db2777",
     text: "#4a044e",
   },
@@ -136,45 +159,30 @@ const THEMES: Record<ThemeKey, any> = {
     pageBg: "#111111",
     banner: "linear-gradient(135deg,#111111,#3b2f16)",
     card: "#1f1f1f",
-    border: MODERN_BORDER,
+    border: "#facc15",
+    glow: "0 0 0 1px rgba(250,204,21,0.45), 0 14px 36px rgba(250,204,21,0.25)",
     accent: "#d4af37",
     text: "#fff7ed",
   },
-  panda: {
-    name: "熊貓中國風",
-    pageBg: "#f7f3ea",
-    banner: "linear-gradient(135deg,#ffffff,#e7e5df)",
+  lightRed: {
+    name: "可愛淺紅",
+    pageBg: "#fff1f2",
+    banner: "linear-gradient(135deg,#fecdd3,#ffe4e6)",
     card: "#ffffff",
-    border: MODERN_BORDER,
-    accent: "#b91c1c",
-    text: "#111827",
+    border: "#fb7185",
+    glow: "0 0 0 1px rgba(251,113,133,0.4), 0 14px 36px rgba(251,113,133,0.28)",
+    accent: "#e11d48",
+    text: "#881337",
   },
   nature: {
     name: "風景自然系",
     pageBg: "#f0fdf4",
     banner: "linear-gradient(135deg,#d9f99d,#bae6fd)",
     card: "#ffffff",
-    border: MODERN_BORDER,
+    border: "#22d3ee",
+    glow: "0 0 0 1px rgba(34,211,238,0.38), 0 14px 36px rgba(34,211,238,0.26)",
     accent: "#0f766e",
     text: "#14532d",
-  },
-  sky: {
-    name: "天空藍",
-    pageBg: "#eff6ff",
-    banner: "linear-gradient(135deg,#bfdbfe,#e0f2fe)",
-    card: "#ffffff",
-    border: MODERN_BORDER,
-    accent: "#0284c7",
-    text: "#0f172a",
-  },
-  deepTeal: {
-    name: "深青色",
-    pageBg: "#ecfdf5",
-    banner: "linear-gradient(135deg,#0f766e,#14b8a6)",
-    card: "#ffffff",
-    border: MODERN_BORDER,
-    accent: "#0f766e",
-    text: "#064e3b",
   },
 };
 
@@ -199,13 +207,18 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [newPassword, setNewPassword] = useState("");
   const [msg, setMsg] = useState("");
 
+  const [recordView, setRecordView] = useState<"balance" | "income" | "expense">("balance");
+
   const t = TXT[lang];
   const theme = THEMES[themeKey];
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const l = q.get("lang") as Lang;
+    const view = q.get("view") as "balance" | "income" | "expense" | null;
+
     if (l === "zh" || l === "en" || l === "ms") setLang(l);
+    if (view === "balance" || view === "income" || view === "expense") setRecordView(view);
 
     init();
   }, []);
@@ -244,13 +257,18 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const { data: txData } = await supabase
       .from("transactions")
       .select("*")
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .order("txn_date", { ascending: false });
 
     setTransactions((txData || []) as Txn[]);
   }
 
   function go(path: string) {
     window.location.href = `${path}?lang=${lang}`;
+  }
+
+  function goRecords(view: "balance" | "income" | "expense") {
+    window.location.href = `/dashboard/records?view=${view}&lang=${lang}`;
   }
 
   function switchLang(next: Lang) {
@@ -370,6 +388,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     ? new Date(profile.plan_expiry).toLocaleDateString()
     : t.noSub;
 
+  const filteredRecords = transactions.filter((x) => {
+    if (recordView === "income") return x.txn_type === "income";
+    if (recordView === "expense") return x.txn_type === "expense";
+    return true;
+  });
+
   return (
     <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
       <header style={headerStyle}>
@@ -425,47 +449,74 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
       {page === "home" && (
         <>
-          <section style={{ ...bannerStyle, background: theme.banner, borderColor: theme.border }}>
+          <section style={{ ...bannerStyle, background: theme.banner, borderColor: theme.border, boxShadow: theme.glow }}>
             <h1 style={titleStyle}>{t.dashboard}</h1>
-
-            {/* 以后 admin page 控制通告时，把文字放这里；通告字体已设为红色 */}
             <div style={noticeBoxStyle}></div>
           </section>
 
           <section style={statsGridStyle}>
-            <div style={{ ...statCardStyle, borderColor: theme.border }}>
+            <button onClick={() => goRecords("balance")} style={{ ...statCardStyle, borderColor: theme.border, boxShadow: theme.glow }}>
               <span>{t.balance}</span>
               <strong style={{ ...statAmountStyle, color: theme.accent }}>
                 RM {balance.toFixed(2)}
               </strong>
-            </div>
+            </button>
 
-            <div style={{ ...statCardStyle, borderColor: theme.border }}>
+            <button onClick={() => goRecords("income")} style={{ ...statCardStyle, borderColor: theme.border, boxShadow: theme.glow }}>
               <span>{t.monthIncome}</span>
               <strong style={{ ...statAmountStyle, color: "#16a34a" }}>
                 RM {monthIncome.toFixed(2)}
               </strong>
-            </div>
+            </button>
 
-            <div style={{ ...statCardStyle, borderColor: theme.border }}>
+            <button onClick={() => goRecords("expense")} style={{ ...statCardStyle, borderColor: theme.border, boxShadow: theme.glow }}>
               <span>{t.monthExpense}</span>
               <strong style={{ ...statAmountStyle, color: "#dc2626" }}>
                 RM {monthExpense.toFixed(2)}
               </strong>
-            </div>
+            </button>
           </section>
 
           <section style={menuGridStyle}>
-            <button onClick={() => go("/dashboard/accounting")} style={navBtnStyle}>{t.accounting}</button>
-            <button onClick={() => go("/dashboard/customers")} style={navBtnStyle}>{t.customers}</button>
-            <button onClick={() => go("/dashboard/products")} style={navBtnStyle}>{t.products}</button>
-            <button onClick={() => go("/dashboard/invoices")} style={navBtnStyle}>{t.invoices}</button>
+            <button onClick={() => go("/dashboard/accounting")} style={{ ...navBtnStyle, borderColor: theme.border, boxShadow: theme.glow }}>{t.accounting}</button>
+            <button onClick={() => go("/dashboard/customers")} style={{ ...navBtnStyle, borderColor: theme.border, boxShadow: theme.glow }}>{t.customers}</button>
+            <button onClick={() => go("/dashboard/products")} style={{ ...navBtnStyle, borderColor: theme.border, boxShadow: theme.glow }}>{t.products}</button>
+            <button onClick={() => go("/dashboard/invoices")} style={{ ...navBtnStyle, borderColor: theme.border, boxShadow: theme.glow }}>{t.invoices}</button>
           </section>
         </>
       )}
 
-      {page !== "home" && (
-        <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border }}>
+      {page === "records" && (
+        <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
+          <h1>{t.records}</h1>
+
+          <div style={recordFilterRowStyle}>
+            <button onClick={() => setRecordView("balance")} style={filterBtn(recordView === "balance", theme)}>{t.balance}</button>
+            <button onClick={() => setRecordView("income")} style={filterBtn(recordView === "income", theme)}>{t.income}</button>
+            <button onClick={() => setRecordView("expense")} style={filterBtn(recordView === "expense", theme)}>{t.expense}</button>
+          </div>
+
+          {filteredRecords.length === 0 ? (
+            <p>{t.noRecord}</p>
+          ) : (
+            filteredRecords.map((x) => (
+              <div key={x.id} style={recordItemStyle}>
+                <div>
+                  <strong>{x.txn_type === "income" ? t.income : t.expense}</strong>
+                  <div>{x.txn_date}</div>
+                  <div>{x.category_name || ""} {x.note || ""}</div>
+                </div>
+                <strong style={{ color: x.txn_type === "income" ? "#16a34a" : "#dc2626" }}>
+                  RM {Number(x.amount || 0).toFixed(2)}
+                </strong>
+              </div>
+            ))
+          )}
+        </section>
+      )}
+
+      {page !== "home" && page !== "records" && (
+        <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
           <h1>
             {page === "accounting" && t.accounting}
             {page === "customers" && t.customers}
@@ -477,7 +528,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       )}
 
       {showSettings && (
-        <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border }}>
+        <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
           <h2>{t.settings}</h2>
 
           <h3>{t.personal}</h3>
@@ -506,7 +557,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       )}
 
       {showThemes && (
-        <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border }}>
+        <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
           <h2>{t.theme}</h2>
 
           <div style={themeGridStyle}>
@@ -519,6 +570,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   borderColor: THEMES[key].border,
                   background: THEMES[key].banner,
                   color: THEMES[key].text,
+                  boxShadow: THEMES[key].glow,
                 }}
               >
                 {THEMES[key].name}
@@ -623,7 +675,6 @@ const bannerStyle: CSSProperties = {
   borderRadius: 24,
   padding: 20,
   marginBottom: 18,
-  boxShadow: "0 12px 30px rgba(34,197,94,0.16)",
 };
 
 const titleStyle: CSSProperties = {
@@ -651,7 +702,8 @@ const statCardStyle: CSSProperties = {
   borderRadius: 20,
   padding: 14,
   minHeight: 105,
-  boxShadow: "0 10px 24px rgba(34,197,94,0.14)",
+  textAlign: "left",
+  cursor: "pointer",
 };
 
 const statAmountStyle: CSSProperties = {
@@ -669,12 +721,11 @@ const menuGridStyle: CSSProperties = {
 
 const navBtnStyle: CSSProperties = {
   background: "#fff",
-  border: `2px solid ${MODERN_BORDER}`,
+  border: "2px solid",
   borderRadius: 16,
   padding: "18px",
   fontWeight: 900,
   fontSize: 18,
-  boxShadow: "0 10px 24px rgba(34,197,94,0.12)",
 };
 
 const contentCardStyle: CSSProperties = {
@@ -682,7 +733,6 @@ const contentCardStyle: CSSProperties = {
   borderRadius: 24,
   padding: 20,
   marginTop: 18,
-  boxShadow: "0 12px 30px rgba(34,197,94,0.16)",
 };
 
 const inputStyle: CSSProperties = {
@@ -690,7 +740,7 @@ const inputStyle: CSSProperties = {
   boxSizing: "border-box",
   padding: "14px",
   borderRadius: 12,
-  border: `2px solid ${MODERN_BORDER}`,
+  border: "2px solid #14b8a6",
   marginBottom: 12,
   fontSize: 16,
 };
@@ -714,4 +764,28 @@ const themeBtnStyle: CSSProperties = {
   borderRadius: 16,
   padding: 18,
   fontWeight: 900,
+};
+
+const recordFilterRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 10,
+  marginBottom: 16,
+};
+
+const filterBtn = (active: boolean, theme: any): CSSProperties => ({
+  padding: "12px",
+  borderRadius: 12,
+  border: `2px solid ${theme.border}`,
+  background: active ? theme.accent : "#fff",
+  color: active ? "#fff" : theme.accent,
+  fontWeight: 900,
+});
+
+const recordItemStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  padding: "14px 0",
+  borderBottom: "1px solid #e5e7eb",
 };
