@@ -69,6 +69,7 @@ const TXT = {
     margin: "利润率",
     latest: "最新产品记录",
     noProduct: "还没有产品",
+    noRecord: "暂无记录",
     customerPrice: "客户专属价格",
     chooseCustomer: "选择客户",
     chooseProduct: "选择产品",
@@ -112,6 +113,7 @@ const TXT = {
     margin: "Profit Margin",
     latest: "Latest Products",
     noProduct: "No products yet",
+    noRecord: "No records yet",
     customerPrice: "Customer Special Price",
     chooseCustomer: "Choose Customer",
     chooseProduct: "Choose Product",
@@ -155,6 +157,7 @@ const TXT = {
     margin: "Margin Untung",
     latest: "Rekod Produk Terkini",
     noProduct: "Belum ada produk",
+    noRecord: "Belum ada rekod",
     customerPrice: "Harga Khas Pelanggan",
     chooseCustomer: "Pilih Pelanggan",
     chooseProduct: "Pilih Produk",
@@ -274,10 +277,16 @@ export default function ProductsPage() {
   const theme = THEMES[themeKey];
 
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+
+    const urlLang = query.get("lang") as Lang | null;
     const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
     const savedTheme = localStorage.getItem(THEME_KEY) as ThemeKey | null;
 
-    if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
+    if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
+      setLang(urlLang);
+      localStorage.setItem(LANG_KEY, urlLang);
+    } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
       setLang(savedLang);
     }
 
@@ -293,7 +302,7 @@ export default function ProductsPage() {
     const mode = q.get("mode");
     const trialRaw = localStorage.getItem(TRIAL_KEY);
 
-    if (mode === "trial" && trialRaw) {
+    if ((mode === "trial" || trialRaw) && trialRaw) {
       const trial = JSON.parse(trialRaw);
 
       if (Date.now() < Number(trial.expiresAt)) {
