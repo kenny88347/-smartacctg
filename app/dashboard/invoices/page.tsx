@@ -54,6 +54,7 @@ const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 const PAYMENT_OPTIONS_KEY = "smartacctg_payment_options";
+const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 
 const DEFAULT_PAYMENT_OPTIONS = [
   "Cash",
@@ -129,7 +130,7 @@ const TXT = {
     generating: "生成中...",
     print: "列印",
     pdf: "下载 PDF",
-    whatsapp: "WhatsApp 发送",
+    whatsappPdf: "WhatsApp发送PDF",
     needCustomer: "请选择客户",
     needNewCustomer: "请填写新客户名称",
     needProduct: "请选择产品",
@@ -140,6 +141,8 @@ const TXT = {
     success: "发票已生成，已自动加入记账，并已扣除库存",
     stockSkipped:
       "发票已生成并加入记账；但 products 表没有 stock_qty 栏位，所以暂时跳过扣库存",
+    lhdnSkipped:
+      "发票已生成并加入记账；但 invoices 表缺少部分 LHDN 预留栏位，所以已先保存基本发票资料",
     fail: "生成失败：",
     incomplete: "客户或产品资料不完整",
     productNote: "由发票系统新增",
@@ -147,7 +150,12 @@ const TXT = {
     invoice: "INVOICE",
     billTo: "BILL TO",
     invoiceDetails: "INVOICE DETAILS",
-    description: "DESCRIPTION",
+    description: "产品名称",
+    previewProductName: "产品名称",
+    previewQty: "数量",
+    previewPrice: "售价 RM",
+    previewDiscount: "折扣",
+    previewTotal: "总额",
   },
   en: {
     back: "Back",
@@ -213,7 +221,7 @@ const TXT = {
     generating: "Generating...",
     print: "Print",
     pdf: "Download PDF",
-    whatsapp: "Send WhatsApp",
+    whatsappPdf: "Send PDF via WhatsApp",
     needCustomer: "Please select customer",
     needNewCustomer: "Please enter new customer name",
     needProduct: "Please select product",
@@ -224,6 +232,8 @@ const TXT = {
     success: "Invoice generated, added to accounting and stock deducted",
     stockSkipped:
       "Invoice generated and added to accounting; products table has no stock_qty column, so stock deduction is skipped temporarily",
+    lhdnSkipped:
+      "Invoice generated and added to accounting; invoices table is missing some LHDN reserved fields, so basic invoice data has been saved",
     fail: "Failed: ",
     incomplete: "Customer or product information is incomplete",
     productNote: "Added from invoice system",
@@ -231,7 +241,12 @@ const TXT = {
     invoice: "INVOICE",
     billTo: "BILL TO",
     invoiceDetails: "INVOICE DETAILS",
-    description: "DESCRIPTION",
+    description: "Product Name",
+    previewProductName: "Product Name",
+    previewQty: "Qty",
+    previewPrice: "Price RM",
+    previewDiscount: "Discount",
+    previewTotal: "Total",
   },
   ms: {
     back: "Kembali",
@@ -297,7 +312,7 @@ const TXT = {
     generating: "Sedang Jana...",
     print: "Cetak",
     pdf: "Muat Turun PDF",
-    whatsapp: "Hantar WhatsApp",
+    whatsappPdf: "Hantar PDF WhatsApp",
     needCustomer: "Sila pilih pelanggan",
     needNewCustomer: "Sila isi nama pelanggan baru",
     needProduct: "Sila pilih produk",
@@ -308,6 +323,8 @@ const TXT = {
     success: "Invois berjaya dijana, masuk akaun dan stok ditolak",
     stockSkipped:
       "Invois berjaya dijana dan masuk akaun; jadual products tiada lajur stock_qty, jadi stok tidak ditolak sementara",
+    lhdnSkipped:
+      "Invois berjaya dijana dan masuk akaun; jadual invoices tiada beberapa medan LHDN, jadi data asas invois telah disimpan",
     fail: "Gagal: ",
     incomplete: "Maklumat pelanggan atau produk tidak lengkap",
     productNote: "Ditambah dari sistem invois",
@@ -315,7 +332,12 @@ const TXT = {
     invoice: "INVOICE",
     billTo: "BILL TO",
     invoiceDetails: "INVOICE DETAILS",
-    description: "DESCRIPTION",
+    description: "Nama Produk",
+    previewProductName: "Nama Produk",
+    previewQty: "Kuantiti",
+    previewPrice: "Harga RM",
+    previewDiscount: "Diskaun",
+    previewTotal: "Jumlah",
   },
 };
 
@@ -323,9 +345,30 @@ function makeInvoiceNo() {
   return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 }
 
+function isSchemaColumnError(error: any) {
+  const message = String(error?.message || "").toLowerCase();
+  return message.includes("schema cache") || message.includes("could not find");
+}
+
 function isMissingStockColumn(error: any) {
   const message = String(error?.message || "").toLowerCase();
-  return message.includes("stock_qty") && message.includes("schema cache");
+  return message.includes("stock_qty") && isSchemaColumnError(error);
+}
+
+function getStockMap(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(PRODUCT_STOCK_MAP_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStockValue(productId: string, stock: number) {
+  if (!productId) return;
+  const map = getStockMap();
+  map[productId] = stock;
+  localStorage.setItem(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
 }
 
 export default function InvoicePage() {
@@ -391,6 +434,7 @@ export default function InvoicePage() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastPrintableInvoice, setLastPrintableInvoice] = useState<InvoiceRecord | null>(null);
+  const [lastPrintableProductName, setLastPrintableProductName] = useState("");
 
   useEffect(() => {
     init();
@@ -441,9 +485,19 @@ export default function InvoicePage() {
         const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
         const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
         const savedInvoices = localStorage.getItem(TRIAL_INVOICES_KEY);
+        const stockMap = getStockMap();
+
+        const parsedProducts = savedProducts ? JSON.parse(savedProducts) : [];
+        const fixedProducts = parsedProducts.map((p: Product) => ({
+          ...p,
+          stock_qty:
+            stockMap[p.id] !== undefined
+              ? stockMap[p.id]
+              : Number(p.stock_qty || 0),
+        }));
 
         setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
-        setProducts(savedProducts ? JSON.parse(savedProducts) : []);
+        setProducts(fixedProducts);
         setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
 
         return;
@@ -500,7 +554,22 @@ export default function InvoicePage() {
       .eq("user_id", uid)
       .order("created_at", { ascending: false });
 
-    setProducts((data || []) as Product[]);
+    const stockMap = getStockMap();
+
+    const fixedProducts = ((data || []) as Product[]).map((p) => {
+      const stockFromDb = Number(p.stock_qty || 0);
+      const stockFromLocal = stockMap[p.id];
+
+      return {
+        ...p,
+        stock_qty:
+          stockFromLocal !== undefined && stockFromDb === 0
+            ? stockFromLocal
+            : stockFromDb,
+      };
+    });
+
+    setProducts(fixedProducts);
   }
 
   async function loadInvoices(uid: string) {
@@ -642,7 +711,7 @@ export default function InvoicePage() {
 
     if (!userId) return;
 
-    const { error } = await supabase
+    const fullUpdate = await supabase
       .from("profiles")
       .update({
         company_name: companyName,
@@ -653,13 +722,208 @@ export default function InvoicePage() {
       })
       .eq("id", userId);
 
-    if (error) {
-      setMsg(t.fail + error.message);
+    if (fullUpdate.error && isSchemaColumnError(fullUpdate.error)) {
+      const basicUpdate = await supabase
+        .from("profiles")
+        .update({
+          company_name: companyName,
+          company_reg_no: companyRegNo,
+          company_phone: companyPhone,
+          company_address: companyAddress,
+        })
+        .eq("id", userId);
+
+      if (basicUpdate.error) {
+        setMsg(t.fail + basicUpdate.error.message);
+        return;
+      }
+
+      setMsg(t.saved);
+      setShowCompanyEdit(false);
+      return;
+    }
+
+    if (fullUpdate.error) {
+      setMsg(t.fail + fullUpdate.error.message);
       return;
     }
 
     setMsg(t.saved);
     setShowCompanyEdit(false);
+  }
+
+  async function insertInvoiceWithFallback(finalCustomer: Customer) {
+    const fullPayload = {
+      user_id: userId,
+      customer_id: finalCustomer.id,
+      customer_name: finalCustomer.name,
+      customer_phone: finalCustomer.phone || "",
+      customer_company: finalCustomer.company_name || "",
+      customer_address: finalCustomer.address || "",
+      invoice_no: invoiceNo,
+      invoice_date: invoiceDate,
+      due_date: dueDate,
+      status,
+      payment_method: paymentMethod,
+      subtotal: preview.subtotal,
+      discount: preview.discount,
+      total: preview.total,
+      total_cost: preview.totalCost,
+      total_profit: preview.profit,
+      note,
+      supplier_tin: supplierTin,
+      buyer_tin: buyerTin,
+      sst_no: sstNo,
+      msic_code: msicCode,
+      einvoice_uuid: einvoiceUuid,
+      validation_status: validationStatus,
+      qr_code_url: qrCodeUrl,
+      myinvois_status: myinvoisStatus,
+    };
+
+    const withoutLhdnPayload = {
+      user_id: userId,
+      customer_id: finalCustomer.id,
+      customer_name: finalCustomer.name,
+      customer_phone: finalCustomer.phone || "",
+      customer_company: finalCustomer.company_name || "",
+      customer_address: finalCustomer.address || "",
+      invoice_no: invoiceNo,
+      invoice_date: invoiceDate,
+      due_date: dueDate,
+      status,
+      payment_method: paymentMethod,
+      subtotal: preview.subtotal,
+      discount: preview.discount,
+      total: preview.total,
+      total_cost: preview.totalCost,
+      total_profit: preview.profit,
+      note,
+    };
+
+    const basicPayload = {
+      user_id: userId,
+      customer_id: finalCustomer.id,
+      customer_name: finalCustomer.name,
+      invoice_no: invoiceNo,
+      subtotal: preview.subtotal,
+      total: preview.total,
+      total_cost: preview.totalCost,
+      total_profit: preview.profit,
+      note,
+    };
+
+    const fullResult = await supabase.from("invoices").insert(fullPayload).select().single();
+
+    if (!fullResult.error) {
+      return { data: fullResult.data as InvoiceRecord, lhdnSkipped: false };
+    }
+
+    if (!isSchemaColumnError(fullResult.error)) {
+      throw fullResult.error;
+    }
+
+    const noLhdnResult = await supabase
+      .from("invoices")
+      .insert(withoutLhdnPayload)
+      .select()
+      .single();
+
+    if (!noLhdnResult.error) {
+      return { data: noLhdnResult.data as InvoiceRecord, lhdnSkipped: true };
+    }
+
+    if (!isSchemaColumnError(noLhdnResult.error)) {
+      throw noLhdnResult.error;
+    }
+
+    const basicResult = await supabase.from("invoices").insert(basicPayload).select().single();
+
+    if (basicResult.error) throw basicResult.error;
+
+    return { data: basicResult.data as InvoiceRecord, lhdnSkipped: true };
+  }
+
+  async function insertInvoiceItemSafe(invoiceId: string, finalProduct: Product) {
+    const fullItem = {
+      invoice_id: invoiceId,
+      product_id: finalProduct.id,
+      product_name: finalProduct.name,
+      qty: preview.finalQty,
+      unit_price: preview.price,
+      unit_cost: preview.cost,
+      discount: preview.discount,
+      line_total: preview.total,
+      line_profit: preview.profit,
+    };
+
+    const basicItem = {
+      invoice_id: invoiceId,
+      product_id: finalProduct.id,
+      product_name: finalProduct.name,
+      qty: preview.finalQty,
+      unit_price: preview.price,
+      line_total: preview.total,
+    };
+
+    const result = await supabase.from("invoice_items").insert(fullItem);
+
+    if (!result.error) return;
+
+    if (!isSchemaColumnError(result.error)) {
+      throw result.error;
+    }
+
+    const basicResult = await supabase.from("invoice_items").insert(basicItem);
+
+    if (basicResult.error && !isSchemaColumnError(basicResult.error)) {
+      throw basicResult.error;
+    }
+  }
+
+  async function insertTransactionSafe(invoiceId: string, finalCustomer: Customer, finalProduct: Product) {
+    const fullTx = {
+      user_id: userId,
+      txn_date: invoiceDate,
+      txn_type: "income",
+      amount: preview.total,
+      category_name:
+        lang === "zh"
+          ? "发票收入"
+          : lang === "en"
+            ? "Invoice Income"
+            : "Pendapatan Invois",
+      debt_amount: 0,
+      source_type: "invoice",
+      source_id: invoiceId,
+      note: `${invoiceNo}｜${finalCustomer.name}｜${finalProduct.name}`,
+    };
+
+    const basicTx = {
+      user_id: userId,
+      txn_date: invoiceDate,
+      txn_type: "income",
+      amount: preview.total,
+      category_name:
+        lang === "zh"
+          ? "发票收入"
+          : lang === "en"
+            ? "Invoice Income"
+            : "Pendapatan Invois",
+      note: `${invoiceNo}｜${finalCustomer.name}｜${finalProduct.name}`,
+    };
+
+    const result = await supabase.from("transactions").insert(fullTx);
+
+    if (!result.error) return;
+
+    if (!isSchemaColumnError(result.error)) {
+      throw result.error;
+    }
+
+    const basicResult = await supabase.from("transactions").insert(basicTx);
+
+    if (basicResult.error) throw basicResult.error;
   }
 
   async function createInvoice() {
@@ -701,6 +965,7 @@ export default function InvoicePage() {
       let finalCustomer = selectedCustomer;
       let finalProduct = selectedProduct;
       let skippedStock = false;
+      let lhdnSkipped = false;
 
       if (customerMode === "new") {
         finalCustomer = {
@@ -735,18 +1000,21 @@ export default function InvoicePage() {
       }
 
       if (productMode === "new") {
+        const inputStock = Number(newProductStock || 0);
+
         finalProduct = {
           id: String(Date.now() + 1),
           name: newProductName,
           price: Number(newProductPrice),
           cost: Number(newProductCost),
           discount: 0,
-          stock_qty: Number(newProductStock || 0),
+          stock_qty: inputStock,
           note: t.productNote,
         };
 
         if (isTrial) {
           const next = [finalProduct, ...products];
+          saveStockValue(finalProduct.id, inputStock);
           setProducts(next);
           saveTrialData(customers, next);
         } else {
@@ -758,7 +1026,7 @@ export default function InvoicePage() {
               price: Number(newProductPrice),
               cost: Number(newProductCost),
               discount: 0,
-              stock_qty: Number(newProductStock || 0),
+              stock_qty: inputStock,
               note: t.productNote,
             })
             .select()
@@ -782,12 +1050,19 @@ export default function InvoicePage() {
                 .single();
 
               if (insertWithoutStock.error) throw insertWithoutStock.error;
-              finalProduct = insertWithoutStock.data as Product;
+
+              finalProduct = {
+                ...(insertWithoutStock.data as Product),
+                stock_qty: inputStock,
+              };
+
+              saveStockValue(finalProduct.id, inputStock);
             } else {
               throw insertWithStock.error;
             }
           } else {
             finalProduct = insertWithStock.data as Product;
+            saveStockValue(finalProduct.id, inputStock);
           }
 
           setProducts((prev) => [finalProduct as Product, ...prev]);
@@ -843,6 +1118,7 @@ export default function InvoicePage() {
           nextProducts = products.map((p) =>
             p.id === finalProduct!.id ? { ...p, stock_qty: newStock } : p
           );
+          saveStockValue(finalProduct.id, newStock);
         } else {
           skippedStock = true;
         }
@@ -852,6 +1128,7 @@ export default function InvoicePage() {
         setProducts(nextProducts);
         setInvoices(nextInvoices);
         setLastPrintableInvoice(printableRecord);
+        setLastPrintableProductName(finalProduct.name);
 
         saveTrialData(customers, nextProducts, nextInvoices);
         addTrialTransaction(preview.total, finalCustomer, finalProduct, invoiceNo);
@@ -862,97 +1139,66 @@ export default function InvoicePage() {
         return;
       }
 
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from("invoices")
-        .insert({
-          user_id: userId,
-          customer_id: finalCustomer.id,
-          customer_name: finalCustomer.name,
-          customer_phone: finalCustomer.phone || "",
-          customer_company: finalCustomer.company_name || "",
-          customer_address: finalCustomer.address || "",
-          invoice_no: invoiceNo,
-          invoice_date: invoiceDate,
-          due_date: dueDate,
-          status,
-          payment_method: paymentMethod,
-          subtotal: preview.subtotal,
-          discount: preview.discount,
-          total: preview.total,
-          total_cost: preview.totalCost,
-          total_profit: preview.profit,
-          note,
-          supplier_tin: supplierTin,
-          buyer_tin: buyerTin,
-          sst_no: sstNo,
-          msic_code: msicCode,
-          einvoice_uuid: einvoiceUuid,
-          validation_status: validationStatus,
-          qr_code_url: qrCodeUrl,
-          myinvois_status: myinvoisStatus,
-        })
-        .select()
-        .single();
+      const invoiceResult = await insertInvoiceWithFallback(finalCustomer);
+      const invoiceData = invoiceResult.data;
+      lhdnSkipped = invoiceResult.lhdnSkipped;
 
-      if (invoiceError) throw invoiceError;
-
-      const { error: itemError } = await supabase.from("invoice_items").insert({
-        invoice_id: invoiceData.id,
-        product_id: finalProduct.id,
-        product_name: finalProduct.name,
-        qty: preview.finalQty,
-        unit_price: preview.price,
-        unit_cost: preview.cost,
-        discount: preview.discount,
-        line_total: preview.total,
-        line_profit: preview.profit,
-      });
-
-      if (itemError) throw itemError;
+      await insertInvoiceItemSafe(invoiceData.id, finalProduct);
 
       if (hasStockColumn && !skippedStock) {
-        const { error: stockError } = await supabase
+        const stockResult = await supabase
           .from("products")
           .update({ stock_qty: newStock })
           .eq("id", finalProduct.id);
 
-        if (stockError) {
-          if (isMissingStockColumn(stockError)) {
+        if (stockResult.error) {
+          if (isMissingStockColumn(stockResult.error)) {
             skippedStock = true;
+            saveStockValue(finalProduct.id, newStock);
           } else {
-            throw stockError;
+            throw stockResult.error;
           }
+        } else {
+          saveStockValue(finalProduct.id, newStock);
         }
       } else {
         skippedStock = true;
       }
 
-      const { error: txError } = await supabase.from("transactions").insert({
-        user_id: userId,
-        txn_date: invoiceDate,
-        txn_type: "income",
-        amount: preview.total,
-        category_name:
-          lang === "zh"
-            ? "发票收入"
-            : lang === "en"
-              ? "Invoice Income"
-              : "Pendapatan Invois",
-        debt_amount: 0,
-        source_type: "invoice",
-        source_id: invoiceData.id,
-        note: `${invoiceNo}｜${finalCustomer.name}｜${finalProduct.name}`,
-      });
+      await insertTransactionSafe(invoiceData.id, finalCustomer, finalProduct);
 
-      if (txError) throw txError;
+      const savedRecord: InvoiceRecord = {
+        ...printableRecord,
+        ...invoiceData,
+        invoice_date: invoiceData.invoice_date || invoiceDate,
+        due_date: invoiceData.due_date || dueDate,
+        status: invoiceData.status || status,
+        customer_name: invoiceData.customer_name || finalCustomer.name,
+        customer_phone: invoiceData.customer_phone || finalCustomer.phone || "",
+        customer_company: invoiceData.customer_company || finalCustomer.company_name || "",
+        customer_address: invoiceData.customer_address || finalCustomer.address || "",
+        payment_method: invoiceData.payment_method || paymentMethod,
+        subtotal: invoiceData.subtotal ?? preview.subtotal,
+        discount: invoiceData.discount ?? preview.discount,
+        total: invoiceData.total ?? preview.total,
+        total_cost: invoiceData.total_cost ?? preview.totalCost,
+        total_profit: invoiceData.total_profit ?? preview.profit,
+      };
 
-      const savedRecord = invoiceData as InvoiceRecord;
       setInvoices((prev) => [savedRecord, ...prev]);
       setLastPrintableInvoice(savedRecord);
+      setLastPrintableProductName(finalProduct.name);
 
       await loadProducts(userId);
 
-      setMsg(skippedStock ? t.stockSkipped : t.success);
+      if (skippedStock) {
+        setMsg(t.stockSkipped);
+      } else if (lhdnSkipped) {
+        setMsg(t.lhdnSkipped);
+      } else {
+        setMsg(t.success);
+      }
+
       setMode("list");
     } catch (error: any) {
       setMsg(t.fail + error.message);
@@ -998,13 +1244,32 @@ export default function InvoicePage() {
       return;
     }
 
-    const { error } = await supabase
+    const fullUpdate = await supabase
       .from("invoices")
       .update(updatedData)
       .eq("id", editInvoiceId);
 
-    if (error) {
-      setMsg(t.fail + error.message);
+    if (fullUpdate.error && isSchemaColumnError(fullUpdate.error)) {
+      const basicUpdate = await supabase
+        .from("invoices")
+        .update({
+          invoice_no: invoiceNo,
+          customer_name: newCustomerName,
+          subtotal: preview.subtotal,
+          total: preview.total,
+          total_cost: preview.totalCost,
+          total_profit: preview.profit,
+          note,
+        })
+        .eq("id", editInvoiceId);
+
+      if (basicUpdate.error) {
+        setMsg(t.fail + basicUpdate.error.message);
+        setLoading(false);
+        return;
+      }
+    } else if (fullUpdate.error) {
+      setMsg(t.fail + fullUpdate.error.message);
       setLoading(false);
       return;
     }
@@ -1032,7 +1297,7 @@ export default function InvoicePage() {
     setNewCustomerCompany(inv.customer_company || "");
     setNewCustomerAddress(inv.customer_address || "");
     setProductMode("new");
-    setNewProductName("Invoice Item");
+    setNewProductName(lastPrintableProductName || "Invoice Item");
     setNewProductPrice(String(inv.subtotal || inv.total || 0));
     setNewProductCost(String(inv.total_cost || 0));
     setNewProductStock("999999");
@@ -1065,24 +1330,59 @@ export default function InvoicePage() {
     setMsg(t.saved);
   }
 
+  function setPrintable(record?: InvoiceRecord) {
+    if (record) {
+      setLastPrintableInvoice(record);
+      setLastPrintableProductName(lastPrintableProductName || activeProductForPreview.name || "Item");
+    } else {
+      setLastPrintableInvoice({
+        id: "",
+        invoice_no: invoiceNo,
+        invoice_date: invoiceDate,
+        due_date: dueDate,
+        status,
+        customer_name: activeCustomerForPreview.name,
+        customer_phone: activeCustomerForPreview.phone,
+        customer_company: activeCustomerForPreview.company_name,
+        customer_address: activeCustomerForPreview.address,
+        subtotal: preview.subtotal,
+        discount: preview.discount,
+        total: preview.total,
+        total_cost: preview.totalCost,
+        total_profit: preview.profit,
+        payment_method: paymentMethod,
+        note,
+      });
+      setLastPrintableProductName(activeProductForPreview.name);
+    }
+  }
+
   function printInvoice(record?: InvoiceRecord) {
-    if (record) setLastPrintableInvoice(record);
+    setPrintable(record);
     setTimeout(() => window.print(), 150);
   }
 
   function downloadPdf(record?: InvoiceRecord) {
-    if (record) setLastPrintableInvoice(record);
+    setPrintable(record);
     setTimeout(() => window.print(), 150);
   }
 
-  function sendWhatsApp(record?: InvoiceRecord) {
+  function sendWhatsAppPdf(record?: InvoiceRecord) {
+    setPrintable(record);
+
     const invNo = record?.invoice_no || invoiceNo;
     const customerName = record?.customer_name || activeCustomerForPreview.name;
     const total = Number(record?.total ?? preview.total).toFixed(2);
     const method = record?.payment_method || paymentMethod;
 
-    const text = `Invoice ${invNo}%0A${t.customerName}：${customerName}%0A${t.total}：RM ${total}%0A${t.paymentMethod}：${method}`;
-    window.location.href = `https://wa.me/?text=${text}`;
+    const text = `Invoice ${invNo}%0A${t.customerName}：${customerName}%0A${t.total}：RM ${total}%0A${t.paymentMethod}：${method}%0A%0A请先保存PDF，再发送给客户。`;
+
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        window.location.href = `https://wa.me/?text=${text}`;
+      }, 800);
+    }, 150);
   }
 
   function goBack() {
@@ -1119,6 +1419,13 @@ export default function InvoicePage() {
     setMode("new");
   }
 
+  function statusText(value?: string | null) {
+    if (value === "draft") return t.draft;
+    if (value === "paid") return t.paid;
+    if (value === "cancelled") return t.cancelled;
+    return t.sent;
+  }
+
   const printableInvoice = lastPrintableInvoice || {
     id: "",
     invoice_no: invoiceNo,
@@ -1137,6 +1444,130 @@ export default function InvoicePage() {
     payment_method: paymentMethod,
     note,
   };
+
+  const printableProductName =
+    lastPrintableProductName || activeProductForPreview.name || "-";
+
+  const currentPreviewInvoice: InvoiceRecord = {
+    id: "",
+    invoice_no: invoiceNo,
+    invoice_date: invoiceDate,
+    due_date: dueDate,
+    status,
+    customer_name: activeCustomerForPreview.name,
+    customer_phone: activeCustomerForPreview.phone,
+    customer_company: activeCustomerForPreview.company_name,
+    customer_address: activeCustomerForPreview.address,
+    subtotal: preview.subtotal,
+    discount: preview.discount,
+    total: preview.total,
+    total_cost: preview.totalCost,
+    total_profit: preview.profit,
+    payment_method: paymentMethod,
+    note,
+  };
+
+  function renderOfficialInvoice(inv: InvoiceRecord, productName: string) {
+    const subtotal = Number(inv.subtotal || 0);
+    const discount = Number(inv.discount || 0);
+    const total = Number(inv.total || 0);
+
+    return (
+      <div style={officialInvoiceStyle}>
+        <div style={officialHeaderStyle}>
+          <div style={officialCompanyBlockStyle}>
+            {companyLogoUrl ? (
+              <img src={companyLogoUrl} style={officialLogoStyle} />
+            ) : (
+              <div style={officialLogoPlaceholderStyle}>LOGO</div>
+            )}
+
+            <div>
+              <h2 style={officialCompanyNameStyle}>{companyName || "-"}</h2>
+              <div>SSM：{companyRegNo || "-"}</div>
+              <div>{t.phone}：{companyPhone || "-"}</div>
+              <div>{t.address}：{companyAddress || "-"}</div>
+            </div>
+          </div>
+
+          <div style={officialInvoiceTitleBlockStyle}>
+            <div style={officialInvoiceWordStyle}>INVOICE</div>
+            <div style={officialInvoiceNoStyle}>{inv.invoice_no}</div>
+          </div>
+        </div>
+
+        <div style={officialLineStyle} />
+
+        <div style={officialInfoGridStyle}>
+          <div style={officialInfoBoxStyle}>
+            <strong>{t.customerInfo}</strong>
+            <div>{inv.customer_name || "-"}</div>
+            <div>{inv.customer_phone || "-"}</div>
+            <div>{inv.customer_company || "-"}</div>
+            <div>{inv.customer_address || "-"}</div>
+          </div>
+
+          <div style={officialInfoBoxStyle}>
+            <div style={officialInfoRowStyle}>
+              <span>{t.invoiceDate}</span>
+              <strong>{inv.invoice_date || "-"}</strong>
+            </div>
+            <div style={officialInfoRowStyle}>
+              <span>{t.dueDate}</span>
+              <strong>{inv.due_date || "-"}</strong>
+            </div>
+            <div style={officialInfoRowStyle}>
+              <span>{t.status}</span>
+              <strong>{statusText(inv.status)}</strong>
+            </div>
+            <div style={officialInfoRowStyle}>
+              <span>{t.paymentMethod}</span>
+              <strong>{inv.payment_method || "-"}</strong>
+            </div>
+          </div>
+        </div>
+
+        <table style={officialTableStyle}>
+          <thead>
+            <tr>
+              <th style={officialThStyle}>{t.previewProductName}</th>
+              <th style={officialThStyle}>{t.previewQty}</th>
+              <th style={officialThStyle}>{t.previewPrice}</th>
+              <th style={officialThStyle}>{t.previewDiscount}</th>
+              <th style={officialThStyle}>{t.previewTotal}</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr>
+              <td style={officialTdStyle}>{productName || "-"}</td>
+              <td style={officialTdStyle}>{preview.finalQty}</td>
+              <td style={officialTdStyle}>RM {preview.price.toFixed(2)}</td>
+              <td style={officialTdStyle}>RM {discount.toFixed(2)}</td>
+              <td style={officialTdStyle}>RM {total.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style={officialSummaryStyle}>
+          <div style={officialSummaryRowStyle}>
+            <span>{t.subtotal}</span>
+            <strong>RM {subtotal.toFixed(2)}</strong>
+          </div>
+          <div style={officialSummaryRowStyle}>
+            <span>{t.discount}</span>
+            <strong>RM {discount.toFixed(2)}</strong>
+          </div>
+          <div style={officialTotalRowStyle}>
+            <span>{t.total}</span>
+            <strong>RM {total.toFixed(2)}</strong>
+          </div>
+        </div>
+
+        {inv.note ? <div style={officialNoteStyle}>Note：{inv.note}</div> : null}
+      </div>
+    );
+  }
 
   return (
     <main style={pageStyle}>
@@ -1157,7 +1588,7 @@ export default function InvoicePage() {
             top: 0 !important;
             width: 210mm !important;
             min-height: 297mm !important;
-            padding: 14mm !important;
+            padding: 12mm !important;
             margin: 0 !important;
             background: white !important;
             color: #111827 !important;
@@ -1237,8 +1668,8 @@ export default function InvoicePage() {
                         {t.delete}
                       </button>
 
-                      <button onClick={() => sendWhatsApp(inv)} style={recordShareBtnStyle}>
-                        {t.share}
+                      <button onClick={() => sendWhatsAppPdf(inv)} style={recordShareBtnStyle}>
+                        {t.whatsappPdf}
                       </button>
 
                       <button onClick={() => printInvoice(inv)} style={recordPrintBtnStyle}>
@@ -1437,19 +1868,10 @@ export default function InvoicePage() {
             <input placeholder="MyInvois Submission Status" value={myinvoisStatus} onChange={(e) => setMyinvoisStatus(e.target.value)} style={inputStyle} />
           </div>
 
-          <section style={previewBox}>
-            <h3>{t.preview}</h3>
-            <div style={rowStyle}><span>Invoice No</span><strong>{invoiceNo}</strong></div>
-            <div style={rowStyle}><span>{t.invoiceDate}</span><strong>{invoiceDate}</strong></div>
-            <div style={rowStyle}><span>{t.dueDate}</span><strong>{dueDate}</strong></div>
-            <div style={rowStyle}><span>{t.status}</span><strong>{status}</strong></div>
-            <div style={rowStyle}><span>{t.price}</span><strong>RM {preview.price.toFixed(2)}</strong></div>
-            <div style={rowStyle}><span>{t.qty}</span><strong>{preview.finalQty}</strong></div>
-            <div style={rowStyle}><span>{t.subtotal}</span><strong>RM {preview.subtotal.toFixed(2)}</strong></div>
-            <div style={rowStyle}><span>{t.discount}</span><strong>RM {preview.discount.toFixed(2)}</strong></div>
-            <div style={totalRowStyle}><span>{t.total}</span><strong>RM {preview.total.toFixed(2)}</strong></div>
-            <div style={profitRowStyle}><span>{t.profit}</span><strong>RM {preview.profit.toFixed(2)}</strong></div>
-          </section>
+          <h3>{t.preview}</h3>
+          <div style={screenPreviewWrapStyle}>
+            {renderOfficialInvoice(currentPreviewInvoice, activeProductForPreview.name)}
+          </div>
 
           <button onClick={createInvoice} disabled={loading} style={submitBtn}>
             {loading ? t.generating : editInvoiceId ? t.saveEdit : t.generate}
@@ -1458,7 +1880,7 @@ export default function InvoicePage() {
           <div style={actionRow}>
             <button onClick={() => printInvoice()} style={secondaryBtn}>{t.print}</button>
             <button onClick={() => downloadPdf()} style={secondaryBtn}>{t.pdf}</button>
-            <button onClick={() => sendWhatsApp()} style={whatsappBtn}>{t.whatsapp}</button>
+            <button onClick={() => sendWhatsAppPdf()} style={whatsappBtn}>{t.whatsappPdf}</button>
           </div>
 
           {msg ? <p style={msgStyle}>{msg}</p> : null}
@@ -1466,105 +1888,7 @@ export default function InvoicePage() {
       )}
 
       <section id="printInvoiceArea" style={printAreaStyle}>
-        <div style={printHeaderStyle}>
-          <div style={printBrandBlockStyle}>
-            {companyLogoUrl ? (
-              <img src={companyLogoUrl} style={printLogoStyle} />
-            ) : (
-              <div style={printLogoPlaceholderStyle}>LOGO</div>
-            )}
-
-            <div>
-              <h2 style={printCompanyNameStyle}>{companyName}</h2>
-              <div style={printMutedStyle}>SSM: {companyRegNo || "-"}</div>
-            </div>
-          </div>
-
-          <div style={printCompanyInfoStyle}>
-            <div>T: {companyPhone || "-"}</div>
-            <div>{companyAddress || "-"}</div>
-          </div>
-        </div>
-
-        <div style={printTopLineStyle} />
-
-        <div style={printBillGridStyle}>
-          <div style={printBoxStyle}>
-            <strong>{t.billTo}</strong>
-            <div style={printCustomerNameStyle}>{printableInvoice.customer_name || "-"}</div>
-            <div>{printableInvoice.customer_company || ""}</div>
-            <div>{printableInvoice.customer_address || ""}</div>
-            <div>T: {printableInvoice.customer_phone || "-"}</div>
-          </div>
-
-          <div style={printBoxStyle}>
-            <div style={printInvoiceTitleRowStyle}>
-              <strong>{t.invoiceDetails}</strong>
-              <span style={printInvoiceWordStyle}>{t.invoice}</span>
-            </div>
-            <div style={printDetailRowStyle}>
-              <span>INVOICE NO</span>
-              <strong>{printableInvoice.invoice_no}</strong>
-            </div>
-            <div style={printDetailRowStyle}>
-              <span>INVOICE DATE</span>
-              <strong>{printableInvoice.invoice_date || "-"}</strong>
-            </div>
-            <div style={printDetailRowStyle}>
-              <span>DUE DATE</span>
-              <strong>{printableInvoice.due_date || "-"}</strong>
-            </div>
-          </div>
-        </div>
-
-        <div style={printThickLineStyle} />
-
-        <table style={printTableStyle}>
-          <thead>
-            <tr>
-              <th style={printThStyle}>#</th>
-              <th style={printThStyle}>{t.description}</th>
-              <th style={printThRightStyle}>QTY</th>
-              <th style={printThRightStyle}>PRICE</th>
-              <th style={printThRightStyle}>DISCOUNT</th>
-              <th style={printThRightStyle}>TOTAL</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr>
-              <td style={printTdStyle}>1</td>
-              <td style={printTdStyle}>{activeProductForPreview.name}</td>
-              <td style={printTdRightStyle}>{preview.finalQty}</td>
-              <td style={printTdRightStyle}>{preview.price.toFixed(2)}</td>
-              <td style={printTdRightStyle}>{Number(printableInvoice.discount || preview.discount || 0).toFixed(2)}</td>
-              <td style={printTdRightStyle}>{Number(printableInvoice.total || preview.total || 0).toFixed(2)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div style={printSummaryWrapStyle}>
-          <div style={printSummaryRowStyle}>
-            <span>SUBTOTAL</span>
-            <span>{Number(printableInvoice.subtotal || preview.subtotal || 0).toFixed(2)}</span>
-          </div>
-          <div style={printSummaryRowStyle}>
-            <span>DISCOUNT</span>
-            <span>-{Number(printableInvoice.discount || preview.discount || 0).toFixed(2)}</span>
-          </div>
-          <div style={printTotalSummaryRowStyle}>
-            <span>TOTAL</span>
-            <span>{Number(printableInvoice.total || preview.total || 0).toFixed(2)}</span>
-          </div>
-          <div style={printSummaryRowStyle}>
-            <span>{paymentMethod}</span>
-            <span>{Number(printableInvoice.total || preview.total || 0).toFixed(2)}</span>
-          </div>
-        </div>
-
-        <div style={printNoteStyle}>
-          Note: {printableInvoice.note || note || "Goods sold are not returnable!"}
-        </div>
+        {renderOfficialInvoice(printableInvoice, printableProductName)}
       </section>
     </main>
   );
@@ -1868,37 +2192,6 @@ const submitSmallBtnStyle: CSSProperties = {
   fontWeight: 900,
 };
 
-const previewBox: CSSProperties = {
-  background: "#f8fafc",
-  border: "2px solid #14b8a6",
-  borderRadius: 18,
-  padding: 16,
-  marginTop: 18,
-};
-
-const rowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  padding: "8px 0",
-  borderBottom: "1px solid #e2e8f0",
-};
-
-const totalRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  padding: "12px 0",
-  fontSize: 20,
-  color: "#0f766e",
-};
-
-const profitRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  padding: "10px 0",
-  color: "#16a34a",
-  fontWeight: 900,
-};
-
 const submitBtn: CSSProperties = {
   width: "100%",
   marginTop: 18,
@@ -1942,13 +2235,23 @@ const msgStyle: CSSProperties = {
   fontWeight: 900,
 };
 
+const screenPreviewWrapStyle: CSSProperties = {
+  width: "100%",
+  overflowX: "auto",
+  background: "#f8fafc",
+  border: "2px solid #14b8a6",
+  borderRadius: 18,
+  padding: 14,
+  boxSizing: "border-box",
+};
+
 const printAreaStyle: CSSProperties = {
   display: "block",
   width: "210mm",
   minHeight: "297mm",
   background: "#fff",
   color: "#111827",
-  padding: "14mm",
+  padding: "12mm",
   margin: "24px auto 0",
   boxSizing: "border-box",
   fontFamily: "Arial, sans-serif",
@@ -1957,157 +2260,139 @@ const printAreaStyle: CSSProperties = {
   top: 0,
 };
 
-const printHeaderStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 16,
-  alignItems: "start",
+const officialInvoiceStyle: CSSProperties = {
+  background: "#fff",
+  color: "#111827",
+  padding: 22,
+  boxSizing: "border-box",
+  width: "100%",
+  minHeight: 680,
+  fontFamily: "Arial, sans-serif",
 };
 
-const printBrandBlockStyle: CSSProperties = {
-  display: "flex",
-  gap: 12,
-  alignItems: "center",
-};
-
-const printLogoStyle: CSSProperties = {
-  width: 58,
-  height: 58,
-  objectFit: "contain",
-};
-
-const printLogoPlaceholderStyle: CSSProperties = {
-  width: 58,
-  height: 58,
-  border: "1px solid #94a3b8",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 10,
-};
-
-const printCompanyNameStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 16,
-  fontWeight: 800,
-};
-
-const printMutedStyle: CSSProperties = {
-  fontSize: 11,
-  color: "#334155",
-};
-
-const printCompanyInfoStyle: CSSProperties = {
-  borderTop: "2px solid #111827",
-  paddingTop: 10,
-  fontSize: 12,
-  lineHeight: 1.45,
-};
-
-const printTopLineStyle: CSSProperties = {
-  height: 1,
-  background: "#111827",
-  margin: "18px 0 0",
-};
-
-const printBillGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  borderLeft: "1px solid #111827",
-  borderTop: "1px solid #111827",
-};
-
-const printBoxStyle: CSSProperties = {
-  borderRight: "1px solid #111827",
-  borderBottom: "1px solid #111827",
-  padding: 8,
-  minHeight: 82,
-  fontSize: 12,
-  lineHeight: 1.5,
-};
-
-const printCustomerNameStyle: CSSProperties = {
-  fontWeight: 800,
-  marginTop: 10,
-};
-
-const printInvoiceTitleRowStyle: CSSProperties = {
+const officialHeaderStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",
+  gap: 18,
 };
 
-const printInvoiceWordStyle: CSSProperties = {
-  fontSize: 20,
+const officialCompanyBlockStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 14,
+  lineHeight: 1.5,
+};
+
+const officialLogoStyle: CSSProperties = {
+  width: 64,
+  height: 64,
+  objectFit: "contain",
+};
+
+const officialLogoPlaceholderStyle: CSSProperties = {
+  width: 64,
+  height: 64,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "#0f766e",
   fontWeight: 900,
 };
 
-const printDetailRowStyle: CSSProperties = {
+const officialCompanyNameStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 22,
+  fontWeight: 900,
+};
+
+const officialInvoiceTitleBlockStyle: CSSProperties = {
+  textAlign: "right",
+};
+
+const officialInvoiceWordStyle: CSSProperties = {
+  color: "#0f766e",
+  fontSize: 32,
+  fontWeight: 900,
+  letterSpacing: 1,
+};
+
+const officialInvoiceNoStyle: CSSProperties = {
+  color: "#0f766e",
+  fontSize: 14,
+  marginTop: 6,
+};
+
+const officialLineStyle: CSSProperties = {
+  height: 2,
+  background: "#0f766e",
+  margin: "18px 0",
+};
+
+const officialInfoGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
-  gap: 8,
-  marginTop: 7,
+  gap: 16,
+  marginBottom: 20,
 };
 
-const printThickLineStyle: CSSProperties = {
-  height: 4,
-  background: "#111827",
-  margin: "20px 0 10px",
+const officialInfoBoxStyle: CSSProperties = {
+  border: "1px solid #cbd5e1",
+  borderRadius: 12,
+  padding: 14,
+  minHeight: 120,
+  lineHeight: 1.6,
 };
 
-const printTableStyle: CSSProperties = {
+const officialInfoRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  padding: "7px 0",
+  borderBottom: "1px solid #e2e8f0",
+};
+
+const officialTableStyle: CSSProperties = {
   width: "100%",
   borderCollapse: "collapse",
-  fontSize: 12,
+  marginTop: 10,
 };
 
-const printThStyle: CSSProperties = {
+const officialThStyle: CSSProperties = {
+  border: "1px solid #cbd5e1",
+  padding: "10px 8px",
   textAlign: "left",
-  borderBottom: "1px solid #111827",
-  padding: "8px 4px",
-};
-
-const printThRightStyle: CSSProperties = {
-  textAlign: "right",
-  borderBottom: "1px solid #111827",
-  padding: "8px 4px",
-};
-
-const printTdStyle: CSSProperties = {
-  padding: "10px 4px",
-  borderBottom: "1px solid #cbd5e1",
-};
-
-const printTdRightStyle: CSSProperties = {
-  padding: "10px 4px",
-  borderBottom: "1px solid #cbd5e1",
-  textAlign: "right",
-};
-
-const printSummaryWrapStyle: CSSProperties = {
-  width: "42%",
-  marginLeft: "auto",
-  marginTop: 24,
-  fontSize: 12,
-};
-
-const printSummaryRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  padding: "5px 0",
-  borderBottom: "1px solid #cbd5e1",
-};
-
-const printTotalSummaryRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  padding: "8px 0",
-  borderBottom: "2px solid #111827",
   fontWeight: 900,
-  fontSize: 16,
 };
 
-const printNoteStyle: CSSProperties = {
-  marginTop: 50,
-  fontSize: 12,
+const officialTdStyle: CSSProperties = {
+  border: "1px solid #cbd5e1",
+  padding: "12px 8px",
+};
+
+const officialSummaryStyle: CSSProperties = {
+  width: "58%",
+  marginLeft: "auto",
+  marginTop: 22,
+};
+
+const officialSummaryRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "10px 0",
+  borderBottom: "1px solid #e2e8f0",
+};
+
+const officialTotalRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "12px 0",
+  color: "#0f766e",
+  fontSize: 22,
+  fontWeight: 900,
+};
+
+const officialNoteStyle: CSSProperties = {
+  marginTop: 28,
+  color: "#64748b",
 };
