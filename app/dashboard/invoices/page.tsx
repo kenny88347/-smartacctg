@@ -5,37 +5,33 @@ import { supabase } from "@/lib/supabase";
 
 type Customer = {
   id: string;
-  user_id: string;
+  user_id?: string;
   name: string;
-  phone: string | null;
-  company_name: string | null;
-  address: string | null;
+  phone?: string | null;
+  company_name?: string | null;
+  address?: string | null;
 };
 
 type Product = {
   id: string;
-  user_id: string;
+  user_id?: string;
   name: string;
   price: number;
   cost: number;
-  discount: number | null;
-  stock_qty: number | null;
-  note: string | null;
+  discount?: number | null;
+  stock_qty?: number | null;
+  note?: string | null;
 };
 
-type InvoiceItem = {
-  product_id: string;
-  product_name: string;
-  qty: number;
-  unit_price: number;
-  unit_cost: number;
-  discount: number;
-  line_total: number;
-  line_profit: number;
-};
+const TRIAL_KEY = "smartacctg_trial";
+const TRIAL_TX_KEY = "smartacctg_trial_transactions";
+const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
+const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 
 export default function InvoicePage() {
   const [userId, setUserId] = useState("");
+  const [isTrial, setIsTrial] = useState(false);
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
 
@@ -54,10 +50,29 @@ export default function InvoicePage() {
   const [newProductCost, setNewProductCost] = useState("");
   const [newProductStock, setNewProductStock] = useState("");
 
+  const today = new Date().toISOString().slice(0, 10);
+  const [invoiceDate, setInvoiceDate] = useState(today);
+  const [dueDate, setDueDate] = useState(today);
+  const [status, setStatus] = useState("sent");
+  const [paymentMethod, setPaymentMethod] = useState("Cash / Bank Transfer");
   const [qty, setQty] = useState("1");
   const [extraDiscount, setExtraDiscount] = useState("0");
   const [note, setNote] = useState("");
-  const [dueDate, setDueDate] = useState("");
+
+  const [supplierTin, setSupplierTin] = useState("");
+  const [buyerTin, setBuyerTin] = useState("");
+  const [sstNo, setSstNo] = useState("");
+  const [msicCode, setMsicCode] = useState("");
+  const [einvoiceUuid, setEinvoiceUuid] = useState("");
+  const [validationStatus, setValidationStatus] = useState("Not Submitted");
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [myinvoisStatus, setMyinvoisStatus] = useState("Pending");
+
+  const [companyName, setCompanyName] = useState("NK DIGITAL HUB");
+  const [companyRegNo, setCompanyRegNo] = useState("");
+  const [companyPhone, setCompanyPhone] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
+  const [companyLogoUrl, setCompanyLogoUrl] = useState("");
 
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,6 +82,30 @@ export default function InvoicePage() {
   }, []);
 
   async function init() {
+    const q = new URLSearchParams(window.location.search);
+    const mode = q.get("mode");
+    const trialRaw = localStorage.getItem(TRIAL_KEY);
+
+    if (mode === "trial" && trialRaw) {
+      const trial = JSON.parse(trialRaw);
+
+      if (Date.now() < Number(trial.expiresAt)) {
+        setIsTrial(true);
+
+        const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
+        const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
+
+        setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
+        setProducts(savedProducts ? JSON.parse(savedProducts) : []);
+
+        return;
+      }
+
+      localStorage.removeItem(TRIAL_KEY);
+      window.location.href = "/zh";
+      return;
+    }
+
     const { data } = await supabase.auth.getSession();
 
     if (!data.session) {
@@ -76,6 +115,20 @@ export default function InvoicePage() {
 
     const uid = data.session.user.id;
     setUserId(uid);
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", uid)
+      .single();
+
+    if (profile) {
+      setCompanyName(profile.company_name || "NK DIGITAL HUB");
+      setCompanyRegNo(profile.company_reg_no || "");
+      setCompanyPhone(profile.company_phone || "");
+      setCompanyAddress(profile.company_address || "");
+      setCompanyLogoUrl(profile.company_logo_url || "");
+    }
 
     await loadCustomers(uid);
     await loadProducts(uid);
@@ -104,9 +157,13 @@ export default function InvoicePage() {
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const selectedProduct = products.find((p) => p.id === productId);
 
+  const invoiceNo = useMemo(() => {
+    return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+  }, []);
+
   const preview = useMemo(() => {
-    const q = Number(qty || 1);
-    const discount = Number(extraDiscount || 0);
+    const finalQty = Number(qty || 1);
+    const addDiscount = Number(extraDiscount || 0);
 
     const price =
       productMode === "new"
@@ -121,38 +178,44 @@ export default function InvoicePage() {
     const productDiscount =
       productMode === "new" ? 0 : Number(selectedProduct?.discount || 0);
 
-    const totalDiscount = productDiscount + discount;
-    const subtotal = price * q;
-    const total = Math.max(subtotal - totalDiscount, 0);
-    const totalCost = cost * q;
+    const subtotal = price * finalQty;
+    const discount = productDiscount + addDiscount;
+    const total = Math.max(subtotal - discount, 0);
+    const totalCost = cost * finalQty;
     const profit = total - totalCost;
 
-    return {
-      qty: q,
-      price,
-      cost,
-      productDiscount,
-      extraDiscount: discount,
-      totalDiscount,
-      subtotal,
-      total,
-      totalCost,
-      profit,
-    };
+    return { finalQty, price, cost, subtotal, discount, total, totalCost, profit };
   }, [qty, extraDiscount, productMode, newProductPrice, newProductCost, selectedProduct]);
+
+  function saveTrialData(nextCustomers: Customer[], nextProducts: Product[]) {
+    localStorage.setItem(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
+    localStorage.setItem(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
+  }
+
+  function addTrialTransaction(total: number, customer: Customer, product: Product, invNo: string) {
+    const oldRaw = localStorage.getItem(TRIAL_TX_KEY);
+    const oldTx = oldRaw ? JSON.parse(oldRaw) : [];
+
+    const nextTx = [
+      {
+        id: String(Date.now()),
+        txn_date: invoiceDate,
+        txn_type: "income",
+        amount: total,
+        category_name: "发票收入",
+        note: `${invNo}｜${customer.name}｜${product.name}`,
+      },
+      ...oldTx,
+    ];
+
+    localStorage.setItem(TRIAL_TX_KEY, JSON.stringify(nextTx));
+  }
 
   async function createInvoice() {
     setMsg("");
 
-    if (!userId) return;
-
     if (customerMode === "select" && !selectedCustomer) {
       setMsg("请选择客户");
-      return;
-    }
-
-    if (productMode === "select" && !selectedProduct) {
-      setMsg("请选择产品");
       return;
     }
 
@@ -161,14 +224,17 @@ export default function InvoicePage() {
       return;
     }
 
+    if (productMode === "select" && !selectedProduct) {
+      setMsg("请选择产品");
+      return;
+    }
+
     if (productMode === "new" && (!newProductName || !newProductPrice || !newProductCost)) {
       setMsg("请填写新产品名称、价格和成本");
       return;
     }
 
-    const invoiceQty = Number(qty || 1);
-
-    if (invoiceQty <= 0) {
+    if (preview.finalQty <= 0) {
       setMsg("数量必须大过 0");
       return;
     }
@@ -180,43 +246,69 @@ export default function InvoicePage() {
       let finalProduct = selectedProduct;
 
       if (customerMode === "new") {
-        const { data, error } = await supabase
-          .from("customers")
-          .insert({
-            user_id: userId,
-            name: newCustomerName,
-            phone: newCustomerPhone,
-            company_name: newCustomerCompany,
-            address: newCustomerAddress,
-          })
-          .select()
-          .single();
+        finalCustomer = {
+          id: String(Date.now()),
+          name: newCustomerName,
+          phone: newCustomerPhone,
+          company_name: newCustomerCompany,
+          address: newCustomerAddress,
+        };
 
-        if (error) throw error;
+        if (isTrial) {
+          const next = [finalCustomer, ...customers];
+          setCustomers(next);
+          saveTrialData(next, products);
+        } else {
+          const { data, error } = await supabase
+            .from("customers")
+            .insert({
+              user_id: userId,
+              name: newCustomerName,
+              phone: newCustomerPhone,
+              company_name: newCustomerCompany,
+              address: newCustomerAddress,
+            })
+            .select()
+            .single();
 
-        finalCustomer = data as Customer;
-        await loadCustomers(userId);
+          if (error) throw error;
+          finalCustomer = data as Customer;
+        }
       }
 
       if (productMode === "new") {
-        const { data, error } = await supabase
-          .from("products")
-          .insert({
-            user_id: userId,
-            name: newProductName,
-            price: Number(newProductPrice || 0),
-            cost: Number(newProductCost || 0),
-            discount: 0,
-            stock_qty: Number(newProductStock || 0),
-            note: "由发票系统新增",
-          })
-          .select()
-          .single();
+        finalProduct = {
+          id: String(Date.now() + 1),
+          name: newProductName,
+          price: Number(newProductPrice),
+          cost: Number(newProductCost),
+          discount: 0,
+          stock_qty: Number(newProductStock || 0),
+          note: "由发票系统新增",
+        };
 
-        if (error) throw error;
+        if (isTrial) {
+          const next = [finalProduct, ...products];
+          setProducts(next);
+          saveTrialData(customers, next);
+        } else {
+          const { data, error } = await supabase
+            .from("products")
+            .insert({
+              user_id: userId,
+              name: newProductName,
+              price: Number(newProductPrice),
+              cost: Number(newProductCost),
+              discount: 0,
+              stock_qty: Number(newProductStock || 0),
+              note: "由发票系统新增",
+            })
+            .select()
+            .single();
 
-        finalProduct = data as Product;
-        await loadProducts(userId);
+          if (error) throw error;
+          finalProduct = data as Product;
+        }
       }
 
       if (!finalCustomer || !finalProduct) {
@@ -227,25 +319,27 @@ export default function InvoicePage() {
 
       const currentStock = Number(finalProduct.stock_qty || 0);
 
-      if (currentStock < invoiceQty) {
+      if (currentStock < preview.finalQty) {
         setMsg(`库存不足，目前库存：${currentStock}`);
         setLoading(false);
         return;
       }
 
-      const invoiceNo = `INV-${new Date().getFullYear()}-${Date.now()}`;
-      const today = new Date().toISOString().slice(0, 10);
+      const newStock = Math.max(currentStock - preview.finalQty, 0);
 
-      const item: InvoiceItem = {
-        product_id: finalProduct.id,
-        product_name: finalProduct.name,
-        qty: invoiceQty,
-        unit_price: preview.price,
-        unit_cost: preview.cost,
-        discount: preview.totalDiscount,
-        line_total: preview.total,
-        line_profit: preview.profit,
-      };
+      if (isTrial) {
+        const nextProducts = products.map((p) =>
+          p.id === finalProduct!.id ? { ...p, stock_qty: newStock } : p
+        );
+
+        setProducts(nextProducts);
+        saveTrialData(customers, nextProducts);
+        addTrialTransaction(preview.total, finalCustomer, finalProduct, invoiceNo);
+
+        setMsg("试用版发票已生成，已加入记账，并已扣库存");
+        setLoading(false);
+        return;
+      }
 
       const { data: invoiceData, error: invoiceError } = await supabase
         .from("invoices")
@@ -254,15 +348,24 @@ export default function InvoicePage() {
           customer_id: finalCustomer.id,
           customer_name: finalCustomer.name,
           invoice_no: invoiceNo,
-          invoice_date: today,
-          due_date: dueDate || null,
+          invoice_date: invoiceDate,
+          due_date: dueDate,
+          status,
+          payment_method: paymentMethod,
           subtotal: preview.subtotal,
-          discount: preview.totalDiscount,
+          discount: preview.discount,
           total: preview.total,
           total_cost: preview.totalCost,
           total_profit: preview.profit,
-          status: "sent",
-          note: note || "由发票系统生成",
+          note,
+          supplier_tin: supplierTin,
+          buyer_tin: buyerTin,
+          sst_no: sstNo,
+          msic_code: msicCode,
+          einvoice_uuid: einvoiceUuid,
+          validation_status: validationStatus,
+          qr_code_url: qrCodeUrl,
+          myinvois_status: myinvoisStatus,
         })
         .select()
         .single();
@@ -271,19 +374,17 @@ export default function InvoicePage() {
 
       const { error: itemError } = await supabase.from("invoice_items").insert({
         invoice_id: invoiceData.id,
-        product_id: item.product_id,
-        product_name: item.product_name,
-        qty: item.qty,
-        unit_price: item.unit_price,
-        unit_cost: item.unit_cost,
-        discount: item.discount,
-        line_total: item.line_total,
-        line_profit: item.line_profit,
+        product_id: finalProduct.id,
+        product_name: finalProduct.name,
+        qty: preview.finalQty,
+        unit_price: preview.price,
+        unit_cost: preview.cost,
+        discount: preview.discount,
+        line_total: preview.total,
+        line_profit: preview.profit,
       });
 
       if (itemError) throw itemError;
-
-      const newStock = Math.max(currentStock - invoiceQty, 0);
 
       const { error: stockError } = await supabase
         .from("products")
@@ -294,36 +395,21 @@ export default function InvoicePage() {
 
       const { error: txError } = await supabase.from("transactions").insert({
         user_id: userId,
-        txn_date: today,
+        txn_date: invoiceDate,
         txn_type: "income",
         amount: preview.total,
         category_name: "发票收入",
         debt_amount: 0,
         source_type: "invoice",
         source_id: invoiceData.id,
-        note: `${invoiceNo}｜${finalCustomer.name}｜${finalProduct.name}｜出货 ${invoiceQty}`,
+        note: `${invoiceNo}｜${finalCustomer.name}｜${finalProduct.name}`,
       });
 
       if (txError) throw txError;
 
-      setMsg("发票已生成，已自动加入记账，并已扣除库存");
-
-      setCustomerId("");
-      setProductId("");
-      setQty("1");
-      setExtraDiscount("0");
-      setNote("");
-      setDueDate("");
-      setNewCustomerName("");
-      setNewCustomerPhone("");
-      setNewCustomerCompany("");
-      setNewCustomerAddress("");
-      setNewProductName("");
-      setNewProductPrice("");
-      setNewProductCost("");
-      setNewProductStock("");
-
       await loadProducts(userId);
+
+      setMsg("发票已生成，已自动加入记账，并已扣除库存");
     } catch (error: any) {
       setMsg("生成失败：" + error.message);
     }
@@ -331,66 +417,105 @@ export default function InvoicePage() {
     setLoading(false);
   }
 
+  function printInvoice() {
+    window.print();
+  }
+
+  function downloadPdf() {
+    window.print();
+  }
+
+  function sendWhatsApp() {
+    const customer = customerMode === "select" ? selectedCustomer : { name: newCustomerName };
+    const text = `Invoice ${invoiceNo}%0A客户：${customer?.name || ""}%0A总额：RM ${preview.total.toFixed(2)}%0A付款方式：${paymentMethod}`;
+    window.location.href = `https://wa.me/?text=${text}`;
+  }
+
   return (
     <main style={pageStyle}>
-      <button onClick={() => (window.location.href = "/dashboard")} style={backBtn}>
+      <button
+        onClick={() => {
+          const q = new URLSearchParams(window.location.search);
+          const mode = q.get("mode");
+          window.location.href = mode === "trial" ? "/dashboard?mode=trial&lang=zh" : "/dashboard";
+        }}
+        style={backBtn}
+      >
         ← 返回
       </button>
 
       <section style={cardStyle}>
         <h1 style={titleStyle}>专业发票系统</h1>
-        <p style={descStyle}>客户管理 × 产品管理 × 记账系统 自动联动</p>
+        <p style={descStyle}>正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存</p>
 
-        <h3>客户资料</h3>
+        <div style={invoiceNoBox}>
+          <strong>Invoice No：</strong> {invoiceNo}
+        </div>
+
+        <h3>1. 发票资料</h3>
+
+        <div style={formGrid}>
+          <label style={labelStyle}>发票日期</label>
+          <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} style={smallDateInput} />
+
+          <label style={labelStyle}>到期日</label>
+          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={smallDateInput} />
+
+          <label style={labelStyle}>状态</label>
+          <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
+            <option value="draft">草稿</option>
+            <option value="sent">已发出</option>
+            <option value="paid">已付款</option>
+            <option value="cancelled">取消</option>
+          </select>
+
+          <label style={labelStyle}>付款方式</label>
+          <input value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={inputStyle} />
+
+          <label style={labelStyle}>备注</label>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="备注" style={inputStyle} />
+        </div>
+
+        <h3>2. 公司资料</h3>
+
+        <div style={companyBox}>
+          {companyLogoUrl ? <img src={companyLogoUrl} style={logoStyle} /> : <div style={logoPlaceholder}>LOGO</div>}
+          <div>
+            <strong>{companyName}</strong>
+            <div>SSM：{companyRegNo || "-"}</div>
+            <div>电话：{companyPhone || "-"}</div>
+            <div>地址：{companyAddress || "-"}</div>
+          </div>
+        </div>
+
+        <h3>3. 客户资料</h3>
 
         <div style={switchRow}>
-          <button
-            onClick={() => setCustomerMode("select")}
-            style={modeBtn(customerMode === "select")}
-          >
-            选择客户
-          </button>
-          <button
-            onClick={() => setCustomerMode("new")}
-            style={modeBtn(customerMode === "new")}
-          >
-            新增客户
-          </button>
+          <button onClick={() => setCustomerMode("select")} style={modeBtn(customerMode === "select")}>从客户管理选择</button>
+          <button onClick={() => setCustomerMode("new")} style={modeBtn(customerMode === "new")}>新增客户</button>
         </div>
 
         {customerMode === "select" ? (
           <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={inputStyle}>
             <option value="">请选择客户</option>
             {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} {c.company_name ? `｜${c.company_name}` : ""}
-              </option>
+              <option key={c.id} value={c.id}>{c.name} {c.company_name ? `｜${c.company_name}` : ""}</option>
             ))}
           </select>
         ) : (
           <div style={formGrid}>
             <input placeholder="客户名称" value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} style={inputStyle} />
             <input placeholder="客户电话" value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} style={inputStyle} />
-            <input placeholder="客户公司名称" value={newCustomerCompany} onChange={(e) => setNewCustomerCompany(e.target.value)} style={inputStyle} />
+            <input placeholder="客户公司" value={newCustomerCompany} onChange={(e) => setNewCustomerCompany(e.target.value)} style={inputStyle} />
             <input placeholder="客户地址" value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} style={inputStyle} />
           </div>
         )}
 
-        <h3>产品资料</h3>
+        <h3>4. 产品明细</h3>
 
         <div style={switchRow}>
-          <button
-            onClick={() => setProductMode("select")}
-            style={modeBtn(productMode === "select")}
-          >
-            选择产品
-          </button>
-          <button
-            onClick={() => setProductMode("new")}
-            style={modeBtn(productMode === "new")}
-          >
-            新增产品
-          </button>
+          <button onClick={() => setProductMode("select")} style={modeBtn(productMode === "select")}>从产品管理选择</button>
+          <button onClick={() => setProductMode("new")} style={modeBtn(productMode === "new")}>新增产品</button>
         </div>
 
         {productMode === "select" ? (
@@ -398,7 +523,7 @@ export default function InvoicePage() {
             <option value="">请选择产品</option>
             {products.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}｜售价 RM {Number(p.price).toFixed(2)}｜库存 {Number(p.stock_qty || 0)}
+                {p.name}｜售价 RM {Number(p.price).toFixed(2)}｜成本 RM {Number(p.cost).toFixed(2)}｜库存 {Number(p.stock_qty || 0)}
               </option>
             ))}
           </select>
@@ -411,52 +536,53 @@ export default function InvoicePage() {
           </div>
         )}
 
-        <h3>发票内容</h3>
+        <h3>5. 发票内容</h3>
 
         <div style={formGrid}>
-          <input placeholder="数量" value={qty} onChange={(e) => setQty(e.target.value)} style={inputStyle} />
-          <input placeholder="额外折扣 RM" value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} style={inputStyle} />
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={inputStyle} />
-          <input placeholder="备注" value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
+          <label style={labelStyle}>数量</label>
+          <input value={qty} onChange={(e) => setQty(e.target.value)} style={inputStyle} />
+
+          <label style={labelStyle}>额外折扣 RM</label>
+          <input value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} style={inputStyle} />
+        </div>
+
+        <h3>6. Malaysia LHDN e-Invoice 预留资料</h3>
+
+        <div style={formGrid}>
+          <input placeholder="Supplier TIN" value={supplierTin} onChange={(e) => setSupplierTin(e.target.value)} style={inputStyle} />
+          <input placeholder="Buyer TIN" value={buyerTin} onChange={(e) => setBuyerTin(e.target.value)} style={inputStyle} />
+          <input placeholder="SST No" value={sstNo} onChange={(e) => setSstNo(e.target.value)} style={inputStyle} />
+          <input placeholder="MSIC Code" value={msicCode} onChange={(e) => setMsicCode(e.target.value)} style={inputStyle} />
+          <input placeholder="e-Invoice UUID" value={einvoiceUuid} onChange={(e) => setEinvoiceUuid(e.target.value)} style={inputStyle} />
+          <input placeholder="Validation Status" value={validationStatus} onChange={(e) => setValidationStatus(e.target.value)} style={inputStyle} />
+          <input placeholder="QR Code URL" value={qrCodeUrl} onChange={(e) => setQrCodeUrl(e.target.value)} style={inputStyle} />
+          <input placeholder="MyInvois Submission Status" value={myinvoisStatus} onChange={(e) => setMyinvoisStatus(e.target.value)} style={inputStyle} />
         </div>
 
         <section style={previewBox}>
-          <h3>发票预览</h3>
+          <h3>正式发票预览</h3>
 
-          <div style={rowStyle}>
-            <span>单价</span>
-            <strong>RM {preview.price.toFixed(2)}</strong>
-          </div>
-
-          <div style={rowStyle}>
-            <span>数量</span>
-            <strong>{preview.qty}</strong>
-          </div>
-
-          <div style={rowStyle}>
-            <span>小计</span>
-            <strong>RM {preview.subtotal.toFixed(2)}</strong>
-          </div>
-
-          <div style={rowStyle}>
-            <span>折扣</span>
-            <strong>RM {preview.totalDiscount.toFixed(2)}</strong>
-          </div>
-
-          <div style={totalRowStyle}>
-            <span>总额</span>
-            <strong>RM {preview.total.toFixed(2)}</strong>
-          </div>
-
-          <div style={profitRowStyle}>
-            <span>预计利润 / 差价</span>
-            <strong>RM {preview.profit.toFixed(2)}</strong>
-          </div>
+          <div style={rowStyle}><span>Invoice No</span><strong>{invoiceNo}</strong></div>
+          <div style={rowStyle}><span>发票日期</span><strong>{invoiceDate}</strong></div>
+          <div style={rowStyle}><span>到期日</span><strong>{dueDate}</strong></div>
+          <div style={rowStyle}><span>状态</span><strong>{status}</strong></div>
+          <div style={rowStyle}><span>单价</span><strong>RM {preview.price.toFixed(2)}</strong></div>
+          <div style={rowStyle}><span>数量</span><strong>{preview.finalQty}</strong></div>
+          <div style={rowStyle}><span>小计</span><strong>RM {preview.subtotal.toFixed(2)}</strong></div>
+          <div style={rowStyle}><span>折扣</span><strong>RM {preview.discount.toFixed(2)}</strong></div>
+          <div style={totalRowStyle}><span>总额</span><strong>RM {preview.total.toFixed(2)}</strong></div>
+          <div style={profitRowStyle}><span>预计利润 / 差价</span><strong>RM {preview.profit.toFixed(2)}</strong></div>
         </section>
 
         <button onClick={createInvoice} disabled={loading} style={submitBtn}>
           {loading ? "生成中..." : "生成发票 + 加入记账 + 扣库存"}
         </button>
+
+        <div style={actionRow}>
+          <button onClick={printInvoice} style={secondaryBtn}>列印</button>
+          <button onClick={downloadPdf} style={secondaryBtn}>下载 PDF</button>
+          <button onClick={sendWhatsApp} style={whatsappBtn}>WhatsApp 发送</button>
+        </div>
 
         {msg ? <p style={msgStyle}>{msg}</p> : null}
       </section>
@@ -484,8 +610,7 @@ const backBtn: CSSProperties = {
 const cardStyle: CSSProperties = {
   background: "#ffffff",
   border: "3px solid #14b8a6",
-  boxShadow:
-    "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
+  boxShadow: "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
   borderRadius: 24,
   padding: 20,
 };
@@ -498,6 +623,14 @@ const titleStyle: CSSProperties = {
 
 const descStyle: CSSProperties = {
   color: "#64748b",
+  marginBottom: 20,
+};
+
+const invoiceNoBox: CSSProperties = {
+  background: "#ecfdf5",
+  border: "2px solid #14b8a6",
+  borderRadius: 14,
+  padding: 12,
   marginBottom: 20,
 };
 
@@ -519,17 +652,57 @@ const modeBtn = (active: boolean): CSSProperties => ({
 
 const formGrid: CSSProperties = {
   display: "grid",
-  gap: 10,
+  gap: 6,
+};
+
+const labelStyle: CSSProperties = {
+  fontWeight: 900,
+  color: "#0f766e",
+  marginTop: 6,
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
-  padding: "14px",
+  padding: "13px",
   borderRadius: 12,
   border: "2px solid #14b8a6",
   fontSize: 16,
-  marginBottom: 10,
+  marginBottom: 8,
+};
+
+const smallDateInput: CSSProperties = {
+  ...inputStyle,
+  maxWidth: 220,
+};
+
+const companyBox: CSSProperties = {
+  display: "flex",
+  gap: 14,
+  alignItems: "center",
+  background: "#f8fafc",
+  border: "2px solid #14b8a6",
+  borderRadius: 16,
+  padding: 14,
+};
+
+const logoStyle: CSSProperties = {
+  width: 72,
+  height: 72,
+  borderRadius: 12,
+  objectFit: "cover",
+};
+
+const logoPlaceholder: CSSProperties = {
+  width: 72,
+  height: 72,
+  borderRadius: 12,
+  background: "#ccfbf1",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 900,
+  color: "#0f766e",
 };
 
 const previewBox: CSSProperties = {
@@ -573,6 +746,31 @@ const submitBtn: CSSProperties = {
   color: "#fff",
   fontWeight: 900,
   fontSize: 16,
+};
+
+const actionRow: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr 1fr",
+  gap: 10,
+  marginTop: 12,
+};
+
+const secondaryBtn: CSSProperties = {
+  padding: "12px",
+  borderRadius: 12,
+  border: "2px solid #0f766e",
+  background: "#fff",
+  color: "#0f766e",
+  fontWeight: 900,
+};
+
+const whatsappBtn: CSSProperties = {
+  padding: "12px",
+  borderRadius: 12,
+  border: "none",
+  background: "#25D366",
+  color: "#fff",
+  fontWeight: 900,
 };
 
 const msgStyle: CSSProperties = {
