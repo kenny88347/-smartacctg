@@ -9,7 +9,7 @@ type CustomerStatus = "normal" | "vip" | "debt" | "blocked";
 
 type Customer = {
   id: string;
-  user_id: string;
+  user_id?: string;
   name: string;
   phone: string | null;
   email: string | null;
@@ -36,6 +36,15 @@ type CustomerPrice = {
   product_id: string;
   custom_price: number;
 };
+
+const TRIAL_KEY = "smartacctg_trial";
+const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
+const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
+const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
+
+function todayDate() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 const TXT = {
   zh: {
@@ -66,6 +75,7 @@ const TXT = {
     note: "备注",
     edit: "编辑",
     delete: "删除",
+    whatsapp: "WhatsApp",
     noCustomers: "还没有客户资料",
     priceTitle: "客户专属价格",
     chooseCustomer: "选择客户",
@@ -75,6 +85,7 @@ const TXT = {
     productNormalPrice: "产品原价",
     saved: "保存成功",
     deleted: "删除成功",
+    trialMode: "免费试用模式：资料暂存在本机，试用结束会自动清除",
   },
   en: {
     title: "Customer Management",
@@ -104,6 +115,7 @@ const TXT = {
     note: "Note",
     edit: "Edit",
     delete: "Delete",
+    whatsapp: "WhatsApp",
     noCustomers: "No customers yet",
     priceTitle: "Customer Special Price",
     chooseCustomer: "Choose Customer",
@@ -113,6 +125,7 @@ const TXT = {
     productNormalPrice: "Normal Price",
     saved: "Saved",
     deleted: "Deleted",
+    trialMode: "Free trial mode: data is saved locally and will be cleared when trial ends",
   },
   ms: {
     title: "Pengurusan Pelanggan",
@@ -142,6 +155,7 @@ const TXT = {
     note: "Catatan",
     edit: "Edit",
     delete: "Padam",
+    whatsapp: "WhatsApp",
     noCustomers: "Tiada pelanggan lagi",
     priceTitle: "Harga Khas Pelanggan",
     chooseCustomer: "Pilih Pelanggan",
@@ -151,11 +165,13 @@ const TXT = {
     productNormalPrice: "Harga Asal",
     saved: "Disimpan",
     deleted: "Dipadam",
+    trialMode: "Mod percubaan: data disimpan secara tempatan dan akan dipadam selepas tamat",
   },
 };
 
 export default function CustomersPage() {
   const [session, setSession] = useState<Session | null>(null);
+  const [isTrial, setIsTrial] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -178,7 +194,7 @@ export default function CustomersPage() {
     status: "normal" as CustomerStatus,
     debt_amount: "",
     paid_amount: "",
-    last_payment_date: "",
+    last_payment_date: todayDate(),
     note: "",
   });
 
@@ -197,6 +213,35 @@ export default function CustomersPage() {
   }, []);
 
   async function init() {
+    const q = new URLSearchParams(window.location.search);
+    const mode = q.get("mode");
+    const trialRaw = localStorage.getItem(TRIAL_KEY);
+
+    if (mode === "trial" && trialRaw) {
+      const trial = JSON.parse(trialRaw);
+
+      if (Date.now() < Number(trial.expiresAt)) {
+        setIsTrial(true);
+        setSession(null);
+
+        const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
+        const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
+        const savedPrices = localStorage.getItem(TRIAL_CUSTOMER_PRICES_KEY);
+
+        setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
+        setProducts(savedProducts ? JSON.parse(savedProducts) : []);
+        setCustomerPrices(savedPrices ? JSON.parse(savedPrices) : []);
+        return;
+      }
+
+      localStorage.removeItem(TRIAL_KEY);
+      localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
+      localStorage.removeItem(TRIAL_PRODUCTS_KEY);
+      localStorage.removeItem(TRIAL_CUSTOMER_PRICES_KEY);
+      window.location.href = "/zh";
+      return;
+    }
+
     const { data } = await supabase.auth.getSession();
 
     if (!data.session) {
@@ -204,8 +249,19 @@ export default function CustomersPage() {
       return;
     }
 
+    setIsTrial(false);
     setSession(data.session);
     await loadAll(data.session.user.id);
+  }
+
+  function saveTrialData(
+    nextCustomers = customers,
+    nextProducts = products,
+    nextPrices = customerPrices
+  ) {
+    localStorage.setItem(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
+    localStorage.setItem(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
+    localStorage.setItem(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextPrices));
   }
 
   async function loadAll(userId: string) {
@@ -233,7 +289,16 @@ export default function CustomersPage() {
 
   function switchLang(next: Lang) {
     setLang(next);
-    window.history.replaceState({}, "", `${window.location.pathname}?lang=${next}`);
+
+    const q = new URLSearchParams(window.location.search);
+    q.set("lang", next);
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+  }
+
+  function backToDashboard() {
+    window.location.href = isTrial
+      ? `/dashboard?mode=trial&lang=${lang}`
+      : `/dashboard?lang=${lang}`;
   }
 
   function resetForm() {
@@ -249,13 +314,43 @@ export default function CustomersPage() {
       status: "normal",
       debt_amount: "",
       paid_amount: "",
-      last_payment_date: "",
+      last_payment_date: todayDate(),
       note: "",
     });
   }
 
   async function saveCustomer() {
-    if (!session || !form.name.trim()) return;
+    if (!form.name.trim()) return;
+
+    if (isTrial) {
+      const payload: Customer = {
+        id: editingId || String(Date.now()),
+        name: form.name.trim(),
+        phone: form.phone || null,
+        email: form.email || null,
+        company_name: form.company_name || null,
+        company_reg_no: form.company_reg_no || null,
+        company_phone: form.company_phone || null,
+        address: form.address || null,
+        status: form.status,
+        debt_amount: Number(form.debt_amount || 0),
+        paid_amount: Number(form.paid_amount || 0),
+        last_payment_date: form.last_payment_date || todayDate(),
+        note: form.note || null,
+      };
+
+      const nextCustomers = editingId
+        ? customers.map((c) => (c.id === editingId ? payload : c))
+        : [payload, ...customers];
+
+      setCustomers(nextCustomers);
+      saveTrialData(nextCustomers, products, customerPrices);
+      setMsg(t.saved);
+      resetForm();
+      return;
+    }
+
+    if (!session) return;
 
     const payload = {
       user_id: session.user.id,
@@ -269,7 +364,7 @@ export default function CustomersPage() {
       status: form.status,
       debt_amount: Number(form.debt_amount || 0),
       paid_amount: Number(form.paid_amount || 0),
-      last_payment_date: form.last_payment_date || null,
+      last_payment_date: form.last_payment_date || todayDate(),
       note: form.note || null,
       updated_at: new Date().toISOString(),
     };
@@ -312,7 +407,7 @@ export default function CustomersPage() {
       status: (c.status || "normal") as CustomerStatus,
       debt_amount: String(c.debt_amount || 0),
       paid_amount: String(c.paid_amount || 0),
-      last_payment_date: c.last_payment_date || "",
+      last_payment_date: c.last_payment_date || todayDate(),
       note: c.note || "",
     });
 
@@ -320,10 +415,21 @@ export default function CustomersPage() {
   }
 
   async function deleteCustomer(id: string) {
-    if (!session) return;
-
     const yes = window.confirm("Confirm delete?");
     if (!yes) return;
+
+    if (isTrial) {
+      const nextCustomers = customers.filter((c) => c.id !== id);
+      const nextPrices = customerPrices.filter((p) => p.customer_id !== id);
+
+      setCustomers(nextCustomers);
+      setCustomerPrices(nextPrices);
+      saveTrialData(nextCustomers, products, nextPrices);
+      setMsg(t.deleted);
+      return;
+    }
+
+    if (!session) return;
 
     const { error } = await supabase
       .from("customers")
@@ -341,7 +447,37 @@ export default function CustomersPage() {
   }
 
   async function saveCustomerPrice() {
-    if (!session || !priceCustomerId || !priceProductId || !customPrice) return;
+    if (!priceCustomerId || !priceProductId || !customPrice) return;
+
+    if (isTrial) {
+      const exists = customerPrices.find(
+        (x) => x.customer_id === priceCustomerId && x.product_id === priceProductId
+      );
+
+      const nextPrices = exists
+        ? customerPrices.map((x) =>
+            x.customer_id === priceCustomerId && x.product_id === priceProductId
+              ? { ...x, custom_price: Number(customPrice) }
+              : x
+          )
+        : [
+            {
+              id: String(Date.now()),
+              customer_id: priceCustomerId,
+              product_id: priceProductId,
+              custom_price: Number(customPrice),
+            },
+            ...customerPrices,
+          ];
+
+      setCustomerPrices(nextPrices);
+      saveTrialData(customers, products, nextPrices);
+      setCustomPrice("");
+      setMsg(t.saved);
+      return;
+    }
+
+    if (!session) return;
 
     const { error } = await supabase.from("customer_prices").upsert(
       {
@@ -366,6 +502,25 @@ export default function CustomersPage() {
     await loadAll(session.user.id);
   }
 
+  function openCustomerWhatsApp(phone: string | null) {
+    if (!phone) {
+      setMsg("No phone number");
+      return;
+    }
+
+    let clean = phone.replace(/\D/g, "");
+
+    if (clean.startsWith("0")) {
+      clean = `60${clean.slice(1)}`;
+    }
+
+    if (!clean.startsWith("60")) {
+      clean = `60${clean}`;
+    }
+
+    window.location.href = `https://wa.me/${clean}`;
+  }
+
   const filteredCustomers = useMemo(() => {
     const s = search.toLowerCase();
 
@@ -386,7 +541,7 @@ export default function CustomersPage() {
   return (
     <main style={pageStyle}>
       <section style={topBarStyle}>
-        <button onClick={() => (window.location.href = `/dashboard?lang=${lang}`)} style={backBtnStyle}>
+        <button onClick={backToDashboard} style={backBtnStyle}>
           ← {t.back}
         </button>
 
@@ -399,6 +554,7 @@ export default function CustomersPage() {
 
       <h1 style={titleStyle}>{t.title}</h1>
 
+      {isTrial ? <div style={trialBoxStyle}>{t.trialMode}</div> : null}
       {msg ? <div style={msgStyle}>{msg}</div> : null}
 
       <section style={cardStyle}>
@@ -430,7 +586,15 @@ export default function CustomersPage() {
 
           <input placeholder={t.debtAmount} value={form.debt_amount} onChange={(e) => setForm({ ...form, debt_amount: e.target.value })} style={inputStyle} />
           <input placeholder={t.paidAmount} value={form.paid_amount} onChange={(e) => setForm({ ...form, paid_amount: e.target.value })} style={inputStyle} />
-          <input type="date" value={form.last_payment_date} onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })} style={inputStyle} />
+
+          <label style={dateLabelStyle}>{t.lastPaymentDate}</label>
+          <input
+            type="date"
+            value={form.last_payment_date}
+            onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })}
+            style={dateInputStyle}
+          />
+
           <input placeholder={t.note} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={inputStyle} />
         </div>
 
@@ -528,6 +692,9 @@ export default function CustomersPage() {
                 </div>
 
                 <div style={actionRowStyle}>
+                  <button onClick={() => openCustomerWhatsApp(c.phone)} style={whatsappBtnStyle}>
+                    {t.whatsapp}
+                  </button>
                   <button onClick={() => editCustomer(c)} style={editBtnStyle}>{t.edit}</button>
                   <button onClick={() => deleteCustomer(c.id)} style={deleteBtnStyle}>{t.delete}</button>
                 </div>
@@ -598,6 +765,21 @@ const inputStyle: CSSProperties = {
   outline: "none",
 };
 
+const dateLabelStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#0f766e",
+  marginBottom: -6,
+};
+
+const dateInputStyle: CSSProperties = {
+  ...inputStyle,
+  height: 46,
+  padding: "10px 14px",
+  appearance: "none",
+  WebkitAppearance: "none",
+};
+
 const primaryBtnStyle: CSSProperties = {
   marginTop: 14,
   background: "#0f766e",
@@ -651,6 +833,15 @@ const msgStyle: CSSProperties = {
   fontWeight: 800,
 };
 
+const trialBoxStyle: CSSProperties = {
+  background: "#fef3c7",
+  color: "#92400e",
+  padding: 12,
+  borderRadius: 12,
+  marginBottom: 14,
+  fontWeight: 800,
+};
+
 const mutedStyle: CSSProperties = {
   color: "#64748b",
   fontSize: 14,
@@ -676,6 +867,16 @@ const actionRowStyle: CSSProperties = {
   display: "flex",
   gap: 8,
   alignItems: "flex-start",
+  flexWrap: "wrap",
+};
+
+const whatsappBtnStyle: CSSProperties = {
+  background: "#25D366",
+  color: "#fff",
+  border: "none",
+  borderRadius: 10,
+  padding: "9px 12px",
+  fontWeight: 800,
 };
 
 const editBtnStyle: CSSProperties = {
