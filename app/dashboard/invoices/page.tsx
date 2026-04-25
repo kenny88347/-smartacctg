@@ -4,6 +4,7 @@ import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Lang = "zh" | "en" | "ms";
+type Mode = "list" | "new";
 
 type Customer = {
   id: string;
@@ -27,7 +28,8 @@ type Product = {
 
 type InvoiceRecord = {
   id: string;
-  invoice_no?: string | null;
+  user_id?: string;
+  invoice_no: string;
   invoice_date?: string | null;
   due_date?: string | null;
   status?: string | null;
@@ -35,7 +37,12 @@ type InvoiceRecord = {
   customer_name?: string | null;
   customer_phone?: string | null;
   customer_company?: string | null;
+  customer_address?: string | null;
+  subtotal?: number | null;
+  discount?: number | null;
   total?: number | null;
+  total_cost?: number | null;
+  total_profit?: number | null;
   payment_method?: string | null;
   note?: string | null;
   created_at?: string | null;
@@ -46,28 +53,27 @@ const TRIAL_TX_KEY = "smartacctg_trial_transactions";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
-
 const PAYMENT_OPTIONS_KEY = "smartacctg_payment_options";
 
 const DEFAULT_PAYMENT_OPTIONS = [
   "Cash",
   "Bank Transfer",
-  "Cash / Bank Transfer",
-  "TNG eWallet",
   "DuitNow QR",
+  "TNG eWallet",
+  "Credit Term",
   "Cheque",
-  "Credit Terms",
 ];
 
 const TXT = {
   zh: {
     back: "返回",
-    title: "专业发票系统",
-    desc: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
-    invoiceList: "发票记录",
+    title: "发票系统",
     newInvoice: "新发票",
-    searchPlaceholder: "搜索发票号、客户名字、公司名字、电话号码",
+    latestInvoices: "最新发票记录",
+    searchPlaceholder: "搜索：发票号、客户名字、公司名字、电话号码",
     noInvoice: "还没有发票记录",
+    createTitle: "专业发票系统",
+    desc: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
     invoiceInfo: "1. 发票资料",
     invoiceDate: "发票日期",
     dueDate: "到期日",
@@ -78,13 +84,14 @@ const TXT = {
     cancelled: "取消",
     paymentMethod: "付款方式",
     addPayment: "新增付款方式",
-    newPaymentPlaceholder: "输入新的付款方式",
+    paymentPlaceholder: "输入新的付款方式",
     note: "备注",
     companyInfo: "2. 公司资料",
-    editCompany: "编辑公司资料 / 更换 Logo",
-    closeEdit: "收起编辑",
+    editCompany: "编辑公司资料 / Logo",
     saveCompany: "保存公司资料",
-    uploadLogo: "上传公司 Logo",
+    companyLogoUrl: "公司 Logo URL",
+    companyName: "公司名称",
+    companyRegNo: "SSM / 注册号",
     phone: "电话",
     address: "地址",
     customerInfo: "3. 客户资料",
@@ -103,7 +110,6 @@ const TXT = {
     price: "售价 RM",
     cost: "成本 RM",
     stock: "库存数量",
-    stockUnavailable: "库存栏位未启用",
     invoiceContent: "5. 发票内容",
     qty: "数量",
     extraDiscount: "额外折扣 RM",
@@ -126,21 +132,24 @@ const TXT = {
     stockNotEnough: "库存不足，目前库存：",
     trialSuccess: "试用版发票已生成，已加入记账，并已扣库存",
     success: "发票已生成，已自动加入记账，并已扣除库存",
-    successNoStock: "发票已生成并加入记账；但 products 表没有 stock_qty 栏位，所以暂时跳过扣库存",
     fail: "生成失败：",
     incomplete: "客户或产品资料不完整",
-    trialProductNote: "由发票系统新增",
-    companySaved: "公司资料已保存",
-    logoUploaded: "Logo 已更新",
+    productNote: "由发票系统新增",
+    saved: "保存成功",
+    invoice: "INVOICE",
+    billTo: "BILL TO",
+    invoiceDetails: "INVOICE DETAILS",
+    description: "DESCRIPTION",
   },
   en: {
     back: "Back",
-    title: "Professional Invoice System",
-    desc: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock Deduction",
-    invoiceList: "Invoice Records",
+    title: "Invoice System",
     newInvoice: "New Invoice",
-    searchPlaceholder: "Search invoice no, customer name, company or phone",
+    latestInvoices: "Latest Invoices",
+    searchPlaceholder: "Search: invoice no, customer, company, phone",
     noInvoice: "No invoice records yet",
+    createTitle: "Professional Invoice System",
+    desc: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock Deduction",
     invoiceInfo: "1. Invoice Info",
     invoiceDate: "Invoice Date",
     dueDate: "Due Date",
@@ -151,13 +160,14 @@ const TXT = {
     cancelled: "Cancelled",
     paymentMethod: "Payment Method",
     addPayment: "Add Payment Method",
-    newPaymentPlaceholder: "Enter new payment method",
+    paymentPlaceholder: "Enter new payment method",
     note: "Note",
     companyInfo: "2. Company Info",
-    editCompany: "Edit Company / Change Logo",
-    closeEdit: "Close Edit",
+    editCompany: "Edit Company Info / Logo",
     saveCompany: "Save Company Info",
-    uploadLogo: "Upload Company Logo",
+    companyLogoUrl: "Company Logo URL",
+    companyName: "Company Name",
+    companyRegNo: "SSM / Registration No",
     phone: "Phone",
     address: "Address",
     customerInfo: "3. Customer Info",
@@ -176,7 +186,6 @@ const TXT = {
     price: "Selling Price RM",
     cost: "Cost RM",
     stock: "Stock Quantity",
-    stockUnavailable: "Stock column not enabled",
     invoiceContent: "5. Invoice Content",
     qty: "Quantity",
     extraDiscount: "Extra Discount RM",
@@ -199,21 +208,24 @@ const TXT = {
     stockNotEnough: "Insufficient stock. Current stock: ",
     trialSuccess: "Trial invoice generated, added to accounting and stock deducted",
     success: "Invoice generated, added to accounting and stock deducted",
-    successNoStock: "Invoice generated and added to accounting; stock deduction skipped because products.stock_qty does not exist",
     fail: "Failed: ",
     incomplete: "Customer or product information is incomplete",
-    trialProductNote: "Added from invoice system",
-    companySaved: "Company info saved",
-    logoUploaded: "Logo updated",
+    productNote: "Added from invoice system",
+    saved: "Saved",
+    invoice: "INVOICE",
+    billTo: "BILL TO",
+    invoiceDetails: "INVOICE DETAILS",
+    description: "DESCRIPTION",
   },
   ms: {
     back: "Kembali",
-    title: "Sistem Invois Profesional",
-    desc: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Tolak Stok",
-    invoiceList: "Rekod Invois",
+    title: "Sistem Invois",
     newInvoice: "Invois Baru",
-    searchPlaceholder: "Cari nombor invois, nama pelanggan, syarikat atau telefon",
-    noInvoice: "Tiada rekod invois lagi",
+    latestInvoices: "Rekod Invois Terkini",
+    searchPlaceholder: "Cari: no invois, pelanggan, syarikat, telefon",
+    noInvoice: "Tiada rekod invois",
+    createTitle: "Sistem Invois Profesional",
+    desc: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Tolak Stok",
     invoiceInfo: "1. Maklumat Invois",
     invoiceDate: "Tarikh Invois",
     dueDate: "Tarikh Tamat",
@@ -224,13 +236,14 @@ const TXT = {
     cancelled: "Dibatalkan",
     paymentMethod: "Cara Bayaran",
     addPayment: "Tambah Cara Bayaran",
-    newPaymentPlaceholder: "Masukkan cara bayaran baru",
+    paymentPlaceholder: "Masukkan cara bayaran baru",
     note: "Nota",
     companyInfo: "2. Maklumat Syarikat",
-    editCompany: "Edit Syarikat / Tukar Logo",
-    closeEdit: "Tutup Edit",
+    editCompany: "Ubah Maklumat Syarikat / Logo",
     saveCompany: "Simpan Maklumat Syarikat",
-    uploadLogo: "Muat Naik Logo Syarikat",
+    companyLogoUrl: "URL Logo Syarikat",
+    companyName: "Nama Syarikat",
+    companyRegNo: "SSM / No Pendaftaran",
     phone: "Telefon",
     address: "Alamat",
     customerInfo: "3. Maklumat Pelanggan",
@@ -249,7 +262,6 @@ const TXT = {
     price: "Harga Jualan RM",
     cost: "Kos RM",
     stock: "Jumlah Stok",
-    stockUnavailable: "Ruangan stok belum diaktifkan",
     invoiceContent: "5. Kandungan Invois",
     qty: "Kuantiti",
     extraDiscount: "Diskaun Tambahan RM",
@@ -272,12 +284,14 @@ const TXT = {
     stockNotEnough: "Stok tidak cukup. Stok semasa: ",
     trialSuccess: "Invois percubaan berjaya dijana, masuk akaun dan stok ditolak",
     success: "Invois berjaya dijana, masuk akaun dan stok ditolak",
-    successNoStock: "Invois berjaya dijana dan masuk akaun; stok tidak ditolak kerana products.stock_qty belum wujud",
     fail: "Gagal: ",
     incomplete: "Maklumat pelanggan atau produk tidak lengkap",
-    trialProductNote: "Ditambah dari sistem invois",
-    companySaved: "Maklumat syarikat disimpan",
-    logoUploaded: "Logo dikemas kini",
+    productNote: "Ditambah dari sistem invois",
+    saved: "Disimpan",
+    invoice: "INVOICE",
+    billTo: "BILL TO",
+    invoiceDetails: "INVOICE DETAILS",
+    description: "DESCRIPTION",
   },
 };
 
@@ -285,15 +299,14 @@ export default function InvoicePage() {
   const [lang, setLang] = useState<Lang>("zh");
   const t = TXT[lang];
 
+  const [mode, setMode] = useState<Mode>("list");
   const [userId, setUserId] = useState("");
   const [isTrial, setIsTrial] = useState(false);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
-
-  const [showForm, setShowForm] = useState(false);
-  const [searchText, setSearchText] = useState("");
+  const [search, setSearch] = useState("");
 
   const [customerMode, setCustomerMode] = useState<"select" | "new">("select");
   const [productMode, setProductMode] = useState<"select" | "new">("select");
@@ -314,9 +327,9 @@ export default function InvoicePage() {
   const [invoiceDate, setInvoiceDate] = useState(today);
   const [dueDate, setDueDate] = useState(today);
   const [status, setStatus] = useState("sent");
-  const [paymentMethod, setPaymentMethod] = useState("Cash / Bank Transfer");
-  const [newPaymentOption, setNewPaymentOption] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [paymentOptions, setPaymentOptions] = useState<string[]>(DEFAULT_PAYMENT_OPTIONS);
+  const [newPaymentOption, setNewPaymentOption] = useState("");
 
   const [qty, setQty] = useState("1");
   const [extraDiscount, setExtraDiscount] = useState("0");
@@ -331,88 +344,21 @@ export default function InvoicePage() {
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [myinvoisStatus, setMyinvoisStatus] = useState("Pending");
 
-  const [companyEditing, setCompanyEditing] = useState(false);
   const [companyName, setCompanyName] = useState("NK DIGITAL HUB");
   const [companyRegNo, setCompanyRegNo] = useState("");
   const [companyPhone, setCompanyPhone] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
   const [companyLogoUrl, setCompanyLogoUrl] = useState("");
+  const [showCompanyEdit, setShowCompanyEdit] = useState(false);
 
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const selectedCustomer = customers.find((c) => c.id === customerId);
-  const selectedProduct = products.find((p) => p.id === productId);
-
-  const invoiceNo = useMemo(() => {
-    return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
-  }, [showForm]);
-
-  const preview = useMemo(() => {
-    const finalQty = Number(qty || 1);
-    const addDiscount = Number(extraDiscount || 0);
-
-    const price =
-      productMode === "new"
-        ? Number(newProductPrice || 0)
-        : Number(selectedProduct?.price || 0);
-
-    const cost =
-      productMode === "new"
-        ? Number(newProductCost || 0)
-        : Number(selectedProduct?.cost || 0);
-
-    const productDiscount =
-      productMode === "new" ? 0 : Number(selectedProduct?.discount || 0);
-
-    const subtotal = price * finalQty;
-    const discount = productDiscount + addDiscount;
-    const total = Math.max(subtotal - discount, 0);
-    const totalCost = cost * finalQty;
-    const profit = total - totalCost;
-
-    return { finalQty, price, cost, subtotal, discount, total, totalCost, profit };
-  }, [qty, extraDiscount, productMode, newProductPrice, newProductCost, selectedProduct]);
-
-  const filteredInvoices = useMemo(() => {
-    const keyword = searchText.trim().toLowerCase();
-
-    if (!keyword) return invoices;
-
-    return invoices.filter((inv) => {
-      const customerFromList = customers.find((c) => c.id === inv.customer_id);
-
-      const text = [
-        inv.invoice_no,
-        inv.customer_name,
-        inv.customer_phone,
-        inv.customer_company,
-        inv.status,
-        inv.payment_method,
-        customerFromList?.name,
-        customerFromList?.phone,
-        customerFromList?.company_name,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return text.includes(keyword);
-    });
-  }, [searchText, invoices, customers]);
+  const [lastPrintableInvoice, setLastPrintableInvoice] = useState<InvoiceRecord | null>(null);
 
   useEffect(() => {
     init();
   }, []);
-
-  function isSchemaCacheError(message: string) {
-    const text = message.toLowerCase();
-    return (
-      text.includes("schema cache") ||
-      text.includes("could not find") ||
-      text.includes("column")
-    );
-  }
 
   function getCurrentLang(): Lang {
     const q = new URLSearchParams(window.location.search);
@@ -430,7 +376,6 @@ export default function InvoicePage() {
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
-
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
@@ -438,16 +383,20 @@ export default function InvoicePage() {
     const currentLang = getCurrentLang();
     setLang(currentLang);
 
-    const savedPaymentOptions = localStorage.getItem(PAYMENT_OPTIONS_KEY);
-    if (savedPaymentOptions) {
-      setPaymentOptions(JSON.parse(savedPaymentOptions));
+    const savedPayment = localStorage.getItem(PAYMENT_OPTIONS_KEY);
+    if (savedPayment) {
+      const parsed = JSON.parse(savedPayment);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setPaymentOptions(parsed);
+        setPaymentMethod(parsed[0]);
+      }
     }
 
     const q = new URLSearchParams(window.location.search);
-    const mode = q.get("mode");
+    const modeParam = q.get("mode");
     const trialRaw = localStorage.getItem(TRIAL_KEY);
 
-    if (mode === "trial" && trialRaw) {
+    if (modeParam === "trial" && trialRaw) {
       const trial = JSON.parse(trialRaw);
 
       if (Date.now() < Number(trial.expiresAt)) {
@@ -460,6 +409,7 @@ export default function InvoicePage() {
         setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
         setProducts(savedProducts ? JSON.parse(savedProducts) : []);
         setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
+
         return;
       }
 
@@ -518,50 +468,87 @@ export default function InvoicePage() {
   }
 
   async function loadInvoices(uid: string) {
-    const result = await supabase
+    const { data } = await supabase
       .from("invoices")
       .select("*")
       .eq("user_id", uid)
       .order("created_at", { ascending: false });
 
-    if (result.error) {
-      const fallback = await supabase
-        .from("invoices")
-        .select("*")
-        .eq("user_id", uid);
-
-      setInvoices((fallback.data || []) as InvoiceRecord[]);
-      return;
-    }
-
-    setInvoices((result.data || []) as InvoiceRecord[]);
+    setInvoices((data || []) as InvoiceRecord[]);
   }
 
-  function saveTrialData(nextCustomers: Customer[], nextProducts: Product[]) {
+  const selectedCustomer = customers.find((c) => c.id === customerId);
+  const selectedProduct = products.find((p) => p.id === productId);
+
+  const invoiceNo = useMemo(() => {
+    return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+  }, []);
+
+  const preview = useMemo(() => {
+    const finalQty = Number(qty || 1);
+    const addDiscount = Number(extraDiscount || 0);
+
+    const price =
+      productMode === "new"
+        ? Number(newProductPrice || 0)
+        : Number(selectedProduct?.price || 0);
+
+    const cost =
+      productMode === "new"
+        ? Number(newProductCost || 0)
+        : Number(selectedProduct?.cost || 0);
+
+    const productDiscount =
+      productMode === "new" ? 0 : Number(selectedProduct?.discount || 0);
+
+    const subtotal = price * finalQty;
+    const discount = productDiscount + addDiscount;
+    const total = Math.max(subtotal - discount, 0);
+    const totalCost = cost * finalQty;
+    const profit = total - totalCost;
+
+    return { finalQty, price, cost, subtotal, discount, total, totalCost, profit };
+  }, [qty, extraDiscount, productMode, newProductPrice, newProductCost, selectedProduct]);
+
+  const activeCustomerForPreview: Customer = customerMode === "select"
+    ? selectedCustomer || { id: "", name: "-" }
+    : {
+        id: "",
+        name: newCustomerName || "-",
+        phone: newCustomerPhone,
+        company_name: newCustomerCompany,
+        address: newCustomerAddress,
+      };
+
+  const activeProductForPreview: Product = productMode === "select"
+    ? selectedProduct || { id: "", name: "-", price: 0, cost: 0, stock_qty: 0 }
+    : {
+        id: "",
+        name: newProductName || "-",
+        price: Number(newProductPrice || 0),
+        cost: Number(newProductCost || 0),
+        stock_qty: Number(newProductStock || 0),
+      };
+
+  const filteredInvoices = invoices.filter((inv) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+
+    return [
+      inv.invoice_no,
+      inv.customer_name,
+      inv.customer_company,
+      inv.customer_phone,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
+  });
+
+  function saveTrialData(nextCustomers: Customer[], nextProducts: Product[], nextInvoices = invoices) {
     localStorage.setItem(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
     localStorage.setItem(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
-  }
-
-  function saveTrialInvoices(nextInvoices: InvoiceRecord[]) {
     localStorage.setItem(TRIAL_INVOICES_KEY, JSON.stringify(nextInvoices));
-  }
-
-  function addPaymentOption() {
-    const value = newPaymentOption.trim();
-    if (!value) return;
-
-    const exists = paymentOptions.some((x) => x.toLowerCase() === value.toLowerCase());
-    if (exists) {
-      setPaymentMethod(value);
-      setNewPaymentOption("");
-      return;
-    }
-
-    const next = [...paymentOptions, value];
-    setPaymentOptions(next);
-    localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
-    setPaymentMethod(value);
-    setNewPaymentOption("");
   }
 
   function addTrialTransaction(total: number, customer: Customer, product: Product, invNo: string) {
@@ -575,7 +562,11 @@ export default function InvoicePage() {
         txn_type: "income",
         amount: total,
         category_name:
-          lang === "zh" ? "发票收入" : lang === "en" ? "Invoice Income" : "Pendapatan Invois",
+          lang === "zh"
+            ? "发票收入"
+            : lang === "en"
+              ? "Invoice Income"
+              : "Pendapatan Invois",
         note: `${invNo}｜${customer.name}｜${product.name}`,
       },
       ...oldTx,
@@ -584,10 +575,21 @@ export default function InvoicePage() {
     localStorage.setItem(TRIAL_TX_KEY, JSON.stringify(nextTx));
   }
 
+  function addPaymentOption() {
+    const value = newPaymentOption.trim();
+    if (!value) return;
+
+    const next = Array.from(new Set([...paymentOptions, value]));
+    setPaymentOptions(next);
+    setPaymentMethod(value);
+    setNewPaymentOption("");
+    localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
+  }
+
   async function saveCompanyInfo() {
     if (isTrial) {
-      setMsg(t.companySaved);
-      setCompanyEditing(false);
+      setMsg(t.saved);
+      setShowCompanyEdit(false);
       return;
     }
 
@@ -609,156 +611,8 @@ export default function InvoicePage() {
       return;
     }
 
-    setMsg(t.companySaved);
-    setCompanyEditing(false);
-  }
-
-  async function uploadCompanyLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (isTrial) {
-      const previewUrl = URL.createObjectURL(file);
-      setCompanyLogoUrl(previewUrl);
-      setMsg(t.logoUploaded);
-      return;
-    }
-
-    if (!userId) return;
-
-    const filePath = `${userId}/company-logo-${Date.now()}-${file.name}`;
-
-    const { error } = await supabase.storage
-      .from("company-assets")
-      .upload(filePath, file, { upsert: true });
-
-    if (error) {
-      setMsg(t.fail + error.message);
-      return;
-    }
-
-    const { data } = supabase.storage.from("company-assets").getPublicUrl(filePath);
-
-    setCompanyLogoUrl(data.publicUrl);
-
-    await supabase
-      .from("profiles")
-      .update({ company_logo_url: data.publicUrl })
-      .eq("id", userId);
-
-    setMsg(t.logoUploaded);
-  }
-
-  async function insertProductSmart(payload: any) {
-    const fullInsert = await supabase
-      .from("products")
-      .insert(payload)
-      .select()
-      .single();
-
-    if (!fullInsert.error) return fullInsert.data as Product;
-
-    if (!isSchemaCacheError(fullInsert.error.message)) {
-      throw fullInsert.error;
-    }
-
-    const { stock_qty, ...withoutStock } = payload;
-
-    const fallback = await supabase
-      .from("products")
-      .insert(withoutStock)
-      .select()
-      .single();
-
-    if (fallback.error) throw fallback.error;
-
-    return fallback.data as Product;
-  }
-
-  async function updateStockSmart(productIdValue: string, newStock: number) {
-    const result = await supabase
-      .from("products")
-      .update({ stock_qty: newStock })
-      .eq("id", productIdValue);
-
-    if (!result.error) return true;
-
-    if (isSchemaCacheError(result.error.message)) return false;
-
-    throw result.error;
-  }
-
-  async function insertInvoiceSmart(payload: any) {
-    const full = await supabase
-      .from("invoices")
-      .insert(payload)
-      .select()
-      .single();
-
-    if (!full.error) return full.data;
-
-    const corePayload = {
-      user_id: payload.user_id,
-      customer_id: payload.customer_id,
-      customer_name: payload.customer_name,
-      invoice_no: payload.invoice_no,
-      invoice_date: payload.invoice_date,
-      due_date: payload.due_date,
-      status: payload.status,
-      payment_method: payload.payment_method,
-      subtotal: payload.subtotal,
-      discount: payload.discount,
-      total: payload.total,
-      total_cost: payload.total_cost,
-      total_profit: payload.total_profit,
-      note: payload.note,
-    };
-
-    const core = await supabase
-      .from("invoices")
-      .insert(corePayload)
-      .select()
-      .single();
-
-    if (!core.error) return core.data;
-
-    const minimalPayload = {
-      user_id: payload.user_id,
-      customer_name: payload.customer_name,
-      invoice_no: payload.invoice_no,
-      total: payload.total,
-      note: payload.note,
-    };
-
-    const minimal = await supabase
-      .from("invoices")
-      .insert(minimalPayload)
-      .select()
-      .single();
-
-    if (minimal.error) throw minimal.error;
-
-    return minimal.data;
-  }
-
-  async function insertTransactionSmart(payload: any) {
-    const full = await supabase.from("transactions").insert(payload);
-
-    if (!full.error) return;
-
-    const minimalPayload = {
-      user_id: payload.user_id,
-      txn_date: payload.txn_date,
-      txn_type: payload.txn_type,
-      amount: payload.amount,
-      category_name: payload.category_name,
-      debt_amount: 0,
-      note: payload.note,
-    };
-
-    const minimal = await supabase.from("transactions").insert(minimalPayload);
-
-    if (minimal.error) throw minimal.error;
+    setMsg(t.saved);
+    setShowCompanyEdit(false);
   }
 
   async function createInvoice() {
@@ -823,7 +677,7 @@ export default function InvoicePage() {
 
           if (error) throw error;
           finalCustomer = data as Customer;
-          await loadCustomers(userId);
+          setCustomers((prev) => [finalCustomer as Customer, ...prev]);
         }
       }
 
@@ -835,7 +689,7 @@ export default function InvoicePage() {
           cost: Number(newProductCost),
           discount: 0,
           stock_qty: Number(newProductStock || 0),
-          note: t.trialProductNote,
+          note: t.productNote,
         };
 
         if (isTrial) {
@@ -843,17 +697,23 @@ export default function InvoicePage() {
           setProducts(next);
           saveTrialData(customers, next);
         } else {
-          finalProduct = await insertProductSmart({
-            user_id: userId,
-            name: newProductName,
-            price: Number(newProductPrice),
-            cost: Number(newProductCost),
-            discount: 0,
-            stock_qty: Number(newProductStock || 0),
-            note: t.trialProductNote,
-          });
+          const { data, error } = await supabase
+            .from("products")
+            .insert({
+              user_id: userId,
+              name: newProductName,
+              price: Number(newProductPrice),
+              cost: Number(newProductCost),
+              discount: 0,
+              stock_qty: Number(newProductStock || 0),
+              note: t.productNote,
+            })
+            .select()
+            .single();
 
-          await loadProducts(userId);
+          if (error) throw error;
+          finalProduct = data as Product;
+          setProducts((prev) => [finalProduct as Product, ...prev]);
         }
       }
 
@@ -863,87 +723,92 @@ export default function InvoicePage() {
         return;
       }
 
-      const hasStockColumn =
-        finalProduct.stock_qty !== undefined && finalProduct.stock_qty !== null;
+      const currentStock = Number(finalProduct.stock_qty || 0);
 
-      let stockDeducted = false;
-      let newStock = Number(finalProduct.stock_qty || 0);
-
-      if (hasStockColumn) {
-        const currentStock = Number(finalProduct.stock_qty || 0);
-
-        if (currentStock < preview.finalQty) {
-          setMsg(`${t.stockNotEnough}${currentStock}`);
-          setLoading(false);
-          return;
-        }
-
-        newStock = Math.max(currentStock - preview.finalQty, 0);
+      if (currentStock < preview.finalQty) {
+        setMsg(`${t.stockNotEnough}${currentStock}`);
+        setLoading(false);
+        return;
       }
+
+      const newStock = Math.max(currentStock - preview.finalQty, 0);
+
+      const printableRecord: InvoiceRecord = {
+        id: String(Date.now()),
+        invoice_no: invoiceNo,
+        invoice_date: invoiceDate,
+        due_date: dueDate,
+        status,
+        customer_id: finalCustomer.id,
+        customer_name: finalCustomer.name,
+        customer_phone: finalCustomer.phone || "",
+        customer_company: finalCustomer.company_name || "",
+        customer_address: finalCustomer.address || "",
+        subtotal: preview.subtotal,
+        discount: preview.discount,
+        total: preview.total,
+        total_cost: preview.totalCost,
+        total_profit: preview.profit,
+        payment_method: paymentMethod,
+        note,
+        created_at: new Date().toISOString(),
+      };
 
       if (isTrial) {
         const nextProducts = products.map((p) =>
           p.id === finalProduct!.id ? { ...p, stock_qty: newStock } : p
         );
 
-        const newInvoice: InvoiceRecord = {
-          id: String(Date.now() + 2),
-          invoice_no: invoiceNo,
-          invoice_date: invoiceDate,
-          due_date: dueDate,
-          status,
-          customer_id: finalCustomer.id,
-          customer_name: finalCustomer.name,
-          customer_phone: finalCustomer.phone || "",
-          customer_company: finalCustomer.company_name || "",
-          total: preview.total,
-          payment_method: paymentMethod,
-          note,
-          created_at: new Date().toISOString(),
-        };
-
-        const nextInvoices = [newInvoice, ...invoices];
+        const nextInvoices = [printableRecord, ...invoices];
 
         setProducts(nextProducts);
         setInvoices(nextInvoices);
-        saveTrialData(customers, nextProducts);
-        saveTrialInvoices(nextInvoices);
+        setLastPrintableInvoice(printableRecord);
+
+        saveTrialData(customers, nextProducts, nextInvoices);
         addTrialTransaction(preview.total, finalCustomer, finalProduct, invoiceNo);
 
         setMsg(t.trialSuccess);
-        setShowForm(false);
+        setMode("list");
         setLoading(false);
         return;
       }
 
-      const invoiceData = await insertInvoiceSmart({
-        user_id: userId,
-        customer_id: finalCustomer.id,
-        customer_name: finalCustomer.name,
-        customer_phone: finalCustomer.phone || "",
-        customer_company: finalCustomer.company_name || "",
-        invoice_no: invoiceNo,
-        invoice_date: invoiceDate,
-        due_date: dueDate,
-        status,
-        payment_method: paymentMethod,
-        subtotal: preview.subtotal,
-        discount: preview.discount,
-        total: preview.total,
-        total_cost: preview.totalCost,
-        total_profit: preview.profit,
-        note,
-        supplier_tin: supplierTin,
-        buyer_tin: buyerTin,
-        sst_no: sstNo,
-        msic_code: msicCode,
-        einvoice_uuid: einvoiceUuid,
-        validation_status: validationStatus,
-        qr_code_url: qrCodeUrl,
-        myinvois_status: myinvoisStatus,
-      });
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from("invoices")
+        .insert({
+          user_id: userId,
+          customer_id: finalCustomer.id,
+          customer_name: finalCustomer.name,
+          customer_phone: finalCustomer.phone || "",
+          customer_company: finalCustomer.company_name || "",
+          customer_address: finalCustomer.address || "",
+          invoice_no: invoiceNo,
+          invoice_date: invoiceDate,
+          due_date: dueDate,
+          status,
+          payment_method: paymentMethod,
+          subtotal: preview.subtotal,
+          discount: preview.discount,
+          total: preview.total,
+          total_cost: preview.totalCost,
+          total_profit: preview.profit,
+          note,
+          supplier_tin: supplierTin,
+          buyer_tin: buyerTin,
+          sst_no: sstNo,
+          msic_code: msicCode,
+          einvoice_uuid: einvoiceUuid,
+          validation_status: validationStatus,
+          qr_code_url: qrCodeUrl,
+          myinvois_status: myinvoisStatus,
+        })
+        .select()
+        .single();
 
-      await supabase.from("invoice_items").insert({
+      if (invoiceError) throw invoiceError;
+
+      const { error: itemError } = await supabase.from("invoice_items").insert({
         invoice_id: invoiceData.id,
         product_id: finalProduct.id,
         product_name: finalProduct.name,
@@ -955,28 +820,42 @@ export default function InvoicePage() {
         line_profit: preview.profit,
       });
 
-      if (hasStockColumn) {
-        stockDeducted = await updateStockSmart(finalProduct.id, newStock);
-      }
+      if (itemError) throw itemError;
 
-      await insertTransactionSmart({
+      const { error: stockError } = await supabase
+        .from("products")
+        .update({ stock_qty: newStock })
+        .eq("id", finalProduct.id);
+
+      if (stockError) throw stockError;
+
+      const { error: txError } = await supabase.from("transactions").insert({
         user_id: userId,
         txn_date: invoiceDate,
         txn_type: "income",
         amount: preview.total,
         category_name:
-          lang === "zh" ? "发票收入" : lang === "en" ? "Invoice Income" : "Pendapatan Invois",
+          lang === "zh"
+            ? "发票收入"
+            : lang === "en"
+              ? "Invoice Income"
+              : "Pendapatan Invois",
         debt_amount: 0,
         source_type: "invoice",
         source_id: invoiceData.id,
         note: `${invoiceNo}｜${finalCustomer.name}｜${finalProduct.name}`,
       });
 
-      await loadProducts(userId);
-      await loadInvoices(userId);
+      if (txError) throw txError;
 
-      setMsg(stockDeducted ? t.success : t.successNoStock);
-      setShowForm(false);
+      const savedRecord = invoiceData as InvoiceRecord;
+      setInvoices((prev) => [savedRecord, ...prev]);
+      setLastPrintableInvoice(savedRecord);
+
+      await loadProducts(userId);
+
+      setMsg(t.success);
+      setMode("list");
     } catch (error: any) {
       setMsg(t.fail + error.message);
     }
@@ -984,75 +863,95 @@ export default function InvoicePage() {
     setLoading(false);
   }
 
-  function printInvoice() {
-    window.print();
+  function printInvoice(record?: InvoiceRecord) {
+    if (record) setLastPrintableInvoice(record);
+    setTimeout(() => window.print(), 150);
   }
 
-  function downloadPdf() {
-    window.print();
+  function downloadPdf(record?: InvoiceRecord) {
+    if (record) setLastPrintableInvoice(record);
+    setTimeout(() => window.print(), 150);
   }
 
-  function sendWhatsApp() {
-    const customer = customerMode === "select" ? selectedCustomer : { name: newCustomerName };
-    const text = `Invoice ${invoiceNo}%0A${t.customerName}：${customer?.name || ""}%0A${t.total}：RM ${preview.total.toFixed(2)}%0A${t.paymentMethod}：${paymentMethod}`;
+  function sendWhatsApp(record?: InvoiceRecord) {
+    const invNo = record?.invoice_no || invoiceNo;
+    const customerName = record?.customer_name || activeCustomerForPreview.name;
+    const total = Number(record?.total ?? preview.total).toFixed(2);
+    const text = `Invoice ${invNo}%0A${t.customerName}：${customerName}%0A${t.total}：RM ${total}%0A${t.paymentMethod}：${record?.payment_method || paymentMethod}`;
     window.location.href = `https://wa.me/?text=${text}`;
   }
 
   function goBack() {
     const q = new URLSearchParams(window.location.search);
-    const mode = q.get("mode");
-
+    const modeParam = q.get("mode");
     window.location.href =
-      mode === "trial"
+      modeParam === "trial"
         ? `/dashboard?mode=trial&lang=${lang}`
         : `/dashboard?lang=${lang}`;
   }
 
-  function getStatusText(value?: string | null) {
-    if (value === "draft") return t.draft;
-    if (value === "sent") return t.sent;
-    if (value === "paid") return t.paid;
-    if (value === "cancelled") return t.cancelled;
-    return value || "-";
+  function openNewInvoice() {
+    setMode("new");
+    setMsg("");
   }
+
+  const printableInvoice = lastPrintableInvoice || {
+    id: "",
+    invoice_no: invoiceNo,
+    invoice_date: invoiceDate,
+    due_date: dueDate,
+    status,
+    customer_name: activeCustomerForPreview.name,
+    customer_phone: activeCustomerForPreview.phone,
+    customer_company: activeCustomerForPreview.company_name,
+    customer_address: activeCustomerForPreview.address,
+    subtotal: preview.subtotal,
+    discount: preview.discount,
+    total: preview.total,
+    total_cost: preview.totalCost,
+    total_profit: preview.profit,
+    payment_method: paymentMethod,
+    note,
+  };
 
   return (
     <main style={pageStyle}>
-      <style>{`
+      <style jsx global>{`
         @media print {
           body * {
             visibility: hidden !important;
           }
 
-          #printable-invoice,
-          #printable-invoice * {
+          #printInvoiceArea,
+          #printInvoiceArea * {
             visibility: visible !important;
           }
 
-          #printable-invoice {
+          #printInvoiceArea {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
-            width: 100% !important;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            padding: 14mm !important;
             margin: 0 !important;
-            padding: 0 !important;
-            border: none !important;
-            box-shadow: none !important;
             background: white !important;
+            color: #111827 !important;
+            box-shadow: none !important;
+          }
+
+          @page {
+            size: A4 portrait;
+            margin: 0;
           }
 
           .no-print {
             display: none !important;
           }
-
-          @page {
-            size: A4;
-            margin: 12mm;
-          }
         }
       `}</style>
 
-      <div style={topRowStyle} className="no-print">
+      <div className="no-print" style={topRowStyle}>
         <button onClick={goBack} style={backBtn}>
           ← {t.back}
         </button>
@@ -1070,57 +969,57 @@ export default function InvoicePage() {
         </div>
       </div>
 
-      {!showForm && (
-        <section style={cardStyle} className="no-print">
+      {mode === "list" && (
+        <section className="no-print" style={cardStyle}>
           <div style={listHeaderStyle}>
             <div>
-              <h1 style={titleStyle}>{t.invoiceList}</h1>
-              <p style={descStyle}>{t.desc}</p>
+              <h1 style={titleStyle}>{t.title}</h1>
+              <p style={descStyle}>{t.latestInvoices}</p>
             </div>
 
-            <button onClick={() => setShowForm(true)} style={plusBtnStyle}>
-              + {t.newInvoice}
+            <button onClick={openNewInvoice} style={plusBtnStyle}>
+              +
             </button>
           </div>
 
           <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchPlaceholder}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
             style={inputStyle}
           />
 
           {filteredInvoices.length === 0 ? (
-            <p style={emptyTextStyle}>{t.noInvoice}</p>
+            <p style={emptyStyle}>{t.noInvoice}</p>
           ) : (
             <div style={invoiceListStyle}>
-              {filteredInvoices.map((inv) => {
-                const customerFromList = customers.find((c) => c.id === inv.customer_id);
-
-                return (
-                  <div key={inv.id} style={invoiceItemStyle}>
-                    <div>
-                      <strong>{inv.invoice_no || "-"}</strong>
-                      <div style={mutedStyle}>
-                        {inv.invoice_date || "-"} · {getStatusText(inv.status)}
-                      </div>
-                      <div style={mutedStyle}>
-                        {inv.customer_name || customerFromList?.name || "-"}
-                        {inv.customer_company || customerFromList?.company_name
-                          ? `｜${inv.customer_company || customerFromList?.company_name}`
-                          : ""}
-                      </div>
-                      <div style={mutedStyle}>
-                        {inv.customer_phone || customerFromList?.phone || ""}
-                      </div>
+              {filteredInvoices.map((inv) => (
+                <div key={inv.id} style={invoiceItemStyle}>
+                  <div>
+                    <strong>{inv.invoice_no}</strong>
+                    <div style={mutedTextStyle}>
+                      {inv.customer_name || "-"} {inv.customer_company ? `｜${inv.customer_company}` : ""}
                     </div>
+                    <div style={mutedTextStyle}>
+                      {inv.invoice_date || "-"}｜{inv.customer_phone || "-"}
+                    </div>
+                  </div>
 
-                    <strong style={amountStyle}>
+                  <div style={{ textAlign: "right" }}>
+                    <strong style={{ color: "#0f766e" }}>
                       RM {Number(inv.total || 0).toFixed(2)}
                     </strong>
+                    <div style={smallActionRowStyle}>
+                      <button onClick={() => printInvoice(inv)} style={miniBtnStyle}>
+                        {t.print}
+                      </button>
+                      <button onClick={() => sendWhatsApp(inv)} style={miniWhatsappBtnStyle}>
+                        WA
+                      </button>
+                    </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
 
@@ -1128,266 +1027,288 @@ export default function InvoicePage() {
         </section>
       )}
 
-      {showForm && (
-        <section style={cardStyle}>
-          <div className="no-print" style={formTopActionStyle}>
-            <button onClick={() => setShowForm(false)} style={backBtn}>
-              ← {t.back}
-            </button>
-          </div>
+      {mode === "new" && (
+        <section className="no-print" style={cardStyle}>
+          <button onClick={() => setMode("list")} style={backBtn}>
+            ← {t.back}
+          </button>
 
-          <h1 style={titleStyle} className="no-print">{t.title}</h1>
-          <p style={descStyle} className="no-print">{t.desc}</p>
+          <h1 style={titleStyle}>{t.createTitle}</h1>
+          <p style={descStyle}>{t.desc}</p>
 
-          <div style={invoiceNoBox} className="no-print">
+          <div style={invoiceNoBox}>
             <strong>Invoice No：</strong> {invoiceNo}
           </div>
 
-          <div className="no-print">
-            <h3>{t.invoiceInfo}</h3>
+          <h3>{t.invoiceInfo}</h3>
 
-            <div style={formGrid}>
-              <label style={labelStyle}>{t.invoiceDate}</label>
-              <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} style={smallDateInput} />
+          <div style={formGrid}>
+            <label style={labelStyle}>{t.invoiceDate}</label>
+            <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} style={smallDateInput} />
 
-              <label style={labelStyle}>{t.dueDate}</label>
-              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={smallDateInput} />
+            <label style={labelStyle}>{t.dueDate}</label>
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={smallDateInput} />
 
-              <label style={labelStyle}>{t.status}</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
-                <option value="draft">{t.draft}</option>
-                <option value="sent">{t.sent}</option>
-                <option value="paid">{t.paid}</option>
-                <option value="cancelled">{t.cancelled}</option>
-              </select>
+            <label style={labelStyle}>{t.status}</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
+              <option value="draft">{t.draft}</option>
+              <option value="sent">{t.sent}</option>
+              <option value="paid">{t.paid}</option>
+              <option value="cancelled">{t.cancelled}</option>
+            </select>
 
-              <label style={labelStyle}>{t.paymentMethod}</label>
-              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={inputStyle}>
-                {paymentOptions.map((x) => (
-                  <option key={x} value={x}>{x}</option>
-                ))}
-              </select>
+            <label style={labelStyle}>{t.paymentMethod}</label>
+            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={inputStyle}>
+              {paymentOptions.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
 
-              <div style={paymentAddRowStyle}>
-                <input
-                  placeholder={t.newPaymentPlaceholder}
-                  value={newPaymentOption}
-                  onChange={(e) => setNewPaymentOption(e.target.value)}
-                  style={{ ...inputStyle, marginBottom: 0 }}
-                />
-                <button onClick={addPaymentOption} style={miniBtnStyle}>
-                  {t.addPayment}
-                </button>
-              </div>
-
-              <label style={labelStyle}>{t.note}</label>
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.note} style={inputStyle} />
-            </div>
-
-            <h3>{t.companyInfo}</h3>
-
-            <div style={companyBox}>
-              {companyLogoUrl ? <img src={companyLogoUrl} style={logoStyle} /> : <div style={logoPlaceholder}>LOGO</div>}
-
-              <div style={{ flex: 1 }}>
-                <strong>{companyName}</strong>
-                <div>SSM：{companyRegNo || "-"}</div>
-                <div>{t.phone}：{companyPhone || "-"}</div>
-                <div>{t.address}：{companyAddress || "-"}</div>
-              </div>
-
-              <button
-                onClick={() => setCompanyEditing((v) => !v)}
-                style={miniBtnStyle}
-              >
-                {companyEditing ? t.closeEdit : t.editCompany}
+            <div style={paymentAddRowStyle}>
+              <input
+                value={newPaymentOption}
+                onChange={(e) => setNewPaymentOption(e.target.value)}
+                placeholder={t.paymentPlaceholder}
+                style={{ ...inputStyle, marginBottom: 0 }}
+              />
+              <button onClick={addPaymentOption} style={addBtnStyle}>
+                {t.addPayment}
               </button>
             </div>
 
-            {companyEditing && (
-              <div style={companyEditBoxStyle}>
-                <label style={labelStyle}>{t.uploadLogo}</label>
-                <input type="file" accept="image/*" onChange={uploadCompanyLogo} style={inputStyle} />
-
-                <input placeholder="Company Name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle} />
-                <input placeholder="SSM / Registration No" value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={inputStyle} />
-                <input placeholder={t.phone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={inputStyle} />
-                <input placeholder={t.address} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={inputStyle} />
-
-                <button onClick={saveCompanyInfo} style={submitBtn}>
-                  {t.saveCompany}
-                </button>
-              </div>
-            )}
-
-            <h3>{t.customerInfo}</h3>
-
-            <div style={switchRow}>
-              <button onClick={() => setCustomerMode("select")} style={modeBtn(customerMode === "select")}>{t.selectCustomer}</button>
-              <button onClick={() => setCustomerMode("new")} style={modeBtn(customerMode === "new")}>{t.newCustomer}</button>
-            </div>
-
-            {customerMode === "select" ? (
-              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={inputStyle}>
-                <option value="">{t.chooseCustomer}</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name} {c.company_name ? `｜${c.company_name}` : ""}</option>
-                ))}
-              </select>
-            ) : (
-              <div style={formGrid}>
-                <input placeholder={t.customerName} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} style={inputStyle} />
-                <input placeholder={t.customerPhone} value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} style={inputStyle} />
-                <input placeholder={t.customerCompany} value={newCustomerCompany} onChange={(e) => setNewCustomerCompany(e.target.value)} style={inputStyle} />
-                <input placeholder={t.customerAddress} value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} style={inputStyle} />
-              </div>
-            )}
-
-            <h3>{t.productInfo}</h3>
-
-            <div style={switchRow}>
-              <button onClick={() => setProductMode("select")} style={modeBtn(productMode === "select")}>{t.selectProduct}</button>
-              <button onClick={() => setProductMode("new")} style={modeBtn(productMode === "new")}>{t.newProduct}</button>
-            </div>
-
-            {productMode === "select" ? (
-              <select value={productId} onChange={(e) => setProductId(e.target.value)} style={inputStyle}>
-                <option value="">{t.chooseProduct}</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}｜{t.price} {Number(p.price).toFixed(2)}｜{t.cost} {Number(p.cost).toFixed(2)}｜
-                    {p.stock_qty === undefined || p.stock_qty === null
-                      ? t.stockUnavailable
-                      : `${t.stock} ${Number(p.stock_qty || 0)}`}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div style={formGrid}>
-                <input placeholder={t.productName} value={newProductName} onChange={(e) => setNewProductName(e.target.value)} style={inputStyle} />
-                <input placeholder={t.price} value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} style={inputStyle} />
-                <input placeholder={t.cost} value={newProductCost} onChange={(e) => setNewProductCost(e.target.value)} style={inputStyle} />
-                <input placeholder={t.stock} value={newProductStock} onChange={(e) => setNewProductStock(e.target.value)} style={inputStyle} />
-              </div>
-            )}
-
-            <h3>{t.invoiceContent}</h3>
-
-            <div style={formGrid}>
-              <label style={labelStyle}>{t.qty}</label>
-              <input value={qty} onChange={(e) => setQty(e.target.value)} style={inputStyle} />
-
-              <label style={labelStyle}>{t.extraDiscount}</label>
-              <input value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} style={inputStyle} />
-            </div>
-
-            <h3>{t.lhdn}</h3>
-
-            <div style={formGrid}>
-              <input placeholder="Supplier TIN" value={supplierTin} onChange={(e) => setSupplierTin(e.target.value)} style={inputStyle} />
-              <input placeholder="Buyer TIN" value={buyerTin} onChange={(e) => setBuyerTin(e.target.value)} style={inputStyle} />
-              <input placeholder="SST No" value={sstNo} onChange={(e) => setSstNo(e.target.value)} style={inputStyle} />
-              <input placeholder="MSIC Code" value={msicCode} onChange={(e) => setMsicCode(e.target.value)} style={inputStyle} />
-              <input placeholder="e-Invoice UUID" value={einvoiceUuid} onChange={(e) => setEinvoiceUuid(e.target.value)} style={inputStyle} />
-              <input placeholder="Validation Status" value={validationStatus} onChange={(e) => setValidationStatus(e.target.value)} style={inputStyle} />
-              <input placeholder="QR Code URL" value={qrCodeUrl} onChange={(e) => setQrCodeUrl(e.target.value)} style={inputStyle} />
-              <input placeholder="MyInvois Submission Status" value={myinvoisStatus} onChange={(e) => setMyinvoisStatus(e.target.value)} style={inputStyle} />
-            </div>
+            <label style={labelStyle}>{t.note}</label>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.note} style={inputStyle} />
           </div>
 
-          <section id="printable-invoice" style={printInvoiceBoxStyle}>
-            <div style={printHeaderStyle}>
-              <div style={printCompanyStyle}>
-                {companyLogoUrl ? (
-                  <img src={companyLogoUrl} style={printLogoStyle} />
-                ) : (
-                  <div style={printLogoPlaceholderStyle}>LOGO</div>
-                )}
+          <h3>{t.companyInfo}</h3>
 
-                <div>
-                  <h2 style={{ margin: 0 }}>{companyName}</h2>
-                  <div>SSM：{companyRegNo || "-"}</div>
-                  <div>{t.phone}：{companyPhone || "-"}</div>
-                  <div>{t.address}：{companyAddress || "-"}</div>
-                </div>
-              </div>
-
-              <div style={printInvoiceTitleStyle}>
-                <h1 style={{ margin: 0 }}>INVOICE</h1>
-                <div>{invoiceNo}</div>
-              </div>
+          <div style={companyBox}>
+            {companyLogoUrl ? <img src={companyLogoUrl} style={logoStyle} /> : <div style={logoPlaceholder}>LOGO</div>}
+            <div style={{ flex: 1 }}>
+              <strong>{companyName}</strong>
+              <div>SSM：{companyRegNo || "-"}</div>
+              <div>{t.phone}：{companyPhone || "-"}</div>
+              <div>{t.address}：{companyAddress || "-"}</div>
             </div>
 
-            <div style={printTwoColStyle}>
-              <div style={printBoxStyle}>
-                <strong>{t.customerInfo}</strong>
-                <div>{customerMode === "select" ? selectedCustomer?.name || "-" : newCustomerName || "-"}</div>
-                <div>{customerMode === "select" ? selectedCustomer?.phone || "-" : newCustomerPhone || "-"}</div>
-                <div>{customerMode === "select" ? selectedCustomer?.company_name || "-" : newCustomerCompany || "-"}</div>
-                <div>{customerMode === "select" ? selectedCustomer?.address || "-" : newCustomerAddress || "-"}</div>
-              </div>
+            <button onClick={() => setShowCompanyEdit((v) => !v)} style={editBtnStyle}>
+              {t.editCompany}
+            </button>
+          </div>
 
-              <div style={printBoxStyle}>
-                <div style={rowStyle}><span>{t.invoiceDate}</span><strong>{invoiceDate}</strong></div>
-                <div style={rowStyle}><span>{t.dueDate}</span><strong>{dueDate}</strong></div>
-                <div style={rowStyle}><span>{t.status}</span><strong>{getStatusText(status)}</strong></div>
-                <div style={rowStyle}><span>{t.paymentMethod}</span><strong>{paymentMethod}</strong></div>
-              </div>
+          {showCompanyEdit && (
+            <div style={companyEditBoxStyle}>
+              <input placeholder={t.companyLogoUrl} value={companyLogoUrl} onChange={(e) => setCompanyLogoUrl(e.target.value)} style={inputStyle} />
+              <input placeholder={t.companyName} value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle} />
+              <input placeholder={t.companyRegNo} value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={inputStyle} />
+              <input placeholder={t.phone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={inputStyle} />
+              <input placeholder={t.address} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={inputStyle} />
+              <button onClick={saveCompanyInfo} style={submitSmallBtnStyle}>{t.saveCompany}</button>
             </div>
+          )}
 
-            <table style={printTableStyle}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>{t.productName}</th>
-                  <th style={thStyle}>{t.qty}</th>
-                  <th style={thStyle}>{t.price}</th>
-                  <th style={thStyle}>{t.discount}</th>
-                  <th style={thStyle}>{t.total}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={tdStyle}>{productMode === "select" ? selectedProduct?.name || "-" : newProductName || "-"}</td>
-                  <td style={tdStyle}>{preview.finalQty}</td>
-                  <td style={tdStyle}>RM {preview.price.toFixed(2)}</td>
-                  <td style={tdStyle}>RM {preview.discount.toFixed(2)}</td>
-                  <td style={tdStyle}>RM {preview.total.toFixed(2)}</td>
-                </tr>
-              </tbody>
-            </table>
+          <h3>{t.customerInfo}</h3>
 
-            <div style={printTotalBoxStyle}>
-              <div style={rowStyle}><span>{t.subtotal}</span><strong>RM {preview.subtotal.toFixed(2)}</strong></div>
-              <div style={rowStyle}><span>{t.discount}</span><strong>RM {preview.discount.toFixed(2)}</strong></div>
-              <div style={totalRowStyle}><span>{t.total}</span><strong>RM {preview.total.toFixed(2)}</strong></div>
-              <div style={profitRowStyle} className="no-print">
-                <span>{t.profit}</span><strong>RM {preview.profit.toFixed(2)}</strong>
-              </div>
+          <div style={switchRow}>
+            <button onClick={() => setCustomerMode("select")} style={modeBtn(customerMode === "select")}>{t.selectCustomer}</button>
+            <button onClick={() => setCustomerMode("new")} style={modeBtn(customerMode === "new")}>{t.newCustomer}</button>
+          </div>
+
+          {customerMode === "select" ? (
+            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={inputStyle}>
+              <option value="">{t.chooseCustomer}</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>{c.name} {c.company_name ? `｜${c.company_name}` : ""}</option>
+              ))}
+            </select>
+          ) : (
+            <div style={formGrid}>
+              <input placeholder={t.customerName} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} style={inputStyle} />
+              <input placeholder={t.customerPhone} value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} style={inputStyle} />
+              <input placeholder={t.customerCompany} value={newCustomerCompany} onChange={(e) => setNewCustomerCompany(e.target.value)} style={inputStyle} />
+              <input placeholder={t.customerAddress} value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} style={inputStyle} />
             </div>
+          )}
 
-            {note ? (
-              <div style={printNoteStyle}>
-                <strong>{t.note}：</strong>
-                <div>{note}</div>
-              </div>
-            ) : null}
+          <h3>{t.productInfo}</h3>
+
+          <div style={switchRow}>
+            <button onClick={() => setProductMode("select")} style={modeBtn(productMode === "select")}>{t.selectProduct}</button>
+            <button onClick={() => setProductMode("new")} style={modeBtn(productMode === "new")}>{t.newProduct}</button>
+          </div>
+
+          {productMode === "select" ? (
+            <select value={productId} onChange={(e) => setProductId(e.target.value)} style={inputStyle}>
+              <option value="">{t.chooseProduct}</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}｜{t.price} {Number(p.price).toFixed(2)}｜{t.cost} {Number(p.cost).toFixed(2)}｜{t.stock} {Number(p.stock_qty || 0)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div style={formGrid}>
+              <input placeholder={t.productName} value={newProductName} onChange={(e) => setNewProductName(e.target.value)} style={inputStyle} />
+              <input placeholder={t.price} value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} style={inputStyle} />
+              <input placeholder={t.cost} value={newProductCost} onChange={(e) => setNewProductCost(e.target.value)} style={inputStyle} />
+              <input placeholder={t.stock} value={newProductStock} onChange={(e) => setNewProductStock(e.target.value)} style={inputStyle} />
+            </div>
+          )}
+
+          <h3>{t.invoiceContent}</h3>
+
+          <div style={formGrid}>
+            <label style={labelStyle}>{t.qty}</label>
+            <input value={qty} onChange={(e) => setQty(e.target.value)} style={inputStyle} />
+
+            <label style={labelStyle}>{t.extraDiscount}</label>
+            <input value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} style={inputStyle} />
+          </div>
+
+          <h3>{t.lhdn}</h3>
+
+          <div style={formGrid}>
+            <input placeholder="Supplier TIN" value={supplierTin} onChange={(e) => setSupplierTin(e.target.value)} style={inputStyle} />
+            <input placeholder="Buyer TIN" value={buyerTin} onChange={(e) => setBuyerTin(e.target.value)} style={inputStyle} />
+            <input placeholder="SST No" value={sstNo} onChange={(e) => setSstNo(e.target.value)} style={inputStyle} />
+            <input placeholder="MSIC Code" value={msicCode} onChange={(e) => setMsicCode(e.target.value)} style={inputStyle} />
+            <input placeholder="e-Invoice UUID" value={einvoiceUuid} onChange={(e) => setEinvoiceUuid(e.target.value)} style={inputStyle} />
+            <input placeholder="Validation Status" value={validationStatus} onChange={(e) => setValidationStatus(e.target.value)} style={inputStyle} />
+            <input placeholder="QR Code URL" value={qrCodeUrl} onChange={(e) => setQrCodeUrl(e.target.value)} style={inputStyle} />
+            <input placeholder="MyInvois Submission Status" value={myinvoisStatus} onChange={(e) => setMyinvoisStatus(e.target.value)} style={inputStyle} />
+          </div>
+
+          <section style={previewBox}>
+            <h3>{t.preview}</h3>
+            <div style={rowStyle}><span>Invoice No</span><strong>{invoiceNo}</strong></div>
+            <div style={rowStyle}><span>{t.invoiceDate}</span><strong>{invoiceDate}</strong></div>
+            <div style={rowStyle}><span>{t.dueDate}</span><strong>{dueDate}</strong></div>
+            <div style={rowStyle}><span>{t.status}</span><strong>{status}</strong></div>
+            <div style={rowStyle}><span>{t.price}</span><strong>RM {preview.price.toFixed(2)}</strong></div>
+            <div style={rowStyle}><span>{t.qty}</span><strong>{preview.finalQty}</strong></div>
+            <div style={rowStyle}><span>{t.subtotal}</span><strong>RM {preview.subtotal.toFixed(2)}</strong></div>
+            <div style={rowStyle}><span>{t.discount}</span><strong>RM {preview.discount.toFixed(2)}</strong></div>
+            <div style={totalRowStyle}><span>{t.total}</span><strong>RM {preview.total.toFixed(2)}</strong></div>
+            <div style={profitRowStyle}><span>{t.profit}</span><strong>RM {preview.profit.toFixed(2)}</strong></div>
           </section>
 
-          <div className="no-print">
-            <button onClick={createInvoice} disabled={loading} style={submitBtn}>
-              {loading ? t.generating : t.generate}
-            </button>
+          <button onClick={createInvoice} disabled={loading} style={submitBtn}>
+            {loading ? t.generating : t.generate}
+          </button>
 
-            <div style={actionRow}>
-              <button onClick={printInvoice} style={secondaryBtn}>{t.print}</button>
-              <button onClick={downloadPdf} style={secondaryBtn}>{t.pdf}</button>
-              <button onClick={sendWhatsApp} style={whatsappBtn}>{t.whatsapp}</button>
-            </div>
-
-            {msg ? <p style={msgStyle}>{msg}</p> : null}
+          <div style={actionRow}>
+            <button onClick={() => printInvoice()} style={secondaryBtn}>{t.print}</button>
+            <button onClick={() => downloadPdf()} style={secondaryBtn}>{t.pdf}</button>
+            <button onClick={() => sendWhatsApp()} style={whatsappBtn}>{t.whatsapp}</button>
           </div>
+
+          {msg ? <p style={msgStyle}>{msg}</p> : null}
         </section>
       )}
+
+      <section id="printInvoiceArea" style={printAreaStyle}>
+        <div style={printHeaderStyle}>
+          <div style={printBrandBlockStyle}>
+            {companyLogoUrl ? (
+              <img src={companyLogoUrl} style={printLogoStyle} />
+            ) : (
+              <div style={printLogoPlaceholderStyle}>LOGO</div>
+            )}
+
+            <div>
+              <h2 style={printCompanyNameStyle}>{companyName}</h2>
+              <div style={printMutedStyle}>SSM: {companyRegNo || "-"}</div>
+            </div>
+          </div>
+
+          <div style={printCompanyInfoStyle}>
+            <div>T: {companyPhone || "-"}</div>
+            <div>{companyAddress || "-"}</div>
+          </div>
+        </div>
+
+        <div style={printTopLineStyle} />
+
+        <div style={printBillGridStyle}>
+          <div style={printBoxStyle}>
+            <strong>{t.billTo}</strong>
+            <div style={printCustomerNameStyle}>{printableInvoice.customer_name || "-"}</div>
+            <div>{printableInvoice.customer_company || ""}</div>
+            <div>{printableInvoice.customer_address || ""}</div>
+            <div>T: {printableInvoice.customer_phone || "-"}</div>
+          </div>
+
+          <div style={printBoxStyle}>
+            <div style={printInvoiceTitleRowStyle}>
+              <strong>{t.invoiceDetails}</strong>
+              <span style={printInvoiceWordStyle}>{t.invoice}</span>
+            </div>
+            <div style={printDetailRowStyle}>
+              <span>INVOICE NO</span>
+              <strong>{printableInvoice.invoice_no}</strong>
+            </div>
+            <div style={printDetailRowStyle}>
+              <span>INVOICE DATE</span>
+              <strong>{printableInvoice.invoice_date || "-"}</strong>
+            </div>
+            <div style={printDetailRowStyle}>
+              <span>DUE DATE</span>
+              <strong>{printableInvoice.due_date || "-"}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div style={printThickLineStyle} />
+
+        <table style={printTableStyle}>
+          <thead>
+            <tr>
+              <th style={printThStyle}>#</th>
+              <th style={printThStyle}>{t.description}</th>
+              <th style={printThRightStyle}>QTY</th>
+              <th style={printThRightStyle}>PRICE</th>
+              <th style={printThRightStyle}>DISCOUNT</th>
+              <th style={printThRightStyle}>TOTAL</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr>
+              <td style={printTdStyle}>1</td>
+              <td style={printTdStyle}>{activeProductForPreview.name}</td>
+              <td style={printTdRightStyle}>{preview.finalQty}</td>
+              <td style={printTdRightStyle}>{preview.price.toFixed(2)}</td>
+              <td style={printTdRightStyle}>{Number(printableInvoice.discount || preview.discount || 0).toFixed(2)}</td>
+              <td style={printTdRightStyle}>{Number(printableInvoice.total || preview.total || 0).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style={printSummaryWrapStyle}>
+          <div style={printSummaryRowStyle}>
+            <span>SUBTOTAL</span>
+            <span>{Number(printableInvoice.subtotal || preview.subtotal || 0).toFixed(2)}</span>
+          </div>
+          <div style={printSummaryRowStyle}>
+            <span>DISCOUNT</span>
+            <span>-{Number(printableInvoice.discount || preview.discount || 0).toFixed(2)}</span>
+          </div>
+          <div style={printTotalSummaryRowStyle}>
+            <span>TOTAL</span>
+            <span>{Number(printableInvoice.total || preview.total || 0).toFixed(2)}</span>
+          </div>
+          <div style={printSummaryRowStyle}>
+            <span>{paymentMethod}</span>
+            <span>{Number(printableInvoice.total || preview.total || 0).toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div style={printNoteStyle}>
+          Note: {printableInvoice.note || note || "Goods sold are not returnable!"}
+        </div>
+      </section>
     </main>
   );
 }
@@ -1444,7 +1365,17 @@ const listHeaderStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 12,
-  flexWrap: "wrap",
+};
+
+const plusBtnStyle: CSSProperties = {
+  width: 48,
+  height: 48,
+  borderRadius: "999px",
+  border: "none",
+  background: "#0f766e",
+  color: "#fff",
+  fontSize: 28,
+  fontWeight: 900,
 };
 
 const titleStyle: CSSProperties = {
@@ -1458,57 +1389,64 @@ const descStyle: CSSProperties = {
   marginBottom: 20,
 };
 
-const plusBtnStyle: CSSProperties = {
-  background: "#0f766e",
-  color: "#fff",
-  border: "none",
-  borderRadius: 14,
-  padding: "12px 16px",
-  fontWeight: 900,
-};
-
-const invoiceListStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-  marginTop: 14,
-};
-
-const invoiceItemStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  border: "2px solid #14b8a6",
-  borderRadius: 16,
-  padding: 14,
-  background: "#f8fafc",
-};
-
-const mutedStyle: CSSProperties = {
-  color: "#64748b",
-  fontSize: 14,
-  marginTop: 4,
-};
-
-const amountStyle: CSSProperties = {
-  color: "#0f766e",
-  whiteSpace: "nowrap",
-};
-
-const emptyTextStyle: CSSProperties = {
-  color: "#64748b",
-  fontWeight: 700,
-};
-
-const formTopActionStyle: CSSProperties = {
-  marginBottom: 14,
-};
-
 const invoiceNoBox: CSSProperties = {
   background: "#ecfdf5",
   border: "2px solid #14b8a6",
   borderRadius: 14,
   padding: 12,
   marginBottom: 20,
+};
+
+const invoiceListStyle: CSSProperties = {
+  display: "grid",
+  gap: 12,
+};
+
+const invoiceItemStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 12,
+  border: "2px solid #ccfbf1",
+  borderRadius: 16,
+  padding: 14,
+  background: "#f8fafc",
+};
+
+const mutedTextStyle: CSSProperties = {
+  color: "#64748b",
+  fontSize: 13,
+  marginTop: 4,
+};
+
+const smallActionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  marginTop: 10,
+  justifyContent: "flex-end",
+};
+
+const miniBtnStyle: CSSProperties = {
+  border: "1px solid #0f766e",
+  background: "#fff",
+  color: "#0f766e",
+  borderRadius: 8,
+  padding: "6px 8px",
+  fontWeight: 800,
+};
+
+const miniWhatsappBtnStyle: CSSProperties = {
+  border: "none",
+  background: "#25D366",
+  color: "#fff",
+  borderRadius: 8,
+  padding: "6px 8px",
+  fontWeight: 800,
+};
+
+const emptyStyle: CSSProperties = {
+  color: "#64748b",
+  fontWeight: 800,
 };
 
 const switchRow: CSSProperties = {
@@ -1556,16 +1494,17 @@ const smallDateInput: CSSProperties = {
 const paymentAddRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr auto",
-  gap: 10,
+  gap: 8,
+  alignItems: "center",
   marginBottom: 8,
 };
 
-const miniBtnStyle: CSSProperties = {
+const addBtnStyle: CSSProperties = {
+  border: "none",
   background: "#0f766e",
   color: "#fff",
-  border: "none",
   borderRadius: 12,
-  padding: "10px 12px",
+  padding: "13px",
   fontWeight: 900,
 };
 
@@ -1582,10 +1521,9 @@ const companyBox: CSSProperties = {
 
 const companyEditBoxStyle: CSSProperties = {
   marginTop: 12,
-  padding: 14,
   border: "2px dashed #14b8a6",
   borderRadius: 16,
-  background: "#f8fafc",
+  padding: 14,
 };
 
 const logoStyle: CSSProperties = {
@@ -1607,101 +1545,35 @@ const logoPlaceholder: CSSProperties = {
   color: "#0f766e",
 };
 
-const printInvoiceBoxStyle: CSSProperties = {
-  background: "#ffffff",
+const editBtnStyle: CSSProperties = {
   border: "2px solid #0f766e",
-  borderRadius: 18,
-  padding: 18,
-  marginTop: 20,
-};
-
-const printHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 20,
-  borderBottom: "2px solid #0f766e",
-  paddingBottom: 16,
-  marginBottom: 16,
-};
-
-const printCompanyStyle: CSSProperties = {
-  display: "flex",
-  gap: 12,
-  alignItems: "center",
-};
-
-const printLogoStyle: CSSProperties = {
-  width: 70,
-  height: 70,
-  borderRadius: 10,
-  objectFit: "cover",
-};
-
-const printLogoPlaceholderStyle: CSSProperties = {
-  width: 70,
-  height: 70,
-  borderRadius: 10,
-  background: "#ccfbf1",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
+  background: "#fff",
   color: "#0f766e",
+  borderRadius: 12,
+  padding: "10px 12px",
   fontWeight: 900,
 };
 
-const printInvoiceTitleStyle: CSSProperties = {
-  textAlign: "right",
-  color: "#0f766e",
-};
-
-const printTwoColStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 14,
-  marginBottom: 16,
-};
-
-const printBoxStyle: CSSProperties = {
-  border: "1px solid #cbd5e1",
+const submitSmallBtnStyle: CSSProperties = {
+  border: "none",
+  background: "#0f766e",
+  color: "#fff",
   borderRadius: 12,
-  padding: 12,
+  padding: "12px 14px",
+  fontWeight: 900,
 };
 
-const printTableStyle: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  marginTop: 10,
-};
-
-const thStyle: CSSProperties = {
-  border: "1px solid #cbd5e1",
-  padding: 10,
-  textAlign: "left",
-  background: "#ecfdf5",
-};
-
-const tdStyle: CSSProperties = {
-  border: "1px solid #cbd5e1",
-  padding: 10,
-};
-
-const printTotalBoxStyle: CSSProperties = {
-  marginTop: 16,
-  marginLeft: "auto",
-  maxWidth: 360,
-};
-
-const printNoteStyle: CSSProperties = {
-  marginTop: 16,
-  padding: 12,
-  border: "1px solid #cbd5e1",
-  borderRadius: 12,
+const previewBox: CSSProperties = {
+  background: "#f8fafc",
+  border: "2px solid #14b8a6",
+  borderRadius: 18,
+  padding: 16,
+  marginTop: 18,
 };
 
 const rowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  gap: 10,
   padding: "8px 0",
   borderBottom: "1px solid #e2e8f0",
 };
@@ -1709,7 +1581,6 @@ const rowStyle: CSSProperties = {
 const totalRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  gap: 10,
   padding: "12px 0",
   fontSize: 20,
   color: "#0f766e",
@@ -1718,7 +1589,6 @@ const totalRowStyle: CSSProperties = {
 const profitRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  gap: 10,
   padding: "10px 0",
   color: "#16a34a",
   fontWeight: 900,
@@ -1765,4 +1635,174 @@ const msgStyle: CSSProperties = {
   marginTop: 14,
   color: "#0f766e",
   fontWeight: 900,
+};
+
+const printAreaStyle: CSSProperties = {
+  display: "block",
+  width: "210mm",
+  minHeight: "297mm",
+  background: "#fff",
+  color: "#111827",
+  padding: "14mm",
+  margin: "24px auto 0",
+  boxSizing: "border-box",
+  fontFamily: "Arial, sans-serif",
+  position: "absolute",
+  left: "-9999px",
+  top: 0,
+};
+
+const printHeaderStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 16,
+  alignItems: "start",
+};
+
+const printBrandBlockStyle: CSSProperties = {
+  display: "flex",
+  gap: 12,
+  alignItems: "center",
+};
+
+const printLogoStyle: CSSProperties = {
+  width: 58,
+  height: 58,
+  objectFit: "contain",
+};
+
+const printLogoPlaceholderStyle: CSSProperties = {
+  width: 58,
+  height: 58,
+  border: "1px solid #94a3b8",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: 10,
+};
+
+const printCompanyNameStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 16,
+  fontWeight: 800,
+};
+
+const printMutedStyle: CSSProperties = {
+  fontSize: 11,
+  color: "#334155",
+};
+
+const printCompanyInfoStyle: CSSProperties = {
+  borderTop: "2px solid #111827",
+  paddingTop: 10,
+  fontSize: 12,
+  lineHeight: 1.45,
+};
+
+const printTopLineStyle: CSSProperties = {
+  height: 1,
+  background: "#111827",
+  margin: "18px 0 0",
+};
+
+const printBillGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  borderLeft: "1px solid #111827",
+  borderTop: "1px solid #111827",
+};
+
+const printBoxStyle: CSSProperties = {
+  borderRight: "1px solid #111827",
+  borderBottom: "1px solid #111827",
+  padding: 8,
+  minHeight: 82,
+  fontSize: 12,
+  lineHeight: 1.5,
+};
+
+const printCustomerNameStyle: CSSProperties = {
+  fontWeight: 800,
+  marginTop: 10,
+};
+
+const printInvoiceTitleRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+};
+
+const printInvoiceWordStyle: CSSProperties = {
+  fontSize: 20,
+  fontWeight: 900,
+};
+
+const printDetailRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 8,
+  marginTop: 7,
+};
+
+const printThickLineStyle: CSSProperties = {
+  height: 4,
+  background: "#111827",
+  margin: "20px 0 10px",
+};
+
+const printTableStyle: CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  fontSize: 12,
+};
+
+const printThStyle: CSSProperties = {
+  textAlign: "left",
+  borderBottom: "1px solid #111827",
+  padding: "8px 4px",
+};
+
+const printThRightStyle: CSSProperties = {
+  textAlign: "right",
+  borderBottom: "1px solid #111827",
+  padding: "8px 4px",
+};
+
+const printTdStyle: CSSProperties = {
+  padding: "10px 4px",
+  borderBottom: "1px solid #cbd5e1",
+};
+
+const printTdRightStyle: CSSProperties = {
+  padding: "10px 4px",
+  borderBottom: "1px solid #cbd5e1",
+  textAlign: "right",
+};
+
+const printSummaryWrapStyle: CSSProperties = {
+  width: "42%",
+  marginLeft: "auto",
+  marginTop: 24,
+  fontSize: 12,
+};
+
+const printSummaryRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "5px 0",
+  borderBottom: "1px solid #cbd5e1",
+};
+
+const printTotalSummaryRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "8px 0",
+  borderBottom: "2px solid #111827",
+  fontWeight: 900,
+  fontSize: 16,
+};
+
+const printNoteStyle: CSSProperties = {
+  marginTop: 50,
+  fontSize: 12,
 };
