@@ -67,10 +67,15 @@ const DEFAULT_PAYMENT_OPTIONS = [
 const TXT = {
   zh: {
     back: "返回",
-    title: "发票系统",
+    title: "发票记录",
     newInvoice: "新发票",
-    latestInvoices: "最新发票记录",
-    searchPlaceholder: "搜索：发票号、客户名字、公司名字、电话号码",
+    edit: "编辑",
+    delete: "删除",
+    share: "分享",
+    saveEdit: "保存修改",
+    confirmDelete: "确定要删除这张发票吗？",
+    latestInvoices: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
+    searchPlaceholder: "搜索发票号、客户名字、公司名字、电话号码",
     noInvoice: "还没有发票记录",
     createTitle: "专业发票系统",
     desc: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
@@ -84,6 +89,7 @@ const TXT = {
     cancelled: "取消",
     paymentMethod: "付款方式",
     addPayment: "新增付款方式",
+    deletePayment: "删除",
     paymentPlaceholder: "输入新的付款方式",
     note: "备注",
     companyInfo: "2. 公司资料",
@@ -132,6 +138,8 @@ const TXT = {
     stockNotEnough: "库存不足，目前库存：",
     trialSuccess: "试用版发票已生成，已加入记账，并已扣库存",
     success: "发票已生成，已自动加入记账，并已扣除库存",
+    stockSkipped:
+      "发票已生成并加入记账；但 products 表没有 stock_qty 栏位，所以暂时跳过扣库存",
     fail: "生成失败：",
     incomplete: "客户或产品资料不完整",
     productNote: "由发票系统新增",
@@ -143,10 +151,15 @@ const TXT = {
   },
   en: {
     back: "Back",
-    title: "Invoice System",
+    title: "Invoice Records",
     newInvoice: "New Invoice",
-    latestInvoices: "Latest Invoices",
-    searchPlaceholder: "Search: invoice no, customer, company, phone",
+    edit: "Edit",
+    delete: "Delete",
+    share: "Share",
+    saveEdit: "Save Changes",
+    confirmDelete: "Delete this invoice?",
+    latestInvoices: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock",
+    searchPlaceholder: "Search invoice no, customer, company, phone",
     noInvoice: "No invoice records yet",
     createTitle: "Professional Invoice System",
     desc: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock Deduction",
@@ -160,6 +173,7 @@ const TXT = {
     cancelled: "Cancelled",
     paymentMethod: "Payment Method",
     addPayment: "Add Payment Method",
+    deletePayment: "Delete",
     paymentPlaceholder: "Enter new payment method",
     note: "Note",
     companyInfo: "2. Company Info",
@@ -208,6 +222,8 @@ const TXT = {
     stockNotEnough: "Insufficient stock. Current stock: ",
     trialSuccess: "Trial invoice generated, added to accounting and stock deducted",
     success: "Invoice generated, added to accounting and stock deducted",
+    stockSkipped:
+      "Invoice generated and added to accounting; products table has no stock_qty column, so stock deduction is skipped temporarily",
     fail: "Failed: ",
     incomplete: "Customer or product information is incomplete",
     productNote: "Added from invoice system",
@@ -219,10 +235,15 @@ const TXT = {
   },
   ms: {
     back: "Kembali",
-    title: "Sistem Invois",
+    title: "Rekod Invois",
     newInvoice: "Invois Baru",
-    latestInvoices: "Rekod Invois Terkini",
-    searchPlaceholder: "Cari: no invois, pelanggan, syarikat, telefon",
+    edit: "Edit",
+    delete: "Padam",
+    share: "Kongsi",
+    saveEdit: "Simpan Perubahan",
+    confirmDelete: "Padam invois ini?",
+    latestInvoices: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Stok",
+    searchPlaceholder: "Cari no invois, pelanggan, syarikat, telefon",
     noInvoice: "Tiada rekod invois",
     createTitle: "Sistem Invois Profesional",
     desc: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Tolak Stok",
@@ -236,6 +257,7 @@ const TXT = {
     cancelled: "Dibatalkan",
     paymentMethod: "Cara Bayaran",
     addPayment: "Tambah Cara Bayaran",
+    deletePayment: "Padam",
     paymentPlaceholder: "Masukkan cara bayaran baru",
     note: "Nota",
     companyInfo: "2. Maklumat Syarikat",
@@ -284,6 +306,8 @@ const TXT = {
     stockNotEnough: "Stok tidak cukup. Stok semasa: ",
     trialSuccess: "Invois percubaan berjaya dijana, masuk akaun dan stok ditolak",
     success: "Invois berjaya dijana, masuk akaun dan stok ditolak",
+    stockSkipped:
+      "Invois berjaya dijana dan masuk akaun; jadual products tiada lajur stock_qty, jadi stok tidak ditolak sementara",
     fail: "Gagal: ",
     incomplete: "Maklumat pelanggan atau produk tidak lengkap",
     productNote: "Ditambah dari sistem invois",
@@ -294,6 +318,15 @@ const TXT = {
     description: "DESCRIPTION",
   },
 };
+
+function makeInvoiceNo() {
+  return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+}
+
+function isMissingStockColumn(error: any) {
+  const message = String(error?.message || "").toLowerCase();
+  return message.includes("stock_qty") && message.includes("schema cache");
+}
 
 export default function InvoicePage() {
   const [lang, setLang] = useState<Lang>("zh");
@@ -307,6 +340,8 @@ export default function InvoicePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [search, setSearch] = useState("");
+
+  const [editInvoiceId, setEditInvoiceId] = useState<string | null>(null);
 
   const [customerMode, setCustomerMode] = useState<"select" | "new">("select");
   const [productMode, setProductMode] = useState<"select" | "new">("select");
@@ -324,9 +359,11 @@ export default function InvoicePage() {
   const [newProductStock, setNewProductStock] = useState("");
 
   const today = new Date().toISOString().slice(0, 10);
+  const [invoiceNo, setInvoiceNo] = useState(makeInvoiceNo());
   const [invoiceDate, setInvoiceDate] = useState(today);
   const [dueDate, setDueDate] = useState(today);
   const [status, setStatus] = useState("sent");
+
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [paymentOptions, setPaymentOptions] = useState<string[]>(DEFAULT_PAYMENT_OPTIONS);
   const [newPaymentOption, setNewPaymentOption] = useState("");
@@ -353,7 +390,6 @@ export default function InvoicePage() {
 
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [lastPrintableInvoice, setLastPrintableInvoice] = useState<InvoiceRecord | null>(null);
 
   useEffect(() => {
@@ -480,10 +516,6 @@ export default function InvoicePage() {
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const selectedProduct = products.find((p) => p.id === productId);
 
-  const invoiceNo = useMemo(() => {
-    return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
-  }, []);
-
   const preview = useMemo(() => {
     const finalQty = Number(qty || 1);
     const addDiscount = Number(extraDiscount || 0);
@@ -510,25 +542,27 @@ export default function InvoicePage() {
     return { finalQty, price, cost, subtotal, discount, total, totalCost, profit };
   }, [qty, extraDiscount, productMode, newProductPrice, newProductCost, selectedProduct]);
 
-  const activeCustomerForPreview: Customer = customerMode === "select"
-    ? selectedCustomer || { id: "", name: "-" }
-    : {
-        id: "",
-        name: newCustomerName || "-",
-        phone: newCustomerPhone,
-        company_name: newCustomerCompany,
-        address: newCustomerAddress,
-      };
+  const activeCustomerForPreview: Customer =
+    customerMode === "select"
+      ? selectedCustomer || { id: "", name: "-" }
+      : {
+          id: "",
+          name: newCustomerName || "-",
+          phone: newCustomerPhone,
+          company_name: newCustomerCompany,
+          address: newCustomerAddress,
+        };
 
-  const activeProductForPreview: Product = productMode === "select"
-    ? selectedProduct || { id: "", name: "-", price: 0, cost: 0, stock_qty: 0 }
-    : {
-        id: "",
-        name: newProductName || "-",
-        price: Number(newProductPrice || 0),
-        cost: Number(newProductCost || 0),
-        stock_qty: Number(newProductStock || 0),
-      };
+  const activeProductForPreview: Product =
+    productMode === "select"
+      ? selectedProduct || { id: "", name: "-", price: 0, cost: 0, stock_qty: 0 }
+      : {
+          id: "",
+          name: newProductName || "-",
+          price: Number(newProductPrice || 0),
+          cost: Number(newProductCost || 0),
+          stock_qty: Number(newProductStock || 0),
+        };
 
   const filteredInvoices = invoices.filter((inv) => {
     const q = search.trim().toLowerCase();
@@ -586,6 +620,19 @@ export default function InvoicePage() {
     localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
   }
 
+  function deletePaymentOption(value: string) {
+    const next = paymentOptions.filter((x) => x !== value);
+    const finalNext = next.length > 0 ? next : DEFAULT_PAYMENT_OPTIONS;
+
+    setPaymentOptions(finalNext);
+
+    if (paymentMethod === value) {
+      setPaymentMethod(finalNext[0]);
+    }
+
+    localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(finalNext));
+  }
+
   async function saveCompanyInfo() {
     if (isTrial) {
       setMsg(t.saved);
@@ -618,6 +665,11 @@ export default function InvoicePage() {
   async function createInvoice() {
     setMsg("");
 
+    if (editInvoiceId) {
+      await saveEditedInvoice();
+      return;
+    }
+
     if (customerMode === "select" && !selectedCustomer) {
       setMsg(t.needCustomer);
       return;
@@ -648,6 +700,7 @@ export default function InvoicePage() {
     try {
       let finalCustomer = selectedCustomer;
       let finalProduct = selectedProduct;
+      let skippedStock = false;
 
       if (customerMode === "new") {
         finalCustomer = {
@@ -697,7 +750,7 @@ export default function InvoicePage() {
           setProducts(next);
           saveTrialData(customers, next);
         } else {
-          const { data, error } = await supabase
+          const insertWithStock = await supabase
             .from("products")
             .insert({
               user_id: userId,
@@ -711,8 +764,32 @@ export default function InvoicePage() {
             .select()
             .single();
 
-          if (error) throw error;
-          finalProduct = data as Product;
+          if (insertWithStock.error) {
+            if (isMissingStockColumn(insertWithStock.error)) {
+              skippedStock = true;
+
+              const insertWithoutStock = await supabase
+                .from("products")
+                .insert({
+                  user_id: userId,
+                  name: newProductName,
+                  price: Number(newProductPrice),
+                  cost: Number(newProductCost),
+                  discount: 0,
+                  note: t.productNote,
+                })
+                .select()
+                .single();
+
+              if (insertWithoutStock.error) throw insertWithoutStock.error;
+              finalProduct = insertWithoutStock.data as Product;
+            } else {
+              throw insertWithStock.error;
+            }
+          } else {
+            finalProduct = insertWithStock.data as Product;
+          }
+
           setProducts((prev) => [finalProduct as Product, ...prev]);
         }
       }
@@ -723,9 +800,14 @@ export default function InvoicePage() {
         return;
       }
 
+      const hasStockColumn =
+        Object.prototype.hasOwnProperty.call(finalProduct, "stock_qty") &&
+        finalProduct.stock_qty !== undefined &&
+        finalProduct.stock_qty !== null;
+
       const currentStock = Number(finalProduct.stock_qty || 0);
 
-      if (currentStock < preview.finalQty) {
+      if (hasStockColumn && currentStock < preview.finalQty) {
         setMsg(`${t.stockNotEnough}${currentStock}`);
         setLoading(false);
         return;
@@ -755,9 +837,15 @@ export default function InvoicePage() {
       };
 
       if (isTrial) {
-        const nextProducts = products.map((p) =>
-          p.id === finalProduct!.id ? { ...p, stock_qty: newStock } : p
-        );
+        let nextProducts = products;
+
+        if (hasStockColumn) {
+          nextProducts = products.map((p) =>
+            p.id === finalProduct!.id ? { ...p, stock_qty: newStock } : p
+          );
+        } else {
+          skippedStock = true;
+        }
 
         const nextInvoices = [printableRecord, ...invoices];
 
@@ -768,7 +856,7 @@ export default function InvoicePage() {
         saveTrialData(customers, nextProducts, nextInvoices);
         addTrialTransaction(preview.total, finalCustomer, finalProduct, invoiceNo);
 
-        setMsg(t.trialSuccess);
+        setMsg(skippedStock ? t.stockSkipped : t.trialSuccess);
         setMode("list");
         setLoading(false);
         return;
@@ -822,12 +910,22 @@ export default function InvoicePage() {
 
       if (itemError) throw itemError;
 
-      const { error: stockError } = await supabase
-        .from("products")
-        .update({ stock_qty: newStock })
-        .eq("id", finalProduct.id);
+      if (hasStockColumn && !skippedStock) {
+        const { error: stockError } = await supabase
+          .from("products")
+          .update({ stock_qty: newStock })
+          .eq("id", finalProduct.id);
 
-      if (stockError) throw stockError;
+        if (stockError) {
+          if (isMissingStockColumn(stockError)) {
+            skippedStock = true;
+          } else {
+            throw stockError;
+          }
+        }
+      } else {
+        skippedStock = true;
+      }
 
       const { error: txError } = await supabase.from("transactions").insert({
         user_id: userId,
@@ -854,13 +952,117 @@ export default function InvoicePage() {
 
       await loadProducts(userId);
 
-      setMsg(t.success);
+      setMsg(skippedStock ? t.stockSkipped : t.success);
       setMode("list");
     } catch (error: any) {
       setMsg(t.fail + error.message);
     }
 
     setLoading(false);
+  }
+
+  async function saveEditedInvoice() {
+    if (!editInvoiceId) return;
+
+    setLoading(true);
+
+    const updatedData: Partial<InvoiceRecord> = {
+      invoice_no: invoiceNo,
+      invoice_date: invoiceDate,
+      due_date: dueDate,
+      status,
+      payment_method: paymentMethod,
+      customer_name: newCustomerName,
+      customer_phone: newCustomerPhone,
+      customer_company: newCustomerCompany,
+      customer_address: newCustomerAddress,
+      subtotal: preview.subtotal,
+      discount: preview.discount,
+      total: preview.total,
+      total_cost: preview.totalCost,
+      total_profit: preview.profit,
+      note,
+    };
+
+    if (isTrial) {
+      const next = invoices.map((inv) =>
+        inv.id === editInvoiceId ? { ...inv, ...updatedData } : inv
+      );
+
+      setInvoices(next);
+      localStorage.setItem(TRIAL_INVOICES_KEY, JSON.stringify(next));
+      setMsg(t.saved);
+      setMode("list");
+      setEditInvoiceId(null);
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("invoices")
+      .update(updatedData)
+      .eq("id", editInvoiceId);
+
+    if (error) {
+      setMsg(t.fail + error.message);
+      setLoading(false);
+      return;
+    }
+
+    setInvoices((prev) =>
+      prev.map((inv) => (inv.id === editInvoiceId ? { ...inv, ...updatedData } : inv))
+    );
+
+    setMsg(t.saved);
+    setMode("list");
+    setEditInvoiceId(null);
+    setLoading(false);
+  }
+
+  function startEditInvoice(inv: InvoiceRecord) {
+    setEditInvoiceId(inv.id);
+    setInvoiceNo(inv.invoice_no || makeInvoiceNo());
+    setInvoiceDate(inv.invoice_date || today);
+    setDueDate(inv.due_date || today);
+    setStatus(inv.status || "sent");
+    setPaymentMethod(inv.payment_method || paymentOptions[0] || "Cash");
+    setCustomerMode("new");
+    setNewCustomerName(inv.customer_name || "");
+    setNewCustomerPhone(inv.customer_phone || "");
+    setNewCustomerCompany(inv.customer_company || "");
+    setNewCustomerAddress(inv.customer_address || "");
+    setProductMode("new");
+    setNewProductName("Invoice Item");
+    setNewProductPrice(String(inv.subtotal || inv.total || 0));
+    setNewProductCost(String(inv.total_cost || 0));
+    setNewProductStock("999999");
+    setQty("1");
+    setExtraDiscount(String(inv.discount || 0));
+    setNote(inv.note || "");
+    setMode("new");
+  }
+
+  async function deleteInvoice(inv: InvoiceRecord) {
+    if (!confirm(t.confirmDelete)) return;
+
+    if (isTrial) {
+      const next = invoices.filter((x) => x.id !== inv.id);
+      setInvoices(next);
+      localStorage.setItem(TRIAL_INVOICES_KEY, JSON.stringify(next));
+      setMsg(t.saved);
+      return;
+    }
+
+    await supabase.from("invoice_items").delete().eq("invoice_id", inv.id);
+    const { error } = await supabase.from("invoices").delete().eq("id", inv.id);
+
+    if (error) {
+      setMsg(t.fail + error.message);
+      return;
+    }
+
+    setInvoices((prev) => prev.filter((x) => x.id !== inv.id));
+    setMsg(t.saved);
   }
 
   function printInvoice(record?: InvoiceRecord) {
@@ -877,7 +1079,9 @@ export default function InvoicePage() {
     const invNo = record?.invoice_no || invoiceNo;
     const customerName = record?.customer_name || activeCustomerForPreview.name;
     const total = Number(record?.total ?? preview.total).toFixed(2);
-    const text = `Invoice ${invNo}%0A${t.customerName}：${customerName}%0A${t.total}：RM ${total}%0A${t.paymentMethod}：${record?.payment_method || paymentMethod}`;
+    const method = record?.payment_method || paymentMethod;
+
+    const text = `Invoice ${invNo}%0A${t.customerName}：${customerName}%0A${t.total}：RM ${total}%0A${t.paymentMethod}：${method}`;
     window.location.href = `https://wa.me/?text=${text}`;
   }
 
@@ -891,8 +1095,28 @@ export default function InvoicePage() {
   }
 
   function openNewInvoice() {
-    setMode("new");
+    setEditInvoiceId(null);
+    setInvoiceNo(makeInvoiceNo());
+    setInvoiceDate(today);
+    setDueDate(today);
+    setStatus("sent");
+    setCustomerMode("select");
+    setProductMode("select");
+    setCustomerId("");
+    setProductId("");
+    setNewCustomerName("");
+    setNewCustomerPhone("");
+    setNewCustomerCompany("");
+    setNewCustomerAddress("");
+    setNewProductName("");
+    setNewProductPrice("");
+    setNewProductCost("");
+    setNewProductStock("");
+    setQty("1");
+    setExtraDiscount("0");
+    setNote("");
     setMsg("");
+    setMode("new");
   }
 
   const printableInvoice = lastPrintableInvoice || {
@@ -995,7 +1219,7 @@ export default function InvoicePage() {
             <div style={invoiceListStyle}>
               {filteredInvoices.map((inv) => (
                 <div key={inv.id} style={invoiceItemStyle}>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <strong>{inv.invoice_no}</strong>
                     <div style={mutedTextStyle}>
                       {inv.customer_name || "-"} {inv.customer_company ? `｜${inv.customer_company}` : ""}
@@ -1003,20 +1227,30 @@ export default function InvoicePage() {
                     <div style={mutedTextStyle}>
                       {inv.invoice_date || "-"}｜{inv.customer_phone || "-"}
                     </div>
+
+                    <div style={recordActionRowStyle}>
+                      <button onClick={() => startEditInvoice(inv)} style={recordEditBtnStyle}>
+                        {t.edit}
+                      </button>
+
+                      <button onClick={() => deleteInvoice(inv)} style={recordDeleteBtnStyle}>
+                        {t.delete}
+                      </button>
+
+                      <button onClick={() => sendWhatsApp(inv)} style={recordShareBtnStyle}>
+                        {t.share}
+                      </button>
+
+                      <button onClick={() => printInvoice(inv)} style={recordPrintBtnStyle}>
+                        {t.print}
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ textAlign: "right" }}>
                     <strong style={{ color: "#0f766e" }}>
                       RM {Number(inv.total || 0).toFixed(2)}
                     </strong>
-                    <div style={smallActionRowStyle}>
-                      <button onClick={() => printInvoice(inv)} style={miniBtnStyle}>
-                        {t.print}
-                      </button>
-                      <button onClick={() => sendWhatsApp(inv)} style={miniWhatsappBtnStyle}>
-                        WA
-                      </button>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -1033,7 +1267,9 @@ export default function InvoicePage() {
             ← {t.back}
           </button>
 
-          <h1 style={titleStyle}>{t.createTitle}</h1>
+          <h1 style={titleStyle}>
+            {editInvoiceId ? t.edit : t.createTitle}
+          </h1>
           <p style={descStyle}>{t.desc}</p>
 
           <div style={invoiceNoBox}>
@@ -1044,10 +1280,20 @@ export default function InvoicePage() {
 
           <div style={formGrid}>
             <label style={labelStyle}>{t.invoiceDate}</label>
-            <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} style={smallDateInput} />
+            <input
+              type="date"
+              value={invoiceDate}
+              onChange={(e) => setInvoiceDate(e.target.value)}
+              style={smallDateInput}
+            />
 
             <label style={labelStyle}>{t.dueDate}</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={smallDateInput} />
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              style={smallDateInput}
+            />
 
             <label style={labelStyle}>{t.status}</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
@@ -1076,6 +1322,17 @@ export default function InvoicePage() {
               <button onClick={addPaymentOption} style={addBtnStyle}>
                 {t.addPayment}
               </button>
+            </div>
+
+            <div style={paymentChipWrapStyle}>
+              {paymentOptions.map((p) => (
+                <div key={p} style={paymentChipStyle}>
+                  <span>{p}</span>
+                  <button onClick={() => deletePaymentOption(p)} style={paymentChipDeleteStyle}>
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
 
             <label style={labelStyle}>{t.note}</label>
@@ -1195,7 +1452,7 @@ export default function InvoicePage() {
           </section>
 
           <button onClick={createInvoice} disabled={loading} style={submitBtn}>
-            {loading ? t.generating : t.generate}
+            {loading ? t.generating : editInvoiceId ? t.saveEdit : t.generate}
           </button>
 
           <div style={actionRow}>
@@ -1355,7 +1612,8 @@ const backBtn: CSSProperties = {
 const cardStyle: CSSProperties = {
   background: "#ffffff",
   border: "3px solid #14b8a6",
-  boxShadow: "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
+  boxShadow:
+    "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
   borderRadius: 24,
   padding: 20,
 };
@@ -1407,7 +1665,7 @@ const invoiceItemStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 12,
-  border: "2px solid #ccfbf1",
+  border: "2px solid #14b8a6",
   borderRadius: 16,
   padding: 14,
   background: "#f8fafc",
@@ -1419,29 +1677,47 @@ const mutedTextStyle: CSSProperties = {
   marginTop: 4,
 };
 
-const smallActionRowStyle: CSSProperties = {
+const recordActionRowStyle: CSSProperties = {
   display: "flex",
-  gap: 6,
-  marginTop: 10,
-  justifyContent: "flex-end",
+  flexWrap: "wrap",
+  gap: 8,
+  marginTop: 12,
 };
 
-const miniBtnStyle: CSSProperties = {
-  border: "1px solid #0f766e",
-  background: "#fff",
-  color: "#0f766e",
+const recordEditBtnStyle: CSSProperties = {
+  border: "none",
+  background: "#0f766e",
+  color: "#fff",
   borderRadius: 8,
-  padding: "6px 8px",
-  fontWeight: 800,
+  padding: "7px 10px",
+  fontWeight: 900,
 };
 
-const miniWhatsappBtnStyle: CSSProperties = {
+const recordDeleteBtnStyle: CSSProperties = {
+  border: "none",
+  background: "#fee2e2",
+  color: "#b91c1c",
+  borderRadius: 8,
+  padding: "7px 10px",
+  fontWeight: 900,
+};
+
+const recordShareBtnStyle: CSSProperties = {
   border: "none",
   background: "#25D366",
   color: "#fff",
   borderRadius: 8,
-  padding: "6px 8px",
-  fontWeight: 800,
+  padding: "7px 10px",
+  fontWeight: 900,
+};
+
+const recordPrintBtnStyle: CSSProperties = {
+  border: "1px solid #0f766e",
+  background: "#fff",
+  color: "#0f766e",
+  borderRadius: 8,
+  padding: "7px 10px",
+  fontWeight: 900,
 };
 
 const emptyStyle: CSSProperties = {
@@ -1505,6 +1781,35 @@ const addBtnStyle: CSSProperties = {
   color: "#fff",
   borderRadius: 12,
   padding: "13px",
+  fontWeight: 900,
+};
+
+const paymentChipWrapStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+  marginBottom: 10,
+};
+
+const paymentChipStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  background: "#ecfdf5",
+  border: "1px solid #14b8a6",
+  color: "#0f766e",
+  borderRadius: 999,
+  padding: "6px 10px",
+  fontWeight: 800,
+};
+
+const paymentChipDeleteStyle: CSSProperties = {
+  border: "none",
+  background: "#0f766e",
+  color: "#fff",
+  width: 22,
+  height: 22,
+  borderRadius: "999px",
   fontWeight: 900,
 };
 
