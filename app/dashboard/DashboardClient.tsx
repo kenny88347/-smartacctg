@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 type PageKey = "home" | "accounting" | "customers" | "products" | "invoices" | "records";
 type Lang = "zh" | "en" | "ms";
-type ThemeKey = "pink" | "blackGold" | "lightRed" | "nature" | "deepTeal";
+type ThemeKey = "pink" | "blackGold" | "lightRed" | "nature" | "sky" | "deepTeal";
 
 type Profile = {
   id: string;
@@ -42,6 +42,7 @@ const TXT = {
     customers: "客户管理",
     products: "产品管理",
     invoices: "发票系统",
+    back: "返回",
     changeAvatar: "更换头像",
     settings: "设置",
     theme: "主题切换",
@@ -75,6 +76,7 @@ const TXT = {
     customers: "Customers",
     products: "Products",
     invoices: "Invoices",
+    back: "Back",
     changeAvatar: "Change Avatar",
     settings: "Settings",
     theme: "Theme",
@@ -108,6 +110,7 @@ const TXT = {
     customers: "Pelanggan",
     products: "Produk",
     invoices: "Invois",
+    back: "Kembali",
     changeAvatar: "Tukar Avatar",
     settings: "Tetapan",
     theme: "Tema",
@@ -137,10 +140,10 @@ const THEMES: Record<ThemeKey, any> = {
   deepTeal: {
     name: "深青色",
     pageBg: "#ecfdf5",
-    banner: "linear-gradient(135deg,#064e3b,#0f766e,#14b8a6)",
+    banner: "#ffffff",
     card: "#ffffff",
     border: "#14b8a6",
-    glow: "0 0 0 1px rgba(20,184,166,0.35), 0 14px 36px rgba(20,184,166,0.35)",
+    glow: "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
     accent: "#0f766e",
     text: "#064e3b",
   },
@@ -150,7 +153,7 @@ const THEMES: Record<ThemeKey, any> = {
     banner: "linear-gradient(135deg,#ffd6e7,#fff1f2)",
     card: "#ffffff",
     border: "#f472b6",
-    glow: "0 0 0 1px rgba(244,114,182,0.35), 0 14px 36px rgba(244,114,182,0.24)",
+    glow: "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
     accent: "#db2777",
     text: "#4a044e",
   },
@@ -160,7 +163,7 @@ const THEMES: Record<ThemeKey, any> = {
     banner: "linear-gradient(135deg,#111111,#3b2f16)",
     card: "#1f1f1f",
     border: "#facc15",
-    glow: "0 0 0 1px rgba(250,204,21,0.45), 0 14px 36px rgba(250,204,21,0.25)",
+    glow: "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
     accent: "#d4af37",
     text: "#fff7ed",
   },
@@ -170,7 +173,7 @@ const THEMES: Record<ThemeKey, any> = {
     banner: "linear-gradient(135deg,#fecdd3,#ffe4e6)",
     card: "#ffffff",
     border: "#fb7185",
-    glow: "0 0 0 1px rgba(251,113,133,0.4), 0 14px 36px rgba(251,113,133,0.28)",
+    glow: "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
     accent: "#e11d48",
     text: "#881337",
   },
@@ -180,9 +183,19 @@ const THEMES: Record<ThemeKey, any> = {
     banner: "linear-gradient(135deg,#d9f99d,#bae6fd)",
     card: "#ffffff",
     border: "#22d3ee",
-    glow: "0 0 0 1px rgba(34,211,238,0.38), 0 14px 36px rgba(34,211,238,0.26)",
+    glow: "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
     accent: "#0f766e",
     text: "#14532d",
+  },
+  sky: {
+    name: "天空藍",
+    pageBg: "#eff6ff",
+    banner: "linear-gradient(135deg,#bfdbfe,#e0f2fe)",
+    card: "#ffffff",
+    border: "#38bdf8",
+    glow: "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
+    accent: "#0284c7",
+    text: "#0f172a",
   },
 };
 
@@ -267,6 +280,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     window.location.href = `${path}?lang=${lang}`;
   }
 
+  function goBack() {
+    window.location.href = `/dashboard?lang=${lang}`;
+  }
+
   function goRecords(view: "balance" | "income" | "expense") {
     window.location.href = `/dashboard/records?view=${view}&lang=${lang}`;
   }
@@ -274,6 +291,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   function switchLang(next: Lang) {
     setLang(next);
     window.history.replaceState({}, "", `${window.location.pathname}?lang=${next}`);
+  }
+
+  function openWhatsApp() {
+    window.location.href = "https://wa.me/60108039149";
   }
 
   async function logout() {
@@ -337,9 +358,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
 
     if (error) {
       setMsg(error.message);
@@ -429,10 +448,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             )}
           </div>
 
-          <div>
-            <div style={planTextStyle}>
-              {t.expiry}: {expiryText}
-            </div>
+          <div style={planTextStyle}>
+            {t.expiry}: {expiryText}
           </div>
         </div>
 
@@ -441,16 +458,19 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         </button>
       </header>
 
-      <div style={langRowStyle}>
-        <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>中文</button>
-        <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>English</button>
-        <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>BM</button>
-      </div>
-
       {page === "home" && (
         <>
           <section style={{ ...bannerStyle, background: theme.banner, borderColor: theme.border, boxShadow: theme.glow }}>
-            <h1 style={titleStyle}>{t.dashboard}</h1>
+            <div style={bannerTopRowStyle}>
+              <h1 style={titleStyle}>{t.dashboard}</h1>
+
+              <div style={langRowStyle}>
+                <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>中文</button>
+                <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>EN</button>
+                <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>BM</button>
+              </div>
+            </div>
+
             <div style={noticeBoxStyle}></div>
           </section>
 
@@ -488,6 +508,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
       {page === "records" && (
         <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
+          <button onClick={goBack} style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}>
+            ← {t.back}
+          </button>
+
           <h1>{t.records}</h1>
 
           <div style={recordFilterRowStyle}>
@@ -517,12 +541,17 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
       {page !== "home" && page !== "records" && (
         <section style={{ ...contentCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
+          <button onClick={goBack} style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}>
+            ← {t.back}
+          </button>
+
           <h1>
             {page === "accounting" && t.accounting}
             {page === "customers" && t.customers}
             {page === "products" && t.products}
             {page === "invoices" && t.invoices}
           </h1>
+
           <p>這裡是獨立頁面內容。</p>
         </section>
       )}
@@ -579,6 +608,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </div>
         </section>
       )}
+
+      <button onClick={openWhatsApp} style={whatsAppBtnStyle}>
+        👩‍💼
+      </button>
     </main>
   );
 }
@@ -655,27 +688,34 @@ const logoutBtnStyle: CSSProperties = {
   fontWeight: 900,
 };
 
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 10,
-  marginBottom: 16,
-};
-
-const langBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "10px 16px",
-  borderRadius: 999,
-  border: `2px solid ${theme.accent}`,
-  background: active ? theme.accent : "#fff",
-  color: active ? "#fff" : theme.accent,
-  fontWeight: 900,
-});
-
 const bannerStyle: CSSProperties = {
   border: "3px solid",
   borderRadius: 24,
   padding: 20,
   marginBottom: 18,
 };
+
+const bannerTopRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 12,
+};
+
+const langRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const langBtn = (active: boolean, theme: any): CSSProperties => ({
+  padding: "8px 12px",
+  borderRadius: 999,
+  border: `2px solid ${theme.accent}`,
+  background: active ? theme.accent : "#fff",
+  color: active ? "#fff" : theme.accent,
+  fontWeight: 900,
+});
 
 const titleStyle: CSSProperties = {
   fontSize: 34,
@@ -735,6 +775,15 @@ const contentCardStyle: CSSProperties = {
   marginTop: 18,
 };
 
+const backBtnStyle: CSSProperties = {
+  background: "#fff",
+  border: "2px solid",
+  borderRadius: 12,
+  padding: "10px 16px",
+  fontWeight: 900,
+  marginBottom: 14,
+};
+
 const inputStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
@@ -788,4 +837,19 @@ const recordItemStyle: CSSProperties = {
   gap: 12,
   padding: "14px 0",
   borderBottom: "1px solid #e5e7eb",
+};
+
+const whatsAppBtnStyle: CSSProperties = {
+  position: "fixed",
+  right: 18,
+  bottom: 18,
+  width: 58,
+  height: 58,
+  borderRadius: "999px",
+  border: "none",
+  background: "#25D366",
+  color: "#fff",
+  fontSize: 28,
+  boxShadow: "0 12px 30px rgba(37,211,102,0.45)",
+  zIndex: 100,
 };
