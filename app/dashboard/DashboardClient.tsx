@@ -31,6 +31,9 @@ type Txn = {
   note?: string | null;
 };
 
+const TRIAL_KEY = "smartacctg_trial";
+const TRIAL_TX_KEY = "smartacctg_trial_transactions";
+
 const TXT = {
   zh: {
     dashboard: "控制台",
@@ -49,6 +52,7 @@ const TXT = {
     logout: "退出登录",
     expiry: "订阅期限",
     noSub: "未订阅",
+    trial: "免费试用",
     personal: "个人资料",
     name: "名称",
     phone: "电话号码",
@@ -83,6 +87,7 @@ const TXT = {
     logout: "Logout",
     expiry: "Expiry",
     noSub: "Not Subscribed",
+    trial: "Free Trial",
     personal: "Personal Info",
     name: "Name",
     phone: "Phone",
@@ -117,6 +122,7 @@ const TXT = {
     logout: "Log Keluar",
     expiry: "Tarikh Tamat",
     noSub: "Belum Langgan",
+    trial: "Percubaan Percuma",
     personal: "Maklumat Peribadi",
     name: "Nama",
     phone: "Telefon",
@@ -201,6 +207,7 @@ const THEMES: Record<ThemeKey, any> = {
 
 export default function DashboardClient({ page }: { page: PageKey }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [isTrial, setIsTrial] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Txn[]>([]);
@@ -237,6 +244,30 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }, []);
 
   async function init() {
+    const q = new URLSearchParams(window.location.search);
+    const mode = q.get("mode");
+    const trialRaw = localStorage.getItem(TRIAL_KEY);
+
+    if (mode === "trial" && trialRaw) {
+      const trial = JSON.parse(trialRaw);
+
+      if (Date.now() < Number(trial.expiresAt)) {
+        setIsTrial(true);
+        setSession(null);
+        setProfile(null);
+
+        const savedTx = localStorage.getItem(TRIAL_TX_KEY);
+        setTransactions(savedTx ? JSON.parse(savedTx) : []);
+
+        return;
+      }
+
+      localStorage.removeItem(TRIAL_KEY);
+      localStorage.removeItem(TRIAL_TX_KEY);
+      window.location.href = "/zh";
+      return;
+    }
+
     const { data } = await supabase.auth.getSession();
 
     if (!data.session) {
@@ -244,6 +275,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
+    setIsTrial(false);
     setSession(data.session);
     const userId = data.session.user.id;
 
@@ -277,20 +309,29 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   function go(path: string) {
-    window.location.href = `${path}?lang=${lang}`;
+    window.location.href = isTrial
+      ? `${path}?mode=trial&lang=${lang}`
+      : `${path}?lang=${lang}`;
   }
 
   function goBack() {
-    window.location.href = `/dashboard?lang=${lang}`;
+    window.location.href = isTrial
+      ? `/dashboard?mode=trial&lang=${lang}`
+      : `/dashboard?lang=${lang}`;
   }
 
   function goRecords(view: "balance" | "income" | "expense") {
-    window.location.href = `/dashboard/records?view=${view}&lang=${lang}`;
+    window.location.href = isTrial
+      ? `/dashboard/records?mode=trial&view=${view}&lang=${lang}`
+      : `/dashboard/records?view=${view}&lang=${lang}`;
   }
 
   function switchLang(next: Lang) {
     setLang(next);
-    window.history.replaceState({}, "", `${window.location.pathname}?lang=${next}`);
+
+    const q = new URLSearchParams(window.location.search);
+    q.set("lang", next);
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
   function openWhatsApp() {
@@ -298,11 +339,18 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function logout() {
+    localStorage.removeItem(TRIAL_KEY);
+    localStorage.removeItem(TRIAL_TX_KEY);
     await supabase.auth.signOut();
     window.location.href = "/zh";
   }
 
   async function uploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    if (isTrial) {
+      setMsg("免费试用不能上传头像");
+      return;
+    }
+
     if (!session) return;
 
     const file = e.target.files?.[0];
@@ -330,6 +378,11 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function saveSettings() {
+    if (isTrial) {
+      setMsg("免费试用资料不会保存到云端");
+      return;
+    }
+
     if (!session) return;
 
     const { error } = await supabase
@@ -353,6 +406,11 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function changePassword() {
+    if (isTrial) {
+      setMsg("免费试用没有账号密码");
+      return;
+    }
+
     if (!newPassword || newPassword.length < 6) {
       setMsg("密码至少 6 位");
       return;
@@ -372,7 +430,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   async function changeTheme(key: ThemeKey) {
     setThemeKey(key);
 
-    if (session) {
+    if (!isTrial && session) {
       await supabase
         .from("profiles")
         .update({ theme: key })
@@ -403,9 +461,11 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     }, 0);
   }, [transactions]);
 
-  const expiryText = profile?.plan_expiry
-    ? new Date(profile.plan_expiry).toLocaleDateString()
-    : t.noSub;
+  const expiryText = isTrial
+    ? t.trial
+    : profile?.plan_expiry
+      ? new Date(profile.plan_expiry).toLocaleDateString()
+      : t.noSub;
 
   const filteredRecords = transactions.filter((x) => {
     if (recordView === "income") return x.txn_type === "income";
@@ -471,7 +531,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               </div>
             </div>
 
-            <div style={noticeBoxStyle}></div>
+            <div style={noticeBoxStyle}>
+              {isTrial ? "免费试用模式：20 分钟后会自动失效" : ""}
+            </div>
           </section>
 
           <section style={statsGridStyle}>
