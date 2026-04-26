@@ -24,7 +24,14 @@ type Product = {
   cost: number;
   discount?: number | null;
   stock_qty?: number | null;
+  stock?: number | null;
+  stock_quantity?: number | null;
+  quantity?: number | null;
+  qty?: number | null;
+  inventory_qty?: number | null;
+  current_stock?: number | null;
   note?: string | null;
+  _stockColumn?: string;
 };
 
 type InvoiceRecord = {
@@ -67,9 +74,18 @@ const PAYMENT_OPTIONS_KEY = "smartacctg_payment_options";
 const LANG_KEY = "smartacctg_lang";
 const THEME_KEY = "smartacctg_theme";
 
-// 兼容之前產品頁和發票頁用過的兩個本地庫存 key
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
+
+const STOCK_COLUMN_CANDIDATES = [
+  "stock_qty",
+  "stock",
+  "stock_quantity",
+  "quantity",
+  "qty",
+  "inventory_qty",
+  "current_stock",
+];
 
 const THEMES: Record<ThemeKey, any> = {
   deepTeal: {
@@ -194,6 +210,7 @@ const TXT = {
     latestInvoices: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
     searchPlaceholder: "搜索发票号、客户名字、公司名字、电话号码",
     noInvoice: "还没有发票记录",
+    recordDateTime: "日期时间",
     createTitle: "专业发票系统",
     desc: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
     invoiceInfo: "1. 发票资料",
@@ -293,6 +310,7 @@ const TXT = {
     latestInvoices: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock",
     searchPlaceholder: "Search invoice no, customer, company, phone",
     noInvoice: "No invoice records yet",
+    recordDateTime: "Date Time",
     createTitle: "Professional Invoice System",
     desc: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock Deduction",
     invoiceInfo: "1. Invoice Info",
@@ -392,6 +410,7 @@ const TXT = {
     latestInvoices: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Stok",
     searchPlaceholder: "Cari no invois, pelanggan, syarikat, telefon",
     noInvoice: "Tiada rekod invois",
+    recordDateTime: "Tarikh Masa",
     createTitle: "Sistem Invois Profesional",
     desc: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Tolak Stok",
     invoiceInfo: "1. Maklumat Invois",
@@ -487,6 +506,28 @@ function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+
+  const d = new Date(value);
+
+  if (Number.isNaN(d.getTime())) return value;
+
+  const date = d.toLocaleDateString("zh-MY", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const time = d.toLocaleTimeString("zh-MY", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return `${date} ${time}`;
+}
+
 function isSchemaColumnError(error: any) {
   const message = String(error?.message || "").toLowerCase();
   return (
@@ -530,17 +571,66 @@ function saveStockValue(productId: string, stock: number) {
   writeStockMap(map);
 }
 
+function getStockFromAnyRow(row: any): { value: number | undefined; column: string } {
+  let firstDefined: { value: number; column: string } | null = null;
+
+  for (const key of STOCK_COLUMN_CANDIDATES) {
+    const raw = row?.[key];
+
+    if (raw === undefined || raw === null || raw === "") continue;
+
+    const num = Number(raw);
+
+    if (Number.isNaN(num)) continue;
+
+    if (!firstDefined) {
+      firstDefined = { value: num, column: key };
+    }
+
+    if (num > 0) {
+      return { value: num, column: key };
+    }
+  }
+
+  if (firstDefined) return firstDefined;
+
+  return { value: undefined, column: "local" };
+}
+
+function getProductStock(product?: Product | null) {
+  if (!product) return 0;
+
+  const local = getStockMap()[product.id];
+  const fromProduct = getStockFromAnyRow(product);
+
+  if (
+    local !== undefined &&
+    (fromProduct.value === undefined || Number(fromProduct.value || 0) === 0)
+  ) {
+    return Number(local || 0);
+  }
+
+  return Number(fromProduct.value || 0);
+}
+
 function normalizeProduct(row: any): Product {
   const stockMap = getStockMap();
   const localStock = stockMap[row?.id];
-  const dbStock = row?.stock_qty;
+  const stockInfo = getStockFromAnyRow(row);
 
   let finalStock = 0;
 
-  if (localStock !== undefined && (dbStock === undefined || dbStock === null || Number(dbStock) === 0)) {
+  if (
+    localStock !== undefined &&
+    (stockInfo.value === undefined || Number(stockInfo.value || 0) === 0)
+  ) {
     finalStock = Number(localStock || 0);
   } else {
-    finalStock = Number(dbStock || 0);
+    finalStock = Number(stockInfo.value || 0);
+  }
+
+  if (row?.id && finalStock > 0) {
+    saveStockValue(String(row.id), finalStock);
   }
 
   return {
@@ -552,6 +642,7 @@ function normalizeProduct(row: any): Product {
     discount: Number(row?.discount || 0),
     stock_qty: finalStock,
     note: row?.note || "",
+    _stockColumn: stockInfo.column || "local",
   };
 }
 
@@ -837,6 +928,32 @@ export default function InvoicePage() {
       .order("created_at", { ascending: false });
 
     setInvoices((data || []) as InvoiceRecord[]);
+  }
+
+  async function updateProductStockSafe(product: Product, nextStock: number) {
+    saveStockValue(product.id, nextStock);
+
+    if (isTrial || !userId) return;
+
+    const preferred = product._stockColumn && product._stockColumn !== "local"
+      ? [product._stockColumn]
+      : [];
+
+    const candidates = Array.from(new Set([...preferred, ...STOCK_COLUMN_CANDIDATES]));
+
+    for (const column of candidates) {
+      const result = await supabase
+        .from("products")
+        .update({ [column]: nextStock })
+        .eq("id", product.id)
+        .eq("user_id", userId);
+
+      if (!result.error) return;
+
+      if (!isSchemaColumnError(result.error)) {
+        throw result.error;
+      }
+    }
   }
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
@@ -1307,6 +1424,7 @@ export default function InvoicePage() {
           discount: 0,
           stock_qty: inputStock,
           note: t.productNote,
+          _stockColumn: "stock_qty",
         };
 
         if (isTrial) {
@@ -1348,10 +1466,11 @@ export default function InvoicePage() {
                 throw insertWithoutStock.error;
               }
 
-              finalProduct = normalizeProduct({
-                ...(insertWithoutStock.data as any),
+              finalProduct = {
+                ...normalizeProduct(insertWithoutStock.data),
                 stock_qty: inputStock,
-              });
+                _stockColumn: "local",
+              };
 
               saveStockValue(finalProduct.id, inputStock);
             } else {
@@ -1360,11 +1479,11 @@ export default function InvoicePage() {
           } else {
             finalProduct = normalizeProduct(insertWithStock.data);
 
-            if (Number(finalProduct.stock_qty || 0) === 0 && inputStock > 0) {
+            if (getProductStock(finalProduct) === 0 && inputStock > 0) {
               finalProduct.stock_qty = inputStock;
             }
 
-            saveStockValue(finalProduct.id, Number(finalProduct.stock_qty || inputStock || 0));
+            saveStockValue(finalProduct.id, getProductStock(finalProduct) || inputStock);
           }
 
           setProducts((prev) => [finalProduct as Product, ...prev]);
@@ -1377,7 +1496,7 @@ export default function InvoicePage() {
         return;
       }
 
-      const currentStock = Number(finalProduct.stock_qty || 0);
+      const currentStock = getProductStock(finalProduct);
 
       if (currentStock < preview.finalQty) {
         setMsg(`${t.stockNotEnough}${currentStock}`);
@@ -1435,23 +1554,7 @@ export default function InvoicePage() {
       lhdnSkipped = invoiceResult.lhdnSkipped;
 
       await insertInvoiceItemSafe(invoiceData.id, finalProduct);
-
-      const stockResult = await supabase
-        .from("products")
-        .update({ stock_qty: newStock })
-        .eq("id", finalProduct.id)
-        .eq("user_id", userId);
-
-      if (stockResult.error) {
-        if (isMissingStockColumn(stockResult.error)) {
-          saveStockValue(finalProduct.id, newStock);
-        } else {
-          throw stockResult.error;
-        }
-      } else {
-        saveStockValue(finalProduct.id, newStock);
-      }
-
+      await updateProductStockSafe(finalProduct, newStock);
       await insertTransactionSafe(invoiceData.id, finalCustomer, finalProduct);
 
       const savedRecord: InvoiceRecord = {
@@ -2081,6 +2184,9 @@ export default function InvoicePage() {
                     <div style={{ ...mutedTextStyle, color: theme.muted }}>
                       {inv.invoice_date || "-"}｜{inv.customer_phone || "-"}
                     </div>
+                    <div style={{ ...mutedTextStyle, color: theme.muted }}>
+                      {t.recordDateTime}：{formatDateTime(inv.created_at || inv.invoice_date)}
+                    </div>
 
                     <div style={recordActionRowStyle}>
                       <button onClick={() => startEditInvoice(inv)} style={recordEditBtnStyle}>
@@ -2255,8 +2361,12 @@ export default function InvoicePage() {
                 <img src={newPaymentQr} style={qrPreviewStyle} />
               ) : null}
 
-              <button onClick={addPaymentOption} style={{ ...addBtnStyle, background: theme.accent }}>
-                {t.addPayment}
+              <button
+                onClick={addPaymentOption}
+                title={t.addPayment}
+                style={{ ...paymentPlusBtnStyle, background: theme.accent }}
+              >
+                +
               </button>
             </div>
 
@@ -2450,7 +2560,7 @@ export default function InvoicePage() {
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}｜{t.price} {Number(p.price).toFixed(2)}｜{t.cost}{" "}
-                  {Number(p.cost).toFixed(2)}｜{t.stock} {Number(p.stock_qty || 0)}
+                  {Number(p.cost).toFixed(2)}｜{t.stock} {getProductStock(p)}
                 </option>
               ))}
             </select>
@@ -2762,20 +2872,6 @@ const inputStyle: CSSProperties = {
   marginBottom: 8,
 };
 
-const textareaStyle: CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  minHeight: 92,
-  padding: "13px",
-  borderRadius: 12,
-  border: "2px solid",
-  fontSize: 16,
-  marginBottom: 8,
-  fontFamily: "inherit",
-  resize: "vertical",
-  whiteSpace: "pre-wrap",
-};
-
 const paymentAddBoxStyle: CSSProperties = {
   display: "grid",
   gap: 8,
@@ -2812,6 +2908,18 @@ const addBtnStyle: CSSProperties = {
   borderRadius: 12,
   padding: "13px",
   fontWeight: 900,
+};
+
+const paymentPlusBtnStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  border: "none",
+  borderRadius: "999px",
+  color: "#fff",
+  fontSize: 32,
+  lineHeight: 1,
+  fontWeight: 900,
+  justifySelf: "center",
 };
 
 const paymentChipWrapStyle: CSSProperties = {
