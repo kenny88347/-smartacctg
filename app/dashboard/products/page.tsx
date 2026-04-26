@@ -46,7 +46,6 @@ const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
-const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 
 const TXT = {
   zh: {
@@ -92,11 +91,13 @@ const TXT = {
     link3: "库存系统：发票出货后会自动扣除库存。",
     theme: "主题",
     trial: "免费试用模式",
-    dbFallback: "库存已保存；你的 Supabase products 表目前没有 stock_qty 栏位，所以库存暂时用本地备用方式保存。",
+    stockColumnError:
+      "保存失败：Supabase products 表还没有 stock_qty 栏位。请先在 Supabase 加 stock_qty 栏位后再保存库存。",
   },
   en: {
     title: "Product Management",
-    subtitle: "Manage products, stock, cost, selling price, customer pricing, invoices and accounting links.",
+    subtitle:
+      "Manage products, stock, cost, selling price, customer pricing, invoices and accounting links.",
     back: "Back",
     search: "Search product name / code",
     add: "Add Product",
@@ -137,7 +138,8 @@ const TXT = {
     link3: "Stock: invoice delivery will deduct stock automatically.",
     theme: "Theme",
     trial: "Free Trial Mode",
-    dbFallback: "Stock saved with fallback because your Supabase products table has no stock_qty column.",
+    stockColumnError:
+      "Save failed: your Supabase products table does not have the stock_qty column yet.",
   },
   ms: {
     title: "Pengurusan Produk",
@@ -182,7 +184,8 @@ const TXT = {
     link3: "Stok: penghantaran invois akan menolak stok automatik.",
     theme: "Tema",
     trial: "Mod Percubaan Percuma",
-    dbFallback: "Stok disimpan secara fallback kerana jadual products tiada lajur stock_qty.",
+    stockColumnError:
+      "Gagal simpan: jadual products di Supabase belum ada lajur stock_qty.",
   },
 };
 
@@ -194,7 +197,8 @@ const THEMES: Record<ThemeKey, any> = {
     itemCard: "#ffffff",
     itemText: "#064e3b",
     border: "#14b8a6",
-    glow: "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
+    glow:
+      "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
     accent: "#0f766e",
     text: "#064e3b",
     muted: "#64748b",
@@ -207,7 +211,8 @@ const THEMES: Record<ThemeKey, any> = {
     itemCard: "#ffffff",
     itemText: "#4a044e",
     border: "#f472b6",
-    glow: "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
+    glow:
+      "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
     accent: "#db2777",
     text: "#4a044e",
     muted: "#64748b",
@@ -220,7 +225,8 @@ const THEMES: Record<ThemeKey, any> = {
     itemCard: "#ffffff",
     itemText: "#111827",
     border: "#facc15",
-    glow: "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
+    glow:
+      "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
     accent: "#d4af37",
     text: "#fff7ed",
     muted: "#fef3c7",
@@ -233,7 +239,8 @@ const THEMES: Record<ThemeKey, any> = {
     itemCard: "#ffffff",
     itemText: "#881337",
     border: "#fb7185",
-    glow: "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
+    glow:
+      "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
     accent: "#e11d48",
     text: "#881337",
     muted: "#64748b",
@@ -246,7 +253,8 @@ const THEMES: Record<ThemeKey, any> = {
     itemCard: "#ffffff",
     itemText: "#14532d",
     border: "#22d3ee",
-    glow: "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
+    glow:
+      "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
     accent: "#0f766e",
     text: "#14532d",
     muted: "#64748b",
@@ -259,7 +267,8 @@ const THEMES: Record<ThemeKey, any> = {
     itemCard: "#ffffff",
     itemText: "#0f172a",
     border: "#38bdf8",
-    glow: "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
+    glow:
+      "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
     accent: "#0284c7",
     text: "#0f172a",
     muted: "#64748b",
@@ -319,33 +328,9 @@ export default function ProductsPage() {
     init();
   }, []);
 
-  function readStockFallback(): Record<string, number> {
-    try {
-      const raw = localStorage.getItem(PRODUCT_STOCK_FALLBACK_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function writeStockFallback(map: Record<string, number>) {
-    localStorage.setItem(PRODUCT_STOCK_FALLBACK_KEY, JSON.stringify(map));
-  }
-
-  function setStockFallback(productId: string, stock: number) {
-    const map = readStockFallback();
-    map[productId] = Number(stock || 0);
-    writeStockFallback(map);
-  }
-
-  function removeStockFallback(productId: string) {
-    const map = readStockFallback();
-    delete map[productId];
-    writeStockFallback(map);
-  }
-
   function isStockColumnError(error: any) {
     const message = String(error?.message || "").toLowerCase();
+
     return (
       message.includes("stock_qty") &&
       (message.includes("schema cache") ||
@@ -355,14 +340,12 @@ export default function ProductsPage() {
   }
 
   function normalizeProduct(row: any): Product {
-    const stockMap = readStockFallback();
-
     return {
       ...row,
       price: Number(row?.price || 0),
       cost: Number(row?.cost || 0),
       discount: Number(row?.discount || 0),
-      stock_qty: Number(row?.stock_qty ?? stockMap[row?.id] ?? 0),
+      stock_qty: Number(row?.stock_qty || 0),
       note: row?.note || "",
     } as Product;
   }
@@ -486,10 +469,7 @@ export default function ProductsPage() {
     localStorage.setItem(THEME_KEY, next);
 
     if (!isTrial && session) {
-      await supabase
-        .from("profiles")
-        .update({ theme: next })
-        .eq("id", session.user.id);
+      await supabase.from("profiles").update({ theme: next }).eq("id", session.user.id);
     }
   }
 
@@ -540,7 +520,7 @@ export default function ProductsPage() {
 
     const stockValue = Number(productStock || 0);
 
-    const payloadWithStock = {
+    const payload = {
       name: productName.trim(),
       price: Number(productPrice || 0),
       cost: Number(productCost || 0),
@@ -549,22 +529,13 @@ export default function ProductsPage() {
       note: productNote.trim(),
     };
 
-    const payloadNoStock = {
-      name: productName.trim(),
-      price: Number(productPrice || 0),
-      cost: Number(productCost || 0),
-      discount: Number(productDiscount || 0),
-      note: productNote.trim(),
-    };
-
     if (isTrial) {
       if (editingId) {
         const next = products.map((p) =>
-          p.id === editingId ? { ...p, ...payloadWithStock } : p
+          p.id === editingId ? { ...p, ...payload } : p
         );
 
         setProducts(next);
-        setStockFallback(editingId, stockValue);
         syncTrialData(next, customers, customerPrices);
       } else {
         const id =
@@ -574,14 +545,13 @@ export default function ProductsPage() {
 
         const newProduct: Product = {
           id,
-          ...payloadWithStock,
+          ...payload,
           created_at: new Date().toISOString(),
         };
 
         const next = [newProduct, ...products];
 
         setProducts(next);
-        setStockFallback(id, stockValue);
         syncTrialData(next, customers, customerPrices);
       }
 
@@ -595,77 +565,25 @@ export default function ProductsPage() {
     if (editingId) {
       const { error } = await supabase
         .from("products")
-        .update(payloadWithStock)
+        .update(payload)
         .eq("id", editingId)
         .eq("user_id", session.user.id);
 
       if (error) {
-        if (isStockColumnError(error)) {
-          const retry = await supabase
-            .from("products")
-            .update(payloadNoStock)
-            .eq("id", editingId)
-            .eq("user_id", session.user.id);
-
-          if (retry.error) {
-            setMsg(retry.error.message);
-            return;
-          }
-
-          setStockFallback(editingId, stockValue);
-          await loadProducts(session.user.id);
-          setMsg(`${t.saveSuccess}｜${t.dbFallback}`);
-          resetForm();
-          return;
-        }
-
-        setMsg(error.message);
+        setMsg(isStockColumnError(error) ? t.stockColumnError : error.message);
         return;
       }
-
-      setStockFallback(editingId, stockValue);
     } else {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("products")
         .insert({
           user_id: session.user.id,
-          ...payloadWithStock,
-        })
-        .select("*")
-        .single();
+          ...payload,
+        });
 
       if (error) {
-        if (isStockColumnError(error)) {
-          const retry = await supabase
-            .from("products")
-            .insert({
-              user_id: session.user.id,
-              ...payloadNoStock,
-            })
-            .select("*")
-            .single();
-
-          if (retry.error) {
-            setMsg(retry.error.message);
-            return;
-          }
-
-          if (retry.data?.id) {
-            setStockFallback(retry.data.id, stockValue);
-          }
-
-          await loadProducts(session.user.id);
-          setMsg(`${t.saveSuccess}｜${t.dbFallback}`);
-          resetForm();
-          return;
-        }
-
-        setMsg(error.message);
+        setMsg(isStockColumnError(error) ? t.stockColumnError : error.message);
         return;
-      }
-
-      if (data?.id) {
-        setStockFallback(data.id, stockValue);
       }
     }
 
@@ -684,7 +602,6 @@ export default function ProductsPage() {
 
       setProducts(nextProducts);
       setCustomerPrices(nextPrices);
-      removeStockFallback(p.id);
       syncTrialData(nextProducts, customers, nextPrices);
       setMsg(t.deleteSuccess);
       return;
@@ -709,7 +626,6 @@ export default function ProductsPage() {
       return;
     }
 
-    removeStockFallback(p.id);
     await loadProducts(session.user.id);
     await loadCustomerPrices(session.user.id);
     setMsg(t.deleteSuccess);
@@ -773,14 +689,12 @@ export default function ProductsPage() {
         return;
       }
     } else {
-      const { error } = await supabase
-        .from("customer_prices")
-        .insert({
-          user_id: session.user.id,
-          customer_id: priceCustomerId,
-          product_id: priceProductId,
-          custom_price: price,
-        });
+      const { error } = await supabase.from("customer_prices").insert({
+        user_id: session.user.id,
+        customer_id: priceCustomerId,
+        product_id: priceProductId,
+        custom_price: price,
+      });
 
       if (error) {
         setMsg(error.message);
@@ -808,10 +722,12 @@ export default function ProductsPage() {
 
   const productSummary = useMemo(() => {
     const totalStock = products.reduce((s, p) => s + Number(p.stock_qty || 0), 0);
+
     const totalCost = products.reduce(
       (s, p) => s + Number(p.cost || 0) * Number(p.stock_qty || 0),
       0
     );
+
     const totalValue = products.reduce(
       (s, p) => s + Number(p.price || 0) * Number(p.stock_qty || 0),
       0
@@ -976,7 +892,10 @@ export default function ProductsPage() {
                     background: theme.itemCard,
                     color: theme.itemText,
                     borderColor: theme.border,
-                    boxShadow: themeKey === "blackGold" ? theme.glow : "0 8px 24px rgba(15,23,42,0.08)",
+                    boxShadow:
+                      themeKey === "blackGold"
+                        ? theme.glow
+                        : "0 8px 24px rgba(15,23,42,0.08)",
                   }}
                 >
                   <div>
@@ -987,15 +906,30 @@ export default function ProductsPage() {
                       </span>
                     </div>
 
-                    <div style={mutedStyle}>{t.productNo}: {productCode(p)}</div>
+                    <div style={mutedStyle}>
+                      {t.productNo}: {productCode(p)}
+                    </div>
 
                     <div style={productInfoGridStyle}>
-                      <div>{t.price}: <strong>RM {Number(p.price || 0).toFixed(2)}</strong></div>
-                      <div>{t.cost}: <strong>RM {Number(p.cost || 0).toFixed(2)}</strong></div>
-                      <div>{t.discount}: <strong>RM {Number(p.discount || 0).toFixed(2)}</strong></div>
-                      <div>{t.stock}: <strong>{Number(p.stock_qty || 0)}</strong></div>
-                      <div>{t.profit}: <strong>RM {profit.toFixed(2)}</strong></div>
-                      <div>{t.margin}: <strong>{margin.toFixed(1)}%</strong></div>
+                      <div>
+                        {t.price}: <strong>RM {Number(p.price || 0).toFixed(2)}</strong>
+                      </div>
+                      <div>
+                        {t.cost}: <strong>RM {Number(p.cost || 0).toFixed(2)}</strong>
+                      </div>
+                      <div>
+                        {t.discount}:{" "}
+                        <strong>RM {Number(p.discount || 0).toFixed(2)}</strong>
+                      </div>
+                      <div>
+                        {t.stock}: <strong>{Number(p.stock_qty || 0)}</strong>
+                      </div>
+                      <div>
+                        {t.profit}: <strong>RM {profit.toFixed(2)}</strong>
+                      </div>
+                      <div>
+                        {t.margin}: <strong>{margin.toFixed(1)}%</strong>
+                      </div>
                     </div>
 
                     {p.note ? <div style={noteStyle}>{p.note}</div> : null}
@@ -1004,7 +938,11 @@ export default function ProductsPage() {
                   <div style={actionRowStyle}>
                     <button
                       onClick={() => openEditForm(p)}
-                      style={{ ...editBtnStyle, borderColor: theme.border, color: theme.accent }}
+                      style={{
+                        ...editBtnStyle,
+                        borderColor: theme.border,
+                        color: theme.accent,
+                      }}
                     >
                       {t.edit}
                     </button>
@@ -1070,7 +1008,10 @@ export default function ProductsPage() {
               />
             </div>
 
-            <button onClick={saveCustomerPrice} style={{ ...addBtnStyle, background: theme.accent }}>
+            <button
+              onClick={saveCustomerPrice}
+              style={{ ...addBtnStyle, background: theme.accent, marginTop: 12 }}
+            >
               {t.saveCustomerPrice}
             </button>
 
