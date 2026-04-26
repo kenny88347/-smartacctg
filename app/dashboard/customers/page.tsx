@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 type Lang = "zh" | "en" | "ms";
 type CustomerStatus = "normal" | "vip" | "debt" | "blocked";
+type ThemeKey = "deepTeal" | "pink" | "blackGold" | "lightRed" | "nature" | "sky";
 
 type Customer = {
   id: string;
@@ -40,17 +41,106 @@ type CustomerPrice = {
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
+const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
+
+const LANG_KEY = "smartacctg_lang";
+const THEME_KEY = "smartacctg_theme";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const THEMES: Record<
+  ThemeKey,
+  {
+    name: string;
+    pageBg: string;
+    card: string;
+    border: string;
+    accent: string;
+    text: string;
+    subText: string;
+    softBg: string;
+    glow: string;
+  }
+> = {
+  deepTeal: {
+    name: "深青色",
+    pageBg: "#ecfdf5",
+    card: "#ffffff",
+    border: "#14b8a6",
+    accent: "#0f766e",
+    text: "#064e3b",
+    subText: "#64748b",
+    softBg: "#ccfbf1",
+    glow: "0 0 0 1px rgba(20,184,166,0.35), 0 16px 36px rgba(20,184,166,0.22)",
+  },
+  pink: {
+    name: "可爱粉色",
+    pageBg: "#fff7fb",
+    card: "#ffffff",
+    border: "#f472b6",
+    accent: "#db2777",
+    text: "#4a044e",
+    subText: "#831843",
+    softBg: "#fce7f3",
+    glow: "0 0 0 1px rgba(244,114,182,0.32), 0 16px 36px rgba(244,114,182,0.20)",
+  },
+  blackGold: {
+    name: "黑金商务",
+    pageBg: "#111111",
+    card: "#1f1f1f",
+    border: "#facc15",
+    accent: "#d4af37",
+    text: "#fff7ed",
+    subText: "#d6c8a4",
+    softBg: "#3b2f16",
+    glow: "0 0 0 1px rgba(250,204,21,0.38), 0 16px 38px rgba(250,204,21,0.20)",
+  },
+  lightRed: {
+    name: "可爱浅红",
+    pageBg: "#fff1f2",
+    card: "#ffffff",
+    border: "#fb7185",
+    accent: "#e11d48",
+    text: "#881337",
+    subText: "#9f1239",
+    softBg: "#ffe4e6",
+    glow: "0 0 0 1px rgba(251,113,133,0.35), 0 16px 36px rgba(251,113,133,0.20)",
+  },
+  nature: {
+    name: "风景自然系",
+    pageBg: "#f0fdf4",
+    card: "#ffffff",
+    border: "#22d3ee",
+    accent: "#0f766e",
+    text: "#14532d",
+    subText: "#166534",
+    softBg: "#dcfce7",
+    glow: "0 0 0 1px rgba(34,211,238,0.32), 0 16px 36px rgba(34,211,238,0.20)",
+  },
+  sky: {
+    name: "天空蓝",
+    pageBg: "#eff6ff",
+    card: "#ffffff",
+    border: "#38bdf8",
+    accent: "#0284c7",
+    text: "#0f172a",
+    subText: "#0369a1",
+    softBg: "#dbeafe",
+    glow: "0 0 0 1px rgba(56,189,248,0.35), 0 16px 36px rgba(56,189,248,0.20)",
+  },
+};
+
 const TXT = {
   zh: {
-    title: "客户管理",
+    pageTitle: "客户资料记录",
+    formTitle: "填写客户资料",
     back: "返回控制台",
-    addCustomer: "新增客户",
-    updateCustomer: "保存修改",
+    add: "新增",
+    save: "保存资料",
+    update: "保存修改",
     cancelEdit: "取消编辑",
-    search: "搜索客户名称 / 电话 / 公司",
+    close: "关闭",
+    search: "搜索客户名称 / 手机号码 / 公司名称 / 电子邮件",
     all: "全部",
     normal: "正常客户",
     vip: "VIP 客户",
@@ -59,8 +149,8 @@ const TXT = {
     personal: "个人资料",
     company: "公司资料",
     name: "客户名称",
-    phone: "电话号码",
-    email: "Email",
+    phone: "客户手机号码",
+    email: "电子邮件",
     companyName: "公司名称",
     regNo: "SSM / 注册号",
     companyPhone: "公司电话",
@@ -68,11 +158,15 @@ const TXT = {
     status: "客户状态",
     debtAmount: "欠款金额",
     paidAmount: "已付款金额",
-    lastPaymentDate: "最后付款日期",
+    lastPaymentDate: "日期",
     note: "备注",
     edit: "编辑",
     delete: "删除",
     whatsapp: "WhatsApp",
+    invoice: "开发票",
+    accounting: "记账系统",
+    products: "产品管理",
+    invoices: "发票系统",
     noCustomers: "还没有客户资料",
     priceTitle: "客户专属价格",
     chooseCustomer: "选择客户",
@@ -82,15 +176,22 @@ const TXT = {
     productNormalPrice: "产品原价",
     saved: "保存成功",
     deleted: "删除成功",
+    theme: "主题",
+    language: "语言",
+    related: "关联功能",
     trialMode: "免费试用模式：资料只会暂存在本机",
+    confirmDelete: "确定要删除这个客户吗？",
   },
   en: {
-    title: "Customer Management",
+    pageTitle: "Customer Records",
+    formTitle: "Customer Information",
     back: "Back to Dashboard",
-    addCustomer: "Add Customer",
-    updateCustomer: "Save Changes",
+    add: "Add",
+    save: "Save",
+    update: "Save Changes",
     cancelEdit: "Cancel Edit",
-    search: "Search name / phone / company",
+    close: "Close",
+    search: "Search customer name / phone / company / email",
     all: "All",
     normal: "Normal",
     vip: "VIP",
@@ -108,12 +209,16 @@ const TXT = {
     status: "Status",
     debtAmount: "Debt Amount",
     paidAmount: "Paid Amount",
-    lastPaymentDate: "Last Payment Date",
+    lastPaymentDate: "Date",
     note: "Note",
     edit: "Edit",
     delete: "Delete",
     whatsapp: "WhatsApp",
-    noCustomers: "No customers yet",
+    invoice: "Invoice",
+    accounting: "Accounting",
+    products: "Products",
+    invoices: "Invoices",
+    noCustomers: "No customer records yet",
     priceTitle: "Customer Special Price",
     chooseCustomer: "Choose Customer",
     chooseProduct: "Choose Product",
@@ -122,15 +227,22 @@ const TXT = {
     productNormalPrice: "Normal Price",
     saved: "Saved",
     deleted: "Deleted",
+    theme: "Theme",
+    language: "Language",
+    related: "Linked Features",
     trialMode: "Free trial mode: data is stored locally only",
+    confirmDelete: "Confirm delete this customer?",
   },
   ms: {
-    title: "Pengurusan Pelanggan",
+    pageTitle: "Rekod Pelanggan",
+    formTitle: "Maklumat Pelanggan",
     back: "Kembali ke Dashboard",
-    addCustomer: "Tambah Pelanggan",
-    updateCustomer: "Simpan Perubahan",
+    add: "Tambah",
+    save: "Simpan",
+    update: "Simpan Perubahan",
     cancelEdit: "Batal Edit",
-    search: "Cari nama / telefon / syarikat",
+    close: "Tutup",
+    search: "Cari nama pelanggan / telefon / syarikat / email",
     all: "Semua",
     normal: "Biasa",
     vip: "VIP",
@@ -148,12 +260,16 @@ const TXT = {
     status: "Status",
     debtAmount: "Jumlah Hutang",
     paidAmount: "Jumlah Dibayar",
-    lastPaymentDate: "Tarikh Bayaran Akhir",
+    lastPaymentDate: "Tarikh",
     note: "Catatan",
     edit: "Edit",
     delete: "Padam",
     whatsapp: "WhatsApp",
-    noCustomers: "Tiada pelanggan lagi",
+    invoice: "Invois",
+    accounting: "Sistem Akaun",
+    products: "Produk",
+    invoices: "Invois",
+    noCustomers: "Tiada rekod pelanggan",
     priceTitle: "Harga Khas Pelanggan",
     chooseCustomer: "Pilih Pelanggan",
     chooseProduct: "Pilih Produk",
@@ -162,7 +278,11 @@ const TXT = {
     productNormalPrice: "Harga Asal",
     saved: "Disimpan",
     deleted: "Dipadam",
+    theme: "Tema",
+    language: "Bahasa",
+    related: "Fungsi Berkaitan",
     trialMode: "Mod percubaan: data hanya disimpan dalam telefon ini",
+    confirmDelete: "Padam pelanggan ini?",
   },
 };
 
@@ -170,6 +290,7 @@ export default function CustomersPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
+  const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -177,6 +298,7 @@ export default function CustomersPage() {
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | CustomerStatus>("all");
+  const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
 
@@ -200,12 +322,28 @@ export default function CustomersPage() {
   const [customPrice, setCustomPrice] = useState("");
 
   const t = TXT[lang];
+  const theme = THEMES[themeKey];
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    const l = q.get("lang") as Lang;
 
-    if (l === "zh" || l === "en" || l === "ms") setLang(l);
+    const urlLang = q.get("lang") as Lang;
+    const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
+    if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
+      setLang(urlLang);
+      localStorage.setItem(LANG_KEY, urlLang);
+    } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
+      setLang(savedLang);
+    }
+
+    const urlTheme = q.get("theme") as ThemeKey;
+    const savedTheme = localStorage.getItem(THEME_KEY) as ThemeKey | null;
+    if (urlTheme && THEMES[urlTheme]) {
+      setThemeKey(urlTheme);
+      localStorage.setItem(THEME_KEY, urlTheme);
+    } else if (savedTheme && THEMES[savedTheme]) {
+      setThemeKey(savedTheme);
+    }
 
     init();
   }, []);
@@ -224,10 +362,11 @@ export default function CustomersPage() {
 
         const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
         const savedPrices = localStorage.getItem(TRIAL_CUSTOMER_PRICES_KEY);
+        const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
 
         setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
         setCustomerPrices(savedPrices ? JSON.parse(savedPrices) : []);
-        setProducts([]);
+        setProducts(savedProducts ? JSON.parse(savedProducts) : []);
 
         return;
       }
@@ -235,6 +374,7 @@ export default function CustomersPage() {
       localStorage.removeItem(TRIAL_KEY);
       localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
       localStorage.removeItem(TRIAL_CUSTOMER_PRICES_KEY);
+      localStorage.removeItem(TRIAL_PRODUCTS_KEY);
       window.location.href = "/zh";
       return;
     }
@@ -248,6 +388,18 @@ export default function CustomersPage() {
 
     setIsTrial(false);
     setSession(data.session);
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("theme")
+      .eq("id", data.session.user.id)
+      .single();
+
+    if (profileData?.theme && THEMES[profileData.theme as ThemeKey]) {
+      setThemeKey(profileData.theme as ThemeKey);
+      localStorage.setItem(THEME_KEY, profileData.theme);
+    }
+
     await loadAll(data.session.user.id);
   }
 
@@ -284,18 +436,57 @@ export default function CustomersPage() {
     localStorage.setItem(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextPrices));
   }
 
-  function switchLang(next: Lang) {
-    setLang(next);
+  function buildUrl(path: string, extra?: string) {
+    const base = isTrial
+      ? `${path}?mode=trial&lang=${lang}&theme=${themeKey}`
+      : `${path}?lang=${lang}&theme=${themeKey}`;
 
-    const q = new URLSearchParams(window.location.search);
-    q.set("lang", next);
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    return extra ? `${base}&${extra}` : base;
+  }
+
+  function go(path: string, extra?: string) {
+    window.location.href = buildUrl(path, extra);
   }
 
   function backToDashboard() {
-    window.location.href = isTrial
-      ? `/dashboard?mode=trial&lang=${lang}`
-      : `/dashboard?lang=${lang}`;
+    go("/dashboard");
+  }
+
+  function switchLang(next: Lang) {
+    setLang(next);
+    localStorage.setItem(LANG_KEY, next);
+
+    const q = new URLSearchParams(window.location.search);
+    q.set("lang", next);
+    q.set("theme", themeKey);
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+  }
+
+  async function switchTheme(next: ThemeKey) {
+    setThemeKey(next);
+    localStorage.setItem(THEME_KEY, next);
+
+    const q = new URLSearchParams(window.location.search);
+    q.set("theme", next);
+    q.set("lang", lang);
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+
+    if (!isTrial && session) {
+      await supabase
+        .from("profiles")
+        .update({ theme: next })
+        .eq("id", session.user.id);
+    }
+  }
+
+  function openNewCustomerForm() {
+    resetForm();
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    resetForm();
+    setShowForm(false);
   }
 
   function resetForm() {
@@ -343,7 +534,7 @@ export default function CustomersPage() {
 
       saveTrialCustomers(next);
       setMsg(t.saved);
-      resetForm();
+      closeForm();
       return;
     }
 
@@ -387,7 +578,7 @@ export default function CustomersPage() {
     }
 
     setMsg(t.saved);
-    resetForm();
+    closeForm();
     await loadAll(session.user.id);
   }
 
@@ -408,11 +599,11 @@ export default function CustomersPage() {
       note: c.note || "",
     });
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setShowForm(true);
   }
 
   async function deleteCustomer(id: string) {
-    const yes = window.confirm("Confirm delete?");
+    const yes = window.confirm(t.confirmDelete);
     if (!yes) return;
 
     if (isTrial) {
@@ -511,13 +702,15 @@ export default function CustomersPage() {
   }
 
   const filteredCustomers = useMemo(() => {
-    const s = search.toLowerCase();
+    const s = search.toLowerCase().trim();
 
     return customers.filter((c) => {
       const matchSearch =
+        !s ||
         c.name?.toLowerCase().includes(s) ||
         c.phone?.toLowerCase().includes(s) ||
-        c.company_name?.toLowerCase().includes(s);
+        c.company_name?.toLowerCase().includes(s) ||
+        c.email?.toLowerCase().includes(s);
 
       const matchStatus = filterStatus === "all" || c.status === filterStatus;
 
@@ -528,87 +721,262 @@ export default function CustomersPage() {
   const selectedProduct = products.find((p) => p.id === priceProductId);
 
   return (
-    <main style={pageStyle}>
+    <main
+      style={{
+        ...pageStyle,
+        background: theme.pageBg,
+        color: theme.text,
+      }}
+    >
       <section style={topBarStyle}>
-        <button onClick={backToDashboard} style={backBtnStyle}>
+        <button
+          onClick={backToDashboard}
+          style={{
+            ...backBtnStyle,
+            color: theme.accent,
+            borderColor: theme.border,
+          }}
+        >
           ← {t.back}
         </button>
 
-        <div style={langRowStyle}>
-          <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh")}>中文</button>
-          <button onClick={() => switchLang("en")} style={langBtn(lang === "en")}>EN</button>
-          <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms")}>BM</button>
-        </div>
-      </section>
-
-      <h1 style={titleStyle}>{t.title}</h1>
-
-      {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
-      {msg ? <div style={msgStyle}>{msg}</div> : null}
-
-      <section style={cardStyle}>
-        <h2>{editingId ? t.updateCustomer : t.addCustomer}</h2>
-
-        <h3>{t.personal}</h3>
-        <div style={gridStyle}>
-          <input placeholder={t.name} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
-          <input placeholder={t.phone} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
-          <input placeholder={t.email} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={inputStyle} />
-        </div>
-
-        <h3>{t.company}</h3>
-        <div style={gridStyle}>
-          <input placeholder={t.companyName} value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} style={inputStyle} />
-          <input placeholder={t.regNo} value={form.company_reg_no} onChange={(e) => setForm({ ...form, company_reg_no: e.target.value })} style={inputStyle} />
-          <input placeholder={t.companyPhone} value={form.company_phone} onChange={(e) => setForm({ ...form, company_phone: e.target.value })} style={inputStyle} />
-          <input placeholder={t.address} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={inputStyle} />
-        </div>
-
-        <h3>{t.status}</h3>
-        <div style={gridStyle}>
-          <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as CustomerStatus })} style={inputStyle}>
-            <option value="normal">{t.normal}</option>
-            <option value="vip">{t.vip}</option>
-            <option value="debt">{t.debt}</option>
-            <option value="blocked">{t.blocked}</option>
+        <div style={topRightStyle}>
+          <select
+            value={themeKey}
+            onChange={(e) => switchTheme(e.target.value as ThemeKey)}
+            style={{
+              ...selectSmallStyle,
+              borderColor: theme.border,
+              color: theme.accent,
+            }}
+          >
+            <option value="deepTeal">深青色</option>
+            <option value="pink">可爱粉色</option>
+            <option value="blackGold">黑金商务</option>
+            <option value="lightRed">可爱浅红</option>
+            <option value="nature">风景自然系</option>
+            <option value="sky">天空蓝</option>
           </select>
 
-          <input placeholder={t.debtAmount} value={form.debt_amount} onChange={(e) => setForm({ ...form, debt_amount: e.target.value })} style={inputStyle} />
-          <input placeholder={t.paidAmount} value={form.paid_amount} onChange={(e) => setForm({ ...form, paid_amount: e.target.value })} style={inputStyle} />
-
-          <input
-            type="date"
-            value={form.last_payment_date}
-            onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })}
-            style={dateInputStyle}
-          />
-
-          <input placeholder={t.note} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={inputStyle} />
+          <div style={langRowStyle}>
+            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>中</button>
+            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>EN</button>
+            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>BM</button>
+          </div>
         </div>
-
-        <button onClick={saveCustomer} style={primaryBtnStyle}>
-          {editingId ? t.updateCustomer : t.addCustomer}
-        </button>
-
-        {editingId ? (
-          <button onClick={resetForm} style={secondaryBtnStyle}>
-            {t.cancelEdit}
-          </button>
-        ) : null}
       </section>
 
-      <section style={cardStyle}>
-        <h2>{t.priceTitle}</h2>
+      {isTrial ? (
+        <div style={trialMsgStyle}>{t.trialMode}</div>
+      ) : null}
 
-        <div style={gridStyle}>
-          <select value={priceCustomerId} onChange={(e) => setPriceCustomerId(e.target.value)} style={inputStyle}>
+      {msg ? (
+        <div style={msgStyle}>{msg}</div>
+      ) : null}
+
+      <section
+        style={{
+          ...cardStyle,
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+        }}
+      >
+        <div style={recordHeaderStyle}>
+          <h1 style={titleStyle}>{t.pageTitle}</h1>
+
+          <button
+            onClick={openNewCustomerForm}
+            style={{
+              ...plusBtnStyle,
+              background: theme.accent,
+            }}
+          >
+            ＋
+          </button>
+        </div>
+
+        <input
+          placeholder={t.search}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: theme.border,
+          }}
+        />
+
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as "all" | CustomerStatus)}
+          style={{
+            ...inputStyle,
+            borderColor: theme.border,
+            marginTop: 12,
+          }}
+        >
+          <option value="all">{t.all}</option>
+          <option value="normal">{t.normal}</option>
+          <option value="vip">{t.vip}</option>
+          <option value="debt">{t.debt}</option>
+          <option value="blocked">{t.blocked}</option>
+        </select>
+
+        <div style={customerListStyle}>
+          {filteredCustomers.length === 0 ? (
+            <p style={{ color: theme.subText }}>{t.noCustomers}</p>
+          ) : (
+            filteredCustomers.map((c) => {
+              const debtLeft = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
+              const prices = customerPrices.filter((p) => p.customer_id === c.id);
+
+              return (
+                <div
+                  key={c.id}
+                  style={{
+                    ...customerCardStyle,
+                    borderColor: theme.border,
+                    background: theme.card,
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={customerNameStyle}>
+                      {c.name}{" "}
+                      <span
+                        style={{
+                          ...badgeStyle,
+                          background: theme.softBg,
+                          color: theme.accent,
+                        }}
+                      >
+                        {statusText(c.status || "normal", t)}
+                      </span>
+                    </h3>
+
+                    <p style={{ ...mutedStyle, color: theme.subText }}>
+                      {t.phone}: {c.phone || "-"} | {t.email}: {c.email || "-"}
+                    </p>
+
+                    <p style={{ ...mutedStyle, color: theme.subText }}>
+                      {t.companyName}: {c.company_name || "-"}
+                    </p>
+
+                    <p style={{ ...mutedStyle, color: theme.subText }}>
+                      {t.debtAmount}: RM {Number(c.debt_amount || 0).toFixed(2)} |{" "}
+                      {t.paidAmount}: RM {Number(c.paid_amount || 0).toFixed(2)} |{" "}
+                      Balance: RM {debtLeft.toFixed(2)}
+                    </p>
+
+                    <p style={{ ...mutedStyle, color: theme.subText }}>
+                      {t.lastPaymentDate}: {c.last_payment_date || "-"}
+                    </p>
+
+                    {prices.length > 0 ? (
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.priceTitle}:{" "}
+                        {prices.map((cp) => {
+                          const product = products.find((p) => p.id === cp.product_id);
+                          return `${product?.name || "Product"} RM ${Number(cp.custom_price).toFixed(2)}`;
+                        }).join(" / ")}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div style={actionRowStyle}>
+                    <button onClick={() => go("/dashboard/invoices", `customerId=${c.id}`)} style={invoiceBtnStyle}>
+                      {t.invoice}
+                    </button>
+
+                    <button
+                      onClick={() => openCustomerWhatsApp(c.phone)}
+                      disabled={!c.phone}
+                      style={{
+                        ...whatsappBtnStyle,
+                        opacity: c.phone ? 1 : 0.45,
+                      }}
+                    >
+                      {t.whatsapp}
+                    </button>
+
+                    <button
+                      onClick={() => editCustomer(c)}
+                      style={{
+                        ...editBtnStyle,
+                        background: theme.accent,
+                      }}
+                    >
+                      {t.edit}
+                    </button>
+
+                    <button onClick={() => deleteCustomer(c.id)} style={deleteBtnStyle}>
+                      {t.delete}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...cardStyle,
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+        }}
+      >
+        <h2 style={sectionTitleStyle}>{t.related}</h2>
+
+        <div style={relatedGridStyle}>
+          <button onClick={() => go("/dashboard/accounting")} style={relatedBtnStyle(theme)}>
+            {t.accounting}
+          </button>
+
+          <button onClick={() => go("/dashboard/products")} style={relatedBtnStyle(theme)}>
+            {t.products}
+          </button>
+
+          <button onClick={() => go("/dashboard/invoices")} style={relatedBtnStyle(theme)}>
+            {t.invoices}
+          </button>
+        </div>
+      </section>
+
+      <section
+        style={{
+          ...cardStyle,
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+        }}
+      >
+        <h2 style={sectionTitleStyle}>{t.priceTitle}</h2>
+
+        <div style={responsiveGridStyle}>
+          <select
+            value={priceCustomerId}
+            onChange={(e) => setPriceCustomerId(e.target.value)}
+            style={{
+              ...inputStyle,
+              borderColor: theme.border,
+            }}
+          >
             <option value="">{t.chooseCustomer}</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
 
-          <select value={priceProductId} onChange={(e) => setPriceProductId(e.target.value)} style={inputStyle}>
+          <select
+            value={priceProductId}
+            onChange={(e) => setPriceProductId(e.target.value)}
+            style={{
+              ...inputStyle,
+              borderColor: theme.border,
+            }}
+          >
             <option value="">{t.chooseProduct}</option>
             {products.map((p) => (
               <option key={p.id} value={p.id}>
@@ -617,93 +985,121 @@ export default function CustomersPage() {
             ))}
           </select>
 
-          <input placeholder={t.customPrice} value={customPrice} onChange={(e) => setCustomPrice(e.target.value)} style={inputStyle} />
+          <input
+            placeholder={t.customPrice}
+            value={customPrice}
+            onChange={(e) => setCustomPrice(e.target.value)}
+            style={{
+              ...inputStyle,
+              borderColor: theme.border,
+            }}
+          />
         </div>
 
         {selectedProduct ? (
-          <p style={mutedStyle}>
+          <p style={{ ...mutedStyle, color: theme.subText }}>
             {t.productNormalPrice}: RM {Number(selectedProduct.price || 0).toFixed(2)}
           </p>
         ) : null}
 
-        <button onClick={saveCustomerPrice} style={primaryBtnStyle}>
+        <button
+          onClick={saveCustomerPrice}
+          style={{
+            ...primaryBtnStyle,
+            background: theme.accent,
+          }}
+        >
           {t.savePrice}
         </button>
       </section>
 
-      <section style={cardStyle}>
-        <div style={filterGridStyle}>
-          <input placeholder={t.search} value={search} onChange={(e) => setSearch(e.target.value)} style={inputStyle} />
+      {showForm ? (
+        <div style={overlayStyle}>
+          <section
+            style={{
+              ...modalStyle,
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <div style={modalHeaderStyle}>
+              <h2 style={modalTitleStyle}>{t.formTitle}</h2>
 
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as "all" | CustomerStatus)} style={inputStyle}>
-            <option value="all">{t.all}</option>
-            <option value="normal">{t.normal}</option>
-            <option value="vip">{t.vip}</option>
-            <option value="debt">{t.debt}</option>
-            <option value="blocked">{t.blocked}</option>
-          </select>
-        </div>
+              <button onClick={closeForm} style={closeBtnStyle}>
+                X
+              </button>
+            </div>
 
-        {filteredCustomers.length === 0 ? (
-          <p>{t.noCustomers}</p>
-        ) : (
-          filteredCustomers.map((c) => {
-            const debtLeft = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
-            const prices = customerPrices.filter((p) => p.customer_id === c.id);
+            <h3>{t.personal}</h3>
+            <div style={responsiveGridStyle}>
+              <input placeholder={t.name} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
+              <input placeholder={t.phone} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
+              <input placeholder={t.email} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
+            </div>
 
-            return (
-              <div key={c.id} style={customerCardStyle}>
-                <div>
-                  <h3 style={{ margin: 0 }}>
-                    {c.name} <span style={badgeStyle}>{statusText(c.status || "normal", t)}</span>
-                  </h3>
+            <h3>{t.company}</h3>
+            <div style={responsiveGridStyle}>
+              <input placeholder={t.companyName} value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
+              <input placeholder={t.regNo} value={form.company_reg_no} onChange={(e) => setForm({ ...form, company_reg_no: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
+              <input placeholder={t.companyPhone} value={form.company_phone} onChange={(e) => setForm({ ...form, company_phone: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
+              <input placeholder={t.address} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
+            </div>
 
-                  <p style={mutedStyle}>
-                    {t.phone}: {c.phone || "-"} | {t.companyName}: {c.company_name || "-"}
-                  </p>
+            <h3>{t.status}</h3>
+            <div style={responsiveGridStyle}>
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as CustomerStatus })} style={{ ...inputStyle, borderColor: theme.border }}>
+                <option value="normal">{t.normal}</option>
+                <option value="vip">{t.vip}</option>
+                <option value="debt">{t.debt}</option>
+                <option value="blocked">{t.blocked}</option>
+              </select>
 
-                  <p style={mutedStyle}>
-                    {t.debtAmount}: RM {Number(c.debt_amount || 0).toFixed(2)} |{" "}
-                    {t.paidAmount}: RM {Number(c.paid_amount || 0).toFixed(2)} |{" "}
-                    Balance: RM {debtLeft.toFixed(2)}
-                  </p>
+              <input placeholder={t.debtAmount} value={form.debt_amount} onChange={(e) => setForm({ ...form, debt_amount: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
+              <input placeholder={t.paidAmount} value={form.paid_amount} onChange={(e) => setForm({ ...form, paid_amount: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
 
-                  <p style={mutedStyle}>
-                    {t.lastPaymentDate}: {c.last_payment_date || "-"}
-                  </p>
-
-                  {prices.length > 0 ? (
-                    <p style={mutedStyle}>
-                      {t.priceTitle}:{" "}
-                      {prices.map((cp) => {
-                        const product = products.find((p) => p.id === cp.product_id);
-                        return `${product?.name || "Product"} RM ${Number(cp.custom_price).toFixed(2)}`;
-                      }).join(" / ")}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div style={actionRowStyle}>
-                  <button onClick={() => editCustomer(c)} style={editBtnStyle}>{t.edit}</button>
-
-                  <button
-                    onClick={() => openCustomerWhatsApp(c.phone)}
-                    disabled={!c.phone}
-                    style={{
-                      ...whatsappBtnStyle,
-                      opacity: c.phone ? 1 : 0.45,
-                    }}
-                  >
-                    {t.whatsapp}
-                  </button>
-
-                  <button onClick={() => deleteCustomer(c.id)} style={deleteBtnStyle}>{t.delete}</button>
-                </div>
+              <div style={dateWrapStyle}>
+                <label style={{ ...dateLabelStyle, color: theme.subText }}>{t.lastPaymentDate}</label>
+                <input
+                  type="date"
+                  value={form.last_payment_date}
+                  onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })}
+                  style={{
+                    ...dateInputStyle,
+                    borderColor: theme.border,
+                  }}
+                />
               </div>
-            );
-          })
-        )}
-      </section>
+
+              <input placeholder={t.note} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
+            </div>
+
+            <button
+              onClick={saveCustomer}
+              style={{
+                ...primaryBtnStyle,
+                background: theme.accent,
+              }}
+            >
+              {editingId ? t.update : t.save}
+            </button>
+
+            {editingId ? (
+              <button
+                onClick={resetForm}
+                style={{
+                  ...secondaryBtnStyle,
+                  borderColor: theme.border,
+                  color: theme.accent,
+                }}
+              >
+                {t.cancelEdit}
+              </button>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -717,9 +1113,7 @@ function statusText(status: CustomerStatus, t: any) {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
-  padding: 16,
-  background: "#ecfdf5",
-  color: "#064e3b",
+  padding: "clamp(12px, 2vw, 24px)",
   fontFamily: "sans-serif",
 };
 
@@ -729,94 +1123,222 @@ const topBarStyle: CSSProperties = {
   alignItems: "center",
   gap: 12,
   marginBottom: 18,
+  flexWrap: "wrap",
+};
+
+const topRightStyle: CSSProperties = {
+  marginLeft: "auto",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: 10,
+  flexWrap: "wrap",
+};
+
+const backBtnStyle: CSSProperties = {
+  background: "#fff",
+  border: "2px solid",
+  borderRadius: 12,
+  padding: "10px 14px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const selectSmallStyle: CSSProperties = {
+  background: "#fff",
+  border: "2px solid",
+  borderRadius: 999,
+  padding: "8px 10px",
+  fontWeight: 900,
+  outline: "none",
+};
+
+const langRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+};
+
+const langBtn = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
+  padding: "8px 11px",
+  borderRadius: 999,
+  border: `2px solid ${theme.border}`,
+  background: active ? theme.accent : "#fff",
+  color: active ? "#fff" : theme.accent,
+  fontWeight: 900,
+  cursor: "pointer",
+});
+
+const cardStyle: CSSProperties = {
+  border: "2px solid",
+  borderRadius: 22,
+  padding: "clamp(14px, 2vw, 22px)",
+  marginBottom: 18,
+};
+
+const recordHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 14,
 };
 
 const titleStyle: CSSProperties = {
-  margin: "0 0 18px",
-  fontSize: 32,
+  margin: 0,
+  fontSize: "clamp(24px, 4vw, 34px)",
+  lineHeight: 1.15,
 };
 
-const cardStyle: CSSProperties = {
-  background: "#ffffff",
-  border: "2px solid #14b8a6",
-  borderRadius: 22,
-  padding: 18,
-  marginBottom: 18,
-  boxShadow: "0 12px 30px rgba(20,184,166,0.18)",
+const sectionTitleStyle: CSSProperties = {
+  marginTop: 0,
+  fontSize: "clamp(20px, 3vw, 26px)",
 };
 
-const gridStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-};
-
-const filterGridStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-  marginBottom: 18,
+const plusBtnStyle: CSSProperties = {
+  width: 46,
+  height: 46,
+  borderRadius: "999px",
+  color: "#fff",
+  border: "none",
+  fontSize: 28,
+  fontWeight: 900,
+  lineHeight: 1,
+  cursor: "pointer",
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
   boxSizing: "border-box",
   padding: "13px 14px",
   borderRadius: 12,
-  border: "1px solid #99f6e4",
-  fontSize: 16,
+  border: "1px solid",
+  fontSize: "clamp(14px, 2vw, 16px)",
   outline: "none",
 };
 
-const dateInputStyle: CSSProperties = {
-  ...inputStyle,
-  height: 48,
-  minHeight: 48,
-  appearance: "none",
-  WebkitAppearance: "none",
+const responsiveGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 12,
 };
 
+const customerListStyle: CSSProperties = {
+  marginTop: 18,
+};
+
+const customerCardStyle: CSSProperties = {
+  border: "1px solid",
+  borderRadius: 18,
+  padding: "clamp(14px, 2vw, 18px)",
+  marginBottom: 14,
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  gap: 14,
+};
+
+const customerNameStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "clamp(18px, 3vw, 22px)",
+  overflowWrap: "anywhere",
+};
+
+const mutedStyle: CSSProperties = {
+  fontSize: "clamp(13px, 2vw, 14px)",
+  overflowWrap: "anywhere",
+};
+
+const badgeStyle: CSSProperties = {
+  padding: "3px 9px",
+  borderRadius: 999,
+  fontSize: 12,
+  whiteSpace: "nowrap",
+};
+
+const actionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 8,
+  alignItems: "center",
+  flexWrap: "wrap",
+};
+
+const invoiceBtnStyle: CSSProperties = {
+  background: "#0ea5e9",
+  color: "#fff",
+  border: "none",
+  borderRadius: 10,
+  padding: "9px 12px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const whatsappBtnStyle: CSSProperties = {
+  background: "#25D366",
+  color: "#fff",
+  border: "none",
+  borderRadius: 10,
+  padding: "9px 12px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const editBtnStyle: CSSProperties = {
+  color: "#fff",
+  border: "none",
+  borderRadius: 10,
+  padding: "9px 12px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const deleteBtnStyle: CSSProperties = {
+  background: "#fee2e2",
+  color: "#b91c1c",
+  border: "none",
+  borderRadius: 10,
+  padding: "9px 12px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const relatedGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: 12,
+};
+
+const relatedBtnStyle = (theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
+  background: "#fff",
+  color: theme.accent,
+  border: `2px solid ${theme.border}`,
+  borderRadius: 16,
+  padding: "15px 12px",
+  fontWeight: 900,
+  boxShadow: theme.glow,
+  cursor: "pointer",
+});
+
 const primaryBtnStyle: CSSProperties = {
-  marginTop: 14,
-  background: "#0f766e",
+  marginTop: 16,
   color: "#fff",
   border: "none",
   borderRadius: 12,
   padding: "13px 18px",
   fontWeight: 900,
+  cursor: "pointer",
 };
 
 const secondaryBtnStyle: CSSProperties = {
-  marginTop: 14,
+  marginTop: 16,
   marginLeft: 10,
   background: "#fff",
-  color: "#0f766e",
-  border: "2px solid #0f766e",
+  border: "2px solid",
   borderRadius: 12,
   padding: "11px 18px",
   fontWeight: 900,
+  cursor: "pointer",
 };
-
-const backBtnStyle: CSSProperties = {
-  background: "#fff",
-  color: "#0f766e",
-  border: "2px solid #0f766e",
-  borderRadius: 12,
-  padding: "10px 14px",
-  fontWeight: 900,
-};
-
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-};
-
-const langBtn = (active: boolean): CSSProperties => ({
-  padding: "8px 12px",
-  borderRadius: 999,
-  border: "2px solid #0f766e",
-  background: active ? "#0f766e" : "#fff",
-  color: active ? "#fff" : "#0f766e",
-  fontWeight: 900,
-});
 
 const msgStyle: CSSProperties = {
   background: "#dcfce7",
@@ -836,57 +1358,63 @@ const trialMsgStyle: CSSProperties = {
   fontWeight: 800,
 };
 
-const mutedStyle: CSSProperties = {
-  color: "#64748b",
-  fontSize: 14,
+const overlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15, 23, 42, 0.52)",
+  padding: "clamp(12px, 3vw, 24px)",
+  zIndex: 999,
+  overflowY: "auto",
 };
 
-const customerCardStyle: CSSProperties = {
-  borderBottom: "1px solid #ccfbf1",
-  padding: "16px 0",
+const modalStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 900,
+  margin: "0 auto",
+  border: "2px solid",
+  borderRadius: 24,
+  padding: "clamp(16px, 3vw, 24px)",
+};
+
+const modalHeaderStyle: CSSProperties = {
   display: "flex",
+  alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
+  marginBottom: 12,
 };
 
-const badgeStyle: CSSProperties = {
-  background: "#ccfbf1",
-  color: "#0f766e",
-  padding: "3px 9px",
+const modalTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "clamp(22px, 4vw, 30px)",
+};
+
+const closeBtnStyle: CSSProperties = {
+  background: "#dc2626",
+  color: "#fff",
+  border: "none",
+  width: 42,
+  height: 42,
   borderRadius: 999,
-  fontSize: 12,
+  fontWeight: 900,
+  cursor: "pointer",
 };
 
-const actionRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  alignItems: "flex-start",
-  flexWrap: "wrap",
+const dateWrapStyle: CSSProperties = {
+  width: "100%",
 };
 
-const editBtnStyle: CSSProperties = {
-  background: "#0f766e",
-  color: "#fff",
-  border: "none",
-  borderRadius: 10,
-  padding: "9px 12px",
+const dateLabelStyle: CSSProperties = {
+  display: "block",
+  fontSize: 13,
   fontWeight: 800,
+  marginBottom: 5,
 };
 
-const whatsappBtnStyle: CSSProperties = {
-  background: "#25D366",
-  color: "#fff",
-  border: "none",
-  borderRadius: 10,
-  padding: "9px 12px",
-  fontWeight: 800,
-};
-
-const deleteBtnStyle: CSSProperties = {
-  background: "#fee2e2",
-  color: "#b91c1c",
-  border: "none",
-  borderRadius: 10,
-  padding: "9px 12px",
-  fontWeight: 800,
+const dateInputStyle: CSSProperties = {
+  ...inputStyle,
+  height: 48,
+  minHeight: 48,
+  appearance: "none",
+  WebkitAppearance: "none",
 };
