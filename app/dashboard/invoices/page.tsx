@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 
 type Lang = "zh" | "en" | "ms";
 type Mode = "list" | "new";
+type ThemeKey = "pink" | "blackGold" | "lightRed" | "nature" | "sky" | "deepTeal";
 
 type Customer = {
   id: string;
@@ -48,6 +49,14 @@ type InvoiceRecord = {
   created_at?: string | null;
 };
 
+type PaymentOption = {
+  id: string;
+  name: string;
+  link?: string;
+  qrCodeUrl?: string;
+  bankAccount?: string;
+};
+
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_TX_KEY = "smartacctg_trial_transactions";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
@@ -55,14 +64,79 @@ const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 const PAYMENT_OPTIONS_KEY = "smartacctg_payment_options";
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
+const LANG_KEY = "smartacctg_lang";
+const THEME_KEY = "smartacctg_theme";
 
-const DEFAULT_PAYMENT_OPTIONS = [
-  "Cash",
-  "Bank Transfer",
-  "DuitNow QR",
-  "TNG eWallet",
-  "Credit Term",
-  "Cheque",
+const THEMES: Record<ThemeKey, any> = {
+  deepTeal: {
+    name: "深青色",
+    pageBg: "#ecfdf5",
+    card: "#ffffff",
+    border: "#14b8a6",
+    glow:
+      "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
+    accent: "#0f766e",
+    text: "#064e3b",
+  },
+  pink: {
+    name: "可愛粉色",
+    pageBg: "#fff7fb",
+    card: "#ffffff",
+    border: "#f472b6",
+    glow:
+      "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
+    accent: "#db2777",
+    text: "#4a044e",
+  },
+  blackGold: {
+    name: "黑金商務",
+    pageBg: "#111111",
+    card: "#1f1f1f",
+    border: "#facc15",
+    glow:
+      "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
+    accent: "#d4af37",
+    text: "#fff7ed",
+  },
+  lightRed: {
+    name: "可愛淺紅",
+    pageBg: "#fff1f2",
+    card: "#ffffff",
+    border: "#fb7185",
+    glow:
+      "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
+    accent: "#e11d48",
+    text: "#881337",
+  },
+  nature: {
+    name: "風景自然系",
+    pageBg: "#f0fdf4",
+    card: "#ffffff",
+    border: "#22d3ee",
+    glow:
+      "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
+    accent: "#0f766e",
+    text: "#14532d",
+  },
+  sky: {
+    name: "天空藍",
+    pageBg: "#eff6ff",
+    card: "#ffffff",
+    border: "#38bdf8",
+    glow:
+      "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
+    accent: "#0284c7",
+    text: "#0f172a",
+  },
+};
+
+const DEFAULT_PAYMENT_OPTIONS: PaymentOption[] = [
+  { id: "cash", name: "Cash" },
+  { id: "bank-transfer", name: "Bank Transfer", bankAccount: "" },
+  { id: "duitnow-qr", name: "DuitNow QR", qrCodeUrl: "" },
+  { id: "tng-ewallet", name: "TNG eWallet", link: "" },
+  { id: "credit-term", name: "Credit Term" },
+  { id: "cheque", name: "Cheque" },
 ];
 
 const TXT = {
@@ -73,6 +147,8 @@ const TXT = {
     edit: "编辑",
     delete: "删除",
     share: "分享",
+    whatsapp: "WhatsApp",
+    theme: "主题",
     saveEdit: "保存修改",
     confirmDelete: "确定要删除这张发票吗？",
     latestInvoices: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
@@ -89,9 +165,13 @@ const TXT = {
     paid: "已付款",
     cancelled: "取消",
     paymentMethod: "付款方式",
+    paymentDetails: "付款资料",
     addPayment: "新增付款方式",
     deletePayment: "删除",
-    paymentPlaceholder: "输入新的付款方式",
+    paymentName: "付款名称，例如 Maybank / DuitNow QR",
+    paymentLink: "付款链接，例如 Billplz / TNG Link",
+    paymentQr: "QR Code 图片 URL",
+    paymentBank: "银行户口 / 户口号码 / 户口名",
     note: "备注",
     companyInfo: "2. 公司资料",
     editCompany: "编辑公司资料 / Logo",
@@ -125,7 +205,7 @@ const TXT = {
     subtotal: "小计",
     discount: "折扣",
     total: "总额",
-    profit: "预计利润 / 差价",
+    profit: "差价赚 / 预计利润",
     generate: "生成发票 + 加入记账 + 扣库存",
     generating: "生成中...",
     print: "列印",
@@ -147,6 +227,7 @@ const TXT = {
     incomplete: "客户或产品资料不完整",
     productNote: "由发票系统新增",
     saved: "保存成功",
+    copied: "已准备分享内容",
     invoice: "INVOICE",
     billTo: "BILL TO",
     invoiceDetails: "INVOICE DETAILS",
@@ -164,6 +245,8 @@ const TXT = {
     edit: "Edit",
     delete: "Delete",
     share: "Share",
+    whatsapp: "WhatsApp",
+    theme: "Theme",
     saveEdit: "Save Changes",
     confirmDelete: "Delete this invoice?",
     latestInvoices: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock",
@@ -180,9 +263,13 @@ const TXT = {
     paid: "Paid",
     cancelled: "Cancelled",
     paymentMethod: "Payment Method",
+    paymentDetails: "Payment Details",
     addPayment: "Add Payment Method",
     deletePayment: "Delete",
-    paymentPlaceholder: "Enter new payment method",
+    paymentName: "Payment name, e.g. Maybank / DuitNow QR",
+    paymentLink: "Payment link, e.g. Billplz / TNG Link",
+    paymentQr: "QR Code Image URL",
+    paymentBank: "Bank account / Account No / Account Name",
     note: "Note",
     companyInfo: "2. Company Info",
     editCompany: "Edit Company Info / Logo",
@@ -216,7 +303,7 @@ const TXT = {
     subtotal: "Subtotal",
     discount: "Discount",
     total: "Total",
-    profit: "Estimated Profit / Margin",
+    profit: "Profit / Margin",
     generate: "Generate Invoice + Add Accounting + Deduct Stock",
     generating: "Generating...",
     print: "Print",
@@ -238,6 +325,7 @@ const TXT = {
     incomplete: "Customer or product information is incomplete",
     productNote: "Added from invoice system",
     saved: "Saved",
+    copied: "Share content is ready",
     invoice: "INVOICE",
     billTo: "BILL TO",
     invoiceDetails: "INVOICE DETAILS",
@@ -255,6 +343,8 @@ const TXT = {
     edit: "Edit",
     delete: "Padam",
     share: "Kongsi",
+    whatsapp: "WhatsApp",
+    theme: "Tema",
     saveEdit: "Simpan Perubahan",
     confirmDelete: "Padam invois ini?",
     latestInvoices: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Stok",
@@ -271,9 +361,13 @@ const TXT = {
     paid: "Dibayar",
     cancelled: "Dibatalkan",
     paymentMethod: "Cara Bayaran",
+    paymentDetails: "Maklumat Bayaran",
     addPayment: "Tambah Cara Bayaran",
     deletePayment: "Padam",
-    paymentPlaceholder: "Masukkan cara bayaran baru",
+    paymentName: "Nama bayaran, cth. Maybank / DuitNow QR",
+    paymentLink: "Pautan bayaran, cth. Billplz / TNG Link",
+    paymentQr: "URL Gambar QR Code",
+    paymentBank: "Akaun bank / No akaun / Nama akaun",
     note: "Nota",
     companyInfo: "2. Maklumat Syarikat",
     editCompany: "Ubah Maklumat Syarikat / Logo",
@@ -307,7 +401,7 @@ const TXT = {
     subtotal: "Subtotal",
     discount: "Diskaun",
     total: "Jumlah",
-    profit: "Anggaran Untung / Margin",
+    profit: "Untung / Margin",
     generate: "Jana Invois + Masuk Akaun + Tolak Stok",
     generating: "Sedang Jana...",
     print: "Cetak",
@@ -329,6 +423,7 @@ const TXT = {
     incomplete: "Maklumat pelanggan atau produk tidak lengkap",
     productNote: "Ditambah dari sistem invois",
     saved: "Disimpan",
+    copied: "Kandungan kongsi sudah sedia",
     invoice: "INVOICE",
     billTo: "BILL TO",
     invoiceDetails: "INVOICE DETAILS",
@@ -343,6 +438,10 @@ const TXT = {
 
 function makeInvoiceNo() {
   return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+}
+
+function makeId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function isSchemaColumnError(error: any) {
@@ -371,9 +470,44 @@ function saveStockValue(productId: string, stock: number) {
   localStorage.setItem(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
 }
 
+function normalizePaymentOptions(value: any): PaymentOption[] {
+  if (!Array.isArray(value)) return DEFAULT_PAYMENT_OPTIONS;
+
+  const normalized = value
+    .map((item) => {
+      if (typeof item === "string") {
+        return {
+          id: makeId("pay"),
+          name: item,
+          link: "",
+          qrCodeUrl: "",
+          bankAccount: "",
+        };
+      }
+
+      if (item && typeof item === "object" && item.name) {
+        return {
+          id: item.id || makeId("pay"),
+          name: String(item.name),
+          link: item.link || "",
+          qrCodeUrl: item.qrCodeUrl || "",
+          bankAccount: item.bankAccount || "",
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean) as PaymentOption[];
+
+  return normalized.length > 0 ? normalized : DEFAULT_PAYMENT_OPTIONS;
+}
+
 export default function InvoicePage() {
   const [lang, setLang] = useState<Lang>("zh");
+  const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
+
   const t = TXT[lang];
+  const theme = THEMES[themeKey];
 
   const [mode, setMode] = useState<Mode>("list");
   const [userId, setUserId] = useState("");
@@ -407,9 +541,14 @@ export default function InvoicePage() {
   const [dueDate, setDueDate] = useState(today);
   const [status, setStatus] = useState("sent");
 
-  const [paymentMethod, setPaymentMethod] = useState("Cash");
-  const [paymentOptions, setPaymentOptions] = useState<string[]>(DEFAULT_PAYMENT_OPTIONS);
-  const [newPaymentOption, setNewPaymentOption] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_OPTIONS[0].id);
+  const [paymentOptions, setPaymentOptions] =
+    useState<PaymentOption[]>(DEFAULT_PAYMENT_OPTIONS);
+
+  const [newPaymentName, setNewPaymentName] = useState("");
+  const [newPaymentLink, setNewPaymentLink] = useState("");
+  const [newPaymentQr, setNewPaymentQr] = useState("");
+  const [newPaymentBank, setNewPaymentBank] = useState("");
 
   const [qty, setQty] = useState("1");
   const [extraDiscount, setExtraDiscount] = useState("0");
@@ -436,6 +575,11 @@ export default function InvoicePage() {
   const [lastPrintableInvoice, setLastPrintableInvoice] = useState<InvoiceRecord | null>(null);
   const [lastPrintableProductName, setLastPrintableProductName] = useState("");
 
+  const selectedPayment =
+    paymentOptions.find((p) => p.id === paymentMethod) || paymentOptions[0];
+
+  const paymentMethodText = selectedPayment?.name || paymentMethod || "-";
+
   useEffect(() => {
     init();
   }, []);
@@ -443,33 +587,47 @@ export default function InvoicePage() {
   function getCurrentLang(): Lang {
     const q = new URLSearchParams(window.location.search);
     const urlLang = q.get("lang") as Lang | null;
-    const savedLang = localStorage.getItem("smartacctg_lang") as Lang | null;
+    const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
 
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
     if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
     return "zh";
   }
 
+  function getCurrentTheme(): ThemeKey {
+    const saved = localStorage.getItem(THEME_KEY) as ThemeKey | null;
+    if (saved && THEMES[saved]) return saved;
+    return "deepTeal";
+  }
+
   function switchLang(next: Lang) {
     setLang(next);
-    localStorage.setItem("smartacctg_lang", next);
+    localStorage.setItem(LANG_KEY, next);
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
+  async function switchTheme(next: ThemeKey) {
+    setThemeKey(next);
+    localStorage.setItem(THEME_KEY, next);
+
+    if (!isTrial && userId) {
+      await supabase.from("profiles").update({ theme: next }).eq("id", userId);
+    }
+  }
+
   async function init() {
     const currentLang = getCurrentLang();
     setLang(currentLang);
+    setThemeKey(getCurrentTheme());
 
     const savedPayment = localStorage.getItem(PAYMENT_OPTIONS_KEY);
     if (savedPayment) {
-      const parsed = JSON.parse(savedPayment);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setPaymentOptions(parsed);
-        setPaymentMethod(parsed[0]);
-      }
+      const parsed = normalizePaymentOptions(JSON.parse(savedPayment));
+      setPaymentOptions(parsed);
+      setPaymentMethod(parsed[0]?.id || DEFAULT_PAYMENT_OPTIONS[0].id);
     }
 
     const q = new URLSearchParams(window.location.search);
@@ -530,6 +688,11 @@ export default function InvoicePage() {
       setCompanyPhone(profile.company_phone || "");
       setCompanyAddress(profile.company_address || "");
       setCompanyLogoUrl(profile.company_logo_url || "");
+
+      if (profile.theme && THEMES[profile.theme as ThemeKey]) {
+        setThemeKey(profile.theme as ThemeKey);
+        localStorage.setItem(THEME_KEY, profile.theme);
+      }
     }
 
     await loadCustomers(uid);
@@ -648,6 +811,53 @@ export default function InvoicePage() {
       .includes(q);
   });
 
+  function getPaymentForInvoice(inv?: InvoiceRecord | null) {
+    const value = inv?.payment_method || paymentMethodText;
+    return (
+      paymentOptions.find((p) => p.id === value || p.name === value) ||
+      selectedPayment ||
+      null
+    );
+  }
+
+  function savePaymentOptions(next: PaymentOption[]) {
+    setPaymentOptions(next);
+    localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
+  }
+
+  function addPaymentOption() {
+    const name = newPaymentName.trim();
+    if (!name) return;
+
+    const nextOption: PaymentOption = {
+      id: makeId("pay"),
+      name,
+      link: newPaymentLink.trim(),
+      qrCodeUrl: newPaymentQr.trim(),
+      bankAccount: newPaymentBank.trim(),
+    };
+
+    const next = [...paymentOptions, nextOption];
+
+    savePaymentOptions(next);
+    setPaymentMethod(nextOption.id);
+    setNewPaymentName("");
+    setNewPaymentLink("");
+    setNewPaymentQr("");
+    setNewPaymentBank("");
+  }
+
+  function deletePaymentOption(id: string) {
+    const next = paymentOptions.filter((x) => x.id !== id);
+    const finalNext = next.length > 0 ? next : DEFAULT_PAYMENT_OPTIONS;
+
+    savePaymentOptions(finalNext);
+
+    if (paymentMethod === id) {
+      setPaymentMethod(finalNext[0].id);
+    }
+  }
+
   function saveTrialData(nextCustomers: Customer[], nextProducts: Product[], nextInvoices = invoices) {
     localStorage.setItem(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
     localStorage.setItem(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
@@ -676,30 +886,6 @@ export default function InvoicePage() {
     ];
 
     localStorage.setItem(TRIAL_TX_KEY, JSON.stringify(nextTx));
-  }
-
-  function addPaymentOption() {
-    const value = newPaymentOption.trim();
-    if (!value) return;
-
-    const next = Array.from(new Set([...paymentOptions, value]));
-    setPaymentOptions(next);
-    setPaymentMethod(value);
-    setNewPaymentOption("");
-    localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
-  }
-
-  function deletePaymentOption(value: string) {
-    const next = paymentOptions.filter((x) => x !== value);
-    const finalNext = next.length > 0 ? next : DEFAULT_PAYMENT_OPTIONS;
-
-    setPaymentOptions(finalNext);
-
-    if (paymentMethod === value) {
-      setPaymentMethod(finalNext[0]);
-    }
-
-    localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(finalNext));
   }
 
   async function saveCompanyInfo() {
@@ -764,7 +950,7 @@ export default function InvoicePage() {
       invoice_date: invoiceDate,
       due_date: dueDate,
       status,
-      payment_method: paymentMethod,
+      payment_method: paymentMethodText,
       subtotal: preview.subtotal,
       discount: preview.discount,
       total: preview.total,
@@ -792,7 +978,7 @@ export default function InvoicePage() {
       invoice_date: invoiceDate,
       due_date: dueDate,
       status,
-      payment_method: paymentMethod,
+      payment_method: paymentMethodText,
       subtotal: preview.subtotal,
       discount: preview.discount,
       total: preview.total,
@@ -1106,7 +1292,7 @@ export default function InvoicePage() {
         total: preview.total,
         total_cost: preview.totalCost,
         total_profit: preview.profit,
-        payment_method: paymentMethod,
+        payment_method: paymentMethodText,
         note,
         created_at: new Date().toISOString(),
       };
@@ -1177,7 +1363,7 @@ export default function InvoicePage() {
         customer_phone: invoiceData.customer_phone || finalCustomer.phone || "",
         customer_company: invoiceData.customer_company || finalCustomer.company_name || "",
         customer_address: invoiceData.customer_address || finalCustomer.address || "",
-        payment_method: invoiceData.payment_method || paymentMethod,
+        payment_method: invoiceData.payment_method || paymentMethodText,
         subtotal: invoiceData.subtotal ?? preview.subtotal,
         discount: invoiceData.discount ?? preview.discount,
         total: invoiceData.total ?? preview.total,
@@ -1217,7 +1403,7 @@ export default function InvoicePage() {
       invoice_date: invoiceDate,
       due_date: dueDate,
       status,
-      payment_method: paymentMethod,
+      payment_method: paymentMethodText,
       customer_name: newCustomerName,
       customer_phone: newCustomerPhone,
       customer_company: newCustomerCompany,
@@ -1285,19 +1471,35 @@ export default function InvoicePage() {
   }
 
   function startEditInvoice(inv: InvoiceRecord) {
+    const matchedPayment = paymentOptions.find(
+      (p) => p.id === inv.payment_method || p.name === inv.payment_method
+    );
+
+    if (matchedPayment) {
+      setPaymentMethod(matchedPayment.id);
+    } else if (inv.payment_method) {
+      const extraPayment: PaymentOption = {
+        id: makeId("pay"),
+        name: inv.payment_method,
+      };
+
+      const next = [...paymentOptions, extraPayment];
+      savePaymentOptions(next);
+      setPaymentMethod(extraPayment.id);
+    }
+
     setEditInvoiceId(inv.id);
     setInvoiceNo(inv.invoice_no || makeInvoiceNo());
     setInvoiceDate(inv.invoice_date || today);
     setDueDate(inv.due_date || today);
     setStatus(inv.status || "sent");
-    setPaymentMethod(inv.payment_method || paymentOptions[0] || "Cash");
     setCustomerMode("new");
     setNewCustomerName(inv.customer_name || "");
     setNewCustomerPhone(inv.customer_phone || "");
     setNewCustomerCompany(inv.customer_company || "");
     setNewCustomerAddress(inv.customer_address || "");
     setProductMode("new");
-    setNewProductName(lastPrintableProductName || "Invoice Item");
+    setNewProductName(getProductNameFromInvoice(inv) || "Invoice Item");
     setNewProductPrice(String(inv.subtotal || inv.total || 0));
     setNewProductCost(String(inv.total_cost || 0));
     setNewProductStock("999999");
@@ -1330,10 +1532,20 @@ export default function InvoicePage() {
     setMsg(t.saved);
   }
 
+  function getProductNameFromInvoice(inv: InvoiceRecord) {
+    const noteText = inv.note || "";
+    if (noteText.includes("｜")) {
+      const parts = noteText.split("｜");
+      return parts[2] || "Invoice Item";
+    }
+
+    return "Invoice Item";
+  }
+
   function setPrintable(record?: InvoiceRecord) {
     if (record) {
       setLastPrintableInvoice(record);
-      setLastPrintableProductName(lastPrintableProductName || activeProductForPreview.name || "Item");
+      setLastPrintableProductName(getProductNameFromInvoice(record));
     } else {
       setLastPrintableInvoice({
         id: "",
@@ -1350,7 +1562,7 @@ export default function InvoicePage() {
         total: preview.total,
         total_cost: preview.totalCost,
         total_profit: preview.profit,
-        payment_method: paymentMethod,
+        payment_method: paymentMethodText,
         note,
       });
       setLastPrintableProductName(activeProductForPreview.name);
@@ -1367,15 +1579,30 @@ export default function InvoicePage() {
     setTimeout(() => window.print(), 150);
   }
 
-  function sendWhatsAppPdf(record?: InvoiceRecord) {
-    setPrintable(record);
-
+  function buildShareText(record?: InvoiceRecord) {
     const invNo = record?.invoice_no || invoiceNo;
     const customerName = record?.customer_name || activeCustomerForPreview.name;
     const total = Number(record?.total ?? preview.total).toFixed(2);
-    const method = record?.payment_method || paymentMethod;
+    const method = record?.payment_method || paymentMethodText;
+    const pay = getPaymentForInvoice(record);
 
-    const text = `Invoice ${invNo}%0A${t.customerName}：${customerName}%0A${t.total}：RM ${total}%0A${t.paymentMethod}：${method}%0A%0A请先保存PDF，再发送给客户。`;
+    const paymentDetailText = [
+      pay?.bankAccount ? `${t.paymentDetails}：${pay.bankAccount}` : "",
+      pay?.link ? `Payment Link：${pay.link}` : "",
+      pay?.qrCodeUrl ? `QR Code：${pay.qrCodeUrl}` : "",
+    ]
+      .filter(Boolean)
+      .join("%0A");
+
+    return `Invoice ${invNo}%0A${t.customerName}：${customerName}%0A${t.total}：RM ${total}%0A${t.paymentMethod}：${method}${
+      paymentDetailText ? `%0A${paymentDetailText}` : ""
+    }`;
+  }
+
+  function sendWhatsAppPdf(record?: InvoiceRecord) {
+    setPrintable(record);
+
+    const text = `${buildShareText(record)}%0A%0A请先保存PDF，再发送给客户。`;
 
     setTimeout(() => {
       window.print();
@@ -1383,6 +1610,25 @@ export default function InvoicePage() {
         window.location.href = `https://wa.me/?text=${text}`;
       }, 800);
     }, 150);
+  }
+
+  function shareInvoice(record: InvoiceRecord) {
+    setPrintable(record);
+
+    const plainText = decodeURIComponent(buildShareText(record).replaceAll("%0A", "\n"));
+
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      navigator
+        .share({
+          title: `Invoice ${record.invoice_no}`,
+          text: plainText,
+        })
+        .then(() => setMsg(t.copied))
+        .catch(() => {});
+      return;
+    }
+
+    setMsg(t.copied);
   }
 
   function goBack() {
@@ -1441,7 +1687,7 @@ export default function InvoicePage() {
     total: preview.total,
     total_cost: preview.totalCost,
     total_profit: preview.profit,
-    payment_method: paymentMethod,
+    payment_method: paymentMethodText,
     note,
   };
 
@@ -1463,7 +1709,7 @@ export default function InvoicePage() {
     total: preview.total,
     total_cost: preview.totalCost,
     total_profit: preview.profit,
-    payment_method: paymentMethod,
+    payment_method: paymentMethodText,
     note,
   };
 
@@ -1471,6 +1717,12 @@ export default function InvoicePage() {
     const subtotal = Number(inv.subtotal || 0);
     const discount = Number(inv.discount || 0);
     const total = Number(inv.total || 0);
+    const totalCost = Number(inv.total_cost || 0);
+    const profit = Number(inv.total_profit ?? total - totalCost);
+    const isSavedRecord = Boolean(inv.id);
+    const displayQty = isSavedRecord ? 1 : preview.finalQty;
+    const displayPrice = isSavedRecord ? subtotal : preview.price;
+    const pay = getPaymentForInvoice(inv);
 
     return (
       <div style={officialInvoiceStyle}>
@@ -1541,8 +1793,8 @@ export default function InvoicePage() {
           <tbody>
             <tr>
               <td style={officialTdStyle}>{productName || "-"}</td>
-              <td style={officialTdStyle}>{preview.finalQty}</td>
-              <td style={officialTdStyle}>RM {preview.price.toFixed(2)}</td>
+              <td style={officialTdStyle}>{displayQty}</td>
+              <td style={officialTdStyle}>RM {displayPrice.toFixed(2)}</td>
               <td style={officialTdStyle}>RM {discount.toFixed(2)}</td>
               <td style={officialTdStyle}>RM {total.toFixed(2)}</td>
             </tr>
@@ -1562,7 +1814,20 @@ export default function InvoicePage() {
             <span>{t.total}</span>
             <strong>RM {total.toFixed(2)}</strong>
           </div>
+          <div style={officialProfitRowStyle}>
+            <span>{t.profit}</span>
+            <strong>RM {profit.toFixed(2)}</strong>
+          </div>
         </div>
+
+        {(pay?.bankAccount || pay?.link || pay?.qrCodeUrl) && (
+          <div style={officialPaymentBoxStyle}>
+            <strong>{t.paymentDetails}</strong>
+            {pay?.bankAccount ? <div>{pay.bankAccount}</div> : null}
+            {pay?.link ? <div>{pay.link}</div> : null}
+            {pay?.qrCodeUrl ? <img src={pay.qrCodeUrl} style={officialQrStyle} /> : null}
+          </div>
+        )}
 
         {inv.note ? <div style={officialNoteStyle}>Note：{inv.note}</div> : null}
       </div>
@@ -1570,7 +1835,7 @@ export default function InvoicePage() {
   }
 
   return (
-    <main style={pageStyle}>
+    <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
       <style jsx global>{`
         @media print {
           body * {
@@ -1607,32 +1872,61 @@ export default function InvoicePage() {
       `}</style>
 
       <div className="no-print" style={topRowStyle}>
-        <button onClick={goBack} style={backBtn}>
+        <button
+          onClick={goBack}
+          style={{ ...backBtn, borderColor: theme.border, color: theme.accent }}
+        >
           ← {t.back}
         </button>
 
-        <div style={langRowStyle}>
-          <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh")}>
-            中文
-          </button>
-          <button onClick={() => switchLang("en")} style={langBtn(lang === "en")}>
-            EN
-          </button>
-          <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms")}>
-            BM
-          </button>
+        <div style={topRightWrapStyle}>
+          <select
+            value={themeKey}
+            onChange={(e) => switchTheme(e.target.value as ThemeKey)}
+            style={{
+              ...themeSelectStyle,
+              borderColor: theme.border,
+              color: theme.accent,
+            }}
+          >
+            {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
+              <option key={key} value={key}>
+                {THEMES[key].name}
+              </option>
+            ))}
+          </select>
+
+          <div style={langRowStyle}>
+            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
+              中文
+            </button>
+            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
+              EN
+            </button>
+            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
+              BM
+            </button>
+          </div>
         </div>
       </div>
 
       {mode === "list" && (
-        <section className="no-print" style={cardStyle}>
+        <section
+          className="no-print"
+          style={{
+            ...cardStyle,
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+          }}
+        >
           <div style={listHeaderStyle}>
             <div>
-              <h1 style={titleStyle}>{t.title}</h1>
+              <h1 style={{ ...titleStyle, color: theme.accent }}>{t.title}</h1>
               <p style={descStyle}>{t.latestInvoices}</p>
             </div>
 
-            <button onClick={openNewInvoice} style={plusBtnStyle}>
+            <button onClick={openNewInvoice} style={{ ...plusBtnStyle, background: theme.accent }}>
               +
             </button>
           </div>
@@ -1641,7 +1935,7 @@ export default function InvoicePage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchPlaceholder}
-            style={inputStyle}
+            style={{ ...inputStyle, borderColor: theme.border }}
           />
 
           {filteredInvoices.length === 0 ? (
@@ -1649,11 +1943,19 @@ export default function InvoicePage() {
           ) : (
             <div style={invoiceListStyle}>
               {filteredInvoices.map((inv) => (
-                <div key={inv.id} style={invoiceItemStyle}>
+                <div
+                  key={inv.id}
+                  style={{
+                    ...invoiceItemStyle,
+                    borderColor: theme.border,
+                    boxShadow: theme.glow,
+                  }}
+                >
                   <div style={{ flex: 1 }}>
                     <strong>{inv.invoice_no}</strong>
                     <div style={mutedTextStyle}>
-                      {inv.customer_name || "-"} {inv.customer_company ? `｜${inv.customer_company}` : ""}
+                      {inv.customer_name || "-"}{" "}
+                      {inv.customer_company ? `｜${inv.customer_company}` : ""}
                     </div>
                     <div style={mutedTextStyle}>
                       {inv.invoice_date || "-"}｜{inv.customer_phone || "-"}
@@ -1668,18 +1970,18 @@ export default function InvoicePage() {
                         {t.delete}
                       </button>
 
-                      <button onClick={() => sendWhatsAppPdf(inv)} style={recordShareBtnStyle}>
-                        {t.whatsappPdf}
+                      <button onClick={() => sendWhatsAppPdf(inv)} style={recordWhatsappBtnStyle}>
+                        {t.whatsapp}
                       </button>
 
-                      <button onClick={() => printInvoice(inv)} style={recordPrintBtnStyle}>
-                        {t.print}
+                      <button onClick={() => shareInvoice(inv)} style={recordShareBtnStyle}>
+                        {t.share}
                       </button>
                     </div>
                   </div>
 
                   <div style={{ textAlign: "right" }}>
-                    <strong style={{ color: "#0f766e" }}>
+                    <strong style={{ color: theme.accent }}>
                       RM {Number(inv.total || 0).toFixed(2)}
                     </strong>
                   </div>
@@ -1688,92 +1990,148 @@ export default function InvoicePage() {
             </div>
           )}
 
-          {msg ? <p style={msgStyle}>{msg}</p> : null}
+          {msg ? <p style={{ ...msgStyle, color: theme.accent }}>{msg}</p> : null}
         </section>
       )}
 
       {mode === "new" && (
-        <section className="no-print" style={cardStyle}>
-          <button onClick={() => setMode("list")} style={backBtn}>
+        <section
+          className="no-print"
+          style={{
+            ...cardStyle,
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+          }}
+        >
+          <button
+            onClick={() => setMode("list")}
+            style={{ ...backBtn, borderColor: theme.border, color: theme.accent }}
+          >
             ← {t.back}
           </button>
 
-          <h1 style={titleStyle}>
+          <h1 style={{ ...titleStyle, color: theme.accent }}>
             {editInvoiceId ? t.edit : t.createTitle}
           </h1>
           <p style={descStyle}>{t.desc}</p>
 
-          <div style={invoiceNoBox}>
+          <div style={{ ...invoiceNoBox, borderColor: theme.border }}>
             <strong>Invoice No：</strong> {invoiceNo}
           </div>
 
           <h3>{t.invoiceInfo}</h3>
 
           <div style={formGrid}>
-            <label style={labelStyle}>{t.invoiceDate}</label>
+            <label style={{ ...labelStyle, color: theme.accent }}>{t.invoiceDate}</label>
             <input
               type="date"
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
-              style={smallDateInput}
+              style={{ ...smallDateInput, borderColor: theme.border }}
             />
 
-            <label style={labelStyle}>{t.dueDate}</label>
+            <label style={{ ...labelStyle, color: theme.accent }}>{t.dueDate}</label>
             <input
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              style={smallDateInput}
+              style={{ ...smallDateInput, borderColor: theme.border }}
             />
 
-            <label style={labelStyle}>{t.status}</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
+            <label style={{ ...labelStyle, color: theme.accent }}>{t.status}</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              style={{ ...inputStyle, borderColor: theme.border }}
+            >
               <option value="draft">{t.draft}</option>
               <option value="sent">{t.sent}</option>
               <option value="paid">{t.paid}</option>
               <option value="cancelled">{t.cancelled}</option>
             </select>
 
-            <label style={labelStyle}>{t.paymentMethod}</label>
-            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={inputStyle}>
+            <label style={{ ...labelStyle, color: theme.accent }}>{t.paymentMethod}</label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              style={{ ...inputStyle, borderColor: theme.border }}
+            >
               {paymentOptions.map((p) => (
-                <option key={p} value={p}>
-                  {p}
+                <option key={p.id} value={p.id}>
+                  {p.name}
                 </option>
               ))}
             </select>
 
-            <div style={paymentAddRowStyle}>
+            <div style={paymentAddBoxStyle}>
               <input
-                value={newPaymentOption}
-                onChange={(e) => setNewPaymentOption(e.target.value)}
-                placeholder={t.paymentPlaceholder}
-                style={{ ...inputStyle, marginBottom: 0 }}
+                value={newPaymentName}
+                onChange={(e) => setNewPaymentName(e.target.value)}
+                placeholder={t.paymentName}
+                style={{ ...inputStyle, borderColor: theme.border }}
               />
-              <button onClick={addPaymentOption} style={addBtnStyle}>
+              <input
+                value={newPaymentBank}
+                onChange={(e) => setNewPaymentBank(e.target.value)}
+                placeholder={t.paymentBank}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                value={newPaymentLink}
+                onChange={(e) => setNewPaymentLink(e.target.value)}
+                placeholder={t.paymentLink}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                value={newPaymentQr}
+                onChange={(e) => setNewPaymentQr(e.target.value)}
+                placeholder={t.paymentQr}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <button onClick={addPaymentOption} style={{ ...addBtnStyle, background: theme.accent }}>
                 {t.addPayment}
               </button>
             </div>
 
             <div style={paymentChipWrapStyle}>
               {paymentOptions.map((p) => (
-                <div key={p} style={paymentChipStyle}>
-                  <span>{p}</span>
-                  <button onClick={() => deletePaymentOption(p)} style={paymentChipDeleteStyle}>
+                <div
+                  key={p.id}
+                  style={{
+                    ...paymentChipStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                  }}
+                >
+                  <span>{p.name}</span>
+                  <button
+                    onClick={() => deletePaymentOption(p.id)}
+                    style={{ ...paymentChipDeleteStyle, background: theme.accent }}
+                  >
                     ×
                   </button>
                 </div>
               ))}
             </div>
 
-            <label style={labelStyle}>{t.note}</label>
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.note} style={inputStyle} />
+            <label style={{ ...labelStyle, color: theme.accent }}>{t.note}</label>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t.note}
+              style={{ ...inputStyle, borderColor: theme.border }}
+            />
           </div>
 
           <h3>{t.companyInfo}</h3>
 
-          <div style={companyBox}>
-            {companyLogoUrl ? <img src={companyLogoUrl} style={logoStyle} /> : <div style={logoPlaceholder}>LOGO</div>}
+          <div style={{ ...companyBox, borderColor: theme.border }}>
+            {companyLogoUrl ? (
+              <img src={companyLogoUrl} style={logoStyle} />
+            ) : (
+              <div style={logoPlaceholder}>LOGO</div>
+            )}
             <div style={{ flex: 1 }}>
               <strong>{companyName}</strong>
               <div>SSM：{companyRegNo || "-"}</div>
@@ -1781,109 +2139,240 @@ export default function InvoicePage() {
               <div>{t.address}：{companyAddress || "-"}</div>
             </div>
 
-            <button onClick={() => setShowCompanyEdit((v) => !v)} style={editBtnStyle}>
+            <button
+              onClick={() => setShowCompanyEdit((v) => !v)}
+              style={{ ...editBtnStyle, borderColor: theme.border, color: theme.accent }}
+            >
               {t.editCompany}
             </button>
           </div>
 
           {showCompanyEdit && (
-            <div style={companyEditBoxStyle}>
-              <input placeholder={t.companyLogoUrl} value={companyLogoUrl} onChange={(e) => setCompanyLogoUrl(e.target.value)} style={inputStyle} />
-              <input placeholder={t.companyName} value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={inputStyle} />
-              <input placeholder={t.companyRegNo} value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={inputStyle} />
-              <input placeholder={t.phone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={inputStyle} />
-              <input placeholder={t.address} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={inputStyle} />
-              <button onClick={saveCompanyInfo} style={submitSmallBtnStyle}>{t.saveCompany}</button>
+            <div style={{ ...companyEditBoxStyle, borderColor: theme.border }}>
+              <input
+                placeholder={t.companyLogoUrl}
+                value={companyLogoUrl}
+                onChange={(e) => setCompanyLogoUrl(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.companyName}
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.companyRegNo}
+                value={companyRegNo}
+                onChange={(e) => setCompanyRegNo(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.phone}
+                value={companyPhone}
+                onChange={(e) => setCompanyPhone(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.address}
+                value={companyAddress}
+                onChange={(e) => setCompanyAddress(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <button onClick={saveCompanyInfo} style={{ ...submitSmallBtnStyle, background: theme.accent }}>
+                {t.saveCompany}
+              </button>
             </div>
           )}
 
           <h3>{t.customerInfo}</h3>
 
           <div style={switchRow}>
-            <button onClick={() => setCustomerMode("select")} style={modeBtn(customerMode === "select")}>{t.selectCustomer}</button>
-            <button onClick={() => setCustomerMode("new")} style={modeBtn(customerMode === "new")}>{t.newCustomer}</button>
+            <button
+              onClick={() => setCustomerMode("select")}
+              style={modeBtn(customerMode === "select", theme)}
+            >
+              {t.selectCustomer}
+            </button>
+            <button
+              onClick={() => setCustomerMode("new")}
+              style={modeBtn(customerMode === "new", theme)}
+            >
+              {t.newCustomer}
+            </button>
           </div>
 
           {customerMode === "select" ? (
-            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={inputStyle}>
+            <select
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              style={{ ...inputStyle, borderColor: theme.border }}
+            >
               <option value="">{t.chooseCustomer}</option>
               {customers.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} {c.company_name ? `｜${c.company_name}` : ""}</option>
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.company_name ? `｜${c.company_name}` : ""}
+                </option>
               ))}
             </select>
           ) : (
             <div style={formGrid}>
-              <input placeholder={t.customerName} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} style={inputStyle} />
-              <input placeholder={t.customerPhone} value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} style={inputStyle} />
-              <input placeholder={t.customerCompany} value={newCustomerCompany} onChange={(e) => setNewCustomerCompany(e.target.value)} style={inputStyle} />
-              <input placeholder={t.customerAddress} value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} style={inputStyle} />
+              <input
+                placeholder={t.customerName}
+                value={newCustomerName}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.customerPhone}
+                value={newCustomerPhone}
+                onChange={(e) => setNewCustomerPhone(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.customerCompany}
+                value={newCustomerCompany}
+                onChange={(e) => setNewCustomerCompany(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.customerAddress}
+                value={newCustomerAddress}
+                onChange={(e) => setNewCustomerAddress(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
             </div>
           )}
 
           <h3>{t.productInfo}</h3>
 
           <div style={switchRow}>
-            <button onClick={() => setProductMode("select")} style={modeBtn(productMode === "select")}>{t.selectProduct}</button>
-            <button onClick={() => setProductMode("new")} style={modeBtn(productMode === "new")}>{t.newProduct}</button>
+            <button
+              onClick={() => setProductMode("select")}
+              style={modeBtn(productMode === "select", theme)}
+            >
+              {t.selectProduct}
+            </button>
+            <button
+              onClick={() => setProductMode("new")}
+              style={modeBtn(productMode === "new", theme)}
+            >
+              {t.newProduct}
+            </button>
           </div>
 
           {productMode === "select" ? (
-            <select value={productId} onChange={(e) => setProductId(e.target.value)} style={inputStyle}>
+            <select
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+              style={{ ...inputStyle, borderColor: theme.border }}
+            >
               <option value="">{t.chooseProduct}</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name}｜{t.price} {Number(p.price).toFixed(2)}｜{t.cost} {Number(p.cost).toFixed(2)}｜{t.stock} {Number(p.stock_qty || 0)}
+                  {p.name}｜{t.price} {Number(p.price).toFixed(2)}｜{t.cost}{" "}
+                  {Number(p.cost).toFixed(2)}｜{t.stock} {Number(p.stock_qty || 0)}
                 </option>
               ))}
             </select>
           ) : (
             <div style={formGrid}>
-              <input placeholder={t.productName} value={newProductName} onChange={(e) => setNewProductName(e.target.value)} style={inputStyle} />
-              <input placeholder={t.price} value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} style={inputStyle} />
-              <input placeholder={t.cost} value={newProductCost} onChange={(e) => setNewProductCost(e.target.value)} style={inputStyle} />
-              <input placeholder={t.stock} value={newProductStock} onChange={(e) => setNewProductStock(e.target.value)} style={inputStyle} />
+              <input
+                placeholder={t.productName}
+                value={newProductName}
+                onChange={(e) => setNewProductName(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.price}
+                value={newProductPrice}
+                onChange={(e) => setNewProductPrice(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.cost}
+                value={newProductCost}
+                onChange={(e) => setNewProductCost(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+              <input
+                placeholder={t.stock}
+                value={newProductStock}
+                onChange={(e) => setNewProductStock(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
             </div>
           )}
 
           <h3>{t.invoiceContent}</h3>
 
           <div style={formGrid}>
-            <label style={labelStyle}>{t.qty}</label>
-            <input value={qty} onChange={(e) => setQty(e.target.value)} style={inputStyle} />
+            <label style={{ ...labelStyle, color: theme.accent }}>{t.qty}</label>
+            <input
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+              style={{ ...inputStyle, borderColor: theme.border }}
+            />
 
-            <label style={labelStyle}>{t.extraDiscount}</label>
-            <input value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} style={inputStyle} />
+            <label style={{ ...labelStyle, color: theme.accent }}>{t.extraDiscount}</label>
+            <input
+              value={extraDiscount}
+              onChange={(e) => setExtraDiscount(e.target.value)}
+              style={{ ...inputStyle, borderColor: theme.border }}
+            />
           </div>
 
           <h3>{t.lhdn}</h3>
 
           <div style={formGrid}>
-            <input placeholder="Supplier TIN" value={supplierTin} onChange={(e) => setSupplierTin(e.target.value)} style={inputStyle} />
-            <input placeholder="Buyer TIN" value={buyerTin} onChange={(e) => setBuyerTin(e.target.value)} style={inputStyle} />
-            <input placeholder="SST No" value={sstNo} onChange={(e) => setSstNo(e.target.value)} style={inputStyle} />
-            <input placeholder="MSIC Code" value={msicCode} onChange={(e) => setMsicCode(e.target.value)} style={inputStyle} />
-            <input placeholder="e-Invoice UUID" value={einvoiceUuid} onChange={(e) => setEinvoiceUuid(e.target.value)} style={inputStyle} />
-            <input placeholder="Validation Status" value={validationStatus} onChange={(e) => setValidationStatus(e.target.value)} style={inputStyle} />
-            <input placeholder="QR Code URL" value={qrCodeUrl} onChange={(e) => setQrCodeUrl(e.target.value)} style={inputStyle} />
-            <input placeholder="MyInvois Submission Status" value={myinvoisStatus} onChange={(e) => setMyinvoisStatus(e.target.value)} style={inputStyle} />
+            <input placeholder="Supplier TIN" value={supplierTin} onChange={(e) => setSupplierTin(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
+            <input placeholder="Buyer TIN" value={buyerTin} onChange={(e) => setBuyerTin(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
+            <input placeholder="SST No" value={sstNo} onChange={(e) => setSstNo(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
+            <input placeholder="MSIC Code" value={msicCode} onChange={(e) => setMsicCode(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
+            <input placeholder="e-Invoice UUID" value={einvoiceUuid} onChange={(e) => setEinvoiceUuid(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
+            <input placeholder="Validation Status" value={validationStatus} onChange={(e) => setValidationStatus(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
+            <input placeholder="QR Code URL" value={qrCodeUrl} onChange={(e) => setQrCodeUrl(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
+            <input placeholder="MyInvois Submission Status" value={myinvoisStatus} onChange={(e) => setMyinvoisStatus(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
           </div>
 
           <h3>{t.preview}</h3>
-          <div style={screenPreviewWrapStyle}>
+          <div
+            style={{
+              ...screenPreviewWrapStyle,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+            }}
+          >
             {renderOfficialInvoice(currentPreviewInvoice, activeProductForPreview.name)}
           </div>
 
-          <button onClick={createInvoice} disabled={loading} style={submitBtn}>
+          <button
+            onClick={createInvoice}
+            disabled={loading}
+            style={{ ...submitBtn, background: theme.accent }}
+          >
             {loading ? t.generating : editInvoiceId ? t.saveEdit : t.generate}
           </button>
 
           <div style={actionRow}>
-            <button onClick={() => printInvoice()} style={secondaryBtn}>{t.print}</button>
-            <button onClick={() => downloadPdf()} style={secondaryBtn}>{t.pdf}</button>
-            <button onClick={() => sendWhatsAppPdf()} style={whatsappBtn}>{t.whatsappPdf}</button>
+            <button
+              onClick={() => printInvoice()}
+              style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}
+            >
+              {t.print}
+            </button>
+            <button
+              onClick={() => downloadPdf()}
+              style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}
+            >
+              {t.pdf}
+            </button>
+            <button onClick={() => sendWhatsAppPdf()} style={whatsappBtn}>
+              {t.whatsappPdf}
+            </button>
           </div>
 
-          {msg ? <p style={msgStyle}>{msg}</p> : null}
+          {msg ? <p style={{ ...msgStyle, color: theme.accent }}>{msg}</p> : null}
         </section>
       )}
 
@@ -1897,7 +2386,6 @@ export default function InvoicePage() {
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
   padding: 16,
-  background: "#ecfdf5",
   fontFamily: "sans-serif",
 };
 
@@ -1909,35 +2397,47 @@ const topRowStyle: CSSProperties = {
   marginBottom: 14,
 };
 
+const topRightWrapStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+};
+
 const langRowStyle: CSSProperties = {
   display: "flex",
   gap: 8,
   flexWrap: "wrap",
 };
 
-const langBtn = (active: boolean): CSSProperties => ({
+const langBtn = (active: boolean, theme: any): CSSProperties => ({
   padding: "8px 12px",
   borderRadius: 999,
-  border: "2px solid #0f766e",
-  background: active ? "#0f766e" : "#fff",
-  color: active ? "#fff" : "#0f766e",
+  border: `2px solid ${theme.accent}`,
+  background: active ? theme.accent : "#fff",
+  color: active ? "#fff" : theme.accent,
   fontWeight: 900,
 });
 
+const themeSelectStyle: CSSProperties = {
+  background: "#fff",
+  border: "2px solid",
+  borderRadius: 999,
+  padding: "8px 10px",
+  fontWeight: 900,
+};
+
 const backBtn: CSSProperties = {
   background: "#fff",
-  color: "#0f766e",
-  border: "2px solid #0f766e",
+  border: "2px solid",
   borderRadius: 12,
   padding: "10px 16px",
   fontWeight: 900,
 };
 
 const cardStyle: CSSProperties = {
-  background: "#ffffff",
-  border: "3px solid #14b8a6",
-  boxShadow:
-    "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
+  border: "3px solid",
   borderRadius: 24,
   padding: 20,
 };
@@ -1954,7 +2454,6 @@ const plusBtnStyle: CSSProperties = {
   height: 48,
   borderRadius: "999px",
   border: "none",
-  background: "#0f766e",
   color: "#fff",
   fontSize: 28,
   fontWeight: 900,
@@ -1962,7 +2461,6 @@ const plusBtnStyle: CSSProperties = {
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  color: "#0f766e",
   fontSize: 30,
 };
 
@@ -1973,7 +2471,7 @@ const descStyle: CSSProperties = {
 
 const invoiceNoBox: CSSProperties = {
   background: "#ecfdf5",
-  border: "2px solid #14b8a6",
+  border: "2px solid",
   borderRadius: 14,
   padding: 12,
   marginBottom: 20,
@@ -1989,7 +2487,7 @@ const invoiceItemStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 12,
-  border: "2px solid #14b8a6",
+  border: "2px solid",
   borderRadius: 16,
   padding: 14,
   background: "#f8fafc",
@@ -2004,7 +2502,7 @@ const mutedTextStyle: CSSProperties = {
 const recordActionRowStyle: CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
-  gap: 8,
+  gap: 6,
   marginTop: 12,
 };
 
@@ -2013,7 +2511,8 @@ const recordEditBtnStyle: CSSProperties = {
   background: "#0f766e",
   color: "#fff",
   borderRadius: 8,
-  padding: "7px 10px",
+  padding: "6px 9px",
+  fontSize: 12,
   fontWeight: 900,
 };
 
@@ -2022,25 +2521,28 @@ const recordDeleteBtnStyle: CSSProperties = {
   background: "#fee2e2",
   color: "#b91c1c",
   borderRadius: 8,
-  padding: "7px 10px",
+  padding: "6px 9px",
+  fontSize: 12,
   fontWeight: 900,
 };
 
-const recordShareBtnStyle: CSSProperties = {
+const recordWhatsappBtnStyle: CSSProperties = {
   border: "none",
   background: "#25D366",
   color: "#fff",
   borderRadius: 8,
-  padding: "7px 10px",
+  padding: "6px 8px",
+  fontSize: 11,
   fontWeight: 900,
 };
 
-const recordPrintBtnStyle: CSSProperties = {
+const recordShareBtnStyle: CSSProperties = {
   border: "1px solid #0f766e",
   background: "#fff",
   color: "#0f766e",
   borderRadius: 8,
-  padding: "7px 10px",
+  padding: "6px 9px",
+  fontSize: 12,
   fontWeight: 900,
 };
 
@@ -2056,12 +2558,12 @@ const switchRow: CSSProperties = {
   marginBottom: 12,
 };
 
-const modeBtn = (active: boolean): CSSProperties => ({
+const modeBtn = (active: boolean, theme: any): CSSProperties => ({
   padding: "12px",
   borderRadius: 12,
-  border: "2px solid #0f766e",
-  background: active ? "#0f766e" : "#fff",
-  color: active ? "#fff" : "#0f766e",
+  border: `2px solid ${theme.accent}`,
+  background: active ? theme.accent : "#fff",
+  color: active ? "#fff" : theme.accent,
   fontWeight: 900,
 });
 
@@ -2072,7 +2574,6 @@ const formGrid: CSSProperties = {
 
 const labelStyle: CSSProperties = {
   fontWeight: 900,
-  color: "#0f766e",
   marginTop: 6,
 };
 
@@ -2081,7 +2582,7 @@ const inputStyle: CSSProperties = {
   boxSizing: "border-box",
   padding: "13px",
   borderRadius: 12,
-  border: "2px solid #14b8a6",
+  border: "2px solid",
   fontSize: 16,
   marginBottom: 8,
 };
@@ -2091,17 +2592,17 @@ const smallDateInput: CSSProperties = {
   maxWidth: 220,
 };
 
-const paymentAddRowStyle: CSSProperties = {
+const paymentAddBoxStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1fr auto",
   gap: 8,
-  alignItems: "center",
-  marginBottom: 8,
+  border: "1px dashed #cbd5e1",
+  borderRadius: 16,
+  padding: 12,
+  marginBottom: 10,
 };
 
 const addBtnStyle: CSSProperties = {
   border: "none",
-  background: "#0f766e",
   color: "#fff",
   borderRadius: 12,
   padding: "13px",
@@ -2120,8 +2621,7 @@ const paymentChipStyle: CSSProperties = {
   alignItems: "center",
   gap: 8,
   background: "#ecfdf5",
-  border: "1px solid #14b8a6",
-  color: "#0f766e",
+  border: "1px solid",
   borderRadius: 999,
   padding: "6px 10px",
   fontWeight: 800,
@@ -2129,7 +2629,6 @@ const paymentChipStyle: CSSProperties = {
 
 const paymentChipDeleteStyle: CSSProperties = {
   border: "none",
-  background: "#0f766e",
   color: "#fff",
   width: 22,
   height: 22,
@@ -2142,7 +2641,7 @@ const companyBox: CSSProperties = {
   gap: 14,
   alignItems: "center",
   background: "#f8fafc",
-  border: "2px solid #14b8a6",
+  border: "2px solid",
   borderRadius: 16,
   padding: 14,
   flexWrap: "wrap",
@@ -2150,7 +2649,7 @@ const companyBox: CSSProperties = {
 
 const companyEditBoxStyle: CSSProperties = {
   marginTop: 12,
-  border: "2px dashed #14b8a6",
+  border: "2px dashed",
   borderRadius: 16,
   padding: 14,
 };
@@ -2175,9 +2674,8 @@ const logoPlaceholder: CSSProperties = {
 };
 
 const editBtnStyle: CSSProperties = {
-  border: "2px solid #0f766e",
+  border: "2px solid",
   background: "#fff",
-  color: "#0f766e",
   borderRadius: 12,
   padding: "10px 12px",
   fontWeight: 900,
@@ -2185,7 +2683,6 @@ const editBtnStyle: CSSProperties = {
 
 const submitSmallBtnStyle: CSSProperties = {
   border: "none",
-  background: "#0f766e",
   color: "#fff",
   borderRadius: 12,
   padding: "12px 14px",
@@ -2198,7 +2695,6 @@ const submitBtn: CSSProperties = {
   padding: "14px",
   border: "none",
   borderRadius: 14,
-  background: "#0f766e",
   color: "#fff",
   fontWeight: 900,
   fontSize: 16,
@@ -2214,9 +2710,8 @@ const actionRow: CSSProperties = {
 const secondaryBtn: CSSProperties = {
   padding: "12px",
   borderRadius: 12,
-  border: "2px solid #0f766e",
+  border: "2px solid",
   background: "#fff",
-  color: "#0f766e",
   fontWeight: 900,
 };
 
@@ -2231,7 +2726,6 @@ const whatsappBtn: CSSProperties = {
 
 const msgStyle: CSSProperties = {
   marginTop: 14,
-  color: "#0f766e",
   fontWeight: 900,
 };
 
@@ -2239,7 +2733,7 @@ const screenPreviewWrapStyle: CSSProperties = {
   width: "100%",
   overflowX: "auto",
   background: "#f8fafc",
-  border: "2px solid #14b8a6",
+  border: "2px solid",
   borderRadius: 18,
   padding: 14,
   boxSizing: "border-box",
@@ -2390,6 +2884,30 @@ const officialTotalRowStyle: CSSProperties = {
   color: "#0f766e",
   fontSize: 22,
   fontWeight: 900,
+};
+
+const officialProfitRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "10px 0",
+  color: "#16a34a",
+  fontSize: 18,
+  fontWeight: 900,
+};
+
+const officialPaymentBoxStyle: CSSProperties = {
+  marginTop: 24,
+  border: "1px solid #cbd5e1",
+  borderRadius: 12,
+  padding: 12,
+  lineHeight: 1.6,
+};
+
+const officialQrStyle: CSSProperties = {
+  width: 88,
+  height: 88,
+  objectFit: "contain",
+  marginTop: 8,
 };
 
 const officialNoteStyle: CSSProperties = {
