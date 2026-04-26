@@ -33,6 +33,7 @@ type Product = {
 
 type CustomerPrice = {
   id: string;
+  user_id?: string;
   customer_id: string;
   product_id: string;
   custom_price: number;
@@ -168,17 +169,21 @@ const TXT = {
     products: "产品管理",
     invoices: "发票系统",
     noCustomers: "还没有客户资料",
-    priceTitle: "客户专属价格",
+    priceTitle: "产品专属价格",
     chooseCustomer: "选择客户",
     chooseProduct: "选择产品",
     customPrice: "这个客户的专属价格",
     savePrice: "保存专属价格",
     productNormalPrice: "产品原价",
+    currentPrices: "目前已设置价格",
+    noPrice: "还没有设置专属价格",
     saved: "保存成功",
     deleted: "删除成功",
     theme: "主题",
     language: "语言",
     related: "关联功能",
+    chooseRelated: "请选择要前往的功能",
+    goFeature: "前往",
     trialMode: "免费试用模式：资料只会暂存在本机",
     confirmDelete: "确定要删除这个客户吗？",
   },
@@ -219,17 +224,21 @@ const TXT = {
     products: "Products",
     invoices: "Invoices",
     noCustomers: "No customer records yet",
-    priceTitle: "Customer Special Price",
+    priceTitle: "Product Special Price",
     chooseCustomer: "Choose Customer",
     chooseProduct: "Choose Product",
     customPrice: "Special Price",
     savePrice: "Save Special Price",
     productNormalPrice: "Normal Price",
+    currentPrices: "Current Special Prices",
+    noPrice: "No special price yet",
     saved: "Saved",
     deleted: "Deleted",
     theme: "Theme",
     language: "Language",
     related: "Linked Features",
+    chooseRelated: "Choose linked feature",
+    goFeature: "Go",
     trialMode: "Free trial mode: data is stored locally only",
     confirmDelete: "Confirm delete this customer?",
   },
@@ -270,17 +279,21 @@ const TXT = {
     products: "Produk",
     invoices: "Invois",
     noCustomers: "Tiada rekod pelanggan",
-    priceTitle: "Harga Khas Pelanggan",
+    priceTitle: "Harga Khas Produk",
     chooseCustomer: "Pilih Pelanggan",
     chooseProduct: "Pilih Produk",
     customPrice: "Harga Khas",
     savePrice: "Simpan Harga Khas",
     productNormalPrice: "Harga Asal",
+    currentPrices: "Harga Khas Semasa",
+    noPrice: "Belum ada harga khas",
     saved: "Disimpan",
     deleted: "Dipadam",
     theme: "Tema",
     language: "Bahasa",
     related: "Fungsi Berkaitan",
+    chooseRelated: "Pilih fungsi",
+    goFeature: "Pergi",
     trialMode: "Mod percubaan: data hanya disimpan dalam telefon ini",
     confirmDelete: "Padam pelanggan ini?",
   },
@@ -302,6 +315,17 @@ export default function CustomersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
 
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [priceCustomerId, setPriceCustomerId] = useState("");
+  const [priceCustomerName, setPriceCustomerName] = useState("");
+  const [priceProductId, setPriceProductId] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
+
+  const [formPriceProductId, setFormPriceProductId] = useState("");
+  const [formCustomPrice, setFormCustomPrice] = useState("");
+
+  const [relatedPath, setRelatedPath] = useState("/dashboard/accounting");
+
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -317,10 +341,6 @@ export default function CustomersPage() {
     note: "",
   });
 
-  const [priceCustomerId, setPriceCustomerId] = useState("");
-  const [priceProductId, setPriceProductId] = useState("");
-  const [customPrice, setCustomPrice] = useState("");
-
   const t = TXT[lang];
   const theme = THEMES[themeKey];
 
@@ -329,6 +349,7 @@ export default function CustomersPage() {
 
     const urlLang = q.get("lang") as Lang;
     const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
+
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
       setLang(urlLang);
       localStorage.setItem(LANG_KEY, urlLang);
@@ -338,6 +359,7 @@ export default function CustomersPage() {
 
     const urlTheme = q.get("theme") as ThemeKey;
     const savedTheme = localStorage.getItem(THEME_KEY) as ThemeKey | null;
+
     if (urlTheme && THEMES[urlTheme]) {
       setThemeKey(urlTheme);
       localStorage.setItem(THEME_KEY, urlTheme);
@@ -353,7 +375,7 @@ export default function CustomersPage() {
     const mode = q.get("mode");
     const trialRaw = localStorage.getItem(TRIAL_KEY);
 
-    if (mode === "trial" && trialRaw) {
+    if ((mode === "trial" || trialRaw) && trialRaw) {
       const trial = JSON.parse(trialRaw);
 
       if (Date.now() < Number(trial.expiresAt)) {
@@ -452,6 +474,17 @@ export default function CustomersPage() {
     go("/dashboard");
   }
 
+  function goRelatedFeature() {
+    go(relatedPath);
+  }
+
+  function openInvoiceForCustomer(c: Customer) {
+    go(
+      "/dashboard/invoices",
+      `customerId=${encodeURIComponent(c.id)}&customerName=${encodeURIComponent(c.name)}&from=customers`
+    );
+  }
+
   function switchLang(next: Lang) {
     setLang(next);
     localStorage.setItem(LANG_KEY, next);
@@ -505,13 +538,61 @@ export default function CustomersPage() {
       last_payment_date: today(),
       note: "",
     });
+
+    setFormPriceProductId("");
+    setFormCustomPrice("");
+  }
+
+  function upsertTrialPrice(customerId: string, productId: string, price: number) {
+    const exists = customerPrices.find(
+      (p) => p.customer_id === customerId && p.product_id === productId
+    );
+
+    const next = exists
+      ? customerPrices.map((p) =>
+          p.customer_id === customerId && p.product_id === productId
+            ? { ...p, custom_price: price }
+            : p
+        )
+      : [
+          {
+            id: crypto.randomUUID(),
+            customer_id: customerId,
+            product_id: productId,
+            custom_price: price,
+          },
+          ...customerPrices,
+        ];
+
+    saveTrialPrices(next);
+  }
+
+  async function upsertDbPrice(customerId: string, productId: string, price: number) {
+    if (!session) return "No session";
+
+    const { error } = await supabase.from("customer_prices").upsert(
+      {
+        user_id: session.user.id,
+        customer_id: customerId,
+        product_id: productId,
+        custom_price: price,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "user_id,customer_id,product_id",
+      }
+    );
+
+    return error?.message || "";
   }
 
   async function saveCustomer() {
     if (!form.name.trim()) return;
 
+    const customerId = editingId || crypto.randomUUID();
+
     const payload: Customer = {
-      id: editingId || crypto.randomUUID(),
+      id: customerId,
       user_id: session?.user.id || "trial",
       name: form.name.trim(),
       phone: form.phone || null,
@@ -533,6 +614,11 @@ export default function CustomersPage() {
         : [payload, ...customers];
 
       saveTrialCustomers(next);
+
+      if (formPriceProductId && formCustomPrice) {
+        upsertTrialPrice(customerId, formPriceProductId, Number(formCustomPrice));
+      }
+
       setMsg(t.saved);
       closeForm();
       return;
@@ -557,6 +643,8 @@ export default function CustomersPage() {
       updated_at: new Date().toISOString(),
     };
 
+    let savedCustomerId = editingId || "";
+
     if (editingId) {
       const { error } = await supabase
         .from("customers")
@@ -569,10 +657,29 @@ export default function CustomersPage() {
         return;
       }
     } else {
-      const { error } = await supabase.from("customers").insert(dbPayload);
+      const { data, error } = await supabase
+        .from("customers")
+        .insert(dbPayload)
+        .select("id")
+        .single();
 
       if (error) {
         setMsg(error.message);
+        return;
+      }
+
+      savedCustomerId = data.id;
+    }
+
+    if (formPriceProductId && formCustomPrice) {
+      const priceError = await upsertDbPrice(
+        savedCustomerId,
+        formPriceProductId,
+        Number(formCustomPrice)
+      );
+
+      if (priceError) {
+        setMsg(priceError);
         return;
       }
     }
@@ -599,6 +706,8 @@ export default function CustomersPage() {
       note: c.note || "",
     });
 
+    setFormPriceProductId("");
+    setFormCustomPrice("");
     setShowForm(true);
   }
 
@@ -633,59 +742,45 @@ export default function CustomersPage() {
     await loadAll(session.user.id);
   }
 
+  function openPriceModal(c: Customer) {
+    setPriceCustomerId(c.id);
+    setPriceCustomerName(c.name);
+    setPriceProductId("");
+    setCustomPrice("");
+    setShowPriceModal(true);
+  }
+
+  function closePriceModal() {
+    setShowPriceModal(false);
+    setPriceCustomerId("");
+    setPriceCustomerName("");
+    setPriceProductId("");
+    setCustomPrice("");
+  }
+
   async function saveCustomerPrice() {
     if (!priceCustomerId || !priceProductId || !customPrice) return;
 
     if (isTrial) {
-      const exists = customerPrices.find(
-        (p) => p.customer_id === priceCustomerId && p.product_id === priceProductId
-      );
-
-      const next = exists
-        ? customerPrices.map((p) =>
-            p.customer_id === priceCustomerId && p.product_id === priceProductId
-              ? { ...p, custom_price: Number(customPrice) }
-              : p
-          )
-        : [
-            {
-              id: crypto.randomUUID(),
-              customer_id: priceCustomerId,
-              product_id: priceProductId,
-              custom_price: Number(customPrice),
-            },
-            ...customerPrices,
-          ];
-
-      saveTrialPrices(next);
+      upsertTrialPrice(priceCustomerId, priceProductId, Number(customPrice));
       setMsg(t.saved);
+      setPriceProductId("");
       setCustomPrice("");
       return;
     }
 
-    if (!session) return;
+    const priceError = await upsertDbPrice(priceCustomerId, priceProductId, Number(customPrice));
 
-    const { error } = await supabase.from("customer_prices").upsert(
-      {
-        user_id: session.user.id,
-        customer_id: priceCustomerId,
-        product_id: priceProductId,
-        custom_price: Number(customPrice),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "user_id,customer_id,product_id",
-      }
-    );
-
-    if (error) {
-      setMsg(error.message);
+    if (priceError) {
+      setMsg(priceError);
       return;
     }
 
     setMsg(t.saved);
+    setPriceProductId("");
     setCustomPrice("");
-    await loadAll(session.user.id);
+
+    if (session) await loadAll(session.user.id);
   }
 
   function openCustomerWhatsApp(phone: string | null) {
@@ -719,15 +814,11 @@ export default function CustomersPage() {
   }, [customers, search, filterStatus]);
 
   const selectedProduct = products.find((p) => p.id === priceProductId);
+  const formSelectedProduct = products.find((p) => p.id === formPriceProductId);
+  const targetPrices = customerPrices.filter((p) => p.customer_id === priceCustomerId);
 
   return (
-    <main
-      style={{
-        ...pageStyle,
-        background: theme.pageBg,
-        color: theme.text,
-      }}
-    >
+    <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
       <section style={topBarStyle}>
         <button
           onClick={backToDashboard}
@@ -766,13 +857,8 @@ export default function CustomersPage() {
         </div>
       </section>
 
-      {isTrial ? (
-        <div style={trialMsgStyle}>{t.trialMode}</div>
-      ) : null}
-
-      {msg ? (
-        <div style={msgStyle}>{msg}</div>
-      ) : null}
+      {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
+      {msg ? <div style={msgStyle}>{msg}</div> : null}
 
       <section
         style={{
@@ -873,29 +959,44 @@ export default function CustomersPage() {
 
                     {prices.length > 0 ? (
                       <p style={{ ...mutedStyle, color: theme.subText }}>
-                        {t.priceTitle}:{" "}
-                        {prices.map((cp) => {
-                          const product = products.find((p) => p.id === cp.product_id);
-                          return `${product?.name || "Product"} RM ${Number(cp.custom_price).toFixed(2)}`;
-                        }).join(" / ")}
+                        {t.currentPrices}:{" "}
+                        {prices
+                          .map((cp) => {
+                            const product = products.find((p) => p.id === cp.product_id);
+                            return `${product?.name || "Product"} RM ${Number(cp.custom_price).toFixed(2)}`;
+                          })
+                          .join(" / ")}
                       </p>
                     ) : null}
                   </div>
 
                   <div style={actionRowStyle}>
-                    <button onClick={() => go("/dashboard/invoices", `customerId=${c.id}`)} style={invoiceBtnStyle}>
+                    <button onClick={() => openInvoiceForCustomer(c)} style={invoiceBtnStyle}>
                       {t.invoice}
+                    </button>
+
+                    <button
+                      onClick={() => openPriceModal(c)}
+                      style={{
+                        ...priceBtnStyle,
+                        borderColor: theme.border,
+                        color: theme.accent,
+                      }}
+                    >
+                      {t.priceTitle}
                     </button>
 
                     <button
                       onClick={() => openCustomerWhatsApp(c.phone)}
                       disabled={!c.phone}
+                      aria-label={t.whatsapp}
+                      title={t.whatsapp}
                       style={{
-                        ...whatsappBtnStyle,
+                        ...whatsappIconBtnStyle,
                         opacity: c.phone ? 1 : 0.45,
                       }}
                     >
-                      {t.whatsapp}
+                      💬
                     </button>
 
                     <button
@@ -929,88 +1030,31 @@ export default function CustomersPage() {
       >
         <h2 style={sectionTitleStyle}>{t.related}</h2>
 
-        <div style={relatedGridStyle}>
-          <button onClick={() => go("/dashboard/accounting")} style={relatedBtnStyle(theme)}>
-            {t.accounting}
-          </button>
-
-          <button onClick={() => go("/dashboard/products")} style={relatedBtnStyle(theme)}>
-            {t.products}
-          </button>
-
-          <button onClick={() => go("/dashboard/invoices")} style={relatedBtnStyle(theme)}>
-            {t.invoices}
-          </button>
-        </div>
-      </section>
-
-      <section
-        style={{
-          ...cardStyle,
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-        }}
-      >
-        <h2 style={sectionTitleStyle}>{t.priceTitle}</h2>
-
-        <div style={responsiveGridStyle}>
+        <div style={relatedMenuRowStyle}>
           <select
-            value={priceCustomerId}
-            onChange={(e) => setPriceCustomerId(e.target.value)}
+            value={relatedPath}
+            onChange={(e) => setRelatedPath(e.target.value)}
             style={{
               ...inputStyle,
               borderColor: theme.border,
             }}
           >
-            <option value="">{t.chooseCustomer}</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
+            <option value="/dashboard/accounting">{t.accounting}</option>
+            <option value="/dashboard/products">{t.products}</option>
+            <option value="/dashboard/invoices">{t.invoices}</option>
           </select>
 
-          <select
-            value={priceProductId}
-            onChange={(e) => setPriceProductId(e.target.value)}
+          <button
+            onClick={goRelatedFeature}
             style={{
-              ...inputStyle,
-              borderColor: theme.border,
+              ...primaryBtnStyle,
+              background: theme.accent,
+              marginTop: 0,
             }}
           >
-            <option value="">{t.chooseProduct}</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} - RM {Number(p.price || 0).toFixed(2)}
-              </option>
-            ))}
-          </select>
-
-          <input
-            placeholder={t.customPrice}
-            value={customPrice}
-            onChange={(e) => setCustomPrice(e.target.value)}
-            style={{
-              ...inputStyle,
-              borderColor: theme.border,
-            }}
-          />
+            {t.goFeature}
+          </button>
         </div>
-
-        {selectedProduct ? (
-          <p style={{ ...mutedStyle, color: theme.subText }}>
-            {t.productNormalPrice}: RM {Number(selectedProduct.price || 0).toFixed(2)}
-          </p>
-        ) : null}
-
-        <button
-          onClick={saveCustomerPrice}
-          style={{
-            ...primaryBtnStyle,
-            background: theme.accent,
-          }}
-        >
-          {t.savePrice}
-        </button>
       </section>
 
       {showForm ? (
@@ -1075,6 +1119,35 @@ export default function CustomersPage() {
               <input placeholder={t.note} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
             </div>
 
+            <h3>{t.priceTitle}</h3>
+            <div style={responsiveGridStyle}>
+              <select
+                value={formPriceProductId}
+                onChange={(e) => setFormPriceProductId(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              >
+                <option value="">{t.chooseProduct}</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                placeholder={t.customPrice}
+                value={formCustomPrice}
+                onChange={(e) => setFormCustomPrice(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+            </div>
+
+            {formSelectedProduct ? (
+              <p style={{ ...mutedStyle, color: theme.subText }}>
+                {t.productNormalPrice}: RM {Number(formSelectedProduct.price || 0).toFixed(2)}
+              </p>
+            ) : null}
+
             <button
               onClick={saveCustomer}
               style={{
@@ -1100,6 +1173,103 @@ export default function CustomersPage() {
           </section>
         </div>
       ) : null}
+
+      {showPriceModal ? (
+        <div style={overlayStyle}>
+          <section
+            style={{
+              ...modalStyle,
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <div style={modalHeaderStyle}>
+              <div>
+                <h2 style={modalTitleStyle}>{t.priceTitle}</h2>
+                <p style={{ ...mutedStyle, color: theme.subText, margin: "6px 0 0" }}>
+                  {t.chooseCustomer}: {priceCustomerName || "-"}
+                </p>
+              </div>
+
+              <button onClick={closePriceModal} style={closeBtnStyle}>
+                X
+              </button>
+            </div>
+
+            <div style={responsiveGridStyle}>
+              <select
+                value={priceProductId}
+                onChange={(e) => setPriceProductId(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  borderColor: theme.border,
+                }}
+              >
+                <option value="">{t.chooseProduct}</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                placeholder={t.customPrice}
+                value={customPrice}
+                onChange={(e) => setCustomPrice(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  borderColor: theme.border,
+                }}
+              />
+            </div>
+
+            {selectedProduct ? (
+              <p style={{ ...mutedStyle, color: theme.subText }}>
+                {t.productNormalPrice}: RM {Number(selectedProduct.price || 0).toFixed(2)}
+              </p>
+            ) : null}
+
+            <button
+              onClick={saveCustomerPrice}
+              style={{
+                ...primaryBtnStyle,
+                background: theme.accent,
+              }}
+            >
+              {t.savePrice}
+            </button>
+
+            <div style={{ marginTop: 16 }}>
+              <h3>{t.currentPrices}</h3>
+
+              {targetPrices.length === 0 ? (
+                <p style={{ color: theme.subText }}>{t.noPrice}</p>
+              ) : (
+                targetPrices.map((cp) => {
+                  const product = products.find((p) => p.id === cp.product_id);
+
+                  return (
+                    <div
+                      key={cp.id}
+                      style={{
+                        ...priceItemStyle,
+                        borderColor: theme.border,
+                        background: theme.softBg,
+                      }}
+                    >
+                      <strong>{product?.name || "Product"}</strong>
+                      <span>RM {Number(cp.custom_price || 0).toFixed(2)}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -1113,7 +1283,7 @@ function statusText(status: CustomerStatus, t: any) {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
-  padding: "clamp(12px, 2vw, 24px)",
+  padding: "clamp(10px, 2vw, 24px)",
   fontFamily: "sans-serif",
 };
 
@@ -1139,9 +1309,13 @@ const backBtnStyle: CSSProperties = {
   background: "#fff",
   border: "2px solid",
   borderRadius: 12,
-  padding: "10px 14px",
+  padding: "clamp(8px, 1.6vw, 12px) clamp(10px, 2vw, 16px)",
+  fontSize: "clamp(13px, 2.2vw, 16px)",
   fontWeight: 900,
   cursor: "pointer",
+  maxWidth: "100%",
+  whiteSpace: "normal",
+  lineHeight: 1.25,
 };
 
 const selectSmallStyle: CSSProperties = {
@@ -1151,11 +1325,13 @@ const selectSmallStyle: CSSProperties = {
   padding: "8px 10px",
   fontWeight: 900,
   outline: "none",
+  maxWidth: "100%",
 };
 
 const langRowStyle: CSSProperties = {
   display: "flex",
   gap: 6,
+  flexWrap: "wrap",
 };
 
 const langBtn = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
@@ -1224,6 +1400,13 @@ const responsiveGridStyle: CSSProperties = {
   gap: 12,
 };
 
+const relatedMenuRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 12,
+  alignItems: "center",
+};
+
 const customerListStyle: CSSProperties = {
   marginTop: 18,
 };
@@ -1273,13 +1456,27 @@ const invoiceBtnStyle: CSSProperties = {
   cursor: "pointer",
 };
 
-const whatsappBtnStyle: CSSProperties = {
+const priceBtnStyle: CSSProperties = {
+  background: "#fff",
+  border: "2px solid",
+  borderRadius: 10,
+  padding: "8px 12px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const whatsappIconBtnStyle: CSSProperties = {
+  width: 38,
+  height: 38,
   background: "#25D366",
   color: "#fff",
   border: "none",
-  borderRadius: 10,
-  padding: "9px 12px",
-  fontWeight: 800,
+  borderRadius: "999px",
+  fontSize: 20,
+  fontWeight: 900,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   cursor: "pointer",
 };
 
@@ -1301,23 +1498,6 @@ const deleteBtnStyle: CSSProperties = {
   fontWeight: 800,
   cursor: "pointer",
 };
-
-const relatedGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: 12,
-};
-
-const relatedBtnStyle = (theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
-  background: "#fff",
-  color: theme.accent,
-  border: `2px solid ${theme.border}`,
-  borderRadius: 16,
-  padding: "15px 12px",
-  fontWeight: 900,
-  boxShadow: theme.glow,
-  cursor: "pointer",
-});
 
 const primaryBtnStyle: CSSProperties = {
   marginTop: 16,
@@ -1417,4 +1597,15 @@ const dateInputStyle: CSSProperties = {
   minHeight: 48,
   appearance: "none",
   WebkitAppearance: "none",
+};
+
+const priceItemStyle: CSSProperties = {
+  border: "1px solid",
+  borderRadius: 14,
+  padding: "12px 14px",
+  marginBottom: 10,
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
 };
