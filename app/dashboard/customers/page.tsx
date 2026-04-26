@@ -850,9 +850,15 @@ export default function CustomersPage() {
           </select>
 
           <div style={langRowStyle}>
-            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>中</button>
-            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>EN</button>
-            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>BM</button>
+            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
+              中
+            </button>
+            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
+              EN
+            </button>
+            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
+              BM
+            </button>
           </div>
         </div>
       </section>
@@ -989,14 +995,13 @@ export default function CustomersPage() {
                     <button
                       onClick={() => openCustomerWhatsApp(c.phone)}
                       disabled={!c.phone}
-                      aria-label={t.whatsapp}
                       title={t.whatsapp}
                       style={{
-                        ...whatsappIconBtnStyle,
+                        ...whatsappBtnStyle,
                         opacity: c.phone ? 1 : 0.45,
                       }}
                     >
-                      💬
+                      {t.whatsapp}
                     </button>
 
                     <button
@@ -1303,6 +1308,7 @@ const topRightStyle: CSSProperties = {
   justifyContent: "flex-end",
   gap: 10,
   flexWrap: "wrap",
+  maxWidth: "100%",
 };
 
 const backBtnStyle: CSSProperties = {
@@ -1322,7 +1328,8 @@ const selectSmallStyle: CSSProperties = {
   background: "#fff",
   border: "2px solid",
   borderRadius: 999,
-  padding: "8px 10px",
+  padding: "clamp(7px, 1.5vw, 9px) clamp(9px, 2vw, 12px)",
+  fontSize: "clamp(12px, 2vw, 15px)",
   fontWeight: 900,
   outline: "none",
   maxWidth: "100%",
@@ -1330,18 +1337,26 @@ const selectSmallStyle: CSSProperties = {
 
 const langRowStyle: CSSProperties = {
   display: "flex",
-  gap: 6,
+  gap: "clamp(4px, 1vw, 8px)",
   flexWrap: "wrap",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  maxWidth: "100%",
 };
 
 const langBtn = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
-  padding: "8px 11px",
+  minWidth: "clamp(38px, 8vw, 58px)",
+  padding: "clamp(7px, 1.6vw, 10px) clamp(8px, 2vw, 14px)",
   borderRadius: 999,
   border: `2px solid ${theme.border}`,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
+  fontSize: "clamp(12px, 2.5vw, 15px)",
   fontWeight: 900,
   cursor: "pointer",
+  lineHeight: 1.1,
+  textAlign: "center",
+  whiteSpace: "nowrap",
 });
 
 const cardStyle: CSSProperties = {
@@ -1371,15 +1386,16 @@ const sectionTitleStyle: CSSProperties = {
 };
 
 const plusBtnStyle: CSSProperties = {
-  width: 46,
-  height: 46,
+  width: "clamp(40px, 9vw, 46px)",
+  height: "clamp(40px, 9vw, 46px)",
   borderRadius: "999px",
   color: "#fff",
   border: "none",
-  fontSize: 28,
+  fontSize: "clamp(24px, 5vw, 28px)",
   fontWeight: 900,
   lineHeight: 1,
   cursor: "pointer",
+  flexShrink: 0,
 };
 
 const inputStyle: CSSProperties = {
@@ -1465,19 +1481,16 @@ const priceBtnStyle: CSSProperties = {
   cursor: "pointer",
 };
 
-const whatsappIconBtnStyle: CSSProperties = {
-  width: 38,
-  height: 38,
+const whatsappBtnStyle: CSSProperties = {
   background: "#25D366",
   color: "#fff",
   border: "none",
-  borderRadius: "999px",
-  fontSize: 20,
+  borderRadius: 10,
+  padding: "9px 12px",
+  fontSize: "clamp(13px, 2vw, 15px)",
   fontWeight: 900,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
   cursor: "pointer",
+  whiteSpace: "nowrap",
 };
 
 const editBtnStyle: CSSProperties = {
