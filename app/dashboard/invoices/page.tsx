@@ -71,6 +71,11 @@ type InvoiceFeeMeta = {
   handlingFeeAmount: number;
 };
 
+type InvoiceSignatureMeta = {
+  signatureText: string;
+  signatureImageUrl: string;
+};
+
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_TX_KEY = "smartacctg_trial_transactions";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
@@ -83,6 +88,7 @@ const THEME_KEY = "smartacctg_theme";
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 const INVOICE_FEE_META_KEY = "smartacctg_invoice_fee_meta";
+const INVOICE_SIGNATURE_META_KEY = "smartacctg_invoice_signature_meta";
 
 const ZERO_FEE_META: InvoiceFeeMeta = {
   sstMode: "%",
@@ -94,6 +100,11 @@ const ZERO_FEE_META: InvoiceFeeMeta = {
   handlingFeeMode: "%",
   handlingFeeValue: "0",
   handlingFeeAmount: 0,
+};
+
+const ZERO_SIGNATURE_META: InvoiceSignatureMeta = {
+  signatureText: "",
+  signatureImageUrl: "",
 };
 
 const THEMES: Record<ThemeKey, any> = {
@@ -207,6 +218,7 @@ const DEFAULT_PAYMENT_OPTIONS: PaymentOption[] = [
 const TXT = {
   zh: {
     back: "返回",
+    close: "关闭",
     title: "发票记录",
     newInvoice: "新发票",
     edit: "编辑",
@@ -275,7 +287,13 @@ const TXT = {
     serviceFee: "服务费",
     handlingFee: "手续费",
     lhdn: "7. Malaysia LHDN e-Invoice 预留资料",
+    signature: "8. 签名",
+    signatureText: "签名文字",
+    signatureTextPlaceholder: "例如：NK DIGITAL HUB / Keong Wong",
+    signatureImageUrl: "签名图片 URL",
+    uploadSignature: "上传签名图",
     preview: "正式发票预览",
+    signatureLabel: "签名",
     subtotal: "小计",
     discount: "折扣",
     taxableTotal: "折扣后金额",
@@ -308,6 +326,7 @@ const TXT = {
   },
   en: {
     back: "Back",
+    close: "Close",
     title: "Invoice Records",
     newInvoice: "New Invoice",
     edit: "Edit",
@@ -376,7 +395,13 @@ const TXT = {
     serviceFee: "Service Fee",
     handlingFee: "Handling Fee",
     lhdn: "7. Malaysia LHDN e-Invoice Reserved Fields",
+    signature: "8. Signature",
+    signatureText: "Signature Text",
+    signatureTextPlaceholder: "e.g. NK DIGITAL HUB / Keong Wong",
+    signatureImageUrl: "Signature Image URL",
+    uploadSignature: "Upload Signature",
     preview: "Official Invoice Preview",
+    signatureLabel: "Signature",
     subtotal: "Subtotal",
     discount: "Discount",
     taxableTotal: "After Discount",
@@ -409,6 +434,7 @@ const TXT = {
   },
   ms: {
     back: "Kembali",
+    close: "Tutup",
     title: "Rekod Invois",
     newInvoice: "Invois Baru",
     edit: "Edit",
@@ -477,7 +503,13 @@ const TXT = {
     serviceFee: "Caj Servis",
     handlingFee: "Caj Pengendalian",
     lhdn: "7. Ruang Simpanan Malaysia LHDN e-Invoice",
+    signature: "8. Tandatangan",
+    signatureText: "Teks Tandatangan",
+    signatureTextPlaceholder: "cth. NK DIGITAL HUB / Keong Wong",
+    signatureImageUrl: "URL Gambar Tandatangan",
+    uploadSignature: "Muat Naik Tandatangan",
     preview: "Pratonton Invois Rasmi",
+    signatureLabel: "Tandatangan",
     subtotal: "Subtotal",
     discount: "Diskaun",
     taxableTotal: "Selepas Diskaun",
@@ -677,6 +709,22 @@ function saveInvoiceFeeMeta(invId: string, invNo: string, meta: InvoiceFeeMeta) 
   if (invId) map[invId] = meta;
   if (invNo) map[invNo] = meta;
   safeLocalSet(INVOICE_FEE_META_KEY, JSON.stringify(map));
+}
+
+function getInvoiceSignatureMetaMap(): Record<string, InvoiceSignatureMeta> {
+  try {
+    const raw = safeLocalGet(INVOICE_SIGNATURE_META_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveInvoiceSignatureMeta(invId: string, invNo: string, meta: InvoiceSignatureMeta) {
+  const map = getInvoiceSignatureMetaMap();
+  if (invId) map[invId] = meta;
+  if (invNo) map[invNo] = meta;
+  safeLocalSet(INVOICE_SIGNATURE_META_KEY, JSON.stringify(map));
 }
 
 function formatDateTime(value?: string | null, fallbackDate?: string | null) {
@@ -880,6 +928,9 @@ export default function InvoicePage() {
   const [handlingFeeMode, setHandlingFeeMode] = useState<ChargeMode>("%");
   const [handlingFeeValue, setHandlingFeeValue] = useState("0");
 
+  const [signatureText, setSignatureText] = useState("");
+  const [signatureImageUrl, setSignatureImageUrl] = useState("");
+
   const [note, setNote] = useState("");
 
   const [supplierTin, setSupplierTin] = useState("");
@@ -910,6 +961,13 @@ export default function InvoicePage() {
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
+    borderColor: theme.border,
+    background: theme.inputBg,
+    color: theme.inputText,
+  };
+
+  const themedDateInputStyle: CSSProperties = {
+    ...dateInputStyle,
     borderColor: theme.border,
     background: theme.inputBg,
     color: theme.inputText,
@@ -1232,6 +1290,38 @@ export default function InvoicePage() {
     setServiceFeeValue(fee.serviceFeeValue || "0");
     setHandlingFeeMode(fee.handlingFeeMode || "%");
     setHandlingFeeValue(fee.handlingFeeValue || "0");
+  }
+
+  function buildCurrentSignatureMeta(): InvoiceSignatureMeta {
+    return {
+      signatureText,
+      signatureImageUrl,
+    };
+  }
+
+  function getSignatureMetaForInvoice(inv?: InvoiceRecord | null): InvoiceSignatureMeta | null {
+    if (!inv) return null;
+    const map = getInvoiceSignatureMetaMap();
+    return map[inv.id] || map[inv.invoice_no] || null;
+  }
+
+  function applySignatureMeta(meta?: InvoiceSignatureMeta | null) {
+    const sig = meta || ZERO_SIGNATURE_META;
+    setSignatureText(sig.signatureText || "");
+    setSignatureImageUrl(sig.signatureImageUrl || "");
+  }
+
+  async function uploadSignatureImage(e: any) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setSignatureImageUrl(dataUrl);
+      setMsg(t.saved);
+    } catch (error: any) {
+      setMsg(t.fail + error.message);
+    }
   }
 
   const activeCustomerForPreview: Customer =
@@ -1576,6 +1666,7 @@ export default function InvoicePage() {
       };
 
       const feeMetaForSave = buildCurrentFeeMeta();
+      const signatureMetaForSave = buildCurrentSignatureMeta();
 
       if (isTrial) {
         const nextProducts = workingProducts.map((p) =>
@@ -1586,6 +1677,7 @@ export default function InvoicePage() {
 
         saveStockValue(finalProduct.id, newStock);
         saveInvoiceFeeMeta(printableRecord.id, printableRecord.invoice_no, feeMetaForSave);
+        saveInvoiceSignatureMeta(printableRecord.id, printableRecord.invoice_no, signatureMetaForSave);
 
         setProducts(nextProducts);
         setInvoices(nextInvoices);
@@ -1631,6 +1723,7 @@ export default function InvoicePage() {
       };
 
       saveInvoiceFeeMeta(savedRecord.id, savedRecord.invoice_no, feeMetaForSave);
+      saveInvoiceSignatureMeta(savedRecord.id, savedRecord.invoice_no, signatureMetaForSave);
 
       setInvoices((prev) => [savedRecord, ...prev]);
       setLastPrintableInvoice(savedRecord);
@@ -1671,6 +1764,7 @@ export default function InvoicePage() {
     };
 
     saveInvoiceFeeMeta(editInvoiceId, invoiceNo, buildCurrentFeeMeta());
+    saveInvoiceSignatureMeta(editInvoiceId, invoiceNo, buildCurrentSignatureMeta());
 
     if (isTrial) {
       const next = invoices.map((inv) =>
@@ -1722,6 +1816,7 @@ export default function InvoicePage() {
     }
 
     applyFeeMeta(getFeeMetaForInvoice(inv));
+    applySignatureMeta(getSignatureMetaForInvoice(inv));
 
     setEditInvoiceId(inv.id);
     setInvoiceNo(inv.invoice_no || makeInvoiceNo());
@@ -1914,6 +2009,7 @@ export default function InvoicePage() {
     setQty("1");
     setExtraDiscount("0");
     applyFeeMeta(ZERO_FEE_META);
+    applySignatureMeta(ZERO_SIGNATURE_META);
     setNote("");
     setMsg("");
     setShowPaymentAdd(false);
@@ -2025,9 +2121,18 @@ export default function InvoicePage() {
     const displayPrice = isSavedRecord ? subtotal : preview.price;
     const lineAfterDiscount = Math.max(subtotal - discount, 0);
     const pay = getPaymentForInvoice(inv);
+
     const feeMeta = isSavedRecord
       ? getFeeMetaForInvoice(inv) || ZERO_FEE_META
       : buildCurrentFeeMeta();
+
+    const signatureMeta = isSavedRecord
+      ? getSignatureMetaForInvoice(inv) || ZERO_SIGNATURE_META
+      : buildCurrentSignatureMeta();
+
+    const showSignature =
+      Boolean(signatureMeta.signatureText?.trim()) ||
+      Boolean(signatureMeta.signatureImageUrl?.trim());
 
     return (
       <div style={officialInvoiceStyle}>
@@ -2174,6 +2279,23 @@ export default function InvoicePage() {
         </div>
 
         {inv.note ? <div style={officialNoteStyle}>Note：{inv.note}</div> : null}
+
+        {showSignature ? (
+          <div style={officialSignatureWrapStyle}>
+            <div style={officialSignatureBoxStyle}>
+              {signatureMeta.signatureImageUrl ? (
+                <img src={signatureMeta.signatureImageUrl} style={officialSignatureImageStyle} />
+              ) : null}
+
+              {signatureMeta.signatureText ? (
+                <div style={officialSignatureTextStyle}>{signatureMeta.signatureText}</div>
+              ) : null}
+
+              <div style={officialSignatureLineStyle} />
+              <div style={officialSignatureLabelStyle}>{t.signatureLabel}</div>
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -2189,13 +2311,19 @@ export default function InvoicePage() {
           text-size-adjust: 100%;
         }
 
+        .smartacctg-invoice-page,
+        .smartacctg-invoice-page * {
+          box-sizing: border-box;
+        }
+
         .smartacctg-invoice-page {
           font-size: clamp(14px, 1.8vw, 17px);
+          overflow-x: hidden;
         }
 
         .smartacctg-invoice-page h1 {
-          font-size: clamp(26px, 5vw, 42px);
-          line-height: 1.15;
+          font-size: clamp(24px, 4.5vw, 36px);
+          line-height: 1.12;
         }
 
         .smartacctg-invoice-page h2 {
@@ -2213,6 +2341,23 @@ export default function InvoicePage() {
         .smartacctg-invoice-page button,
         .smartacctg-invoice-page textarea {
           font-size: clamp(14px, 2.7vw, 17px) !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+
+        .smartacctg-invoice-page input[type="date"] {
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: 100% !important;
+          display: block !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          text-align: center;
+        }
+
+        .smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value {
+          text-align: center;
+          min-height: 1.6em;
         }
 
         @media (max-width: 520px) {
@@ -2402,17 +2547,21 @@ export default function InvoicePage() {
             color: theme.text,
           }}
         >
-          <button
-            onClick={() => setMode("list")}
-            style={{ ...backBtn, borderColor: theme.border, color: theme.accent }}
-          >
-            ← {t.back}
-          </button>
+          <div style={newFormHeaderStyle}>
+            <button
+              onClick={() => setMode("list")}
+              aria-label={t.close}
+              style={closeXBtnStyle}
+            >
+              ×
+            </button>
 
-          <h1 style={{ ...titleStyle, color: theme.accent }}>
-            {editInvoiceId ? t.edit : t.createTitle}
-          </h1>
-          <p style={{ ...descStyle, color: theme.muted }}>{t.desc}</p>
+            <h1 style={{ ...newTitleStyle, color: theme.accent }}>
+              {editInvoiceId ? t.edit : t.createTitle}
+            </h1>
+          </div>
+
+          <p style={{ ...newDescStyle, color: theme.muted }}>{t.desc}</p>
 
           <div style={{ ...invoiceNoBox, ...themedPanelStyle }}>
             <strong>Invoice No：</strong> {invoiceNo}
@@ -2426,7 +2575,7 @@ export default function InvoicePage() {
               type="date"
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
-              style={themedInputStyle}
+              style={themedDateInputStyle}
             />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.dueDate}</label>
@@ -2434,7 +2583,7 @@ export default function InvoicePage() {
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              style={themedInputStyle}
+              style={themedDateInputStyle}
             />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.status}</label>
@@ -2709,6 +2858,55 @@ export default function InvoicePage() {
             <input placeholder="MyInvois Submission Status" value={myinvoisStatus} onChange={(e) => setMyinvoisStatus(e.target.value)} style={themedInputStyle} />
           </div>
 
+          <h3>{t.signature}</h3>
+
+          <div
+            style={{
+              ...signatureInputBoxStyle,
+              borderColor: theme.border,
+              background: theme.panelBg,
+              color: theme.panelText,
+            }}
+          >
+            <input
+              placeholder={t.signatureTextPlaceholder}
+              value={signatureText}
+              onChange={(e) => setSignatureText(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <input
+              placeholder={t.signatureImageUrl}
+              value={signatureImageUrl}
+              onChange={(e) => setSignatureImageUrl(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <label
+              style={{
+                ...uploadQrBtnStyle,
+                borderColor: theme.border,
+                color: theme.accent,
+                background: theme.inputBg,
+              }}
+            >
+              {t.uploadSignature}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={uploadSignatureImage}
+                style={{ display: "none" }}
+              />
+            </label>
+
+            {signatureImageUrl || signatureText ? (
+              <div style={signatureMiniPreviewStyle}>
+                {signatureImageUrl ? <img src={signatureImageUrl} style={signatureMiniImageStyle} /> : null}
+                {signatureText ? <strong>{signatureText}</strong> : null}
+              </div>
+            ) : null}
+          </div>
+
           <h3>{t.preview}</h3>
 
           <div
@@ -2808,10 +3006,34 @@ const backBtn: CSSProperties = {
   fontWeight: 900,
 };
 
+const closeXBtnStyle: CSSProperties = {
+  width: "clamp(42px, 10vw, 52px)",
+  height: "clamp(42px, 10vw, 52px)",
+  borderRadius: "999px",
+  border: "2px solid #ef4444",
+  background: "#fee2e2",
+  color: "#dc2626",
+  fontSize: "clamp(24px, 6vw, 34px)",
+  fontWeight: 900,
+  lineHeight: 1,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
 const cardStyle: CSSProperties = {
   border: "3px solid",
   borderRadius: 24,
   padding: "clamp(14px, 4vw, 24px)",
+};
+
+const newFormHeaderStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "auto 1fr",
+  alignItems: "center",
+  gap: "clamp(10px, 3vw, 14px)",
+  marginTop: "-6px",
+  marginBottom: 4,
 };
 
 const listTitleRowStyle: CSSProperties = {
@@ -2839,10 +3061,24 @@ const titleStyle: CSSProperties = {
   lineHeight: 1.15,
 };
 
+const newTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "clamp(24px, 5vw, 34px)",
+  lineHeight: 1.08,
+  fontWeight: 900,
+};
+
 const descStyle: CSSProperties = {
   marginBottom: 20,
   fontSize: "clamp(14px, 2.5vw, 17px)",
   lineHeight: 1.55,
+};
+
+const newDescStyle: CSSProperties = {
+  marginTop: 4,
+  marginBottom: 18,
+  fontSize: "clamp(13px, 2.5vw, 16px)",
+  lineHeight: 1.5,
 };
 
 const invoiceNoBox: CSSProperties = {
@@ -2940,6 +3176,9 @@ const modeBtn = (active: boolean, theme: any): CSSProperties => ({
 const formGrid: CSSProperties = {
   display: "grid",
   gap: 6,
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
 };
 
 const labelStyle: CSSProperties = {
@@ -2950,12 +3189,26 @@ const labelStyle: CSSProperties = {
 
 const inputStyle: CSSProperties = {
   width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
   boxSizing: "border-box",
   padding: "clamp(11px, 3vw, 15px)",
   borderRadius: 12,
   border: "2px solid",
   fontSize: "clamp(14px, 2.7vw, 17px)",
   marginBottom: 8,
+  display: "block",
+};
+
+const dateInputStyle: CSSProperties = {
+  ...inputStyle,
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  overflow: "hidden",
+  WebkitAppearance: "none" as any,
+  appearance: "none" as any,
+  textAlign: "center",
 };
 
 const paymentToggleBtnStyle: CSSProperties = {
@@ -3138,13 +3391,40 @@ const chargeBoxStyle: CSSProperties = {
 
 const chargeInputRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1fr 92px",
+  gridTemplateColumns: "minmax(0, 1fr) 92px",
   gap: 8,
   alignItems: "center",
 };
 
+const signatureInputBoxStyle: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  border: "2px solid",
+  borderRadius: 16,
+  padding: "clamp(12px, 3vw, 16px)",
+  marginBottom: 14,
+};
+
+const signatureMiniPreviewStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  flexWrap: "wrap",
+  background: "#ffffff",
+  border: "1px solid #cbd5e1",
+  borderRadius: 12,
+  padding: 10,
+};
+
+const signatureMiniImageStyle: CSSProperties = {
+  maxWidth: 160,
+  maxHeight: 70,
+  objectFit: "contain",
+};
+
 const screenPreviewWrapStyle: CSSProperties = {
   width: "100%",
+  maxWidth: "100%",
   overflowX: "auto",
   overflowY: "hidden",
   WebkitOverflowScrolling: "touch",
@@ -3355,4 +3635,43 @@ const officialProfitRowStyle: CSSProperties = {
 const officialNoteStyle: CSSProperties = {
   marginTop: 28,
   color: "#64748b",
+};
+
+const officialSignatureWrapStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  marginTop: 44,
+  pageBreakInside: "avoid",
+};
+
+const officialSignatureBoxStyle: CSSProperties = {
+  width: 240,
+  textAlign: "center",
+};
+
+const officialSignatureImageStyle: CSSProperties = {
+  maxWidth: 220,
+  maxHeight: 90,
+  objectFit: "contain",
+  marginBottom: 6,
+};
+
+const officialSignatureTextStyle: CSSProperties = {
+  fontSize: 18,
+  fontWeight: 800,
+  marginBottom: 8,
+  color: "#111827",
+};
+
+const officialSignatureLineStyle: CSSProperties = {
+  borderTop: "1px solid #111827",
+  width: "100%",
+  marginTop: 8,
+};
+
+const officialSignatureLabelStyle: CSSProperties = {
+  marginTop: 6,
+  fontSize: 12,
+  color: "#475569",
+  fontWeight: 800,
 };
