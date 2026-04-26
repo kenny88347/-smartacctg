@@ -84,6 +84,17 @@ const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 const INVOICE_FEE_META_KEY = "smartacctg_invoice_fee_meta";
 
+const BORDER_THIN = "clamp(1px, 0.12em, 2px) solid";
+const BORDER_NORMAL = "clamp(2px, 0.16em, 3px) solid";
+const BORDER_STRONG = "clamp(2px, 0.22em, 4px) solid";
+const BORDER_DASHED = "clamp(1px, 0.14em, 2px) dashed";
+
+const RADIUS_SM = "clamp(8px, 0.75em, 12px)";
+const RADIUS_MD = "clamp(12px, 1em, 16px)";
+const RADIUS_LG = "clamp(16px, 1.35em, 24px)";
+const RADIUS_XL = "clamp(18px, 1.6em, 28px)";
+const RADIUS_FULL = "999px";
+
 const ZERO_FEE_META: InvoiceFeeMeta = {
   sstMode: "%",
   sstValue: "0",
@@ -2395,14 +2406,21 @@ export default function InvoicePage() {
           }}
         >
           <div style={listHeaderStyle}>
-            <div>
-              <h1 style={{ ...titleStyle, color: theme.accent }}>{t.title}</h1>
+            <div style={listTitleBlockStyle}>
+              <div style={listTitleRowStyle}>
+                <h1 style={{ ...titleStyle, color: theme.accent }}>{t.title}</h1>
+
+                <button
+                  onClick={openNewInvoice}
+                  aria-label={t.newInvoice}
+                  style={{ ...plusBtnStyle, background: theme.accent }}
+                >
+                  +
+                </button>
+              </div>
+
               <p style={{ ...descStyle, color: theme.muted }}>{t.latestInvoices}</p>
             </div>
-
-            <button onClick={openNewInvoice} style={{ ...plusBtnStyle, background: theme.accent }}>
-              +
-            </button>
           </div>
 
           <input
@@ -2869,50 +2887,60 @@ const langRowStyle: CSSProperties = {
 
 const langBtn = (active: boolean, theme: any): CSSProperties => ({
   padding: "clamp(7px, 2vw, 10px) clamp(10px, 3vw, 14px)",
-  borderRadius: 999,
-  border: `2px solid ${theme.accent}`,
+  borderRadius: RADIUS_FULL,
+  border: `${BORDER_NORMAL} ${theme.accent}`,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
 });
 
 const themeSelectStyle: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 999,
+  border: BORDER_NORMAL,
+  borderRadius: RADIUS_FULL,
   padding: "clamp(7px, 2vw, 10px) clamp(9px, 3vw, 14px)",
   fontWeight: 900,
 };
 
 const backBtn: CSSProperties = {
   background: "#fff",
-  border: "2px solid",
-  borderRadius: 12,
+  border: BORDER_NORMAL,
+  borderRadius: RADIUS_SM,
   padding: "clamp(9px, 2.5vw, 12px) clamp(12px, 3vw, 18px)",
   fontWeight: 900,
 };
 
 const cardStyle: CSSProperties = {
-  border: "3px solid",
-  borderRadius: "clamp(18px, 4vw, 28px)",
+  border: BORDER_STRONG,
+  borderRadius: RADIUS_XL,
   padding: "clamp(14px, 4vw, 24px)",
 };
 
 const listHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 12,
-  flexWrap: "wrap",
+  width: "100%",
+  marginBottom: 12,
+};
+
+const listTitleBlockStyle: CSSProperties = {
+  width: "100%",
+};
+
+const listTitleRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr auto",
+  alignItems: "center",
+  gap: "clamp(10px, 3vw, 16px)",
+  width: "100%",
 };
 
 const plusBtnStyle: CSSProperties = {
   width: "clamp(44px, 10vw, 54px)",
   height: "clamp(44px, 10vw, 54px)",
-  borderRadius: "999px",
+  borderRadius: RADIUS_FULL,
   border: "none",
   color: "#fff",
   fontSize: "clamp(24px, 6vw, 32px)",
   fontWeight: 900,
+  flexShrink: 0,
 };
 
 const titleStyle: CSSProperties = {
@@ -2928,8 +2956,8 @@ const descStyle: CSSProperties = {
 };
 
 const invoiceNoBox: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 14,
+  border: BORDER_NORMAL,
+  borderRadius: RADIUS_SM,
   padding: "clamp(10px, 3vw, 14px)",
   marginBottom: 20,
   fontSize: "clamp(14px, 2.8vw, 17px)",
@@ -2945,8 +2973,8 @@ const invoiceItemStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 12,
-  border: "2px solid",
-  borderRadius: 16,
+  border: BORDER_NORMAL,
+  borderRadius: RADIUS_MD,
   padding: "clamp(12px, 3vw, 16px)",
   flexWrap: "wrap",
 };
@@ -2968,7 +2996,7 @@ const recordEditBtnStyle: CSSProperties = {
   border: "none",
   background: "#0f766e",
   color: "#fff",
-  borderRadius: 8,
+  borderRadius: RADIUS_SM,
   padding: "6px 9px",
   fontSize: "clamp(12px, 2.4vw, 13px)",
   fontWeight: 900,
@@ -2978,7 +3006,7 @@ const recordDeleteBtnStyle: CSSProperties = {
   border: "none",
   background: "#fee2e2",
   color: "#b91c1c",
-  borderRadius: 8,
+  borderRadius: RADIUS_SM,
   padding: "6px 9px",
   fontSize: "clamp(12px, 2.4vw, 13px)",
   fontWeight: 900,
@@ -2988,17 +3016,18 @@ const recordWhatsappBtnStyle: CSSProperties = {
   border: "none",
   background: "#25D366",
   color: "#fff",
-  borderRadius: 8,
+  borderRadius: RADIUS_SM,
   padding: "6px 8px",
   fontSize: "clamp(11px, 2.3vw, 13px)",
   fontWeight: 900,
 };
 
 const recordShareBtnStyle: CSSProperties = {
-  border: "1px solid #0f766e",
+  border: BORDER_THIN,
+  borderColor: "#0f766e",
   background: "#fff",
   color: "#0f766e",
-  borderRadius: 8,
+  borderRadius: RADIUS_SM,
   padding: "6px 9px",
   fontSize: "clamp(12px, 2.4vw, 13px)",
   fontWeight: 900,
@@ -3017,8 +3046,8 @@ const switchRow: CSSProperties = {
 
 const modeBtn = (active: boolean, theme: any): CSSProperties => ({
   padding: "clamp(10px, 2.8vw, 14px)",
-  borderRadius: 12,
-  border: `2px solid ${theme.accent}`,
+  borderRadius: RADIUS_SM,
+  border: `${BORDER_NORMAL} ${theme.accent}`,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
@@ -3039,16 +3068,16 @@ const inputStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   padding: "clamp(11px, 3vw, 15px)",
-  borderRadius: 12,
-  border: "2px solid",
+  borderRadius: RADIUS_SM,
+  border: BORDER_NORMAL,
   fontSize: "clamp(14px, 2.7vw, 17px)",
   marginBottom: 8,
 };
 
 const paymentToggleBtnStyle: CSSProperties = {
   width: "100%",
-  border: "2px solid",
-  borderRadius: 12,
+  border: BORDER_NORMAL,
+  borderRadius: RADIUS_SM,
   padding: "clamp(11px, 3vw, 14px)",
   fontWeight: 900,
   marginBottom: 10,
@@ -3057,8 +3086,8 @@ const paymentToggleBtnStyle: CSSProperties = {
 const paymentAddBoxStyle: CSSProperties = {
   display: "grid",
   gap: 8,
-  border: "1px dashed",
-  borderRadius: 16,
+  border: BORDER_DASHED,
+  borderRadius: RADIUS_MD,
   padding: "clamp(10px, 3vw, 14px)",
   marginBottom: 10,
 };
@@ -3067,8 +3096,8 @@ const uploadQrBtnStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  border: "2px solid",
-  borderRadius: 12,
+  border: BORDER_NORMAL,
+  borderRadius: RADIUS_SM,
   padding: "clamp(10px, 3vw, 14px)",
   fontWeight: 900,
   cursor: "pointer",
@@ -3078,8 +3107,9 @@ const qrPreviewStyle: CSSProperties = {
   width: "clamp(92px, 22vw, 120px)",
   height: "clamp(92px, 22vw, 120px)",
   objectFit: "contain",
-  border: "1px solid #cbd5e1",
-  borderRadius: 12,
+  border: BORDER_THIN,
+  borderColor: "#cbd5e1",
+  borderRadius: RADIUS_SM,
   background: "#fff",
   padding: 6,
 };
@@ -3087,7 +3117,7 @@ const qrPreviewStyle: CSSProperties = {
 const addBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
-  borderRadius: 12,
+  borderRadius: RADIUS_SM,
   padding: "clamp(11px, 3vw, 15px)",
   fontWeight: 900,
 };
@@ -3103,8 +3133,8 @@ const paymentChipStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 8,
-  border: "1px solid",
-  borderRadius: 999,
+  border: BORDER_THIN,
+  borderRadius: RADIUS_FULL,
   padding: "6px 10px",
   fontWeight: 800,
   fontSize: "clamp(12px, 2.5vw, 15px)",
@@ -3115,7 +3145,7 @@ const paymentChipDeleteStyle: CSSProperties = {
   color: "#fff",
   width: 22,
   height: 22,
-  borderRadius: "999px",
+  borderRadius: RADIUS_FULL,
   fontWeight: 900,
 };
 
@@ -3123,30 +3153,30 @@ const companyBox: CSSProperties = {
   display: "flex",
   gap: 14,
   alignItems: "center",
-  border: "2px solid",
-  borderRadius: 16,
+  border: BORDER_NORMAL,
+  borderRadius: RADIUS_MD,
   padding: "clamp(12px, 3vw, 16px)",
   flexWrap: "wrap",
 };
 
 const companyEditBoxStyle: CSSProperties = {
   marginTop: 12,
-  border: "2px dashed",
-  borderRadius: 16,
+  border: BORDER_DASHED,
+  borderRadius: RADIUS_MD,
   padding: "clamp(12px, 3vw, 16px)",
 };
 
 const logoStyle: CSSProperties = {
   width: "clamp(64px, 15vw, 80px)",
   height: "clamp(64px, 15vw, 80px)",
-  borderRadius: 12,
+  borderRadius: RADIUS_SM,
   objectFit: "cover",
 };
 
 const logoPlaceholder: CSSProperties = {
   width: "clamp(64px, 15vw, 80px)",
   height: "clamp(64px, 15vw, 80px)",
-  borderRadius: 12,
+  borderRadius: RADIUS_SM,
   background: "#ccfbf1",
   display: "flex",
   alignItems: "center",
@@ -3156,9 +3186,9 @@ const logoPlaceholder: CSSProperties = {
 };
 
 const editBtnStyle: CSSProperties = {
-  border: "2px solid",
+  border: BORDER_NORMAL,
   background: "#fff",
-  borderRadius: 12,
+  borderRadius: RADIUS_SM,
   padding: "clamp(9px, 2.5vw, 12px)",
   fontWeight: 900,
 };
@@ -3166,7 +3196,7 @@ const editBtnStyle: CSSProperties = {
 const submitSmallBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
-  borderRadius: 12,
+  borderRadius: RADIUS_SM,
   padding: "clamp(11px, 3vw, 14px)",
   fontWeight: 900,
 };
@@ -3176,7 +3206,7 @@ const submitBtn: CSSProperties = {
   marginTop: 18,
   padding: "clamp(13px, 3.2vw, 16px)",
   border: "none",
-  borderRadius: 14,
+  borderRadius: RADIUS_SM,
   color: "#fff",
   fontWeight: 900,
   fontSize: "clamp(15px, 3vw, 18px)",
@@ -3191,15 +3221,15 @@ const actionRow: CSSProperties = {
 
 const secondaryBtn: CSSProperties = {
   padding: "clamp(11px, 3vw, 14px)",
-  borderRadius: 12,
-  border: "2px solid",
+  borderRadius: RADIUS_SM,
+  border: BORDER_NORMAL,
   background: "#fff",
   fontWeight: 900,
 };
 
 const whatsappBtn: CSSProperties = {
   padding: "clamp(11px, 3vw, 14px)",
-  borderRadius: 12,
+  borderRadius: RADIUS_SM,
   border: "none",
   background: "#25D366",
   color: "#fff",
@@ -3219,8 +3249,8 @@ const chargeGridStyle: CSSProperties = {
 };
 
 const chargeBoxStyle: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 16,
+  border: BORDER_NORMAL,
+  borderRadius: RADIUS_MD,
   padding: "clamp(10px, 3vw, 14px)",
 };
 
@@ -3237,8 +3267,8 @@ const screenPreviewWrapStyle: CSSProperties = {
   overflowY: "hidden",
   WebkitOverflowScrolling: "touch",
   background: "#f8fafc",
-  border: "2px solid",
-  borderRadius: 18,
+  border: BORDER_NORMAL,
+  borderRadius: RADIUS_LG,
   padding: "clamp(10px, 3vw, 14px)",
   boxSizing: "border-box",
 };
@@ -3329,7 +3359,7 @@ const officialInvoiceNoStyle: CSSProperties = {
 };
 
 const officialLineStyle: CSSProperties = {
-  height: 2,
+  height: "clamp(1px, 0.15em, 2px)",
   background: "#0f766e",
   margin: "18px 0",
 };
@@ -3342,8 +3372,9 @@ const officialInfoGridStyle: CSSProperties = {
 };
 
 const officialInfoBoxStyle: CSSProperties = {
-  border: "1px solid #cbd5e1",
-  borderRadius: 12,
+  border: BORDER_THIN,
+  borderColor: "#cbd5e1",
+  borderRadius: RADIUS_SM,
   padding: 14,
   minHeight: 120,
   lineHeight: 1.6,
@@ -3354,7 +3385,8 @@ const officialInfoRowStyle: CSSProperties = {
   justifyContent: "space-between",
   gap: 12,
   padding: "7px 0",
-  borderBottom: "1px solid #e2e8f0",
+  borderBottom: BORDER_THIN,
+  borderBottomColor: "#e2e8f0",
 };
 
 const officialPaymentMethodRowStyle: CSSProperties = {
@@ -3382,8 +3414,9 @@ const officialInlineQrStyle: CSSProperties = {
   height: 82,
   objectFit: "contain",
   marginTop: 8,
-  border: "1px solid #cbd5e1",
-  borderRadius: 8,
+  border: BORDER_THIN,
+  borderColor: "#cbd5e1",
+  borderRadius: RADIUS_SM,
   padding: 4,
   background: "#fff",
 };
@@ -3395,14 +3428,16 @@ const officialTableStyle: CSSProperties = {
 };
 
 const officialThStyle: CSSProperties = {
-  border: "1px solid #cbd5e1",
+  border: BORDER_THIN,
+  borderColor: "#cbd5e1",
   padding: "10px 8px",
   textAlign: "left",
   fontWeight: 900,
 };
 
 const officialTdStyle: CSSProperties = {
-  border: "1px solid #cbd5e1",
+  border: BORDER_THIN,
+  borderColor: "#cbd5e1",
   padding: "12px 8px",
 };
 
@@ -3417,7 +3452,8 @@ const officialSummaryRowStyle: CSSProperties = {
   justifyContent: "space-between",
   gap: 10,
   padding: "10px 0",
-  borderBottom: "1px solid #e2e8f0",
+  borderBottom: BORDER_THIN,
+  borderBottomColor: "#e2e8f0",
 };
 
 const officialTotalRowStyle: CSSProperties = {
