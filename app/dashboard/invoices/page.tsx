@@ -52,9 +52,10 @@ type InvoiceRecord = {
 type PaymentOption = {
   id: string;
   name: string;
+  bankAccount?: string;
+  receiverName?: string;
   link?: string;
   qrCodeUrl?: string;
-  bankAccount?: string;
 };
 
 const TRIAL_KEY = "smartacctg_trial";
@@ -72,67 +73,103 @@ const THEMES: Record<ThemeKey, any> = {
     name: "深青色",
     pageBg: "#ecfdf5",
     card: "#ffffff",
+    panelBg: "#f8fafc",
+    itemBg: "#f8fafc",
+    inputBg: "#ffffff",
     border: "#14b8a6",
     glow:
       "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
     accent: "#0f766e",
     text: "#064e3b",
+    panelText: "#111827",
+    inputText: "#111827",
+    muted: "#64748b",
   },
   pink: {
     name: "可愛粉色",
     pageBg: "#fff7fb",
     card: "#ffffff",
+    panelBg: "#fdf2f8",
+    itemBg: "#fdf2f8",
+    inputBg: "#ffffff",
     border: "#f472b6",
     glow:
       "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
     accent: "#db2777",
     text: "#4a044e",
+    panelText: "#111827",
+    inputText: "#111827",
+    muted: "#64748b",
   },
   blackGold: {
     name: "黑金商務",
     pageBg: "#111111",
     card: "#1f1f1f",
+    panelBg: "#2a2a2a",
+    itemBg: "#2a2a2a",
+    inputBg: "#ffffff",
     border: "#facc15",
     glow:
       "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
     accent: "#d4af37",
     text: "#fff7ed",
+    panelText: "#fff7ed",
+    inputText: "#111827",
+    muted: "#d6d3d1",
   },
   lightRed: {
     name: "可愛淺紅",
     pageBg: "#fff1f2",
     card: "#ffffff",
+    panelBg: "#fff1f2",
+    itemBg: "#fff1f2",
+    inputBg: "#ffffff",
     border: "#fb7185",
     glow:
       "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
     accent: "#e11d48",
     text: "#881337",
+    panelText: "#111827",
+    inputText: "#111827",
+    muted: "#64748b",
   },
   nature: {
     name: "風景自然系",
     pageBg: "#f0fdf4",
     card: "#ffffff",
+    panelBg: "#f8fafc",
+    itemBg: "#f8fafc",
+    inputBg: "#ffffff",
     border: "#22d3ee",
     glow:
       "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
     accent: "#0f766e",
     text: "#14532d",
+    panelText: "#111827",
+    inputText: "#111827",
+    muted: "#64748b",
   },
   sky: {
     name: "天空藍",
     pageBg: "#eff6ff",
     card: "#ffffff",
+    panelBg: "#f8fafc",
+    itemBg: "#f8fafc",
+    inputBg: "#ffffff",
     border: "#38bdf8",
     glow:
       "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
     accent: "#0284c7",
     text: "#0f172a",
+    panelText: "#111827",
+    inputText: "#111827",
+    muted: "#64748b",
   },
 };
 
 const DEFAULT_PAYMENT_OPTIONS: PaymentOption[] = [
   { id: "cash", name: "Cash" },
-  { id: "bank-transfer", name: "Bank Transfer", bankAccount: "" },
+  { id: "bank-transfer", name: "Bank Transfer", bankAccount: "", receiverName: "" },
   { id: "duitnow-qr", name: "DuitNow QR", qrCodeUrl: "" },
   { id: "tng-ewallet", name: "TNG eWallet", link: "" },
   { id: "credit-term", name: "Credit Term" },
@@ -169,11 +206,12 @@ const TXT = {
     addPayment: "新增付款方式",
     deletePayment: "删除",
     paymentName: "付款名称，例如 MAYBANK / DuitNow QR",
+    paymentBankAccount: "银行户口",
+    paymentReceiverName: "收款名字",
     paymentLink: "付款链接，例如 Billplz / TNG Link",
     paymentQr: "QR Code 图片 URL",
     uploadQr: "上传 QR 图",
     qrUploaded: "QR 图已上传",
-    paymentBank: "银行户口 / 户口号码 / 户口名",
     note: "备注",
     companyInfo: "2. 公司资料",
     editCompany: "编辑公司资料 / Logo",
@@ -269,11 +307,12 @@ const TXT = {
     addPayment: "Add Payment Method",
     deletePayment: "Delete",
     paymentName: "Payment name, e.g. MAYBANK / DuitNow QR",
+    paymentBankAccount: "Bank Account",
+    paymentReceiverName: "Receiver Name",
     paymentLink: "Payment link, e.g. Billplz / TNG Link",
     paymentQr: "QR Code Image URL",
     uploadQr: "Upload QR Image",
     qrUploaded: "QR image uploaded",
-    paymentBank: "Bank account / Account No / Account Name",
     note: "Note",
     companyInfo: "2. Company Info",
     editCompany: "Edit Company Info / Logo",
@@ -369,11 +408,12 @@ const TXT = {
     addPayment: "Tambah Cara Bayaran",
     deletePayment: "Padam",
     paymentName: "Nama bayaran, cth. MAYBANK / DuitNow QR",
+    paymentBankAccount: "Akaun Bank",
+    paymentReceiverName: "Nama Penerima",
     paymentLink: "Pautan bayaran, cth. Billplz / TNG Link",
     paymentQr: "URL Gambar QR Code",
     uploadQr: "Muat Naik Gambar QR",
     qrUploaded: "Gambar QR dimuat naik",
-    paymentBank: "Akaun bank / No akaun / Nama akaun",
     note: "Nota",
     companyInfo: "2. Maklumat Syarikat",
     editCompany: "Ubah Maklumat Syarikat / Logo",
@@ -495,9 +535,10 @@ function normalizePaymentOptions(value: any): PaymentOption[] {
         return {
           id: makeId("pay"),
           name: item,
+          bankAccount: "",
+          receiverName: "",
           link: "",
           qrCodeUrl: "",
-          bankAccount: "",
         };
       }
 
@@ -505,9 +546,10 @@ function normalizePaymentOptions(value: any): PaymentOption[] {
         return {
           id: item.id || makeId("pay"),
           name: String(item.name),
+          bankAccount: item.bankAccount || "",
+          receiverName: item.receiverName || "",
           link: item.link || "",
           qrCodeUrl: item.qrCodeUrl || "",
-          bankAccount: item.bankAccount || "",
         };
       }
 
@@ -562,9 +604,10 @@ export default function InvoicePage() {
     useState<PaymentOption[]>(DEFAULT_PAYMENT_OPTIONS);
 
   const [newPaymentName, setNewPaymentName] = useState("");
+  const [newPaymentBankAccount, setNewPaymentBankAccount] = useState("");
+  const [newPaymentReceiverName, setNewPaymentReceiverName] = useState("");
   const [newPaymentLink, setNewPaymentLink] = useState("");
   const [newPaymentQr, setNewPaymentQr] = useState("");
-  const [newPaymentBank, setNewPaymentBank] = useState("");
 
   const [qty, setQty] = useState("1");
   const [extraDiscount, setExtraDiscount] = useState("0");
@@ -595,6 +638,26 @@ export default function InvoicePage() {
     paymentOptions.find((p) => p.id === paymentMethod) || paymentOptions[0];
 
   const paymentMethodText = selectedPayment?.name || paymentMethod || "-";
+
+  const themedInputStyle: CSSProperties = {
+    ...inputStyle,
+    borderColor: theme.border,
+    background: theme.inputBg,
+    color: theme.inputText,
+  };
+
+  const themedTextareaStyle: CSSProperties = {
+    ...textareaStyle,
+    borderColor: theme.border,
+    background: theme.inputBg,
+    color: theme.inputText,
+  };
+
+  const themedPanelStyle: CSSProperties = {
+    background: theme.panelBg,
+    color: theme.panelText,
+    borderColor: theme.border,
+  };
 
   useEffect(() => {
     init();
@@ -841,7 +904,7 @@ export default function InvoicePage() {
     localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
   }
 
-  async function uploadPaymentQr(e: React.ChangeEvent<HTMLInputElement>) {
+  async function uploadPaymentQr(e: any) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -861,9 +924,10 @@ export default function InvoicePage() {
     const nextOption: PaymentOption = {
       id: makeId("pay"),
       name,
+      bankAccount: newPaymentBankAccount.trim(),
+      receiverName: newPaymentReceiverName.trim(),
       link: newPaymentLink.trim(),
       qrCodeUrl: newPaymentQr.trim(),
-      bankAccount: newPaymentBank.trim(),
     };
 
     const next = [...paymentOptions, nextOption];
@@ -871,9 +935,10 @@ export default function InvoicePage() {
     savePaymentOptions(next);
     setPaymentMethod(nextOption.id);
     setNewPaymentName("");
+    setNewPaymentBankAccount("");
+    setNewPaymentReceiverName("");
     setNewPaymentLink("");
     setNewPaymentQr("");
-    setNewPaymentBank("");
   }
 
   function deletePaymentOption(id: string) {
@@ -1615,10 +1680,16 @@ export default function InvoicePage() {
     const method = record?.payment_method || paymentMethodText;
     const pay = getPaymentForInvoice(record);
 
+    const qrText =
+      pay?.qrCodeUrl && !pay.qrCodeUrl.startsWith("data:")
+        ? `QR Code：${pay.qrCodeUrl}`
+        : "";
+
     const paymentDetailText = [
-      pay?.bankAccount ? `${t.paymentDetails}：${pay.bankAccount}` : "",
+      pay?.bankAccount ? `${t.paymentBankAccount}：${pay.bankAccount}` : "",
+      pay?.receiverName ? `${t.paymentReceiverName}：${pay.receiverName}` : "",
       pay?.link ? `Payment Link：${pay.link}` : "",
-      pay?.qrCodeUrl ? `QR Code：${pay.qrCodeUrl}` : "",
+      qrText,
     ]
       .filter(Boolean)
       .join("%0A");
@@ -1812,9 +1883,13 @@ export default function InvoicePage() {
 
                 {pay?.bankAccount ? (
                   <div style={officialPaymentDetailTextStyle}>
-                    {pay.bankAccount.split("\n").map((line, index) => (
-                      <div key={index}>{line}</div>
-                    ))}
+                    <div>{t.paymentBankAccount}：{pay.bankAccount}</div>
+                  </div>
+                ) : null}
+
+                {pay?.receiverName ? (
+                  <div style={officialPaymentDetailTextStyle}>
+                    <div>{t.paymentReceiverName}：{pay.receiverName}</div>
                   </div>
                 ) : null}
 
@@ -1928,7 +2003,8 @@ export default function InvoicePage() {
             style={{
               ...themeSelectStyle,
               borderColor: theme.border,
-              color: theme.accent,
+              color: theme.inputText,
+              background: theme.inputBg,
             }}
           >
             {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
@@ -1960,12 +2036,13 @@ export default function InvoicePage() {
             background: theme.card,
             borderColor: theme.border,
             boxShadow: theme.glow,
+            color: theme.text,
           }}
         >
           <div style={listHeaderStyle}>
             <div>
               <h1 style={{ ...titleStyle, color: theme.accent }}>{t.title}</h1>
-              <p style={descStyle}>{t.latestInvoices}</p>
+              <p style={{ ...descStyle, color: theme.muted }}>{t.latestInvoices}</p>
             </div>
 
             <button onClick={openNewInvoice} style={{ ...plusBtnStyle, background: theme.accent }}>
@@ -1977,11 +2054,11 @@ export default function InvoicePage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.searchPlaceholder}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           />
 
           {filteredInvoices.length === 0 ? (
-            <p style={emptyStyle}>{t.noInvoice}</p>
+            <p style={{ ...emptyStyle, color: theme.muted }}>{t.noInvoice}</p>
           ) : (
             <div style={invoiceListStyle}>
               {filteredInvoices.map((inv) => (
@@ -1989,17 +2066,19 @@ export default function InvoicePage() {
                   key={inv.id}
                   style={{
                     ...invoiceItemStyle,
+                    background: theme.itemBg,
+                    color: theme.panelText,
                     borderColor: theme.border,
                     boxShadow: theme.glow,
                   }}
                 >
                   <div style={{ flex: 1 }}>
                     <strong>{inv.invoice_no}</strong>
-                    <div style={mutedTextStyle}>
+                    <div style={{ ...mutedTextStyle, color: theme.muted }}>
                       {inv.customer_name || "-"}{" "}
                       {inv.customer_company ? `｜${inv.customer_company}` : ""}
                     </div>
-                    <div style={mutedTextStyle}>
+                    <div style={{ ...mutedTextStyle, color: theme.muted }}>
                       {inv.invoice_date || "-"}｜{inv.customer_phone || "-"}
                     </div>
 
@@ -2044,6 +2123,7 @@ export default function InvoicePage() {
             background: theme.card,
             borderColor: theme.border,
             boxShadow: theme.glow,
+            color: theme.text,
           }}
         >
           <button
@@ -2056,9 +2136,14 @@ export default function InvoicePage() {
           <h1 style={{ ...titleStyle, color: theme.accent }}>
             {editInvoiceId ? t.edit : t.createTitle}
           </h1>
-          <p style={descStyle}>{t.desc}</p>
+          <p style={{ ...descStyle, color: theme.muted }}>{t.desc}</p>
 
-          <div style={{ ...invoiceNoBox, borderColor: theme.border }}>
+          <div
+            style={{
+              ...invoiceNoBox,
+              ...themedPanelStyle,
+            }}
+          >
             <strong>Invoice No：</strong> {invoiceNo}
           </div>
 
@@ -2070,7 +2155,7 @@ export default function InvoicePage() {
               type="date"
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
-              style={{ ...smallDateInput, borderColor: theme.border }}
+              style={{ ...themedInputStyle, maxWidth: 220 }}
             />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.dueDate}</label>
@@ -2078,14 +2163,14 @@ export default function InvoicePage() {
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              style={{ ...smallDateInput, borderColor: theme.border }}
+              style={{ ...themedInputStyle, maxWidth: 220 }}
             />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.status}</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              style={{ ...inputStyle, borderColor: theme.border }}
+              style={themedInputStyle}
             >
               <option value="draft">{t.draft}</option>
               <option value="sent">{t.sent}</option>
@@ -2097,7 +2182,7 @@ export default function InvoicePage() {
             <select
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              style={{ ...inputStyle, borderColor: theme.border }}
+              style={themedInputStyle}
             >
               {paymentOptions.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -2106,33 +2191,47 @@ export default function InvoicePage() {
               ))}
             </select>
 
-            <div style={paymentAddBoxStyle}>
+            <div
+              style={{
+                ...paymentAddBoxStyle,
+                borderColor: theme.border,
+                background: theme.panelBg,
+                color: theme.panelText,
+              }}
+            >
               <input
                 value={newPaymentName}
                 onChange={(e) => setNewPaymentName(e.target.value)}
                 placeholder={t.paymentName}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
 
-              <textarea
-                value={newPaymentBank}
-                onChange={(e) => setNewPaymentBank(e.target.value)}
-                placeholder={`${t.paymentBank}\n例如：\nMAYBANK\n111111111111111\nNK DIGITA HUB`}
-                style={{ ...textareaStyle, borderColor: theme.border }}
+              <input
+                value={newPaymentBankAccount}
+                onChange={(e) => setNewPaymentBankAccount(e.target.value)}
+                placeholder={t.paymentBankAccount}
+                style={themedInputStyle}
+              />
+
+              <input
+                value={newPaymentReceiverName}
+                onChange={(e) => setNewPaymentReceiverName(e.target.value)}
+                placeholder={t.paymentReceiverName}
+                style={themedInputStyle}
               />
 
               <input
                 value={newPaymentLink}
                 onChange={(e) => setNewPaymentLink(e.target.value)}
                 placeholder={t.paymentLink}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
 
               <input
                 value={newPaymentQr}
                 onChange={(e) => setNewPaymentQr(e.target.value)}
                 placeholder={t.paymentQr}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
 
               <label
@@ -2140,6 +2239,7 @@ export default function InvoicePage() {
                   ...uploadQrBtnStyle,
                   borderColor: theme.border,
                   color: theme.accent,
+                  background: theme.inputBg,
                 }}
               >
                 {t.uploadQr}
@@ -2168,6 +2268,7 @@ export default function InvoicePage() {
                     ...paymentChipStyle,
                     borderColor: theme.border,
                     color: theme.accent,
+                    background: theme.inputBg,
                   }}
                 >
                   <span>{p.name}</span>
@@ -2186,19 +2287,24 @@ export default function InvoicePage() {
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={t.note}
-              style={{ ...inputStyle, borderColor: theme.border }}
+              style={themedInputStyle}
             />
           </div>
 
           <h3>{t.companyInfo}</h3>
 
-          <div style={{ ...companyBox, borderColor: theme.border }}>
+          <div
+            style={{
+              ...companyBox,
+              ...themedPanelStyle,
+            }}
+          >
             {companyLogoUrl ? (
               <img src={companyLogoUrl} style={logoStyle} />
             ) : (
               <div style={logoPlaceholder}>LOGO</div>
             )}
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, color: theme.panelText }}>
               <strong>{companyName}</strong>
               <div>SSM：{companyRegNo || "-"}</div>
               <div>{t.phone}：{companyPhone || "-"}</div>
@@ -2214,36 +2320,43 @@ export default function InvoicePage() {
           </div>
 
           {showCompanyEdit && (
-            <div style={{ ...companyEditBoxStyle, borderColor: theme.border }}>
+            <div
+              style={{
+                ...companyEditBoxStyle,
+                borderColor: theme.border,
+                background: theme.panelBg,
+                color: theme.panelText,
+              }}
+            >
               <input
                 placeholder={t.companyLogoUrl}
                 value={companyLogoUrl}
                 onChange={(e) => setCompanyLogoUrl(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.companyName}
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.companyRegNo}
                 value={companyRegNo}
                 onChange={(e) => setCompanyRegNo(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.phone}
                 value={companyPhone}
                 onChange={(e) => setCompanyPhone(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.address}
                 value={companyAddress}
                 onChange={(e) => setCompanyAddress(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <button onClick={saveCompanyInfo} style={{ ...submitSmallBtnStyle, background: theme.accent }}>
                 {t.saveCompany}
@@ -2272,7 +2385,7 @@ export default function InvoicePage() {
             <select
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
-              style={{ ...inputStyle, borderColor: theme.border }}
+              style={themedInputStyle}
             >
               <option value="">{t.chooseCustomer}</option>
               {customers.map((c) => (
@@ -2287,25 +2400,25 @@ export default function InvoicePage() {
                 placeholder={t.customerName}
                 value={newCustomerName}
                 onChange={(e) => setNewCustomerName(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.customerPhone}
                 value={newCustomerPhone}
                 onChange={(e) => setNewCustomerPhone(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.customerCompany}
                 value={newCustomerCompany}
                 onChange={(e) => setNewCustomerCompany(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.customerAddress}
                 value={newCustomerAddress}
                 onChange={(e) => setNewCustomerAddress(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
             </div>
           )}
@@ -2331,7 +2444,7 @@ export default function InvoicePage() {
             <select
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
-              style={{ ...inputStyle, borderColor: theme.border }}
+              style={themedInputStyle}
             >
               <option value="">{t.chooseProduct}</option>
               {products.map((p) => (
@@ -2347,25 +2460,25 @@ export default function InvoicePage() {
                 placeholder={t.productName}
                 value={newProductName}
                 onChange={(e) => setNewProductName(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.price}
                 value={newProductPrice}
                 onChange={(e) => setNewProductPrice(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.cost}
                 value={newProductCost}
                 onChange={(e) => setNewProductCost(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
               <input
                 placeholder={t.stock}
                 value={newProductStock}
                 onChange={(e) => setNewProductStock(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
             </div>
           )}
@@ -2377,28 +2490,28 @@ export default function InvoicePage() {
             <input
               value={qty}
               onChange={(e) => setQty(e.target.value)}
-              style={{ ...inputStyle, borderColor: theme.border }}
+              style={themedInputStyle}
             />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.extraDiscount}</label>
             <input
               value={extraDiscount}
               onChange={(e) => setExtraDiscount(e.target.value)}
-              style={{ ...inputStyle, borderColor: theme.border }}
+              style={themedInputStyle}
             />
           </div>
 
           <h3>{t.lhdn}</h3>
 
           <div style={formGrid}>
-            <input placeholder="Supplier TIN" value={supplierTin} onChange={(e) => setSupplierTin(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
-            <input placeholder="Buyer TIN" value={buyerTin} onChange={(e) => setBuyerTin(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
-            <input placeholder="SST No" value={sstNo} onChange={(e) => setSstNo(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
-            <input placeholder="MSIC Code" value={msicCode} onChange={(e) => setMsicCode(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
-            <input placeholder="e-Invoice UUID" value={einvoiceUuid} onChange={(e) => setEinvoiceUuid(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
-            <input placeholder="Validation Status" value={validationStatus} onChange={(e) => setValidationStatus(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
-            <input placeholder="QR Code URL" value={qrCodeUrl} onChange={(e) => setQrCodeUrl(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
-            <input placeholder="MyInvois Submission Status" value={myinvoisStatus} onChange={(e) => setMyinvoisStatus(e.target.value)} style={{ ...inputStyle, borderColor: theme.border }} />
+            <input placeholder="Supplier TIN" value={supplierTin} onChange={(e) => setSupplierTin(e.target.value)} style={themedInputStyle} />
+            <input placeholder="Buyer TIN" value={buyerTin} onChange={(e) => setBuyerTin(e.target.value)} style={themedInputStyle} />
+            <input placeholder="SST No" value={sstNo} onChange={(e) => setSstNo(e.target.value)} style={themedInputStyle} />
+            <input placeholder="MSIC Code" value={msicCode} onChange={(e) => setMsicCode(e.target.value)} style={themedInputStyle} />
+            <input placeholder="e-Invoice UUID" value={einvoiceUuid} onChange={(e) => setEinvoiceUuid(e.target.value)} style={themedInputStyle} />
+            <input placeholder="Validation Status" value={validationStatus} onChange={(e) => setValidationStatus(e.target.value)} style={themedInputStyle} />
+            <input placeholder="QR Code URL" value={qrCodeUrl} onChange={(e) => setQrCodeUrl(e.target.value)} style={themedInputStyle} />
+            <input placeholder="MyInvois Submission Status" value={myinvoisStatus} onChange={(e) => setMyinvoisStatus(e.target.value)} style={themedInputStyle} />
           </div>
 
           <h3>{t.preview}</h3>
@@ -2489,7 +2602,6 @@ const langBtn = (active: boolean, theme: any): CSSProperties => ({
 });
 
 const themeSelectStyle: CSSProperties = {
-  background: "#fff",
   border: "2px solid",
   borderRadius: 999,
   padding: "8px 10px",
@@ -2533,12 +2645,10 @@ const titleStyle: CSSProperties = {
 };
 
 const descStyle: CSSProperties = {
-  color: "#64748b",
   marginBottom: 20,
 };
 
 const invoiceNoBox: CSSProperties = {
-  background: "#ecfdf5",
   border: "2px solid",
   borderRadius: 14,
   padding: 12,
@@ -2558,11 +2668,9 @@ const invoiceItemStyle: CSSProperties = {
   border: "2px solid",
   borderRadius: 16,
   padding: 14,
-  background: "#f8fafc",
 };
 
 const mutedTextStyle: CSSProperties = {
-  color: "#64748b",
   fontSize: 13,
   marginTop: 4,
 };
@@ -2615,7 +2723,6 @@ const recordShareBtnStyle: CSSProperties = {
 };
 
 const emptyStyle: CSSProperties = {
-  color: "#64748b",
   fontWeight: 800,
 };
 
@@ -2669,15 +2776,10 @@ const textareaStyle: CSSProperties = {
   whiteSpace: "pre-wrap",
 };
 
-const smallDateInput: CSSProperties = {
-  ...inputStyle,
-  maxWidth: 220,
-};
-
 const paymentAddBoxStyle: CSSProperties = {
   display: "grid",
   gap: 8,
-  border: "1px dashed #cbd5e1",
+  border: "1px dashed",
   borderRadius: 16,
   padding: 12,
   marginBottom: 10,
@@ -2687,7 +2789,6 @@ const uploadQrBtnStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "#fff",
   border: "2px solid",
   borderRadius: 12,
   padding: "12px 14px",
@@ -2724,7 +2825,6 @@ const paymentChipStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 8,
-  background: "#ecfdf5",
   border: "1px solid",
   borderRadius: 999,
   padding: "6px 10px",
@@ -2744,7 +2844,6 @@ const companyBox: CSSProperties = {
   display: "flex",
   gap: 14,
   alignItems: "center",
-  background: "#f8fafc",
   border: "2px solid",
   borderRadius: 16,
   padding: 14,
