@@ -24,14 +24,7 @@ type Product = {
   cost: number;
   discount?: number | null;
   stock_qty?: number | null;
-  stock?: number | null;
-  stock_quantity?: number | null;
-  quantity?: number | null;
-  qty?: number | null;
-  inventory_qty?: number | null;
-  current_stock?: number | null;
   note?: string | null;
-  _stockColumn?: string;
 };
 
 type InvoiceRecord = {
@@ -76,16 +69,6 @@ const THEME_KEY = "smartacctg_theme";
 
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
-
-const STOCK_COLUMN_CANDIDATES = [
-  "stock_qty",
-  "stock",
-  "stock_quantity",
-  "quantity",
-  "qty",
-  "inventory_qty",
-  "current_stock",
-];
 
 const THEMES: Record<ThemeKey, any> = {
   deepTeal: {
@@ -210,7 +193,7 @@ const TXT = {
     latestInvoices: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
     searchPlaceholder: "搜索发票号、客户名字、公司名字、电话号码",
     noInvoice: "还没有发票记录",
-    recordDateTime: "日期时间",
+    recordDateTime: "日期 / 时间",
     createTitle: "专业发票系统",
     desc: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
     invoiceInfo: "1. 发票资料",
@@ -223,7 +206,8 @@ const TXT = {
     cancelled: "取消",
     paymentMethod: "付款方式",
     paymentDetails: "付款资料",
-    addPayment: "新增付款方式",
+    addPayment: "+ 新增付款方式",
+    closePayment: "收起新增付款方式",
     deletePayment: "删除",
     paymentName: "付款名称，例如 MAYBANK / DuitNow QR",
     paymentBankAccount: "银行户口",
@@ -310,7 +294,7 @@ const TXT = {
     latestInvoices: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock",
     searchPlaceholder: "Search invoice no, customer, company, phone",
     noInvoice: "No invoice records yet",
-    recordDateTime: "Date Time",
+    recordDateTime: "Date / Time",
     createTitle: "Professional Invoice System",
     desc: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock Deduction",
     invoiceInfo: "1. Invoice Info",
@@ -323,7 +307,8 @@ const TXT = {
     cancelled: "Cancelled",
     paymentMethod: "Payment Method",
     paymentDetails: "Payment Details",
-    addPayment: "Add Payment Method",
+    addPayment: "+ Add Payment Method",
+    closePayment: "Close Payment Form",
     deletePayment: "Delete",
     paymentName: "Payment name, e.g. MAYBANK / DuitNow QR",
     paymentBankAccount: "Bank Account",
@@ -410,7 +395,7 @@ const TXT = {
     latestInvoices: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Stok",
     searchPlaceholder: "Cari no invois, pelanggan, syarikat, telefon",
     noInvoice: "Tiada rekod invois",
-    recordDateTime: "Tarikh Masa",
+    recordDateTime: "Tarikh / Masa",
     createTitle: "Sistem Invois Profesional",
     desc: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Tolak Stok",
     invoiceInfo: "1. Maklumat Invois",
@@ -423,7 +408,8 @@ const TXT = {
     cancelled: "Dibatalkan",
     paymentMethod: "Cara Bayaran",
     paymentDetails: "Maklumat Bayaran",
-    addPayment: "Tambah Cara Bayaran",
+    addPayment: "+ Tambah Cara Bayaran",
+    closePayment: "Tutup Borang Bayaran",
     deletePayment: "Padam",
     paymentName: "Nama bayaran, cth. MAYBANK / DuitNow QR",
     paymentBankAccount: "Akaun Bank",
@@ -506,28 +492,6 @@ function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "-";
-
-  const d = new Date(value);
-
-  if (Number.isNaN(d.getTime())) return value;
-
-  const date = d.toLocaleDateString("zh-MY", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-
-  const time = d.toLocaleTimeString("zh-MY", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
-  return `${date} ${time}`;
-}
-
 function isSchemaColumnError(error: any) {
   const message = String(error?.message || "").toLowerCase();
   return (
@@ -571,66 +535,28 @@ function saveStockValue(productId: string, stock: number) {
   writeStockMap(map);
 }
 
-function getStockFromAnyRow(row: any): { value: number | undefined; column: string } {
-  let firstDefined: { value: number; column: string } | null = null;
-
-  for (const key of STOCK_COLUMN_CANDIDATES) {
-    const raw = row?.[key];
-
-    if (raw === undefined || raw === null || raw === "") continue;
-
-    const num = Number(raw);
-
-    if (Number.isNaN(num)) continue;
-
-    if (!firstDefined) {
-      firstDefined = { value: num, column: key };
-    }
-
-    if (num > 0) {
-      return { value: num, column: key };
-    }
-  }
-
-  if (firstDefined) return firstDefined;
-
-  return { value: undefined, column: "local" };
-}
-
-function getProductStock(product?: Product | null) {
-  if (!product) return 0;
-
-  const local = getStockMap()[product.id];
-  const fromProduct = getStockFromAnyRow(product);
-
-  if (
-    local !== undefined &&
-    (fromProduct.value === undefined || Number(fromProduct.value || 0) === 0)
-  ) {
-    return Number(local || 0);
-  }
-
-  return Number(fromProduct.value || 0);
+function getRawStock(row: any) {
+  return row?.stock_qty ?? row?.stock ?? row?.stock_quantity ?? row?.quantity ?? row?.qty;
 }
 
 function normalizeProduct(row: any): Product {
   const stockMap = getStockMap();
   const localStock = stockMap[row?.id];
-  const stockInfo = getStockFromAnyRow(row);
+  const rawDbStock = getRawStock(row);
+
+  const hasDbStock =
+    rawDbStock !== undefined &&
+    rawDbStock !== null &&
+    rawDbStock !== "";
+
+  const dbStock = Number(rawDbStock || 0);
 
   let finalStock = 0;
 
-  if (
-    localStock !== undefined &&
-    (stockInfo.value === undefined || Number(stockInfo.value || 0) === 0)
-  ) {
+  if (localStock !== undefined && (!hasDbStock || dbStock === 0)) {
     finalStock = Number(localStock || 0);
   } else {
-    finalStock = Number(stockInfo.value || 0);
-  }
-
-  if (row?.id && finalStock > 0) {
-    saveStockValue(String(row.id), finalStock);
+    finalStock = dbStock;
   }
 
   return {
@@ -642,7 +568,6 @@ function normalizeProduct(row: any): Product {
     discount: Number(row?.discount || 0),
     stock_qty: finalStock,
     note: row?.note || "",
-    _stockColumn: stockInfo.column || "local",
   };
 }
 
@@ -690,6 +615,28 @@ function normalizePaymentOptions(value: any): PaymentOption[] {
   return normalized.length > 0 ? normalized : DEFAULT_PAYMENT_OPTIONS;
 }
 
+function formatDateTime(value?: string | null, fallbackDate?: string | null) {
+  if (!value && fallbackDate) return fallbackDate;
+  if (!value) return "-";
+
+  try {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+
+    return `${d.toLocaleDateString("zh-MY", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })} ${d.toLocaleTimeString("zh-MY", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })}`;
+  } catch {
+    return value || fallbackDate || "-";
+  }
+}
+
 export default function InvoicePage() {
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
@@ -733,6 +680,7 @@ export default function InvoicePage() {
   const [paymentOptions, setPaymentOptions] =
     useState<PaymentOption[]>(DEFAULT_PAYMENT_OPTIONS);
 
+  const [showPaymentAdd, setShowPaymentAdd] = useState(false);
   const [newPaymentName, setNewPaymentName] = useState("");
   const [newPaymentBankAccount, setNewPaymentBankAccount] = useState("");
   const [newPaymentReceiverName, setNewPaymentReceiverName] = useState("");
@@ -930,30 +878,83 @@ export default function InvoicePage() {
     setInvoices((data || []) as InvoiceRecord[]);
   }
 
-  async function updateProductStockSafe(product: Product, nextStock: number) {
-    saveStockValue(product.id, nextStock);
+  async function insertProductWithStock(inputStock: number) {
+    const basePayload = {
+      user_id: userId,
+      name: newProductName,
+      price: Number(newProductPrice),
+      cost: Number(newProductCost),
+      discount: 0,
+      note: t.productNote,
+    };
 
-    if (isTrial || !userId) return;
+    const attempts = [
+      { ...basePayload, stock_qty: inputStock },
+      { ...basePayload, stock: inputStock },
+      { ...basePayload, stock_quantity: inputStock },
+      basePayload,
+    ];
 
-    const preferred = product._stockColumn && product._stockColumn !== "local"
-      ? [product._stockColumn]
-      : [];
-
-    const candidates = Array.from(new Set([...preferred, ...STOCK_COLUMN_CANDIDATES]));
-
-    for (const column of candidates) {
+    for (const payload of attempts) {
       const result = await supabase
         .from("products")
-        .update({ [column]: nextStock })
-        .eq("id", product.id)
-        .eq("user_id", userId);
+        .insert(payload)
+        .select("*")
+        .single();
 
-      if (!result.error) return;
+      if (!result.error) {
+        const fixed = normalizeProduct({
+          ...(result.data as any),
+          stock_qty: getRawStock(result.data) ?? inputStock,
+        });
+
+        if (Number(fixed.stock_qty || 0) === 0 && inputStock > 0) {
+          fixed.stock_qty = inputStock;
+        }
+
+        saveStockValue(fixed.id, Number(fixed.stock_qty || inputStock || 0));
+        return fixed;
+      }
 
       if (!isSchemaColumnError(result.error)) {
         throw result.error;
       }
     }
+
+    throw new Error("Product insert failed");
+  }
+
+  async function updateProductStockSafe(productId: string, nextStock: number) {
+    const attempts = [
+      { stock_qty: nextStock },
+      { stock: nextStock },
+      { stock_quantity: nextStock },
+    ];
+
+    for (const payload of attempts) {
+      const result = await supabase
+        .from("products")
+        .update(payload)
+        .eq("id", productId)
+        .eq("user_id", userId);
+
+      if (!result.error) {
+        saveStockValue(productId, nextStock);
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, stock_qty: nextStock } : p))
+        );
+        return;
+      }
+
+      if (!isSchemaColumnError(result.error) && !isMissingStockColumn(result.error)) {
+        throw result.error;
+      }
+    }
+
+    saveStockValue(productId, nextStock);
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, stock_qty: nextStock } : p))
+    );
   }
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
@@ -1071,6 +1072,7 @@ export default function InvoicePage() {
     setNewPaymentReceiverName("");
     setNewPaymentLink("");
     setNewPaymentQr("");
+    setShowPaymentAdd(false);
   }
 
   function deletePaymentOption(id: string) {
@@ -1424,7 +1426,6 @@ export default function InvoicePage() {
           discount: 0,
           stock_qty: inputStock,
           note: t.productNote,
-          _stockColumn: "stock_qty",
         };
 
         if (isTrial) {
@@ -1433,61 +1434,11 @@ export default function InvoicePage() {
           saveStockValue(finalProduct.id, inputStock);
           saveTrialData(workingCustomers, workingProducts);
         } else {
-          const insertWithStock = await supabase
-            .from("products")
-            .insert({
-              user_id: userId,
-              name: newProductName,
-              price: Number(newProductPrice),
-              cost: Number(newProductCost),
-              discount: 0,
-              stock_qty: inputStock,
-              note: t.productNote,
-            })
-            .select("*")
-            .single();
-
-          if (insertWithStock.error) {
-            if (isMissingStockColumn(insertWithStock.error)) {
-              const insertWithoutStock = await supabase
-                .from("products")
-                .insert({
-                  user_id: userId,
-                  name: newProductName,
-                  price: Number(newProductPrice),
-                  cost: Number(newProductCost),
-                  discount: 0,
-                  note: t.productNote,
-                })
-                .select("*")
-                .single();
-
-              if (insertWithoutStock.error) {
-                throw insertWithoutStock.error;
-              }
-
-              finalProduct = {
-                ...normalizeProduct(insertWithoutStock.data),
-                stock_qty: inputStock,
-                _stockColumn: "local",
-              };
-
-              saveStockValue(finalProduct.id, inputStock);
-            } else {
-              throw insertWithStock.error;
-            }
-          } else {
-            finalProduct = normalizeProduct(insertWithStock.data);
-
-            if (getProductStock(finalProduct) === 0 && inputStock > 0) {
-              finalProduct.stock_qty = inputStock;
-            }
-
-            saveStockValue(finalProduct.id, getProductStock(finalProduct) || inputStock);
-          }
-
+          finalProduct = await insertProductWithStock(inputStock);
           setProducts((prev) => [finalProduct as Product, ...prev]);
         }
+      } else if (finalProduct) {
+        finalProduct = normalizeProduct(finalProduct);
       }
 
       if (!finalCustomer || !finalProduct) {
@@ -1496,7 +1447,7 @@ export default function InvoicePage() {
         return;
       }
 
-      const currentStock = getProductStock(finalProduct);
+      const currentStock = Number(finalProduct.stock_qty || 0);
 
       if (currentStock < preview.finalQty) {
         setMsg(`${t.stockNotEnough}${currentStock}`);
@@ -1554,7 +1505,7 @@ export default function InvoicePage() {
       lhdnSkipped = invoiceResult.lhdnSkipped;
 
       await insertInvoiceItemSafe(invoiceData.id, finalProduct);
-      await updateProductStockSafe(finalProduct, newStock);
+      await updateProductStockSafe(finalProduct.id, newStock);
       await insertTransactionSafe(invoiceData.id, finalCustomer, finalProduct);
 
       const savedRecord: InvoiceRecord = {
@@ -1573,6 +1524,7 @@ export default function InvoicePage() {
         total: invoiceData.total ?? preview.total,
         total_cost: invoiceData.total_cost ?? preview.totalCost,
         total_profit: invoiceData.total_profit ?? preview.profit,
+        created_at: invoiceData.created_at || printableRecord.created_at,
       };
 
       setInvoices((prev) => [savedRecord, ...prev]);
@@ -1865,6 +1817,7 @@ export default function InvoicePage() {
     setExtraDiscount("0");
     setNote("");
     setMsg("");
+    setShowPaymentAdd(false);
     setMode("new");
   }
 
@@ -2177,15 +2130,18 @@ export default function InvoicePage() {
                 >
                   <div style={{ flex: 1 }}>
                     <strong>{inv.invoice_no}</strong>
+
                     <div style={{ ...mutedTextStyle, color: theme.muted }}>
                       {inv.customer_name || "-"}{" "}
                       {inv.customer_company ? `｜${inv.customer_company}` : ""}
                     </div>
+
                     <div style={{ ...mutedTextStyle, color: theme.muted }}>
-                      {inv.invoice_date || "-"}｜{inv.customer_phone || "-"}
+                      {t.recordDateTime}：{formatDateTime(inv.created_at, inv.invoice_date)}
                     </div>
+
                     <div style={{ ...mutedTextStyle, color: theme.muted }}>
-                      {t.recordDateTime}：{formatDateTime(inv.created_at || inv.invoice_date)}
+                      {t.phone}：{inv.customer_phone || "-"}
                     </div>
 
                     <div style={recordActionRowStyle}>
@@ -2297,78 +2253,89 @@ export default function InvoicePage() {
               ))}
             </select>
 
-            <div
+            <button
+              type="button"
+              onClick={() => setShowPaymentAdd((v) => !v)}
               style={{
-                ...paymentAddBoxStyle,
+                ...paymentToggleBtnStyle,
                 borderColor: theme.border,
-                background: theme.panelBg,
-                color: theme.panelText,
+                color: showPaymentAdd ? "#fff" : theme.accent,
+                background: showPaymentAdd ? theme.accent : theme.inputBg,
               }}
             >
-              <input
-                value={newPaymentName}
-                onChange={(e) => setNewPaymentName(e.target.value)}
-                placeholder={t.paymentName}
-                style={themedInputStyle}
-              />
+              {showPaymentAdd ? t.closePayment : t.addPayment}
+            </button>
 
-              <input
-                value={newPaymentBankAccount}
-                onChange={(e) => setNewPaymentBankAccount(e.target.value)}
-                placeholder={t.paymentBankAccount}
-                style={themedInputStyle}
-              />
-
-              <input
-                value={newPaymentReceiverName}
-                onChange={(e) => setNewPaymentReceiverName(e.target.value)}
-                placeholder={t.paymentReceiverName}
-                style={themedInputStyle}
-              />
-
-              <input
-                value={newPaymentLink}
-                onChange={(e) => setNewPaymentLink(e.target.value)}
-                placeholder={t.paymentLink}
-                style={themedInputStyle}
-              />
-
-              <input
-                value={newPaymentQr}
-                onChange={(e) => setNewPaymentQr(e.target.value)}
-                placeholder={t.paymentQr}
-                style={themedInputStyle}
-              />
-
-              <label
+            {showPaymentAdd && (
+              <div
                 style={{
-                  ...uploadQrBtnStyle,
+                  ...paymentAddBoxStyle,
                   borderColor: theme.border,
-                  color: theme.accent,
-                  background: theme.inputBg,
+                  background: theme.panelBg,
+                  color: theme.panelText,
                 }}
               >
-                {t.uploadQr}
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={uploadPaymentQr}
-                  style={{ display: "none" }}
+                  value={newPaymentName}
+                  onChange={(e) => setNewPaymentName(e.target.value)}
+                  placeholder={t.paymentName}
+                  style={themedInputStyle}
                 />
-              </label>
 
-              {newPaymentQr ? (
-                <img src={newPaymentQr} style={qrPreviewStyle} />
-              ) : null}
+                <input
+                  value={newPaymentBankAccount}
+                  onChange={(e) => setNewPaymentBankAccount(e.target.value)}
+                  placeholder={t.paymentBankAccount}
+                  style={themedInputStyle}
+                />
 
-              <button
-                onClick={addPaymentOption}
-                title={t.addPayment}
-                style={{ ...paymentPlusBtnStyle, background: theme.accent }}
-              >
-                +
-              </button>
-            </div>
+                <input
+                  value={newPaymentReceiverName}
+                  onChange={(e) => setNewPaymentReceiverName(e.target.value)}
+                  placeholder={t.paymentReceiverName}
+                  style={themedInputStyle}
+                />
+
+                <input
+                  value={newPaymentLink}
+                  onChange={(e) => setNewPaymentLink(e.target.value)}
+                  placeholder={t.paymentLink}
+                  style={themedInputStyle}
+                />
+
+                <input
+                  value={newPaymentQr}
+                  onChange={(e) => setNewPaymentQr(e.target.value)}
+                  placeholder={t.paymentQr}
+                  style={themedInputStyle}
+                />
+
+                <label
+                  style={{
+                    ...uploadQrBtnStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                    background: theme.inputBg,
+                  }}
+                >
+                  {t.uploadQr}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={uploadPaymentQr}
+                    style={{ display: "none" }}
+                  />
+                </label>
+
+                {newPaymentQr ? (
+                  <img src={newPaymentQr} style={qrPreviewStyle} />
+                ) : null}
+
+                <button onClick={addPaymentOption} style={{ ...addBtnStyle, background: theme.accent }}>
+                  {t.addPayment}
+                </button>
+              </div>
+            )}
 
             <div style={paymentChipWrapStyle}>
               {paymentOptions.map((p) => (
@@ -2560,7 +2527,7 @@ export default function InvoicePage() {
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}｜{t.price} {Number(p.price).toFixed(2)}｜{t.cost}{" "}
-                  {Number(p.cost).toFixed(2)}｜{t.stock} {getProductStock(p)}
+                  {Number(p.cost).toFixed(2)}｜{t.stock} {Number(p.stock_qty || 0)}
                 </option>
               ))}
             </select>
@@ -2872,6 +2839,15 @@ const inputStyle: CSSProperties = {
   marginBottom: 8,
 };
 
+const paymentToggleBtnStyle: CSSProperties = {
+  width: "100%",
+  border: "2px solid",
+  borderRadius: 12,
+  padding: "12px 14px",
+  fontWeight: 900,
+  marginBottom: 10,
+};
+
 const paymentAddBoxStyle: CSSProperties = {
   display: "grid",
   gap: 8,
@@ -2908,18 +2884,6 @@ const addBtnStyle: CSSProperties = {
   borderRadius: 12,
   padding: "13px",
   fontWeight: 900,
-};
-
-const paymentPlusBtnStyle: CSSProperties = {
-  width: 52,
-  height: 52,
-  border: "none",
-  borderRadius: "999px",
-  color: "#fff",
-  fontSize: 32,
-  lineHeight: 1,
-  fontWeight: 900,
-  justifySelf: "center",
 };
 
 const paymentChipWrapStyle: CSSProperties = {
