@@ -47,6 +47,10 @@ const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
 
+// 兼容产品管理 + 发票系统之前保存库存用过的本地 key
+const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
+const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
+
 const TXT = {
   zh: {
     title: "产品管理",
@@ -68,9 +72,12 @@ const TXT = {
     profit: "预计利润",
     margin: "利润率",
     latest: "最新产品记录",
+    details: "产品明细总览",
     noProduct: "还没有产品",
     noRecord: "暂无记录",
     customerPrice: "客户专属价格",
+    customerPurchase: "客户购买 / 专属价",
+    noCustomerPurchase: "暂无客户购买 / 专属价记录",
     chooseCustomer: "选择客户",
     chooseProduct: "选择产品",
     customPrice: "这个客户的专属价格 RM",
@@ -91,8 +98,6 @@ const TXT = {
     link3: "库存系统：发票出货后会自动扣除库存。",
     theme: "主题",
     trial: "免费试用模式",
-    stockColumnError:
-      "保存失败：Supabase products 表还没有 stock_qty 栏位。请先在 Supabase 加 stock_qty 栏位后再保存库存。",
   },
   en: {
     title: "Product Management",
@@ -115,9 +120,12 @@ const TXT = {
     profit: "Estimated Profit",
     margin: "Profit Margin",
     latest: "Latest Products",
+    details: "Product Details Overview",
     noProduct: "No products yet",
     noRecord: "No records yet",
     customerPrice: "Customer Special Price",
+    customerPurchase: "Customer Purchase / Special Price",
+    noCustomerPurchase: "No customer purchase / special price record",
     chooseCustomer: "Choose Customer",
     chooseProduct: "Choose Product",
     customPrice: "Special Price RM",
@@ -138,8 +146,6 @@ const TXT = {
     link3: "Stock: invoice delivery will deduct stock automatically.",
     theme: "Theme",
     trial: "Free Trial Mode",
-    stockColumnError:
-      "Save failed: your Supabase products table does not have the stock_qty column yet.",
   },
   ms: {
     title: "Pengurusan Produk",
@@ -161,9 +167,12 @@ const TXT = {
     profit: "Anggaran Untung",
     margin: "Margin Untung",
     latest: "Rekod Produk Terkini",
+    details: "Ringkasan Butiran Produk",
     noProduct: "Belum ada produk",
     noRecord: "Belum ada rekod",
     customerPrice: "Harga Khas Pelanggan",
+    customerPurchase: "Pembelian Pelanggan / Harga Khas",
+    noCustomerPurchase: "Tiada rekod pembelian / harga khas",
     chooseCustomer: "Pilih Pelanggan",
     chooseProduct: "Pilih Produk",
     customPrice: "Harga Khas RM",
@@ -184,8 +193,6 @@ const TXT = {
     link3: "Stok: penghantaran invois akan menolak stok automatik.",
     theme: "Tema",
     trial: "Mod Percubaan Percuma",
-    stockColumnError:
-      "Gagal simpan: jadual products di Supabase belum ada lajur stock_qty.",
   },
 };
 
@@ -276,6 +283,41 @@ const THEMES: Record<ThemeKey, any> = {
   },
 };
 
+function readStockMapByKey(key: string): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function getStockMap(): Record<string, number> {
+  return {
+    ...readStockMapByKey(PRODUCT_STOCK_FALLBACK_KEY),
+    ...readStockMapByKey(PRODUCT_STOCK_MAP_KEY),
+  };
+}
+
+function writeStockMap(map: Record<string, number>) {
+  localStorage.setItem(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
+  localStorage.setItem(PRODUCT_STOCK_FALLBACK_KEY, JSON.stringify(map));
+}
+
+function saveStockValue(productId: string, stock: number) {
+  if (!productId) return;
+
+  const map = getStockMap();
+  map[productId] = Number(stock || 0);
+  writeStockMap(map);
+}
+
+function removeStockValue(productId: string) {
+  const map = getStockMap();
+  delete map[productId];
+  writeStockMap(map);
+}
+
 export default function ProductsPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
@@ -340,12 +382,28 @@ export default function ProductsPage() {
   }
 
   function normalizeProduct(row: any): Product {
+    const stockMap = getStockMap();
+    const localStock = stockMap[row?.id];
+    const dbStock = row?.stock_qty;
+
+    let finalStock = 0;
+
+    if (
+      localStock !== undefined &&
+      (dbStock === undefined || dbStock === null || Number(dbStock) === 0)
+    ) {
+      finalStock = Number(localStock || 0);
+    } else {
+      finalStock = Number(dbStock || 0);
+    }
+
     return {
       ...row,
+      id: String(row?.id || ""),
       price: Number(row?.price || 0),
       cost: Number(row?.cost || 0),
       discount: Number(row?.discount || 0),
-      stock_qty: Number(row?.stock_qty || 0),
+      stock_qty: finalStock,
       note: row?.note || "",
     } as Product;
   }
@@ -479,6 +537,11 @@ export default function ProductsPage() {
       : `/dashboard?lang=${lang}`;
   }
 
+  function scrollToDetails() {
+    const el = document.getElementById("productDetails");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function productCode(p: Product) {
     return `P-${String(p.id).slice(0, 8).toUpperCase()}`;
   }
@@ -520,7 +583,7 @@ export default function ProductsPage() {
 
     const stockValue = Number(productStock || 0);
 
-    const payload = {
+    const payloadWithStock = {
       name: productName.trim(),
       price: Number(productPrice || 0),
       cost: Number(productCost || 0),
@@ -529,13 +592,22 @@ export default function ProductsPage() {
       note: productNote.trim(),
     };
 
+    const payloadNoStock = {
+      name: productName.trim(),
+      price: Number(productPrice || 0),
+      cost: Number(productCost || 0),
+      discount: Number(productDiscount || 0),
+      note: productNote.trim(),
+    };
+
     if (isTrial) {
       if (editingId) {
         const next = products.map((p) =>
-          p.id === editingId ? { ...p, ...payload } : p
+          p.id === editingId ? { ...p, ...payloadWithStock } : p
         );
 
         setProducts(next);
+        saveStockValue(editingId, stockValue);
         syncTrialData(next, customers, customerPrices);
       } else {
         const id =
@@ -545,13 +617,14 @@ export default function ProductsPage() {
 
         const newProduct: Product = {
           id,
-          ...payload,
+          ...payloadWithStock,
           created_at: new Date().toISOString(),
         };
 
         const next = [newProduct, ...products];
 
         setProducts(next);
+        saveStockValue(id, stockValue);
         syncTrialData(next, customers, customerPrices);
       }
 
@@ -563,27 +636,72 @@ export default function ProductsPage() {
     if (!session) return;
 
     if (editingId) {
-      const { error } = await supabase
+      const updateWithStock = await supabase
         .from("products")
-        .update(payload)
+        .update(payloadWithStock)
         .eq("id", editingId)
         .eq("user_id", session.user.id);
 
-      if (error) {
-        setMsg(isStockColumnError(error) ? t.stockColumnError : error.message);
-        return;
+      if (updateWithStock.error) {
+        if (isStockColumnError(updateWithStock.error)) {
+          const retry = await supabase
+            .from("products")
+            .update(payloadNoStock)
+            .eq("id", editingId)
+            .eq("user_id", session.user.id);
+
+          if (retry.error) {
+            setMsg(retry.error.message);
+            return;
+          }
+
+          saveStockValue(editingId, stockValue);
+        } else {
+          setMsg(updateWithStock.error.message);
+          return;
+        }
+      } else {
+        saveStockValue(editingId, stockValue);
       }
     } else {
-      const { error } = await supabase
+      const insertWithStock = await supabase
         .from("products")
         .insert({
           user_id: session.user.id,
-          ...payload,
-        });
+          ...payloadWithStock,
+        })
+        .select("*")
+        .single();
 
-      if (error) {
-        setMsg(isStockColumnError(error) ? t.stockColumnError : error.message);
-        return;
+      if (insertWithStock.error) {
+        if (isStockColumnError(insertWithStock.error)) {
+          const retry = await supabase
+            .from("products")
+            .insert({
+              user_id: session.user.id,
+              ...payloadNoStock,
+            })
+            .select("*")
+            .single();
+
+          if (retry.error) {
+            setMsg(retry.error.message);
+            return;
+          }
+
+          const savedProduct = normalizeProduct({
+            ...(retry.data as any),
+            stock_qty: stockValue,
+          });
+
+          saveStockValue(savedProduct.id, stockValue);
+        } else {
+          setMsg(insertWithStock.error.message);
+          return;
+        }
+      } else {
+        const savedProduct = normalizeProduct(insertWithStock.data);
+        saveStockValue(savedProduct.id, Number(savedProduct.stock_qty || stockValue || 0));
       }
     }
 
@@ -602,6 +720,7 @@ export default function ProductsPage() {
 
       setProducts(nextProducts);
       setCustomerPrices(nextPrices);
+      removeStockValue(p.id);
       syncTrialData(nextProducts, customers, nextPrices);
       setMsg(t.deleteSuccess);
       return;
@@ -626,6 +745,7 @@ export default function ProductsPage() {
       return;
     }
 
+    removeStockValue(p.id);
     await loadProducts(session.user.id);
     await loadCustomerPrices(session.user.id);
     setMsg(t.deleteSuccess);
@@ -758,6 +878,10 @@ export default function ProductsPage() {
     return products.find((p) => p.id === id)?.name || "-";
   }
 
+  function getCustomerPurchaseList(productId: string) {
+    return customerPrices.filter((cp) => cp.product_id === productId);
+  }
+
   return (
     <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
       <section
@@ -777,16 +901,34 @@ export default function ProductsPage() {
             ← {t.back}
           </button>
 
-          <div style={langRowStyle}>
-            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
-              中文
-            </button>
-            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
-              EN
-            </button>
-            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
-              BM
-            </button>
+          <div style={topRightStyle}>
+            <select
+              value={themeKey}
+              onChange={(e) => switchTheme(e.target.value as ThemeKey)}
+              style={{
+                ...themeSelectStyle,
+                borderColor: theme.border,
+                color: theme.accent,
+              }}
+            >
+              {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
+                <option key={key} value={key}>
+                  {THEMES[key].name}
+                </option>
+              ))}
+            </select>
+
+            <div style={langRowStyle}>
+              <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
+                中文
+              </button>
+              <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
+                EN
+              </button>
+              <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
+                BM
+              </button>
+            </div>
           </div>
         </div>
 
@@ -801,49 +943,44 @@ export default function ProductsPage() {
             +
           </button>
         </div>
-
-        <div style={themeRowStyle}>
-          <span style={{ fontWeight: 800 }}>{t.theme}：</span>
-          {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
-            <button
-              key={key}
-              onClick={() => switchTheme(key)}
-              style={{
-                ...themeSmallBtnStyle,
-                borderColor: THEMES[key].border,
-                background: themeKey === key ? THEMES[key].accent : "#fff",
-                color: themeKey === key ? "#fff" : THEMES[key].accent,
-              }}
-            >
-              {THEMES[key].name}
-            </button>
-          ))}
-        </div>
       </section>
 
       <section style={summaryGridStyle}>
-        <div style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}>
+        <button
+          onClick={scrollToDetails}
+          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
+        >
           <span>{t.stock}</span>
           <strong>{productSummary.totalStock}</strong>
-        </div>
+        </button>
 
-        <div style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}>
+        <button
+          onClick={scrollToDetails}
+          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
+        >
           <span>{t.cost}</span>
           <strong>RM {productSummary.totalCost.toFixed(2)}</strong>
-        </div>
+        </button>
 
-        <div style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}>
+        <button
+          onClick={scrollToDetails}
+          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
+        >
           <span>{t.price}</span>
           <strong>RM {productSummary.totalValue.toFixed(2)}</strong>
-        </div>
+        </button>
 
-        <div style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}>
+        <button
+          onClick={scrollToDetails}
+          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
+        >
           <span>{t.profit}</span>
           <strong>RM {productSummary.totalProfit.toFixed(2)}</strong>
-        </div>
+        </button>
       </section>
 
       <section
+        id="productDetails"
         style={{
           ...contentCardStyle,
           background: theme.card,
@@ -867,7 +1004,7 @@ export default function ProductsPage() {
 
         {msg ? <div style={msgBoxStyle}>{msg}</div> : null}
 
-        <h2>{t.latest}</h2>
+        <h2 style={sectionTitleStyle}>{t.details}</h2>
 
         {filteredProducts.length === 0 ? (
           <p>{t.noProduct}</p>
@@ -883,6 +1020,7 @@ export default function ProductsPage() {
                 Number(p.price || 0) > 0 ? (profit / Number(p.price || 0)) * 100 : 0;
 
               const stockStatus = getStockStatus(p);
+              const purchaseList = getCustomerPurchaseList(p.id);
 
               return (
                 <div
@@ -912,17 +1050,20 @@ export default function ProductsPage() {
 
                     <div style={productInfoGridStyle}>
                       <div>
-                        {t.price}: <strong>RM {Number(p.price || 0).toFixed(2)}</strong>
+                        {t.productName}: <strong>{p.name}</strong>
+                      </div>
+                      <div>
+                        {t.stock}: <strong>{Number(p.stock_qty || 0)}</strong>
                       </div>
                       <div>
                         {t.cost}: <strong>RM {Number(p.cost || 0).toFixed(2)}</strong>
                       </div>
                       <div>
-                        {t.discount}:{" "}
-                        <strong>RM {Number(p.discount || 0).toFixed(2)}</strong>
+                        {t.price}: <strong>RM {Number(p.price || 0).toFixed(2)}</strong>
                       </div>
                       <div>
-                        {t.stock}: <strong>{Number(p.stock_qty || 0)}</strong>
+                        {t.discount}:{" "}
+                        <strong>RM {Number(p.discount || 0).toFixed(2)}</strong>
                       </div>
                       <div>
                         {t.profit}: <strong>RM {profit.toFixed(2)}</strong>
@@ -930,6 +1071,23 @@ export default function ProductsPage() {
                       <div>
                         {t.margin}: <strong>{margin.toFixed(1)}%</strong>
                       </div>
+                    </div>
+
+                    <div style={customerPurchaseBoxStyle}>
+                      <strong>{t.customerPurchase}</strong>
+
+                      {purchaseList.length === 0 ? (
+                        <div style={mutedStyle}>{t.noCustomerPurchase}</div>
+                      ) : (
+                        <div style={purchaseListStyle}>
+                          {purchaseList.map((cp) => (
+                            <div key={cp.id} style={purchaseItemStyle}>
+                              <span>{getCustomerName(cp.customer_id)}</span>
+                              <strong>RM {Number(cp.custom_price || 0).toFixed(2)}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {p.note ? <div style={noteStyle}>{p.note}</div> : null}
@@ -967,7 +1125,7 @@ export default function ProductsPage() {
           color: theme.text,
         }}
       >
-        <h2>{t.customerPrice}</h2>
+        <h2 style={sectionTitleStyle}>{t.customerPrice}</h2>
 
         {customers.length === 0 ? (
           <p>{t.noCustomer}</p>
@@ -1045,7 +1203,7 @@ export default function ProductsPage() {
           color: theme.text,
         }}
       >
-        <h2>{t.linkedTitle}</h2>
+        <h2 style={sectionTitleStyle}>{t.linkedTitle}</h2>
         <p>{t.link1}</p>
         <p>{t.link2}</p>
         <p>{t.link3}</p>
@@ -1125,23 +1283,34 @@ export default function ProductsPage() {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
-  padding: 16,
+  padding: "clamp(10px, 2vw, 24px)",
   fontFamily: "sans-serif",
+  boxSizing: "border-box",
+  fontSize: "clamp(14px, 1.6vw, 16px)",
 };
 
 const headerCardStyle: CSSProperties = {
   border: "3px solid",
-  borderRadius: 24,
-  padding: 18,
+  borderRadius: "clamp(18px, 3vw, 28px)",
+  padding: "clamp(14px, 2.4vw, 22px)",
   marginBottom: 16,
 };
 
 const topRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
+  alignItems: "flex-start",
   gap: 12,
   marginBottom: 16,
+  flexWrap: "wrap",
+};
+
+const topRightStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: 10,
+  flexWrap: "wrap",
 };
 
 const titleRowStyle: CSSProperties = {
@@ -1149,25 +1318,45 @@ const titleRowStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 16,
+  flexWrap: "wrap",
 };
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontSize: 30,
+  fontSize: "clamp(24px, 4.2vw, 34px)",
   fontWeight: 900,
+};
+
+const sectionTitleStyle: CSSProperties = {
+  fontSize: "clamp(22px, 3.2vw, 30px)",
+  marginTop: 18,
 };
 
 const subTitleStyle: CSSProperties = {
   marginTop: 8,
   lineHeight: 1.5,
+  fontSize: "clamp(14px, 2vw, 16px)",
 };
 
 const backBtnStyle: CSSProperties = {
   background: "#fff",
   border: "2px solid",
-  borderRadius: 12,
-  padding: "10px 16px",
+  borderRadius: 14,
+  padding: "clamp(9px, 1.8vw, 12px) clamp(14px, 2.6vw, 18px)",
   fontWeight: 900,
+  fontSize: "clamp(15px, 2.5vw, 20px)",
+};
+
+const themeSelectStyle: CSSProperties = {
+  minWidth: 180,
+  maxWidth: "100%",
+  background: "#fff",
+  border: "3px solid",
+  borderRadius: 999,
+  padding: "clamp(10px, 1.8vw, 13px) clamp(14px, 2vw, 18px)",
+  fontWeight: 900,
+  fontSize: "clamp(16px, 2.8vw, 22px)",
+  outline: "none",
 };
 
 const langRowStyle: CSSProperties = {
@@ -1177,37 +1366,23 @@ const langRowStyle: CSSProperties = {
 };
 
 const langBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "8px 12px",
+  padding: "clamp(8px, 1.8vw, 12px) clamp(12px, 2.2vw, 18px)",
   borderRadius: 999,
-  border: `2px solid ${theme.accent}`,
+  border: `3px solid ${theme.accent}`,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
+  fontSize: "clamp(15px, 2.7vw, 20px)",
 });
 
 const plusBtnStyle: CSSProperties = {
-  width: 48,
-  height: 48,
+  width: "clamp(46px, 8vw, 58px)",
+  height: "clamp(46px, 8vw, 58px)",
   borderRadius: "999px",
   border: "none",
   color: "#fff",
-  fontSize: 28,
+  fontSize: "clamp(28px, 5vw, 36px)",
   fontWeight: 900,
-};
-
-const themeRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-  alignItems: "center",
-  marginTop: 16,
-};
-
-const themeSmallBtnStyle: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 999,
-  padding: "8px 10px",
-  fontWeight: 800,
 };
 
 const trialBadgeStyle: CSSProperties = {
@@ -1222,31 +1397,36 @@ const trialBadgeStyle: CSSProperties = {
 
 const summaryGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-  gap: 10,
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+  gap: "clamp(10px, 2vw, 16px)",
   marginBottom: 16,
 };
 
 const summaryCardStyle: CSSProperties = {
   background: "#fff",
   color: "#111827",
-  border: "2px solid",
-  borderRadius: 18,
-  padding: 14,
+  border: "3px solid",
+  borderRadius: "clamp(18px, 3vw, 28px)",
+  padding: "clamp(16px, 3vw, 28px)",
   display: "grid",
-  gap: 8,
+  gap: 12,
+  textAlign: "left",
+  cursor: "pointer",
+  minHeight: 130,
+  fontSize: "clamp(18px, 3.4vw, 28px)",
+  fontWeight: 800,
 };
 
 const contentCardStyle: CSSProperties = {
   border: "3px solid",
-  borderRadius: 24,
-  padding: 18,
+  borderRadius: "clamp(18px, 3vw, 28px)",
+  padding: "clamp(14px, 2.5vw, 22px)",
   marginBottom: 16,
 };
 
 const searchRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1fr auto",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   gap: 10,
   alignItems: "center",
 };
@@ -1254,10 +1434,10 @@ const searchRowStyle: CSSProperties = {
 const inputStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
-  padding: "13px 14px",
-  borderRadius: 12,
+  padding: "clamp(12px, 2vw, 15px) clamp(13px, 2vw, 16px)",
+  borderRadius: 14,
   border: "1px solid #cbd5e1",
-  fontSize: 16,
+  fontSize: "clamp(15px, 2vw, 17px)",
   outline: "none",
   background: "#ffffff",
   color: "#111827",
@@ -1272,9 +1452,10 @@ const textareaStyle: CSSProperties = {
 const addBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
-  borderRadius: 12,
-  padding: "13px 16px",
+  borderRadius: 14,
+  padding: "clamp(12px, 2vw, 15px) clamp(14px, 2.4vw, 18px)",
   fontWeight: 900,
+  fontSize: "clamp(14px, 2vw, 17px)",
 };
 
 const msgBoxStyle: CSSProperties = {
@@ -1292,9 +1473,9 @@ const productListStyle: CSSProperties = {
 };
 
 const productCardStyle: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 18,
-  padding: 14,
+  border: "3px solid",
+  borderRadius: "clamp(18px, 3vw, 26px)",
+  padding: "clamp(14px, 2.5vw, 20px)",
   display: "grid",
   gap: 12,
 };
@@ -1304,31 +1485,55 @@ const productTitleRowStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   gap: 8,
+  flexWrap: "wrap",
 };
 
 const productNameStyle: CSSProperties = {
-  fontSize: 18,
+  fontSize: "clamp(19px, 3vw, 26px)",
 };
 
 const mutedStyle: CSSProperties = {
   color: "#64748b",
-  fontSize: 13,
+  fontSize: "clamp(13px, 1.7vw, 15px)",
   marginTop: 4,
 };
 
 const productInfoGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 8,
-  marginTop: 10,
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 10,
+  marginTop: 12,
+  fontSize: "clamp(15px, 2vw, 17px)",
 };
 
 const stockBadgeStyle: CSSProperties = {
   color: "#fff",
-  padding: "4px 8px",
+  padding: "5px 10px",
   borderRadius: 999,
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 900,
+};
+
+const customerPurchaseBoxStyle: CSSProperties = {
+  marginTop: 14,
+  padding: 12,
+  borderRadius: 14,
+  background: "#f8fafc",
+  color: "#111827",
+};
+
+const purchaseListStyle: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  marginTop: 8,
+};
+
+const purchaseItemStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 10,
+  padding: "8px 0",
+  borderBottom: "1px solid #e5e7eb",
 };
 
 const noteStyle: CSSProperties = {
@@ -1343,6 +1548,7 @@ const actionRowStyle: CSSProperties = {
   display: "flex",
   gap: 8,
   justifyContent: "flex-end",
+  flexWrap: "wrap",
 };
 
 const editBtnStyle: CSSProperties = {
@@ -1388,7 +1594,7 @@ const overlayStyle: CSSProperties = {
 
 const modalStyle: CSSProperties = {
   width: "100%",
-  maxWidth: 520,
+  maxWidth: 560,
   maxHeight: "90vh",
   overflowY: "auto",
   background: "#fff",
@@ -1409,6 +1615,7 @@ const modalActionRowStyle: CSSProperties = {
   display: "flex",
   gap: 10,
   marginTop: 16,
+  flexWrap: "wrap",
 };
 
 const cancelBtnStyle: CSSProperties = {
