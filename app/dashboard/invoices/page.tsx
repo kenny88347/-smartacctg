@@ -168,9 +168,11 @@ const TXT = {
     paymentDetails: "付款资料",
     addPayment: "新增付款方式",
     deletePayment: "删除",
-    paymentName: "付款名称，例如 Maybank / DuitNow QR",
+    paymentName: "付款名称，例如 MAYBANK / DuitNow QR",
     paymentLink: "付款链接，例如 Billplz / TNG Link",
     paymentQr: "QR Code 图片 URL",
+    uploadQr: "上传 QR 图",
+    qrUploaded: "QR 图已上传",
     paymentBank: "银行户口 / 户口号码 / 户口名",
     note: "备注",
     companyInfo: "2. 公司资料",
@@ -266,9 +268,11 @@ const TXT = {
     paymentDetails: "Payment Details",
     addPayment: "Add Payment Method",
     deletePayment: "Delete",
-    paymentName: "Payment name, e.g. Maybank / DuitNow QR",
+    paymentName: "Payment name, e.g. MAYBANK / DuitNow QR",
     paymentLink: "Payment link, e.g. Billplz / TNG Link",
     paymentQr: "QR Code Image URL",
+    uploadQr: "Upload QR Image",
+    qrUploaded: "QR image uploaded",
     paymentBank: "Bank account / Account No / Account Name",
     note: "Note",
     companyInfo: "2. Company Info",
@@ -364,9 +368,11 @@ const TXT = {
     paymentDetails: "Maklumat Bayaran",
     addPayment: "Tambah Cara Bayaran",
     deletePayment: "Padam",
-    paymentName: "Nama bayaran, cth. Maybank / DuitNow QR",
+    paymentName: "Nama bayaran, cth. MAYBANK / DuitNow QR",
     paymentLink: "Pautan bayaran, cth. Billplz / TNG Link",
     paymentQr: "URL Gambar QR Code",
+    uploadQr: "Muat Naik Gambar QR",
+    qrUploaded: "Gambar QR dimuat naik",
     paymentBank: "Akaun bank / No akaun / Nama akaun",
     note: "Nota",
     companyInfo: "2. Maklumat Syarikat",
@@ -452,6 +458,16 @@ function isSchemaColumnError(error: any) {
 function isMissingStockColumn(error: any) {
   const message = String(error?.message || "").toLowerCase();
   return message.includes("stock_qty") && isSchemaColumnError(error);
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Upload failed"));
+    reader.readAsDataURL(file);
+  });
 }
 
 function getStockMap(): Record<string, number> {
@@ -823,6 +839,19 @@ export default function InvoicePage() {
   function savePaymentOptions(next: PaymentOption[]) {
     setPaymentOptions(next);
     localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
+  }
+
+  async function uploadPaymentQr(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setNewPaymentQr(dataUrl);
+      setMsg(t.qrUploaded);
+    } catch (error: any) {
+      setMsg(t.fail + error.message);
+    }
   }
 
   function addPaymentOption() {
@@ -1764,17 +1793,39 @@ export default function InvoicePage() {
               <span>{t.invoiceDate}</span>
               <strong>{inv.invoice_date || "-"}</strong>
             </div>
+
             <div style={officialInfoRowStyle}>
               <span>{t.dueDate}</span>
               <strong>{inv.due_date || "-"}</strong>
             </div>
+
             <div style={officialInfoRowStyle}>
               <span>{t.status}</span>
               <strong>{statusText(inv.status)}</strong>
             </div>
-            <div style={officialInfoRowStyle}>
+
+            <div style={officialPaymentMethodRowStyle}>
               <span>{t.paymentMethod}</span>
-              <strong>{inv.payment_method || "-"}</strong>
+
+              <div style={officialPaymentInlineStyle}>
+                <strong>{inv.payment_method || "-"}</strong>
+
+                {pay?.bankAccount ? (
+                  <div style={officialPaymentDetailTextStyle}>
+                    {pay.bankAccount.split("\n").map((line, index) => (
+                      <div key={index}>{line}</div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {pay?.link ? (
+                  <div style={officialPaymentDetailTextStyle}>{pay.link}</div>
+                ) : null}
+
+                {pay?.qrCodeUrl ? (
+                  <img src={pay.qrCodeUrl} style={officialInlineQrStyle} />
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -1819,15 +1870,6 @@ export default function InvoicePage() {
             <strong>RM {profit.toFixed(2)}</strong>
           </div>
         </div>
-
-        {(pay?.bankAccount || pay?.link || pay?.qrCodeUrl) && (
-          <div style={officialPaymentBoxStyle}>
-            <strong>{t.paymentDetails}</strong>
-            {pay?.bankAccount ? <div>{pay.bankAccount}</div> : null}
-            {pay?.link ? <div>{pay.link}</div> : null}
-            {pay?.qrCodeUrl ? <img src={pay.qrCodeUrl} style={officialQrStyle} /> : null}
-          </div>
-        )}
 
         {inv.note ? <div style={officialNoteStyle}>Note：{inv.note}</div> : null}
       </div>
@@ -2071,24 +2113,48 @@ export default function InvoicePage() {
                 placeholder={t.paymentName}
                 style={{ ...inputStyle, borderColor: theme.border }}
               />
-              <input
+
+              <textarea
                 value={newPaymentBank}
                 onChange={(e) => setNewPaymentBank(e.target.value)}
-                placeholder={t.paymentBank}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                placeholder={`${t.paymentBank}\n例如：\nMAYBANK\n111111111111111\nNK DIGITA HUB`}
+                style={{ ...textareaStyle, borderColor: theme.border }}
               />
+
               <input
                 value={newPaymentLink}
                 onChange={(e) => setNewPaymentLink(e.target.value)}
                 placeholder={t.paymentLink}
                 style={{ ...inputStyle, borderColor: theme.border }}
               />
+
               <input
                 value={newPaymentQr}
                 onChange={(e) => setNewPaymentQr(e.target.value)}
                 placeholder={t.paymentQr}
                 style={{ ...inputStyle, borderColor: theme.border }}
               />
+
+              <label
+                style={{
+                  ...uploadQrBtnStyle,
+                  borderColor: theme.border,
+                  color: theme.accent,
+                }}
+              >
+                {t.uploadQr}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={uploadPaymentQr}
+                  style={{ display: "none" }}
+                />
+              </label>
+
+              {newPaymentQr ? (
+                <img src={newPaymentQr} style={qrPreviewStyle} />
+              ) : null}
+
               <button onClick={addPaymentOption} style={{ ...addBtnStyle, background: theme.accent }}>
                 {t.addPayment}
               </button>
@@ -2343,7 +2409,9 @@ export default function InvoicePage() {
               boxShadow: theme.glow,
             }}
           >
-            {renderOfficialInvoice(currentPreviewInvoice, activeProductForPreview.name)}
+            <div style={screenInvoiceInnerStyle}>
+              {renderOfficialInvoice(currentPreviewInvoice, activeProductForPreview.name)}
+            </div>
           </div>
 
           <button
@@ -2587,6 +2655,20 @@ const inputStyle: CSSProperties = {
   marginBottom: 8,
 };
 
+const textareaStyle: CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  minHeight: 92,
+  padding: "13px",
+  borderRadius: 12,
+  border: "2px solid",
+  fontSize: 16,
+  marginBottom: 8,
+  fontFamily: "inherit",
+  resize: "vertical",
+  whiteSpace: "pre-wrap",
+};
+
 const smallDateInput: CSSProperties = {
   ...inputStyle,
   maxWidth: 220,
@@ -2599,6 +2681,28 @@ const paymentAddBoxStyle: CSSProperties = {
   borderRadius: 16,
   padding: 12,
   marginBottom: 10,
+};
+
+const uploadQrBtnStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "#fff",
+  border: "2px solid",
+  borderRadius: 12,
+  padding: "12px 14px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const qrPreviewStyle: CSSProperties = {
+  width: 110,
+  height: 110,
+  objectFit: "contain",
+  border: "1px solid #cbd5e1",
+  borderRadius: 12,
+  background: "#fff",
+  padding: 6,
 };
 
 const addBtnStyle: CSSProperties = {
@@ -2732,11 +2836,19 @@ const msgStyle: CSSProperties = {
 const screenPreviewWrapStyle: CSSProperties = {
   width: "100%",
   overflowX: "auto",
+  overflowY: "hidden",
+  WebkitOverflowScrolling: "touch",
   background: "#f8fafc",
   border: "2px solid",
   borderRadius: 18,
   padding: 14,
   boxSizing: "border-box",
+};
+
+const screenInvoiceInnerStyle: CSSProperties = {
+  width: 780,
+  minWidth: 780,
+  maxWidth: "none",
 };
 
 const printAreaStyle: CSSProperties = {
@@ -2846,6 +2958,37 @@ const officialInfoRowStyle: CSSProperties = {
   borderBottom: "1px solid #e2e8f0",
 };
 
+const officialPaymentMethodRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "120px 1fr",
+  gap: 12,
+  padding: "7px 0",
+};
+
+const officialPaymentInlineStyle: CSSProperties = {
+  textAlign: "right",
+  lineHeight: 1.45,
+};
+
+const officialPaymentDetailTextStyle: CSSProperties = {
+  marginTop: 4,
+  whiteSpace: "pre-wrap",
+  fontSize: 12,
+  color: "#334155",
+  fontWeight: 700,
+};
+
+const officialInlineQrStyle: CSSProperties = {
+  width: 82,
+  height: 82,
+  objectFit: "contain",
+  marginTop: 8,
+  border: "1px solid #cbd5e1",
+  borderRadius: 8,
+  padding: 4,
+  background: "#fff",
+};
+
 const officialTableStyle: CSSProperties = {
   width: "100%",
   borderCollapse: "collapse",
@@ -2893,21 +3036,6 @@ const officialProfitRowStyle: CSSProperties = {
   color: "#16a34a",
   fontSize: 18,
   fontWeight: 900,
-};
-
-const officialPaymentBoxStyle: CSSProperties = {
-  marginTop: 24,
-  border: "1px solid #cbd5e1",
-  borderRadius: 12,
-  padding: 12,
-  lineHeight: 1.6,
-};
-
-const officialQrStyle: CSSProperties = {
-  width: 88,
-  height: 88,
-  objectFit: "contain",
-  marginTop: 8,
 };
 
 const officialNoteStyle: CSSProperties = {
