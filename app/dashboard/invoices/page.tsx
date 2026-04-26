@@ -84,17 +84,6 @@ const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 const INVOICE_FEE_META_KEY = "smartacctg_invoice_fee_meta";
 
-const BORDER_THIN = "clamp(1px, 0.12em, 2px) solid";
-const BORDER_NORMAL = "clamp(2px, 0.16em, 3px) solid";
-const BORDER_STRONG = "clamp(2px, 0.22em, 4px) solid";
-const BORDER_DASHED = "clamp(1px, 0.14em, 2px) dashed";
-
-const RADIUS_SM = "clamp(8px, 0.75em, 12px)";
-const RADIUS_MD = "clamp(12px, 1em, 16px)";
-const RADIUS_LG = "clamp(16px, 1.35em, 24px)";
-const RADIUS_XL = "clamp(18px, 1.6em, 28px)";
-const RADIUS_FULL = "999px";
-
 const ZERO_FEE_META: InvoiceFeeMeta = {
   sstMode: "%",
   sstValue: "0",
@@ -125,7 +114,7 @@ const THEMES: Record<ThemeKey, any> = {
     muted: "#64748b",
   },
   pink: {
-    name: "可愛粉色",
+    name: "可爱粉色",
     pageBg: "#fff7fb",
     card: "#ffffff",
     panelBg: "#fdf2f8",
@@ -141,7 +130,7 @@ const THEMES: Record<ThemeKey, any> = {
     muted: "#64748b",
   },
   blackGold: {
-    name: "黑金商務",
+    name: "黑金商务",
     pageBg: "#111111",
     card: "#1f1f1f",
     panelBg: "#2a2a2a",
@@ -157,7 +146,7 @@ const THEMES: Record<ThemeKey, any> = {
     muted: "#fde68a",
   },
   lightRed: {
-    name: "可愛淺紅",
+    name: "可爱浅红",
     pageBg: "#fff1f2",
     card: "#ffffff",
     panelBg: "#fff1f2",
@@ -173,7 +162,7 @@ const THEMES: Record<ThemeKey, any> = {
     muted: "#64748b",
   },
   nature: {
-    name: "風景自然系",
+    name: "风景自然系",
     pageBg: "#f0fdf4",
     card: "#ffffff",
     panelBg: "#f8fafc",
@@ -189,7 +178,7 @@ const THEMES: Record<ThemeKey, any> = {
     muted: "#64748b",
   },
   sky: {
-    name: "天空藍",
+    name: "天空蓝",
     pageBg: "#eff6ff",
     card: "#ffffff",
     panelBg: "#f8fafc",
@@ -242,7 +231,6 @@ const TXT = {
     paid: "已付款",
     cancelled: "取消",
     paymentMethod: "付款方式",
-    paymentDetails: "付款资料",
     addPayment: "+ 新增付款方式",
     closePayment: "收起新增付款方式",
     deletePayment: "删除",
@@ -283,7 +271,6 @@ const TXT = {
     extraDiscount: "额外折扣 RM",
     extraCharges: "6. SST / 服务费 / 手续费",
     chargeValue: "数值",
-    chargeMode: "类型",
     sst: "SST",
     serviceFee: "服务费",
     handlingFee: "手续费",
@@ -307,17 +294,12 @@ const TXT = {
     stockNotEnough: "库存不足，目前库存：",
     trialSuccess: "试用版发票已生成，已加入记账，并已扣库存",
     success: "发票已生成，已自动加入记账，并已扣除库存",
-    lhdnSkipped:
-      "发票已生成并加入记账；但 invoices 表缺少部分 LHDN 预留栏位，所以已先保存基本发票资料",
+    lhdnSkipped: "发票已生成；部分 invoices 栏位不存在，系统已自动跳过并保存成功。",
     fail: "生成失败：",
     incomplete: "客户或产品资料不完整",
     productNote: "由发票系统新增",
     saved: "保存成功",
     copied: "已准备分享内容",
-    invoice: "INVOICE",
-    billTo: "BILL TO",
-    invoiceDetails: "INVOICE DETAILS",
-    description: "产品名称",
     previewProductName: "产品名称",
     previewQty: "数量",
     previewPrice: "售价 RM",
@@ -350,14 +332,13 @@ const TXT = {
     paid: "Paid",
     cancelled: "Cancelled",
     paymentMethod: "Payment Method",
-    paymentDetails: "Payment Details",
     addPayment: "+ Add Payment Method",
     closePayment: "Close Payment Form",
     deletePayment: "Delete",
     paymentName: "Payment name, e.g. MAYBANK / DuitNow QR",
     paymentBankAccount: "Bank Account",
     paymentReceiverName: "Receiver Name",
-    paymentLink: "Payment link, e.g. Billplz / TNG Link",
+    paymentLink: "Payment Link",
     paymentQr: "QR Code Image URL",
     uploadQr: "Upload QR Image",
     qrUploaded: "QR image uploaded",
@@ -391,7 +372,6 @@ const TXT = {
     extraDiscount: "Extra Discount RM",
     extraCharges: "6. SST / Service Fee / Handling Fee",
     chargeValue: "Value",
-    chargeMode: "Mode",
     sst: "SST",
     serviceFee: "Service Fee",
     handlingFee: "Handling Fee",
@@ -415,17 +395,12 @@ const TXT = {
     stockNotEnough: "Insufficient stock. Current stock: ",
     trialSuccess: "Trial invoice generated, added to accounting and stock deducted",
     success: "Invoice generated, added to accounting and stock deducted",
-    lhdnSkipped:
-      "Invoice generated and added to accounting; invoices table is missing some LHDN reserved fields, so basic invoice data has been saved",
+    lhdnSkipped: "Invoice generated. Missing invoice columns were skipped automatically.",
     fail: "Failed: ",
     incomplete: "Customer or product information is incomplete",
     productNote: "Added from invoice system",
     saved: "Saved",
     copied: "Share content is ready",
-    invoice: "INVOICE",
-    billTo: "BILL TO",
-    invoiceDetails: "INVOICE DETAILS",
-    description: "Product Name",
     previewProductName: "Product Name",
     previewQty: "Qty",
     previewPrice: "Price RM",
@@ -458,14 +433,13 @@ const TXT = {
     paid: "Dibayar",
     cancelled: "Dibatalkan",
     paymentMethod: "Cara Bayaran",
-    paymentDetails: "Maklumat Bayaran",
     addPayment: "+ Tambah Cara Bayaran",
     closePayment: "Tutup Borang Bayaran",
     deletePayment: "Padam",
-    paymentName: "Nama bayaran, cth. MAYBANK / DuitNow QR",
+    paymentName: "Nama bayaran",
     paymentBankAccount: "Akaun Bank",
     paymentReceiverName: "Nama Penerima",
-    paymentLink: "Pautan bayaran, cth. Billplz / TNG Link",
+    paymentLink: "Pautan Bayaran",
     paymentQr: "URL Gambar QR Code",
     uploadQr: "Muat Naik Gambar QR",
     qrUploaded: "Gambar QR dimuat naik",
@@ -499,7 +473,6 @@ const TXT = {
     extraDiscount: "Diskaun Tambahan RM",
     extraCharges: "6. SST / Caj Servis / Caj Pengendalian",
     chargeValue: "Nilai",
-    chargeMode: "Jenis",
     sst: "SST",
     serviceFee: "Caj Servis",
     handlingFee: "Caj Pengendalian",
@@ -523,17 +496,12 @@ const TXT = {
     stockNotEnough: "Stok tidak cukup. Stok semasa: ",
     trialSuccess: "Invois percubaan berjaya dijana, masuk akaun dan stok ditolak",
     success: "Invois berjaya dijana, masuk akaun dan stok ditolak",
-    lhdnSkipped:
-      "Invois berjaya dijana dan masuk akaun; jadual invoices tiada beberapa medan LHDN, jadi data asas invois telah disimpan",
+    lhdnSkipped: "Invois berjaya dijana. Medan yang tiada telah dilangkau automatik.",
     fail: "Gagal: ",
     incomplete: "Maklumat pelanggan atau produk tidak lengkap",
     productNote: "Ditambah dari sistem invois",
     saved: "Disimpan",
     copied: "Kandungan kongsi sudah sedia",
-    invoice: "INVOICE",
-    billTo: "BILL TO",
-    invoiceDetails: "INVOICE DETAILS",
-    description: "Nama Produk",
     previewProductName: "Nama Produk",
     previewQty: "Kuantiti",
     previewPrice: "Harga RM",
@@ -560,20 +528,6 @@ function calcCharge(value: string, mode: ChargeMode, base: number) {
   return roundMoney(num);
 }
 
-function isSchemaColumnError(error: any) {
-  const message = String(error?.message || "").toLowerCase();
-  return (
-    message.includes("schema cache") ||
-    message.includes("could not find") ||
-    message.includes("column")
-  );
-}
-
-function isMissingStockColumn(error: any) {
-  const message = String(error?.message || "").toLowerCase();
-  return message.includes("stock_qty") && isSchemaColumnError(error);
-}
-
 function safeLocalGet(key: string) {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(key);
@@ -587,6 +541,23 @@ function safeLocalSet(key: string, value: string) {
 function safeLocalRemove(key: string) {
   if (typeof window === "undefined") return;
   localStorage.removeItem(key);
+}
+
+function isSchemaColumnError(error: any) {
+  const message = String(error?.message || "").toLowerCase();
+  return (
+    message.includes("schema cache") ||
+    message.includes("could not find") ||
+    message.includes("column")
+  );
+}
+
+function getMissingColumnName(error: any) {
+  const message = String(error?.message || "");
+  const match1 = message.match(/Could not find the '([^']+)' column/i);
+  const match2 = message.match(/column "([^"]+)" does not exist/i);
+  const match3 = message.match(/column '([^']+)' does not exist/i);
+  return match1?.[1] || match2?.[1] || match3?.[1] || "";
 }
 
 function readStockMapByKey(key: string): Record<string, number> {
@@ -612,7 +583,6 @@ function writeStockMap(map: Record<string, number>) {
 
 function saveStockValue(productId: string, stock: number) {
   if (!productId) return;
-
   const map = getStockMap();
   map[productId] = Number(stock || 0);
   writeStockMap(map);
@@ -627,19 +597,15 @@ function normalizeProduct(row: any): Product {
   const localStock = stockMap[row?.id];
   const rawDbStock = getRawStock(row);
 
-  const hasDbStock =
-    rawDbStock !== undefined &&
-    rawDbStock !== null &&
-    rawDbStock !== "";
-
+  const hasDbStock = rawDbStock !== undefined && rawDbStock !== null && rawDbStock !== "";
   const dbStock = Number(rawDbStock || 0);
 
-  let finalStock = 0;
+  let finalStock = dbStock;
 
-  if (localStock !== undefined && (!hasDbStock || dbStock === 0)) {
-    finalStock = Number(localStock || 0);
-  } else {
-    finalStock = dbStock;
+  if (localStock !== undefined) {
+    if (!hasDbStock) finalStock = Number(localStock || 0);
+    else if (Number(localStock) < dbStock) finalStock = Number(localStock || 0);
+    else if (dbStock === 0 && Number(localStock) > 0) finalStock = Number(localStock || 0);
   }
 
   return {
@@ -657,7 +623,6 @@ function normalizeProduct(row: any): Product {
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-
     reader.onload = () => resolve(String(reader.result || ""));
     reader.onerror = () => reject(new Error("Upload failed"));
     reader.readAsDataURL(file);
@@ -734,6 +699,125 @@ function formatDateTime(value?: string | null, fallbackDate?: string | null) {
   } catch {
     return value || fallbackDate || "-";
   }
+}
+
+async function insertAdaptive(table: string, inputPayload: Record<string, any>) {
+  let payload: Record<string, any> = { ...inputPayload };
+  let lastError: any = null;
+
+  for (let i = 0; i < 30; i++) {
+    const { data, error } = await supabase.from(table).insert(payload).select("*").single();
+
+    if (!error) return data;
+
+    lastError = error;
+
+    if (!isSchemaColumnError(error)) throw error;
+
+    const missing = getMissingColumnName(error);
+
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const optionalKeys = [
+      "supplier_tin",
+      "buyer_tin",
+      "sst_no",
+      "msic_code",
+      "einvoice_uuid",
+      "validation_status",
+      "qr_code_url",
+      "myinvois_status",
+      "discount",
+      "total_cost",
+      "total_profit",
+      "payment_method",
+      "due_date",
+      "status",
+      "customer_phone",
+      "customer_company",
+      "customer_address",
+      "invoice_date",
+      "note",
+      "customer_id",
+      "subtotal",
+      "line_profit",
+      "line_total",
+      "unit_cost",
+      "source_type",
+      "source_id",
+      "debt_amount",
+      "category_name",
+      "txn_type",
+    ];
+
+    const removable = optionalKeys.find((key) =>
+      Object.prototype.hasOwnProperty.call(payload, key)
+    );
+
+    if (!removable) throw error;
+
+    const next = { ...payload };
+    delete next[removable];
+    payload = next;
+  }
+
+  throw lastError || new Error("Insert failed");
+}
+
+async function updateAdaptive(table: string, id: string, inputPayload: Record<string, any>) {
+  let payload: Record<string, any> = { ...inputPayload };
+  let lastError: any = null;
+
+  for (let i = 0; i < 30; i++) {
+    const { error } = await supabase.from(table).update(payload).eq("id", id);
+
+    if (!error) return;
+
+    lastError = error;
+
+    if (!isSchemaColumnError(error)) throw error;
+
+    const missing = getMissingColumnName(error);
+
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const optionalKeys = [
+      "discount",
+      "total_cost",
+      "total_profit",
+      "payment_method",
+      "due_date",
+      "status",
+      "customer_phone",
+      "customer_company",
+      "customer_address",
+      "invoice_date",
+      "note",
+      "subtotal",
+    ];
+
+    const removable = optionalKeys.find((key) =>
+      Object.prototype.hasOwnProperty.call(payload, key)
+    );
+
+    if (!removable) throw error;
+
+    const next = { ...payload };
+    delete next[removable];
+    payload = next;
+  }
+
+  throw lastError || new Error("Update failed");
 }
 
 export default function InvoicePage() {
@@ -986,66 +1070,43 @@ export default function InvoicePage() {
   }
 
   async function insertProductWithStock(inputStock: number) {
-    const basePayload = {
+    const payload = {
       user_id: userId,
       name: newProductName,
       price: Number(newProductPrice),
       cost: Number(newProductCost),
       discount: 0,
+      stock_qty: inputStock,
       note: t.productNote,
     };
 
-    const attempts = [
-      { ...basePayload, stock_qty: inputStock },
-      { ...basePayload, stock: inputStock },
-      { ...basePayload, stock_quantity: inputStock },
-      basePayload,
-    ];
+    const data = await insertAdaptive("products", payload);
 
-    for (const payload of attempts) {
-      const result = await supabase
-        .from("products")
-        .insert(payload)
-        .select("*")
-        .single();
+    const fixed = normalizeProduct({
+      ...(data as any),
+      stock_qty: getRawStock(data) ?? inputStock,
+    });
 
-      if (!result.error) {
-        const fixed = normalizeProduct({
-          ...(result.data as any),
-          stock_qty: getRawStock(result.data) ?? inputStock,
-        });
-
-        if (Number(fixed.stock_qty || 0) === 0 && inputStock > 0) {
-          fixed.stock_qty = inputStock;
-        }
-
-        saveStockValue(fixed.id, Number(fixed.stock_qty || inputStock || 0));
-        return fixed;
-      }
-
-      if (!isSchemaColumnError(result.error)) {
-        throw result.error;
-      }
+    if (Number(fixed.stock_qty || 0) === 0 && inputStock > 0) {
+      fixed.stock_qty = inputStock;
     }
 
-    throw new Error("Product insert failed");
+    saveStockValue(fixed.id, Number(fixed.stock_qty || inputStock || 0));
+    return fixed;
   }
 
   async function updateProductStockSafe(productId: string, nextStock: number) {
-    const attempts = [
-      { stock_qty: nextStock },
-      { stock: nextStock },
-      { stock_quantity: nextStock },
-    ];
+    const columns = ["stock_qty", "stock", "stock_quantity", "quantity", "qty"];
 
-    for (const payload of attempts) {
-      const result = await supabase
+    for (const col of columns) {
+      const withUser = await supabase
         .from("products")
-        .update(payload)
+        .update({ [col]: nextStock })
         .eq("id", productId)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .select("id");
 
-      if (!result.error) {
+      if (!withUser.error && Array.isArray(withUser.data) && withUser.data.length > 0) {
         saveStockValue(productId, nextStock);
         setProducts((prev) =>
           prev.map((p) => (p.id === productId ? { ...p, stock_qty: nextStock } : p))
@@ -1053,8 +1114,26 @@ export default function InvoicePage() {
         return;
       }
 
-      if (!isSchemaColumnError(result.error) && !isMissingStockColumn(result.error)) {
-        throw result.error;
+      if (withUser.error && !isSchemaColumnError(withUser.error)) {
+        throw withUser.error;
+      }
+
+      const idOnly = await supabase
+        .from("products")
+        .update({ [col]: nextStock })
+        .eq("id", productId)
+        .select("id");
+
+      if (!idOnly.error && Array.isArray(idOnly.data) && idOnly.data.length > 0) {
+        saveStockValue(productId, nextStock);
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, stock_qty: nextStock } : p))
+        );
+        return;
+      }
+
+      if (idOnly.error && !isSchemaColumnError(idOnly.error)) {
+        throw idOnly.error;
       }
     }
 
@@ -1181,12 +1260,7 @@ export default function InvoicePage() {
     const q = search.trim().toLowerCase();
     if (!q) return true;
 
-    return [
-      inv.invoice_no,
-      inv.customer_name,
-      inv.customer_company,
-      inv.customer_phone,
-    ]
+    return [inv.invoice_no, inv.customer_name, inv.customer_company, inv.customer_phone]
       .join(" ")
       .toLowerCase()
       .includes(q);
@@ -1194,11 +1268,7 @@ export default function InvoicePage() {
 
   function getPaymentForInvoice(inv?: InvoiceRecord | null) {
     const value = inv?.payment_method || paymentMethodText;
-    return (
-      paymentOptions.find((p) => p.id === value || p.name === value) ||
-      selectedPayment ||
-      null
-    );
+    return paymentOptions.find((p) => p.id === value || p.name === value) || selectedPayment || null;
   }
 
   function savePaymentOptions(next: PaymentOption[]) {
@@ -1294,49 +1364,20 @@ export default function InvoicePage() {
 
     if (!userId) return;
 
-    const fullUpdate = await supabase
-      .from("profiles")
-      .update({
-        company_name: companyName,
-        company_reg_no: companyRegNo,
-        company_phone: companyPhone,
-        company_address: companyAddress,
-        company_logo_url: companyLogoUrl,
-      })
-      .eq("id", userId);
-
-    if (fullUpdate.error && isSchemaColumnError(fullUpdate.error)) {
-      const basicUpdate = await supabase
-        .from("profiles")
-        .update({
-          company_name: companyName,
-          company_reg_no: companyRegNo,
-          company_phone: companyPhone,
-          company_address: companyAddress,
-        })
-        .eq("id", userId);
-
-      if (basicUpdate.error) {
-        setMsg(t.fail + basicUpdate.error.message);
-        return;
-      }
-
-      setMsg(t.saved);
-      setShowCompanyEdit(false);
-      return;
-    }
-
-    if (fullUpdate.error) {
-      setMsg(t.fail + fullUpdate.error.message);
-      return;
-    }
+    await updateAdaptive("profiles", userId, {
+      company_name: companyName,
+      company_reg_no: companyRegNo,
+      company_phone: companyPhone,
+      company_address: companyAddress,
+      company_logo_url: companyLogoUrl,
+    });
 
     setMsg(t.saved);
     setShowCompanyEdit(false);
   }
 
   async function insertInvoiceWithFallback(finalCustomer: Customer) {
-    const fullPayload = {
+    const payload = {
       user_id: userId,
       customer_id: finalCustomer.id,
       customer_name: finalCustomer.name,
@@ -1364,72 +1405,12 @@ export default function InvoicePage() {
       myinvois_status: myinvoisStatus,
     };
 
-    const withoutLhdnPayload = {
-      user_id: userId,
-      customer_id: finalCustomer.id,
-      customer_name: finalCustomer.name,
-      customer_phone: finalCustomer.phone || "",
-      customer_company: finalCustomer.company_name || "",
-      customer_address: finalCustomer.address || "",
-      invoice_no: invoiceNo,
-      invoice_date: invoiceDate,
-      due_date: dueDate,
-      status,
-      payment_method: paymentMethodText,
-      subtotal: preview.subtotal,
-      discount: preview.discount,
-      total: preview.total,
-      total_cost: preview.totalCost,
-      total_profit: preview.profit,
-      note,
-    };
-
-    const basicPayload = {
-      user_id: userId,
-      customer_id: finalCustomer.id,
-      customer_name: finalCustomer.name,
-      invoice_no: invoiceNo,
-      subtotal: preview.subtotal,
-      discount: preview.discount,
-      total: preview.total,
-      total_cost: preview.totalCost,
-      total_profit: preview.profit,
-      note,
-    };
-
-    const fullResult = await supabase.from("invoices").insert(fullPayload).select().single();
-
-    if (!fullResult.error) {
-      return { data: fullResult.data as InvoiceRecord, lhdnSkipped: false };
-    }
-
-    if (!isSchemaColumnError(fullResult.error)) {
-      throw fullResult.error;
-    }
-
-    const noLhdnResult = await supabase
-      .from("invoices")
-      .insert(withoutLhdnPayload)
-      .select()
-      .single();
-
-    if (!noLhdnResult.error) {
-      return { data: noLhdnResult.data as InvoiceRecord, lhdnSkipped: true };
-    }
-
-    if (!isSchemaColumnError(noLhdnResult.error)) {
-      throw noLhdnResult.error;
-    }
-
-    const basicResult = await supabase.from("invoices").insert(basicPayload).select().single();
-
-    if (basicResult.error) throw basicResult.error;
-
-    return { data: basicResult.data as InvoiceRecord, lhdnSkipped: true };
+    const data = await insertAdaptive("invoices", payload);
+    return data as InvoiceRecord;
   }
 
   async function insertInvoiceItemSafe(invoiceId: string, finalProduct: Product) {
-    const fullItem = {
+    await insertAdaptive("invoice_items", {
       invoice_id: invoiceId,
       product_id: finalProduct.id,
       product_name: finalProduct.name,
@@ -1439,34 +1420,11 @@ export default function InvoicePage() {
       discount: preview.discount,
       line_total: preview.taxableBase,
       line_profit: preview.profit,
-    };
-
-    const basicItem = {
-      invoice_id: invoiceId,
-      product_id: finalProduct.id,
-      product_name: finalProduct.name,
-      qty: preview.finalQty,
-      unit_price: preview.price,
-      line_total: preview.taxableBase,
-    };
-
-    const result = await supabase.from("invoice_items").insert(fullItem);
-
-    if (!result.error) return;
-
-    if (!isSchemaColumnError(result.error)) {
-      throw result.error;
-    }
-
-    const basicResult = await supabase.from("invoice_items").insert(basicItem);
-
-    if (basicResult.error && !isSchemaColumnError(basicResult.error)) {
-      throw basicResult.error;
-    }
+    });
   }
 
   async function insertTransactionSafe(invoiceId: string, finalCustomer: Customer, finalProduct: Product) {
-    const fullTx = {
+    await insertAdaptive("transactions", {
       user_id: userId,
       txn_date: invoiceDate,
       txn_type: "income",
@@ -1481,33 +1439,7 @@ export default function InvoicePage() {
       source_type: "invoice",
       source_id: invoiceId,
       note: `${invoiceNo}｜${finalCustomer.name}｜${finalProduct.name}`,
-    };
-
-    const basicTx = {
-      user_id: userId,
-      txn_date: invoiceDate,
-      txn_type: "income",
-      amount: preview.total,
-      category_name:
-        lang === "zh"
-          ? "发票收入"
-          : lang === "en"
-            ? "Invoice Income"
-            : "Pendapatan Invois",
-      note: `${invoiceNo}｜${finalCustomer.name}｜${finalProduct.name}`,
-    };
-
-    const result = await supabase.from("transactions").insert(fullTx);
-
-    if (!result.error) return;
-
-    if (!isSchemaColumnError(result.error)) {
-      throw result.error;
-    }
-
-    const basicResult = await supabase.from("transactions").insert(basicTx);
-
-    if (basicResult.error) throw basicResult.error;
+    });
   }
 
   async function createInvoice() {
@@ -1567,19 +1499,14 @@ export default function InvoicePage() {
           setCustomers(workingCustomers);
           saveTrialData(workingCustomers, workingProducts);
         } else {
-          const { data, error } = await supabase
-            .from("customers")
-            .insert({
-              user_id: userId,
-              name: newCustomerName,
-              phone: newCustomerPhone,
-              company_name: newCustomerCompany,
-              address: newCustomerAddress,
-            })
-            .select()
-            .single();
+          const data = await insertAdaptive("customers", {
+            user_id: userId,
+            name: newCustomerName,
+            phone: newCustomerPhone,
+            company_name: newCustomerCompany,
+            address: newCustomerAddress,
+          });
 
-          if (error) throw error;
           finalCustomer = data as Customer;
           setCustomers((prev) => [finalCustomer as Customer, ...prev]);
         }
@@ -1674,9 +1601,11 @@ export default function InvoicePage() {
         return;
       }
 
-      const invoiceResult = await insertInvoiceWithFallback(finalCustomer);
-      const invoiceData = invoiceResult.data;
-      lhdnSkipped = invoiceResult.lhdnSkipped;
+      const invoiceData = await insertInvoiceWithFallback(finalCustomer);
+
+      if (!("discount" in (invoiceData as any))) {
+        lhdnSkipped = true;
+      }
 
       await insertInvoiceItemSafe(invoiceData.id, finalProduct);
       await updateProductStockSafe(finalProduct.id, newStock);
@@ -1712,7 +1641,7 @@ export default function InvoicePage() {
       setMsg(lhdnSkipped ? t.lhdnSkipped : t.success);
       setMode("list");
     } catch (error: any) {
-      setMsg(t.fail + error.message);
+      setMsg(t.fail + (error?.message || String(error)));
     }
 
     setLoading(false);
@@ -1757,44 +1686,20 @@ export default function InvoicePage() {
       return;
     }
 
-    const fullUpdate = await supabase
-      .from("invoices")
-      .update(updatedData)
-      .eq("id", editInvoiceId);
+    try {
+      await updateAdaptive("invoices", editInvoiceId, updatedData as any);
 
-    if (fullUpdate.error && isSchemaColumnError(fullUpdate.error)) {
-      const basicUpdate = await supabase
-        .from("invoices")
-        .update({
-          invoice_no: invoiceNo,
-          customer_name: newCustomerName,
-          subtotal: preview.subtotal,
-          discount: preview.discount,
-          total: preview.total,
-          total_cost: preview.totalCost,
-          total_profit: preview.profit,
-          note,
-        })
-        .eq("id", editInvoiceId);
+      setInvoices((prev) =>
+        prev.map((inv) => (inv.id === editInvoiceId ? { ...inv, ...updatedData } : inv))
+      );
 
-      if (basicUpdate.error) {
-        setMsg(t.fail + basicUpdate.error.message);
-        setLoading(false);
-        return;
-      }
-    } else if (fullUpdate.error) {
-      setMsg(t.fail + fullUpdate.error.message);
-      setLoading(false);
-      return;
+      setMsg(t.saved);
+      setMode("list");
+      setEditInvoiceId(null);
+    } catch (error: any) {
+      setMsg(t.fail + (error?.message || String(error)));
     }
 
-    setInvoices((prev) =>
-      prev.map((inv) => (inv.id === editInvoiceId ? { ...inv, ...updatedData } : inv))
-    );
-
-    setMsg(t.saved);
-    setMode("list");
-    setEditInvoiceId(null);
     setLoading(false);
   }
 
@@ -2314,10 +2219,6 @@ export default function InvoicePage() {
           .responsive-actions {
             grid-template-columns: 1fr !important;
           }
-
-          .responsive-official-grid {
-            grid-template-columns: 1fr !important;
-          }
         }
 
         @media print {
@@ -2405,23 +2306,19 @@ export default function InvoicePage() {
             color: theme.text,
           }}
         >
-          <div style={listHeaderStyle}>
-            <div style={listTitleBlockStyle}>
-              <div style={listTitleRowStyle}>
-                <h1 style={{ ...titleStyle, color: theme.accent }}>{t.title}</h1>
+          <div style={listTitleRowStyle}>
+            <h1 style={{ ...titleStyle, color: theme.accent }}>{t.title}</h1>
 
-                <button
-                  onClick={openNewInvoice}
-                  aria-label={t.newInvoice}
-                  style={{ ...plusBtnStyle, background: theme.accent }}
-                >
-                  +
-                </button>
-              </div>
-
-              <p style={{ ...descStyle, color: theme.muted }}>{t.latestInvoices}</p>
-            </div>
+            <button
+              onClick={openNewInvoice}
+              aria-label={t.newInvoice}
+              style={{ ...plusBtnStyle, background: theme.accent }}
+            >
+              +
+            </button>
           </div>
+
+          <p style={{ ...descStyle, color: theme.muted }}>{t.latestInvoices}</p>
 
           <input
             value={search}
@@ -2529,7 +2426,7 @@ export default function InvoicePage() {
               type="date"
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
-              style={{ ...themedInputStyle, maxWidth: "min(100%, 260px)" }}
+              style={themedInputStyle}
             />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.dueDate}</label>
@@ -2537,7 +2434,7 @@ export default function InvoicePage() {
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              style={{ ...themedInputStyle, maxWidth: "min(100%, 260px)" }}
+              style={themedInputStyle}
             />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.status}</label>
@@ -2686,6 +2583,7 @@ export default function InvoicePage() {
             ) : (
               <div style={logoPlaceholder}>LOGO</div>
             )}
+
             <div style={{ flex: 1, color: theme.panelText }}>
               <strong>{companyName}</strong>
               <div>SSM：{companyRegNo || "-"}</div>
@@ -2812,6 +2710,7 @@ export default function InvoicePage() {
           </div>
 
           <h3>{t.preview}</h3>
+
           <div
             style={{
               ...screenPreviewWrapStyle,
@@ -2887,41 +2786,32 @@ const langRowStyle: CSSProperties = {
 
 const langBtn = (active: boolean, theme: any): CSSProperties => ({
   padding: "clamp(7px, 2vw, 10px) clamp(10px, 3vw, 14px)",
-  borderRadius: RADIUS_FULL,
-  border: `${BORDER_NORMAL} ${theme.accent}`,
+  borderRadius: 999,
+  border: `2px solid ${theme.accent}`,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
 });
 
 const themeSelectStyle: CSSProperties = {
-  border: BORDER_NORMAL,
-  borderRadius: RADIUS_FULL,
+  border: "2px solid",
+  borderRadius: 999,
   padding: "clamp(7px, 2vw, 10px) clamp(9px, 3vw, 14px)",
   fontWeight: 900,
 };
 
 const backBtn: CSSProperties = {
   background: "#fff",
-  border: BORDER_NORMAL,
-  borderRadius: RADIUS_SM,
+  border: "2px solid",
+  borderRadius: 12,
   padding: "clamp(9px, 2.5vw, 12px) clamp(12px, 3vw, 18px)",
   fontWeight: 900,
 };
 
 const cardStyle: CSSProperties = {
-  border: BORDER_STRONG,
-  borderRadius: RADIUS_XL,
+  border: "3px solid",
+  borderRadius: 24,
   padding: "clamp(14px, 4vw, 24px)",
-};
-
-const listHeaderStyle: CSSProperties = {
-  width: "100%",
-  marginBottom: 12,
-};
-
-const listTitleBlockStyle: CSSProperties = {
-  width: "100%",
 };
 
 const listTitleRowStyle: CSSProperties = {
@@ -2935,7 +2825,7 @@ const listTitleRowStyle: CSSProperties = {
 const plusBtnStyle: CSSProperties = {
   width: "clamp(44px, 10vw, 54px)",
   height: "clamp(44px, 10vw, 54px)",
-  borderRadius: RADIUS_FULL,
+  borderRadius: 999,
   border: "none",
   color: "#fff",
   fontSize: "clamp(24px, 6vw, 32px)",
@@ -2956,11 +2846,10 @@ const descStyle: CSSProperties = {
 };
 
 const invoiceNoBox: CSSProperties = {
-  border: BORDER_NORMAL,
-  borderRadius: RADIUS_SM,
+  border: "2px solid",
+  borderRadius: 12,
   padding: "clamp(10px, 3vw, 14px)",
   marginBottom: 20,
-  fontSize: "clamp(14px, 2.8vw, 17px)",
 };
 
 const invoiceListStyle: CSSProperties = {
@@ -2973,8 +2862,8 @@ const invoiceItemStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 12,
-  border: BORDER_NORMAL,
-  borderRadius: RADIUS_MD,
+  border: "2px solid",
+  borderRadius: 16,
   padding: "clamp(12px, 3vw, 16px)",
   flexWrap: "wrap",
 };
@@ -2996,9 +2885,8 @@ const recordEditBtnStyle: CSSProperties = {
   border: "none",
   background: "#0f766e",
   color: "#fff",
-  borderRadius: RADIUS_SM,
+  borderRadius: 8,
   padding: "6px 9px",
-  fontSize: "clamp(12px, 2.4vw, 13px)",
   fontWeight: 900,
 };
 
@@ -3006,9 +2894,8 @@ const recordDeleteBtnStyle: CSSProperties = {
   border: "none",
   background: "#fee2e2",
   color: "#b91c1c",
-  borderRadius: RADIUS_SM,
+  borderRadius: 8,
   padding: "6px 9px",
-  fontSize: "clamp(12px, 2.4vw, 13px)",
   fontWeight: 900,
 };
 
@@ -3016,20 +2903,17 @@ const recordWhatsappBtnStyle: CSSProperties = {
   border: "none",
   background: "#25D366",
   color: "#fff",
-  borderRadius: RADIUS_SM,
+  borderRadius: 8,
   padding: "6px 8px",
-  fontSize: "clamp(11px, 2.3vw, 13px)",
   fontWeight: 900,
 };
 
 const recordShareBtnStyle: CSSProperties = {
-  border: BORDER_THIN,
-  borderColor: "#0f766e",
+  border: "1px solid #0f766e",
   background: "#fff",
   color: "#0f766e",
-  borderRadius: RADIUS_SM,
+  borderRadius: 8,
   padding: "6px 9px",
-  fontSize: "clamp(12px, 2.4vw, 13px)",
   fontWeight: 900,
 };
 
@@ -3046,8 +2930,8 @@ const switchRow: CSSProperties = {
 
 const modeBtn = (active: boolean, theme: any): CSSProperties => ({
   padding: "clamp(10px, 2.8vw, 14px)",
-  borderRadius: RADIUS_SM,
-  border: `${BORDER_NORMAL} ${theme.accent}`,
+  borderRadius: 12,
+  border: `2px solid ${theme.accent}`,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
@@ -3068,16 +2952,16 @@ const inputStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   padding: "clamp(11px, 3vw, 15px)",
-  borderRadius: RADIUS_SM,
-  border: BORDER_NORMAL,
+  borderRadius: 12,
+  border: "2px solid",
   fontSize: "clamp(14px, 2.7vw, 17px)",
   marginBottom: 8,
 };
 
 const paymentToggleBtnStyle: CSSProperties = {
   width: "100%",
-  border: BORDER_NORMAL,
-  borderRadius: RADIUS_SM,
+  border: "2px solid",
+  borderRadius: 12,
   padding: "clamp(11px, 3vw, 14px)",
   fontWeight: 900,
   marginBottom: 10,
@@ -3086,8 +2970,8 @@ const paymentToggleBtnStyle: CSSProperties = {
 const paymentAddBoxStyle: CSSProperties = {
   display: "grid",
   gap: 8,
-  border: BORDER_DASHED,
-  borderRadius: RADIUS_MD,
+  border: "2px dashed",
+  borderRadius: 16,
   padding: "clamp(10px, 3vw, 14px)",
   marginBottom: 10,
 };
@@ -3096,8 +2980,8 @@ const uploadQrBtnStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  border: BORDER_NORMAL,
-  borderRadius: RADIUS_SM,
+  border: "2px solid",
+  borderRadius: 12,
   padding: "clamp(10px, 3vw, 14px)",
   fontWeight: 900,
   cursor: "pointer",
@@ -3107,9 +2991,8 @@ const qrPreviewStyle: CSSProperties = {
   width: "clamp(92px, 22vw, 120px)",
   height: "clamp(92px, 22vw, 120px)",
   objectFit: "contain",
-  border: BORDER_THIN,
-  borderColor: "#cbd5e1",
-  borderRadius: RADIUS_SM,
+  border: "1px solid #cbd5e1",
+  borderRadius: 12,
   background: "#fff",
   padding: 6,
 };
@@ -3117,7 +3000,7 @@ const qrPreviewStyle: CSSProperties = {
 const addBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
-  borderRadius: RADIUS_SM,
+  borderRadius: 12,
   padding: "clamp(11px, 3vw, 15px)",
   fontWeight: 900,
 };
@@ -3133,11 +3016,10 @@ const paymentChipStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 8,
-  border: BORDER_THIN,
-  borderRadius: RADIUS_FULL,
+  border: "1px solid",
+  borderRadius: 999,
   padding: "6px 10px",
   fontWeight: 800,
-  fontSize: "clamp(12px, 2.5vw, 15px)",
 };
 
 const paymentChipDeleteStyle: CSSProperties = {
@@ -3145,7 +3027,7 @@ const paymentChipDeleteStyle: CSSProperties = {
   color: "#fff",
   width: 22,
   height: 22,
-  borderRadius: RADIUS_FULL,
+  borderRadius: 999,
   fontWeight: 900,
 };
 
@@ -3153,30 +3035,30 @@ const companyBox: CSSProperties = {
   display: "flex",
   gap: 14,
   alignItems: "center",
-  border: BORDER_NORMAL,
-  borderRadius: RADIUS_MD,
+  border: "2px solid",
+  borderRadius: 16,
   padding: "clamp(12px, 3vw, 16px)",
   flexWrap: "wrap",
 };
 
 const companyEditBoxStyle: CSSProperties = {
   marginTop: 12,
-  border: BORDER_DASHED,
-  borderRadius: RADIUS_MD,
+  border: "2px dashed",
+  borderRadius: 16,
   padding: "clamp(12px, 3vw, 16px)",
 };
 
 const logoStyle: CSSProperties = {
   width: "clamp(64px, 15vw, 80px)",
   height: "clamp(64px, 15vw, 80px)",
-  borderRadius: RADIUS_SM,
+  borderRadius: 12,
   objectFit: "cover",
 };
 
 const logoPlaceholder: CSSProperties = {
   width: "clamp(64px, 15vw, 80px)",
   height: "clamp(64px, 15vw, 80px)",
-  borderRadius: RADIUS_SM,
+  borderRadius: 12,
   background: "#ccfbf1",
   display: "flex",
   alignItems: "center",
@@ -3186,9 +3068,9 @@ const logoPlaceholder: CSSProperties = {
 };
 
 const editBtnStyle: CSSProperties = {
-  border: BORDER_NORMAL,
+  border: "2px solid",
   background: "#fff",
-  borderRadius: RADIUS_SM,
+  borderRadius: 12,
   padding: "clamp(9px, 2.5vw, 12px)",
   fontWeight: 900,
 };
@@ -3196,7 +3078,7 @@ const editBtnStyle: CSSProperties = {
 const submitSmallBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
-  borderRadius: RADIUS_SM,
+  borderRadius: 12,
   padding: "clamp(11px, 3vw, 14px)",
   fontWeight: 900,
 };
@@ -3206,7 +3088,7 @@ const submitBtn: CSSProperties = {
   marginTop: 18,
   padding: "clamp(13px, 3.2vw, 16px)",
   border: "none",
-  borderRadius: RADIUS_SM,
+  borderRadius: 12,
   color: "#fff",
   fontWeight: 900,
   fontSize: "clamp(15px, 3vw, 18px)",
@@ -3221,15 +3103,15 @@ const actionRow: CSSProperties = {
 
 const secondaryBtn: CSSProperties = {
   padding: "clamp(11px, 3vw, 14px)",
-  borderRadius: RADIUS_SM,
-  border: BORDER_NORMAL,
+  borderRadius: 12,
+  border: "2px solid",
   background: "#fff",
   fontWeight: 900,
 };
 
 const whatsappBtn: CSSProperties = {
   padding: "clamp(11px, 3vw, 14px)",
-  borderRadius: RADIUS_SM,
+  borderRadius: 12,
   border: "none",
   background: "#25D366",
   color: "#fff",
@@ -3249,8 +3131,8 @@ const chargeGridStyle: CSSProperties = {
 };
 
 const chargeBoxStyle: CSSProperties = {
-  border: BORDER_NORMAL,
-  borderRadius: RADIUS_MD,
+  border: "2px solid",
+  borderRadius: 16,
   padding: "clamp(10px, 3vw, 14px)",
 };
 
@@ -3267,14 +3149,14 @@ const screenPreviewWrapStyle: CSSProperties = {
   overflowY: "hidden",
   WebkitOverflowScrolling: "touch",
   background: "#f8fafc",
-  border: BORDER_NORMAL,
-  borderRadius: RADIUS_LG,
+  border: "2px solid",
+  borderRadius: 18,
   padding: "clamp(10px, 3vw, 14px)",
   boxSizing: "border-box",
 };
 
 const screenInvoiceInnerStyle: CSSProperties = {
-  width: "min(780px, 780px)",
+  width: 780,
   minWidth: 780,
   maxWidth: "none",
 };
@@ -3359,7 +3241,7 @@ const officialInvoiceNoStyle: CSSProperties = {
 };
 
 const officialLineStyle: CSSProperties = {
-  height: "clamp(1px, 0.15em, 2px)",
+  height: 2,
   background: "#0f766e",
   margin: "18px 0",
 };
@@ -3372,9 +3254,8 @@ const officialInfoGridStyle: CSSProperties = {
 };
 
 const officialInfoBoxStyle: CSSProperties = {
-  border: BORDER_THIN,
-  borderColor: "#cbd5e1",
-  borderRadius: RADIUS_SM,
+  border: "1px solid #cbd5e1",
+  borderRadius: 12,
   padding: 14,
   minHeight: 120,
   lineHeight: 1.6,
@@ -3385,8 +3266,7 @@ const officialInfoRowStyle: CSSProperties = {
   justifyContent: "space-between",
   gap: 12,
   padding: "7px 0",
-  borderBottom: BORDER_THIN,
-  borderBottomColor: "#e2e8f0",
+  borderBottom: "1px solid #e2e8f0",
 };
 
 const officialPaymentMethodRowStyle: CSSProperties = {
@@ -3414,9 +3294,8 @@ const officialInlineQrStyle: CSSProperties = {
   height: 82,
   objectFit: "contain",
   marginTop: 8,
-  border: BORDER_THIN,
-  borderColor: "#cbd5e1",
-  borderRadius: RADIUS_SM,
+  border: "1px solid #cbd5e1",
+  borderRadius: 8,
   padding: 4,
   background: "#fff",
 };
@@ -3428,16 +3307,14 @@ const officialTableStyle: CSSProperties = {
 };
 
 const officialThStyle: CSSProperties = {
-  border: BORDER_THIN,
-  borderColor: "#cbd5e1",
+  border: "1px solid #cbd5e1",
   padding: "10px 8px",
   textAlign: "left",
   fontWeight: 900,
 };
 
 const officialTdStyle: CSSProperties = {
-  border: BORDER_THIN,
-  borderColor: "#cbd5e1",
+  border: "1px solid #cbd5e1",
   padding: "12px 8px",
 };
 
@@ -3452,8 +3329,7 @@ const officialSummaryRowStyle: CSSProperties = {
   justifyContent: "space-between",
   gap: 10,
   padding: "10px 0",
-  borderBottom: BORDER_THIN,
-  borderBottomColor: "#e2e8f0",
+  borderBottom: "1px solid #e2e8f0",
 };
 
 const officialTotalRowStyle: CSSProperties = {
