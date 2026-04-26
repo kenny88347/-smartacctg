@@ -67,6 +67,10 @@ const PAYMENT_OPTIONS_KEY = "smartacctg_payment_options";
 const LANG_KEY = "smartacctg_lang";
 const THEME_KEY = "smartacctg_theme";
 
+// 兼容之前產品頁和發票頁用過的兩個本地庫存 key
+const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
+const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
+
 const THEMES: Record<ThemeKey, any> = {
   deepTeal: {
     name: "深青色",
@@ -258,8 +262,6 @@ const TXT = {
     stockNotEnough: "库存不足，目前库存：",
     trialSuccess: "试用版发票已生成，已加入记账，并已扣库存",
     success: "发票已生成，已自动加入记账，并已扣除库存",
-    stockColumnError:
-      "保存失败：Supabase products 表还没有 stock_qty 栏位。请先在 Supabase 加 stock_qty 栏位。",
     lhdnSkipped:
       "发票已生成并加入记账；但 invoices 表缺少部分 LHDN 预留栏位，所以已先保存基本发票资料",
     fail: "生成失败：",
@@ -359,8 +361,6 @@ const TXT = {
     stockNotEnough: "Insufficient stock. Current stock: ",
     trialSuccess: "Trial invoice generated, added to accounting and stock deducted",
     success: "Invoice generated, added to accounting and stock deducted",
-    stockColumnError:
-      "Save failed: your Supabase products table does not have the stock_qty column yet.",
     lhdnSkipped:
       "Invoice generated and added to accounting; invoices table is missing some LHDN reserved fields, so basic invoice data has been saved",
     fail: "Failed: ",
@@ -460,8 +460,6 @@ const TXT = {
     stockNotEnough: "Stok tidak cukup. Stok semasa: ",
     trialSuccess: "Invois percubaan berjaya dijana, masuk akaun dan stok ditolak",
     success: "Invois berjaya dijana, masuk akaun dan stok ditolak",
-    stockColumnError:
-      "Gagal simpan: jadual products di Supabase belum ada lajur stock_qty.",
     lhdnSkipped:
       "Invois berjaya dijana dan masuk akaun; jadual invoices tiada beberapa medan LHDN, jadi data asas invois telah disimpan",
     fail: "Gagal: ",
@@ -491,12 +489,70 @@ function makeId(prefix: string) {
 
 function isSchemaColumnError(error: any) {
   const message = String(error?.message || "").toLowerCase();
-  return message.includes("schema cache") || message.includes("could not find");
+  return (
+    message.includes("schema cache") ||
+    message.includes("could not find") ||
+    message.includes("column")
+  );
 }
 
 function isMissingStockColumn(error: any) {
   const message = String(error?.message || "").toLowerCase();
   return message.includes("stock_qty") && isSchemaColumnError(error);
+}
+
+function readStockMapByKey(key: string): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function getStockMap(): Record<string, number> {
+  return {
+    ...readStockMapByKey(PRODUCT_STOCK_FALLBACK_KEY),
+    ...readStockMapByKey(PRODUCT_STOCK_MAP_KEY),
+  };
+}
+
+function writeStockMap(map: Record<string, number>) {
+  localStorage.setItem(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
+  localStorage.setItem(PRODUCT_STOCK_FALLBACK_KEY, JSON.stringify(map));
+}
+
+function saveStockValue(productId: string, stock: number) {
+  if (!productId) return;
+
+  const map = getStockMap();
+  map[productId] = Number(stock || 0);
+  writeStockMap(map);
+}
+
+function normalizeProduct(row: any): Product {
+  const stockMap = getStockMap();
+  const localStock = stockMap[row?.id];
+  const dbStock = row?.stock_qty;
+
+  let finalStock = 0;
+
+  if (localStock !== undefined && (dbStock === undefined || dbStock === null || Number(dbStock) === 0)) {
+    finalStock = Number(localStock || 0);
+  } else {
+    finalStock = Number(dbStock || 0);
+  }
+
+  return {
+    ...row,
+    id: String(row?.id || ""),
+    name: String(row?.name || ""),
+    price: Number(row?.price || 0),
+    cost: Number(row?.cost || 0),
+    discount: Number(row?.discount || 0),
+    stock_qty: finalStock,
+    note: row?.note || "",
+  };
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -629,13 +685,6 @@ export default function InvoicePage() {
     color: theme.inputText,
   };
 
-  const themedTextareaStyle: CSSProperties = {
-    ...textareaStyle,
-    borderColor: theme.border,
-    background: theme.inputBg,
-    color: theme.inputText,
-  };
-
   const themedPanelStyle: CSSProperties = {
     background: theme.panelBg,
     color: theme.panelText,
@@ -706,8 +755,10 @@ export default function InvoicePage() {
         const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
         const savedInvoices = localStorage.getItem(TRIAL_INVOICES_KEY);
 
+        const trialProducts = savedProducts ? JSON.parse(savedProducts) : [];
+
         setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
-        setProducts(savedProducts ? JSON.parse(savedProducts) : []);
+        setProducts(trialProducts.map((p: any) => normalizeProduct(p)));
         setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
 
         return;
@@ -765,25 +816,17 @@ export default function InvoicePage() {
   async function loadProducts(uid: string) {
     const { data, error } = await supabase
       .from("products")
-      .select("id,user_id,name,price,cost,discount,stock_qty,note")
+      .select("*")
       .eq("user_id", uid)
       .order("created_at", { ascending: false });
 
     if (error) {
-      setMsg(isMissingStockColumn(error) ? t.stockColumnError : t.fail + error.message);
+      setMsg(t.fail + error.message);
       setProducts([]);
       return;
     }
 
-    const fixedProducts = ((data || []) as Product[]).map((p) => ({
-      ...p,
-      price: Number(p.price || 0),
-      cost: Number(p.cost || 0),
-      discount: Number(p.discount || 0),
-      stock_qty: Number(p.stock_qty || 0),
-    }));
-
-    setProducts(fixedProducts);
+    setProducts((data || []).map((p: any) => normalizeProduct(p)));
   }
 
   async function loadInvoices(uid: string) {
@@ -1269,9 +1312,10 @@ export default function InvoicePage() {
         if (isTrial) {
           workingProducts = [finalProduct, ...products];
           setProducts(workingProducts);
+          saveStockValue(finalProduct.id, inputStock);
           saveTrialData(workingCustomers, workingProducts);
         } else {
-          const { data, error } = await supabase
+          const insertWithStock = await supabase
             .from("products")
             .insert({
               user_id: userId,
@@ -1282,21 +1326,46 @@ export default function InvoicePage() {
               stock_qty: inputStock,
               note: t.productNote,
             })
-            .select()
+            .select("*")
             .single();
 
-          if (error) {
-            if (isMissingStockColumn(error)) {
-              throw new Error(t.stockColumnError);
+          if (insertWithStock.error) {
+            if (isMissingStockColumn(insertWithStock.error)) {
+              const insertWithoutStock = await supabase
+                .from("products")
+                .insert({
+                  user_id: userId,
+                  name: newProductName,
+                  price: Number(newProductPrice),
+                  cost: Number(newProductCost),
+                  discount: 0,
+                  note: t.productNote,
+                })
+                .select("*")
+                .single();
+
+              if (insertWithoutStock.error) {
+                throw insertWithoutStock.error;
+              }
+
+              finalProduct = normalizeProduct({
+                ...(insertWithoutStock.data as any),
+                stock_qty: inputStock,
+              });
+
+              saveStockValue(finalProduct.id, inputStock);
+            } else {
+              throw insertWithStock.error;
+            }
+          } else {
+            finalProduct = normalizeProduct(insertWithStock.data);
+
+            if (Number(finalProduct.stock_qty || 0) === 0 && inputStock > 0) {
+              finalProduct.stock_qty = inputStock;
             }
 
-            throw error;
+            saveStockValue(finalProduct.id, Number(finalProduct.stock_qty || inputStock || 0));
           }
-
-          finalProduct = {
-            ...(data as Product),
-            stock_qty: Number((data as Product).stock_qty ?? inputStock),
-          };
 
           setProducts((prev) => [finalProduct as Product, ...prev]);
         }
@@ -1346,6 +1415,7 @@ export default function InvoicePage() {
 
         const nextInvoices = [printableRecord, ...invoices];
 
+        saveStockValue(finalProduct.id, newStock);
         setProducts(nextProducts);
         setInvoices(nextInvoices);
         setLastPrintableInvoice(printableRecord);
@@ -1374,10 +1444,12 @@ export default function InvoicePage() {
 
       if (stockResult.error) {
         if (isMissingStockColumn(stockResult.error)) {
-          throw new Error(t.stockColumnError);
+          saveStockValue(finalProduct.id, newStock);
+        } else {
+          throw stockResult.error;
         }
-
-        throw stockResult.error;
+      } else {
+        saveStockValue(finalProduct.id, newStock);
       }
 
       await insertTransactionSafe(invoiceData.id, finalCustomer, finalProduct);
