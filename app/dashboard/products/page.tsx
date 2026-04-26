@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 type Lang = "zh" | "en" | "ms";
 type ThemeKey = "deepTeal" | "pink" | "blackGold" | "lightRed" | "nature" | "sky";
+type DetailMetric = "stock" | "cost" | "price" | "profit" | null;
 
 type Product = {
   id: string;
@@ -47,7 +48,6 @@ const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
 
-// 兼容产品管理 + 发票系统之前保存库存用过的本地 key
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 
@@ -62,10 +62,13 @@ const TXT = {
     delete: "删除",
     save: "保存",
     cancel: "取消",
+    close: "关闭",
     productName: "产品名称",
     productNo: "产品编号",
     price: "售价 RM",
     cost: "成本 RM",
+    summaryPrice: "售价",
+    summaryCost: "成本",
     discount: "折扣 RM",
     stock: "库存数量",
     note: "备注",
@@ -73,6 +76,7 @@ const TXT = {
     margin: "利润率",
     latest: "最新产品记录",
     details: "产品明细总览",
+    allProductDetails: "全部产品资料",
     noProduct: "还没有产品",
     noRecord: "暂无记录",
     customerPrice: "客户专属价格",
@@ -95,7 +99,7 @@ const TXT = {
     linkedTitle: "联动说明",
     link1: "发票系统：选择客户后会自动读取这个产品与客户专属价格。",
     link2: "记账系统：发票生成后会自动加入收入记录。",
-    link3: "库存系统：发票出货后会自动扣除库存。",
+    link3: "库存系统：发票出货后会自动扣除库存，产品管理会自动显示最新库存。",
     theme: "主题",
     trial: "免费试用模式",
   },
@@ -110,10 +114,13 @@ const TXT = {
     delete: "Delete",
     save: "Save",
     cancel: "Cancel",
+    close: "Close",
     productName: "Product Name",
     productNo: "Product Code",
     price: "Selling Price RM",
     cost: "Cost RM",
+    summaryPrice: "Selling Price",
+    summaryCost: "Cost",
     discount: "Discount RM",
     stock: "Stock Quantity",
     note: "Note",
@@ -121,6 +128,7 @@ const TXT = {
     margin: "Profit Margin",
     latest: "Latest Products",
     details: "Product Details Overview",
+    allProductDetails: "All Product Details",
     noProduct: "No products yet",
     noRecord: "No records yet",
     customerPrice: "Customer Special Price",
@@ -143,7 +151,7 @@ const TXT = {
     linkedTitle: "System Links",
     link1: "Invoice: customer selection will read product and special customer price.",
     link2: "Accounting: invoice income will be added to accounting records.",
-    link3: "Stock: invoice delivery will deduct stock automatically.",
+    link3: "Stock: invoice delivery will deduct stock automatically and update product management.",
     theme: "Theme",
     trial: "Free Trial Mode",
   },
@@ -157,10 +165,13 @@ const TXT = {
     delete: "Padam",
     save: "Simpan",
     cancel: "Batal",
+    close: "Tutup",
     productName: "Nama Produk",
     productNo: "Kod Produk",
     price: "Harga Jualan RM",
     cost: "Kos RM",
+    summaryPrice: "Harga Jualan",
+    summaryCost: "Kos",
     discount: "Diskaun RM",
     stock: "Kuantiti Stok",
     note: "Nota",
@@ -168,6 +179,7 @@ const TXT = {
     margin: "Margin Untung",
     latest: "Rekod Produk Terkini",
     details: "Ringkasan Butiran Produk",
+    allProductDetails: "Semua Butiran Produk",
     noProduct: "Belum ada produk",
     noRecord: "Belum ada rekod",
     customerPrice: "Harga Khas Pelanggan",
@@ -190,7 +202,7 @@ const TXT = {
     linkedTitle: "Pautan Sistem",
     link1: "Invois: pilihan pelanggan akan membaca produk dan harga khas.",
     link2: "Akaun: pendapatan invois akan masuk ke rekod akaun.",
-    link3: "Stok: penghantaran invois akan menolak stok automatik.",
+    link3: "Stok: invois akan menolak stok automatik dan mengemas kini produk.",
     theme: "Tema",
     trial: "Mod Percubaan Percuma",
   },
@@ -331,6 +343,7 @@ export default function ProductsPage() {
 
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [detailMetric, setDetailMetric] = useState<DetailMetric>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [productName, setProductName] = useState("");
@@ -369,6 +382,24 @@ export default function ProductsPage() {
 
     init();
   }, []);
+
+  useEffect(() => {
+    if (!session || isTrial) return;
+
+    const reload = () => {
+      if (document.visibilityState === "visible") {
+        loadProducts(session.user.id);
+      }
+    };
+
+    window.addEventListener("focus", reload);
+    document.addEventListener("visibilitychange", reload);
+
+    return () => {
+      window.removeEventListener("focus", reload);
+      document.removeEventListener("visibilitychange", reload);
+    };
+  }, [session, isTrial]);
 
   function isStockColumnError(error: any) {
     const message = String(error?.message || "").toLowerCase();
@@ -535,11 +566,6 @@ export default function ProductsPage() {
     window.location.href = isTrial
       ? `/dashboard?mode=trial&lang=${lang}`
       : `/dashboard?lang=${lang}`;
-  }
-
-  function scrollToDetails() {
-    const el = document.getElementById("productDetails");
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function productCode(p: Product) {
@@ -882,6 +908,114 @@ export default function ProductsPage() {
     return customerPrices.filter((cp) => cp.product_id === productId);
   }
 
+  function openDetailModal(metric: DetailMetric) {
+    setDetailMetric(metric);
+  }
+
+  function getDetailTitle() {
+    if (detailMetric === "stock") return t.stock;
+    if (detailMetric === "cost") return t.summaryCost;
+    if (detailMetric === "price") return t.summaryPrice;
+    if (detailMetric === "profit") return t.profit;
+    return t.allProductDetails;
+  }
+
+  function renderProductDetailCard(p: Product) {
+    const profit = Number(p.price || 0) - Number(p.cost || 0) - Number(p.discount || 0);
+    const margin = Number(p.price || 0) > 0 ? (profit / Number(p.price || 0)) * 100 : 0;
+    const purchaseList = getCustomerPurchaseList(p.id);
+    const stockStatus = getStockStatus(p);
+
+    return (
+      <div
+        key={p.id}
+        style={{
+          ...productCardStyle,
+          background: theme.itemCard,
+          color: theme.itemText,
+          borderColor: theme.border,
+          boxShadow:
+            themeKey === "blackGold"
+              ? theme.glow
+              : "0 8px 24px rgba(15,23,42,0.08)",
+        }}
+      >
+        <div>
+          <div style={productTitleRowStyle}>
+            <strong style={productNameStyle}>{p.name}</strong>
+            <span style={{ ...stockBadgeStyle, background: stockStatus.color }}>
+              {stockStatus.label}
+            </span>
+          </div>
+
+          <div style={mutedStyle}>
+            {t.productNo}: {productCode(p)}
+          </div>
+
+          <div style={productInfoGridStyle}>
+            <div>
+              {t.productName}: <strong>{p.name}</strong>
+            </div>
+            <div>
+              {t.stock}: <strong>{Number(p.stock_qty || 0)}</strong>
+            </div>
+            <div>
+              {t.summaryCost}: <strong>RM {Number(p.cost || 0).toFixed(2)}</strong>
+            </div>
+            <div>
+              {t.summaryPrice}: <strong>RM {Number(p.price || 0).toFixed(2)}</strong>
+            </div>
+            <div>
+              {t.discount}: <strong>RM {Number(p.discount || 0).toFixed(2)}</strong>
+            </div>
+            <div>
+              {t.profit}: <strong>RM {profit.toFixed(2)}</strong>
+            </div>
+            <div>
+              {t.margin}: <strong>{margin.toFixed(1)}%</strong>
+            </div>
+          </div>
+
+          <div style={customerPurchaseBoxStyle}>
+            <strong>{t.customerPurchase}</strong>
+
+            {purchaseList.length === 0 ? (
+              <div style={mutedStyle}>{t.noCustomerPurchase}</div>
+            ) : (
+              <div style={purchaseListStyle}>
+                {purchaseList.map((cp) => (
+                  <div key={cp.id} style={purchaseItemStyle}>
+                    <span>{getCustomerName(cp.customer_id)}</span>
+                    <strong>RM {Number(cp.custom_price || 0).toFixed(2)}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {p.note ? <div style={noteStyle}>{p.note}</div> : null}
+        </div>
+
+        <div style={actionRowStyle}>
+          <button
+            onClick={() => openEditForm(p)}
+            style={{
+              ...editBtnStyle,
+              borderColor: theme.border,
+              color: theme.accent,
+            }}
+          >
+            {t.edit}
+          </button>
+
+          <button onClick={() => deleteProduct(p)} style={deleteBtnStyle}>
+            {t.delete}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
       <section
@@ -893,42 +1027,40 @@ export default function ProductsPage() {
           color: theme.text,
         }}
       >
-        <div style={topRowStyle}>
-          <button
-            onClick={goBack}
-            style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}
+        <button
+          onClick={goBack}
+          style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}
+        >
+          ← {t.back}
+        </button>
+
+        <div style={controlRowStyle}>
+          <select
+            value={themeKey}
+            onChange={(e) => switchTheme(e.target.value as ThemeKey)}
+            style={{
+              ...themeSelectStyle,
+              borderColor: theme.border,
+              color: theme.accent,
+            }}
           >
-            ← {t.back}
-          </button>
+            {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
+              <option key={key} value={key}>
+                {THEMES[key].name}
+              </option>
+            ))}
+          </select>
 
-          <div style={topRightStyle}>
-            <select
-              value={themeKey}
-              onChange={(e) => switchTheme(e.target.value as ThemeKey)}
-              style={{
-                ...themeSelectStyle,
-                borderColor: theme.border,
-                color: theme.accent,
-              }}
-            >
-              {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
-                <option key={key} value={key}>
-                  {THEMES[key].name}
-                </option>
-              ))}
-            </select>
-
-            <div style={langRowStyle}>
-              <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
-                中文
-              </button>
-              <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
-                EN
-              </button>
-              <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
-                BM
-              </button>
-            </div>
+          <div style={langRowStyle}>
+            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
+              中文
+            </button>
+            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
+              EN
+            </button>
+            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
+              BM
+            </button>
           </div>
         </div>
 
@@ -947,7 +1079,7 @@ export default function ProductsPage() {
 
       <section style={summaryGridStyle}>
         <button
-          onClick={scrollToDetails}
+          onClick={() => openDetailModal("stock")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
         >
           <span>{t.stock}</span>
@@ -955,23 +1087,23 @@ export default function ProductsPage() {
         </button>
 
         <button
-          onClick={scrollToDetails}
+          onClick={() => openDetailModal("cost")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
         >
-          <span>{t.cost}</span>
+          <span>{t.summaryCost}</span>
           <strong>RM {productSummary.totalCost.toFixed(2)}</strong>
         </button>
 
         <button
-          onClick={scrollToDetails}
+          onClick={() => openDetailModal("price")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
         >
-          <span>{t.price}</span>
+          <span>{t.summaryPrice}</span>
           <strong>RM {productSummary.totalValue.toFixed(2)}</strong>
         </button>
 
         <button
-          onClick={scrollToDetails}
+          onClick={() => openDetailModal("profit")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
         >
           <span>{t.profit}</span>
@@ -1010,108 +1142,7 @@ export default function ProductsPage() {
           <p>{t.noProduct}</p>
         ) : (
           <div style={productListStyle}>
-            {filteredProducts.map((p) => {
-              const profit =
-                Number(p.price || 0) -
-                Number(p.cost || 0) -
-                Number(p.discount || 0);
-
-              const margin =
-                Number(p.price || 0) > 0 ? (profit / Number(p.price || 0)) * 100 : 0;
-
-              const stockStatus = getStockStatus(p);
-              const purchaseList = getCustomerPurchaseList(p.id);
-
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    ...productCardStyle,
-                    background: theme.itemCard,
-                    color: theme.itemText,
-                    borderColor: theme.border,
-                    boxShadow:
-                      themeKey === "blackGold"
-                        ? theme.glow
-                        : "0 8px 24px rgba(15,23,42,0.08)",
-                  }}
-                >
-                  <div>
-                    <div style={productTitleRowStyle}>
-                      <strong style={productNameStyle}>{p.name}</strong>
-                      <span style={{ ...stockBadgeStyle, background: stockStatus.color }}>
-                        {stockStatus.label}
-                      </span>
-                    </div>
-
-                    <div style={mutedStyle}>
-                      {t.productNo}: {productCode(p)}
-                    </div>
-
-                    <div style={productInfoGridStyle}>
-                      <div>
-                        {t.productName}: <strong>{p.name}</strong>
-                      </div>
-                      <div>
-                        {t.stock}: <strong>{Number(p.stock_qty || 0)}</strong>
-                      </div>
-                      <div>
-                        {t.cost}: <strong>RM {Number(p.cost || 0).toFixed(2)}</strong>
-                      </div>
-                      <div>
-                        {t.price}: <strong>RM {Number(p.price || 0).toFixed(2)}</strong>
-                      </div>
-                      <div>
-                        {t.discount}:{" "}
-                        <strong>RM {Number(p.discount || 0).toFixed(2)}</strong>
-                      </div>
-                      <div>
-                        {t.profit}: <strong>RM {profit.toFixed(2)}</strong>
-                      </div>
-                      <div>
-                        {t.margin}: <strong>{margin.toFixed(1)}%</strong>
-                      </div>
-                    </div>
-
-                    <div style={customerPurchaseBoxStyle}>
-                      <strong>{t.customerPurchase}</strong>
-
-                      {purchaseList.length === 0 ? (
-                        <div style={mutedStyle}>{t.noCustomerPurchase}</div>
-                      ) : (
-                        <div style={purchaseListStyle}>
-                          {purchaseList.map((cp) => (
-                            <div key={cp.id} style={purchaseItemStyle}>
-                              <span>{getCustomerName(cp.customer_id)}</span>
-                              <strong>RM {Number(cp.custom_price || 0).toFixed(2)}</strong>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {p.note ? <div style={noteStyle}>{p.note}</div> : null}
-                  </div>
-
-                  <div style={actionRowStyle}>
-                    <button
-                      onClick={() => openEditForm(p)}
-                      style={{
-                        ...editBtnStyle,
-                        borderColor: theme.border,
-                        color: theme.accent,
-                      }}
-                    >
-                      {t.edit}
-                    </button>
-
-                    <button onClick={() => deleteProduct(p)} style={deleteBtnStyle}>
-                      {t.delete}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredProducts.map((p) => renderProductDetailCard(p))}
           </div>
         )}
       </section>
@@ -1209,6 +1240,40 @@ export default function ProductsPage() {
         <p>{t.link3}</p>
       </section>
 
+      {detailMetric && (
+        <div style={overlayStyle}>
+          <div
+            style={{
+              ...detailModalStyle,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+            }}
+          >
+            <div style={modalHeaderStyle}>
+              <h2 style={{ margin: 0 }}>{getDetailTitle()}｜{t.allProductDetails}</h2>
+              <button onClick={() => setDetailMetric(null)} style={modalCloseBtnStyle}>
+                ×
+              </button>
+            </div>
+
+            {products.length === 0 ? (
+              <p>{t.noProduct}</p>
+            ) : (
+              <div style={detailListStyle}>
+                {products.map((p) => renderProductDetailCard(p))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setDetailMetric(null)}
+              style={{ ...addBtnStyle, background: theme.accent, marginTop: 14 }}
+            >
+              {t.close}
+            </button>
+          </div>
+        </div>
+      )}
+
       {showForm && (
         <div style={overlayStyle}>
           <div
@@ -1296,21 +1361,14 @@ const headerCardStyle: CSSProperties = {
   marginBottom: 16,
 };
 
-const topRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 12,
-  marginBottom: 16,
-  flexWrap: "wrap",
-};
-
-const topRightStyle: CSSProperties = {
+const controlRowStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  justifyContent: "flex-end",
-  gap: 10,
+  justifyContent: "space-between",
+  gap: 12,
   flexWrap: "wrap",
+  marginTop: 18,
+  marginBottom: 26,
 };
 
 const titleRowStyle: CSSProperties = {
@@ -1602,6 +1660,42 @@ const modalStyle: CSSProperties = {
   border: "3px solid",
   borderRadius: 22,
   padding: 20,
+};
+
+const detailModalStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 920,
+  maxHeight: "88vh",
+  overflowY: "auto",
+  background: "#fff",
+  color: "#111827",
+  border: "3px solid",
+  borderRadius: 22,
+  padding: 20,
+};
+
+const modalHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 14,
+};
+
+const modalCloseBtnStyle: CSSProperties = {
+  width: 38,
+  height: 38,
+  borderRadius: "999px",
+  border: "none",
+  background: "#fee2e2",
+  color: "#b91c1c",
+  fontSize: 24,
+  fontWeight: 900,
+};
+
+const detailListStyle: CSSProperties = {
+  display: "grid",
+  gap: 12,
 };
 
 const labelStyle: CSSProperties = {
