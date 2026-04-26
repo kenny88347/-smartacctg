@@ -342,6 +342,7 @@ export default function ProductsPage() {
   const [customerPrices, setCustomerPrices] = useState<CustomerPrice[]>([]);
 
   const [search, setSearch] = useState("");
+  const [detailSearch, setDetailSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [detailMetric, setDetailMetric] = useState<DetailMetric>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -392,12 +393,41 @@ export default function ProductsPage() {
       }
     };
 
+    const timer = window.setInterval(reload, 5000);
+
+    const handleStorage = (e: StorageEvent) => {
+      if (
+        e.key === PRODUCT_STOCK_MAP_KEY ||
+        e.key === PRODUCT_STOCK_FALLBACK_KEY
+      ) {
+        reload();
+      }
+    };
+
     window.addEventListener("focus", reload);
+    window.addEventListener("storage", handleStorage);
     document.addEventListener("visibilitychange", reload);
 
+    const channel = supabase
+      .channel(`products-stock-${session.user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "products",
+          filter: `user_id=eq.${session.user.id}`,
+        },
+        () => reload()
+      )
+      .subscribe();
+
     return () => {
+      window.clearInterval(timer);
       window.removeEventListener("focus", reload);
+      window.removeEventListener("storage", handleStorage);
       document.removeEventListener("visibilitychange", reload);
+      supabase.removeChannel(channel);
     };
   }, [session, isTrial]);
 
@@ -414,18 +444,25 @@ export default function ProductsPage() {
 
   function normalizeProduct(row: any): Product {
     const stockMap = getStockMap();
-    const localStock = stockMap[row?.id];
-    const dbStock = row?.stock_qty;
+    const localStockRaw = stockMap[row?.id];
+    const localStock =
+      localStockRaw !== undefined && localStockRaw !== null
+        ? Number(localStockRaw || 0)
+        : undefined;
 
-    let finalStock = 0;
+    const dbStockRaw = row?.stock_qty;
+    const dbStock = Number(dbStockRaw || 0);
 
-    if (
-      localStock !== undefined &&
-      (dbStock === undefined || dbStock === null || Number(dbStock) === 0)
-    ) {
-      finalStock = Number(localStock || 0);
-    } else {
-      finalStock = Number(dbStock || 0);
+    let finalStock = dbStock;
+
+    if (localStock !== undefined) {
+      if (dbStockRaw === undefined || dbStockRaw === null) {
+        finalStock = localStock;
+      } else if (localStock < dbStock) {
+        finalStock = localStock;
+      } else if (dbStock === 0 && localStock > 0) {
+        finalStock = localStock;
+      }
     }
 
     return {
@@ -866,6 +903,20 @@ export default function ProductsPage() {
     });
   }, [search, products]);
 
+  const detailFilteredProducts = useMemo(() => {
+    const keyword = detailSearch.trim().toLowerCase();
+
+    if (!keyword) return products;
+
+    return products.filter((p) => {
+      const code = productCode(p).toLowerCase();
+      const name = (p.name || "").toLowerCase();
+      const note = (p.note || "").toLowerCase();
+
+      return name.includes(keyword) || code.includes(keyword) || note.includes(keyword);
+    });
+  }, [detailSearch, products]);
+
   const productSummary = useMemo(() => {
     const totalStock = products.reduce((s, p) => s + Number(p.stock_qty || 0), 0);
 
@@ -909,6 +960,7 @@ export default function ProductsPage() {
   }
 
   function openDetailModal(metric: DetailMetric) {
+    setDetailSearch("");
     setDetailMetric(metric);
   }
 
@@ -1256,11 +1308,18 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            {products.length === 0 ? (
+            <input
+              placeholder={t.search}
+              value={detailSearch}
+              onChange={(e) => setDetailSearch(e.target.value)}
+              style={{ ...inputStyle, marginBottom: 14 }}
+            />
+
+            {detailFilteredProducts.length === 0 ? (
               <p>{t.noProduct}</p>
             ) : (
               <div style={detailListStyle}>
-                {products.map((p) => renderProductDetailCard(p))}
+                {detailFilteredProducts.map((p) => renderProductDetailCard(p))}
               </div>
             )}
 
@@ -1364,11 +1423,11 @@ const headerCardStyle: CSSProperties = {
 const controlRowStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
+  justifyContent: "flex-start",
+  gap: 8,
   flexWrap: "wrap",
-  marginTop: 18,
-  marginBottom: 26,
+  marginTop: 14,
+  marginBottom: 22,
 };
 
 const titleRowStyle: CSSProperties = {
@@ -1400,37 +1459,38 @@ const backBtnStyle: CSSProperties = {
   background: "#fff",
   border: "2px solid",
   borderRadius: 14,
-  padding: "clamp(9px, 1.8vw, 12px) clamp(14px, 2.6vw, 18px)",
+  padding: "8px 13px",
   fontWeight: 900,
-  fontSize: "clamp(15px, 2.5vw, 20px)",
+  fontSize: "clamp(14px, 2.2vw, 18px)",
 };
 
 const themeSelectStyle: CSSProperties = {
-  minWidth: 180,
-  maxWidth: "100%",
+  width: 132,
+  maxWidth: "44vw",
   background: "#fff",
-  border: "3px solid",
+  border: "2px solid",
   borderRadius: 999,
-  padding: "clamp(10px, 1.8vw, 13px) clamp(14px, 2vw, 18px)",
+  padding: "8px 10px",
   fontWeight: 900,
-  fontSize: "clamp(16px, 2.8vw, 22px)",
+  fontSize: "clamp(13px, 2.2vw, 15px)",
   outline: "none",
 };
 
 const langRowStyle: CSSProperties = {
   display: "flex",
-  gap: 8,
+  gap: 6,
   flexWrap: "wrap",
 };
 
 const langBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "clamp(8px, 1.8vw, 12px) clamp(12px, 2.2vw, 18px)",
+  padding: "8px 10px",
+  minWidth: 48,
   borderRadius: 999,
-  border: `3px solid ${theme.accent}`,
+  border: `2px solid ${theme.accent}`,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
-  fontSize: "clamp(15px, 2.7vw, 20px)",
+  fontSize: "clamp(13px, 2.2vw, 15px)",
 });
 
 const plusBtnStyle: CSSProperties = {
