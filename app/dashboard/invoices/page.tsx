@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 type Lang = "zh" | "en" | "ms";
 type Mode = "list" | "new";
 type ThemeKey = "pink" | "blackGold" | "lightRed" | "nature" | "sky" | "deepTeal";
+type ChargeMode = "%" | "RM";
 
 type Customer = {
   id: string;
@@ -58,6 +59,18 @@ type PaymentOption = {
   qrCodeUrl?: string;
 };
 
+type InvoiceFeeMeta = {
+  sstMode: ChargeMode;
+  sstValue: string;
+  sstAmount: number;
+  serviceFeeMode: ChargeMode;
+  serviceFeeValue: string;
+  serviceFeeAmount: number;
+  handlingFeeMode: ChargeMode;
+  handlingFeeValue: string;
+  handlingFeeAmount: number;
+};
+
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_TX_KEY = "smartacctg_trial_transactions";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
@@ -69,6 +82,19 @@ const THEME_KEY = "smartacctg_theme";
 
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
+const INVOICE_FEE_META_KEY = "smartacctg_invoice_fee_meta";
+
+const ZERO_FEE_META: InvoiceFeeMeta = {
+  sstMode: "%",
+  sstValue: "0",
+  sstAmount: 0,
+  serviceFeeMode: "%",
+  serviceFeeValue: "0",
+  serviceFeeAmount: 0,
+  handlingFeeMode: "%",
+  handlingFeeValue: "0",
+  handlingFeeAmount: 0,
+};
 
 const THEMES: Record<ThemeKey, any> = {
   deepTeal: {
@@ -244,10 +270,17 @@ const TXT = {
     invoiceContent: "5. 发票内容",
     qty: "数量",
     extraDiscount: "额外折扣 RM",
-    lhdn: "6. Malaysia LHDN e-Invoice 预留资料",
+    extraCharges: "6. SST / 服务费 / 手续费",
+    chargeValue: "数值",
+    chargeMode: "类型",
+    sst: "SST",
+    serviceFee: "服务费",
+    handlingFee: "手续费",
+    lhdn: "7. Malaysia LHDN e-Invoice 预留资料",
     preview: "正式发票预览",
     subtotal: "小计",
     discount: "折扣",
+    taxableTotal: "折扣后金额",
     total: "总额",
     profit: "差价赚 / 预计利润",
     generate: "生成发票 + 加入记账 + 扣库存",
@@ -345,10 +378,17 @@ const TXT = {
     invoiceContent: "5. Invoice Content",
     qty: "Quantity",
     extraDiscount: "Extra Discount RM",
-    lhdn: "6. Malaysia LHDN e-Invoice Reserved Fields",
+    extraCharges: "6. SST / Service Fee / Handling Fee",
+    chargeValue: "Value",
+    chargeMode: "Mode",
+    sst: "SST",
+    serviceFee: "Service Fee",
+    handlingFee: "Handling Fee",
+    lhdn: "7. Malaysia LHDN e-Invoice Reserved Fields",
     preview: "Official Invoice Preview",
     subtotal: "Subtotal",
     discount: "Discount",
+    taxableTotal: "After Discount",
     total: "Total",
     profit: "Profit / Margin",
     generate: "Generate Invoice + Add Accounting + Deduct Stock",
@@ -446,10 +486,17 @@ const TXT = {
     invoiceContent: "5. Kandungan Invois",
     qty: "Kuantiti",
     extraDiscount: "Diskaun Tambahan RM",
-    lhdn: "6. Ruang Simpanan Malaysia LHDN e-Invoice",
+    extraCharges: "6. SST / Caj Servis / Caj Pengendalian",
+    chargeValue: "Nilai",
+    chargeMode: "Jenis",
+    sst: "SST",
+    serviceFee: "Caj Servis",
+    handlingFee: "Caj Pengendalian",
+    lhdn: "7. Ruang Simpanan Malaysia LHDN e-Invoice",
     preview: "Pratonton Invois Rasmi",
     subtotal: "Subtotal",
     discount: "Diskaun",
+    taxableTotal: "Selepas Diskaun",
     total: "Jumlah",
     profit: "Untung / Margin",
     generate: "Jana Invois + Masuk Akaun + Tolak Stok",
@@ -492,6 +539,16 @@ function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function roundMoney(value: number) {
+  return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function calcCharge(value: string, mode: ChargeMode, base: number) {
+  const num = Number(value || 0);
+  if (mode === "%") return roundMoney((Math.max(base, 0) * num) / 100);
+  return roundMoney(num);
+}
+
 function isSchemaColumnError(error: any) {
   const message = String(error?.message || "").toLowerCase();
   return (
@@ -506,9 +563,24 @@ function isMissingStockColumn(error: any) {
   return message.includes("stock_qty") && isSchemaColumnError(error);
 }
 
+function safeLocalGet(key: string) {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(key);
+}
+
+function safeLocalSet(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, value);
+}
+
+function safeLocalRemove(key: string) {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(key);
+}
+
 function readStockMapByKey(key: string): Record<string, number> {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = safeLocalGet(key);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -523,8 +595,8 @@ function getStockMap(): Record<string, number> {
 }
 
 function writeStockMap(map: Record<string, number>) {
-  localStorage.setItem(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
-  localStorage.setItem(PRODUCT_STOCK_FALLBACK_KEY, JSON.stringify(map));
+  safeLocalSet(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
+  safeLocalSet(PRODUCT_STOCK_FALLBACK_KEY, JSON.stringify(map));
 }
 
 function saveStockValue(productId: string, stock: number) {
@@ -615,6 +687,22 @@ function normalizePaymentOptions(value: any): PaymentOption[] {
   return normalized.length > 0 ? normalized : DEFAULT_PAYMENT_OPTIONS;
 }
 
+function getInvoiceFeeMetaMap(): Record<string, InvoiceFeeMeta> {
+  try {
+    const raw = safeLocalGet(INVOICE_FEE_META_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveInvoiceFeeMeta(invId: string, invNo: string, meta: InvoiceFeeMeta) {
+  const map = getInvoiceFeeMetaMap();
+  if (invId) map[invId] = meta;
+  if (invNo) map[invNo] = meta;
+  safeLocalSet(INVOICE_FEE_META_KEY, JSON.stringify(map));
+}
+
 function formatDateTime(value?: string | null, fallbackDate?: string | null) {
   if (!value && fallbackDate) return fallbackDate;
   if (!value) return "-";
@@ -689,6 +777,14 @@ export default function InvoicePage() {
 
   const [qty, setQty] = useState("1");
   const [extraDiscount, setExtraDiscount] = useState("0");
+
+  const [sstMode, setSstMode] = useState<ChargeMode>("%");
+  const [sstValue, setSstValue] = useState("0");
+  const [serviceFeeMode, setServiceFeeMode] = useState<ChargeMode>("%");
+  const [serviceFeeValue, setServiceFeeValue] = useState("0");
+  const [handlingFeeMode, setHandlingFeeMode] = useState<ChargeMode>("%");
+  const [handlingFeeValue, setHandlingFeeValue] = useState("0");
+
   const [note, setNote] = useState("");
 
   const [supplierTin, setSupplierTin] = useState("");
@@ -737,7 +833,7 @@ export default function InvoicePage() {
   function getCurrentLang(): Lang {
     const q = new URLSearchParams(window.location.search);
     const urlLang = q.get("lang") as Lang | null;
-    const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
+    const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
 
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
     if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
@@ -745,14 +841,14 @@ export default function InvoicePage() {
   }
 
   function getCurrentTheme(): ThemeKey {
-    const saved = localStorage.getItem(THEME_KEY) as ThemeKey | null;
+    const saved = safeLocalGet(THEME_KEY) as ThemeKey | null;
     if (saved && THEMES[saved]) return saved;
     return "deepTeal";
   }
 
   function switchLang(next: Lang) {
     setLang(next);
-    localStorage.setItem(LANG_KEY, next);
+    safeLocalSet(LANG_KEY, next);
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
@@ -761,7 +857,7 @@ export default function InvoicePage() {
 
   async function switchTheme(next: ThemeKey) {
     setThemeKey(next);
-    localStorage.setItem(THEME_KEY, next);
+    safeLocalSet(THEME_KEY, next);
 
     if (!isTrial && userId) {
       await supabase.from("profiles").update({ theme: next }).eq("id", userId);
@@ -773,7 +869,7 @@ export default function InvoicePage() {
     setLang(currentLang);
     setThemeKey(getCurrentTheme());
 
-    const savedPayment = localStorage.getItem(PAYMENT_OPTIONS_KEY);
+    const savedPayment = safeLocalGet(PAYMENT_OPTIONS_KEY);
     if (savedPayment) {
       const parsed = normalizePaymentOptions(JSON.parse(savedPayment));
       setPaymentOptions(parsed);
@@ -782,7 +878,7 @@ export default function InvoicePage() {
 
     const q = new URLSearchParams(window.location.search);
     const modeParam = q.get("mode");
-    const trialRaw = localStorage.getItem(TRIAL_KEY);
+    const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if (modeParam === "trial" && trialRaw) {
       const trial = JSON.parse(trialRaw);
@@ -790,9 +886,9 @@ export default function InvoicePage() {
       if (Date.now() < Number(trial.expiresAt)) {
         setIsTrial(true);
 
-        const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
-        const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
-        const savedInvoices = localStorage.getItem(TRIAL_INVOICES_KEY);
+        const savedCustomers = safeLocalGet(TRIAL_CUSTOMERS_KEY);
+        const savedProducts = safeLocalGet(TRIAL_PRODUCTS_KEY);
+        const savedInvoices = safeLocalGet(TRIAL_INVOICES_KEY);
 
         const trialProducts = savedProducts ? JSON.parse(savedProducts) : [];
 
@@ -803,7 +899,7 @@ export default function InvoicePage() {
         return;
       }
 
-      localStorage.removeItem(TRIAL_KEY);
+      safeLocalRemove(TRIAL_KEY);
       window.location.href = "/zh";
       return;
     }
@@ -833,7 +929,7 @@ export default function InvoicePage() {
 
       if (profile.theme && THEMES[profile.theme as ThemeKey]) {
         setThemeKey(profile.theme as ThemeKey);
-        localStorage.setItem(THEME_KEY, profile.theme);
+        safeLocalSet(THEME_KEY, profile.theme);
       }
     }
 
@@ -977,14 +1073,76 @@ export default function InvoicePage() {
     const productDiscount =
       productMode === "new" ? 0 : Number(selectedProduct?.discount || 0);
 
-    const subtotal = price * finalQty;
-    const discount = productDiscount + addDiscount;
-    const total = Math.max(subtotal - discount, 0);
-    const totalCost = cost * finalQty;
-    const profit = total - totalCost;
+    const subtotal = roundMoney(price * finalQty);
+    const discount = roundMoney(productDiscount + addDiscount);
+    const taxableBase = roundMoney(Math.max(subtotal - discount, 0));
 
-    return { finalQty, price, cost, subtotal, discount, total, totalCost, profit };
-  }, [qty, extraDiscount, productMode, newProductPrice, newProductCost, selectedProduct]);
+    const sstAmount = calcCharge(sstValue, sstMode, taxableBase);
+    const serviceFeeAmount = calcCharge(serviceFeeValue, serviceFeeMode, taxableBase);
+    const handlingFeeAmount = calcCharge(handlingFeeValue, handlingFeeMode, taxableBase);
+
+    const total = roundMoney(taxableBase + sstAmount + serviceFeeAmount + handlingFeeAmount);
+    const totalCost = roundMoney(cost * finalQty);
+    const profit = roundMoney(total - totalCost);
+
+    return {
+      finalQty,
+      price,
+      cost,
+      subtotal,
+      discount,
+      taxableBase,
+      sstAmount,
+      serviceFeeAmount,
+      handlingFeeAmount,
+      total,
+      totalCost,
+      profit,
+    };
+  }, [
+    qty,
+    extraDiscount,
+    productMode,
+    newProductPrice,
+    newProductCost,
+    selectedProduct,
+    sstValue,
+    sstMode,
+    serviceFeeValue,
+    serviceFeeMode,
+    handlingFeeValue,
+    handlingFeeMode,
+  ]);
+
+  function buildCurrentFeeMeta(): InvoiceFeeMeta {
+    return {
+      sstMode,
+      sstValue,
+      sstAmount: preview.sstAmount,
+      serviceFeeMode,
+      serviceFeeValue,
+      serviceFeeAmount: preview.serviceFeeAmount,
+      handlingFeeMode,
+      handlingFeeValue,
+      handlingFeeAmount: preview.handlingFeeAmount,
+    };
+  }
+
+  function getFeeMetaForInvoice(inv?: InvoiceRecord | null): InvoiceFeeMeta | null {
+    if (!inv) return null;
+    const map = getInvoiceFeeMetaMap();
+    return map[inv.id] || map[inv.invoice_no] || null;
+  }
+
+  function applyFeeMeta(meta?: InvoiceFeeMeta | null) {
+    const fee = meta || ZERO_FEE_META;
+    setSstMode(fee.sstMode || "%");
+    setSstValue(fee.sstValue || "0");
+    setServiceFeeMode(fee.serviceFeeMode || "%");
+    setServiceFeeValue(fee.serviceFeeValue || "0");
+    setHandlingFeeMode(fee.handlingFeeMode || "%");
+    setHandlingFeeValue(fee.handlingFeeValue || "0");
+  }
 
   const activeCustomerForPreview: Customer =
     customerMode === "select"
@@ -1034,7 +1192,7 @@ export default function InvoicePage() {
 
   function savePaymentOptions(next: PaymentOption[]) {
     setPaymentOptions(next);
-    localStorage.setItem(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
+    safeLocalSet(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
   }
 
   async function uploadPaymentQr(e: any) {
@@ -1087,13 +1245,13 @@ export default function InvoicePage() {
   }
 
   function saveTrialData(nextCustomers: Customer[], nextProducts: Product[], nextInvoices = invoices) {
-    localStorage.setItem(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
-    localStorage.setItem(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
-    localStorage.setItem(TRIAL_INVOICES_KEY, JSON.stringify(nextInvoices));
+    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
+    safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
+    safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(nextInvoices));
   }
 
   function addTrialTransaction(total: number, customer: Customer, product: Product, invNo: string) {
-    const oldRaw = localStorage.getItem(TRIAL_TX_KEY);
+    const oldRaw = safeLocalGet(TRIAL_TX_KEY);
     const oldTx = oldRaw ? JSON.parse(oldRaw) : [];
 
     const nextTx = [
@@ -1113,7 +1271,7 @@ export default function InvoicePage() {
       ...oldTx,
     ];
 
-    localStorage.setItem(TRIAL_TX_KEY, JSON.stringify(nextTx));
+    safeLocalSet(TRIAL_TX_KEY, JSON.stringify(nextTx));
   }
 
   async function saveCompanyInfo() {
@@ -1221,6 +1379,7 @@ export default function InvoicePage() {
       customer_name: finalCustomer.name,
       invoice_no: invoiceNo,
       subtotal: preview.subtotal,
+      discount: preview.discount,
       total: preview.total,
       total_cost: preview.totalCost,
       total_profit: preview.profit,
@@ -1267,7 +1426,7 @@ export default function InvoicePage() {
       unit_price: preview.price,
       unit_cost: preview.cost,
       discount: preview.discount,
-      line_total: preview.total,
+      line_total: preview.taxableBase,
       line_profit: preview.profit,
     };
 
@@ -1277,7 +1436,7 @@ export default function InvoicePage() {
       product_name: finalProduct.name,
       qty: preview.finalQty,
       unit_price: preview.price,
-      line_total: preview.total,
+      line_total: preview.taxableBase,
     };
 
     const result = await supabase.from("invoice_items").insert(fullItem);
@@ -1478,6 +1637,8 @@ export default function InvoicePage() {
         created_at: new Date().toISOString(),
       };
 
+      const feeMetaForSave = buildCurrentFeeMeta();
+
       if (isTrial) {
         const nextProducts = workingProducts.map((p) =>
           p.id === finalProduct!.id ? { ...p, stock_qty: newStock } : p
@@ -1486,6 +1647,8 @@ export default function InvoicePage() {
         const nextInvoices = [printableRecord, ...invoices];
 
         saveStockValue(finalProduct.id, newStock);
+        saveInvoiceFeeMeta(printableRecord.id, printableRecord.invoice_no, feeMetaForSave);
+
         setProducts(nextProducts);
         setInvoices(nextInvoices);
         setLastPrintableInvoice(printableRecord);
@@ -1527,6 +1690,8 @@ export default function InvoicePage() {
         created_at: invoiceData.created_at || printableRecord.created_at,
       };
 
+      saveInvoiceFeeMeta(savedRecord.id, savedRecord.invoice_no, feeMetaForSave);
+
       setInvoices((prev) => [savedRecord, ...prev]);
       setLastPrintableInvoice(savedRecord);
       setLastPrintableProductName(finalProduct.name);
@@ -1565,13 +1730,15 @@ export default function InvoicePage() {
       note,
     };
 
+    saveInvoiceFeeMeta(editInvoiceId, invoiceNo, buildCurrentFeeMeta());
+
     if (isTrial) {
       const next = invoices.map((inv) =>
         inv.id === editInvoiceId ? { ...inv, ...updatedData } : inv
       );
 
       setInvoices(next);
-      localStorage.setItem(TRIAL_INVOICES_KEY, JSON.stringify(next));
+      safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(next));
       setMsg(t.saved);
       setMode("list");
       setEditInvoiceId(null);
@@ -1591,6 +1758,7 @@ export default function InvoicePage() {
           invoice_no: invoiceNo,
           customer_name: newCustomerName,
           subtotal: preview.subtotal,
+          discount: preview.discount,
           total: preview.total,
           total_cost: preview.totalCost,
           total_profit: preview.profit,
@@ -1637,6 +1805,8 @@ export default function InvoicePage() {
       setPaymentMethod(extraPayment.id);
     }
 
+    applyFeeMeta(getFeeMetaForInvoice(inv));
+
     setEditInvoiceId(inv.id);
     setInvoiceNo(inv.invoice_no || makeInvoiceNo());
     setInvoiceDate(inv.invoice_date || today);
@@ -1664,7 +1834,7 @@ export default function InvoicePage() {
     if (isTrial) {
       const next = invoices.filter((x) => x.id !== inv.id);
       setInvoices(next);
-      localStorage.setItem(TRIAL_INVOICES_KEY, JSON.stringify(next));
+      safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(next));
       setMsg(t.saved);
       return;
     }
@@ -1734,17 +1904,29 @@ export default function InvoicePage() {
     const total = Number(record?.total ?? preview.total).toFixed(2);
     const method = record?.payment_method || paymentMethodText;
     const pay = getPaymentForInvoice(record);
+    const fee = record ? getFeeMetaForInvoice(record) || ZERO_FEE_META : buildCurrentFeeMeta();
 
     const qrText =
       pay?.qrCodeUrl && !pay.qrCodeUrl.startsWith("data:")
         ? `QR Code：${pay.qrCodeUrl}`
         : "";
 
+    const feeText = [
+      Number(fee.sstAmount || 0) > 0 ? `${t.sst}：RM ${Number(fee.sstAmount).toFixed(2)}` : "",
+      Number(fee.serviceFeeAmount || 0) > 0
+        ? `${t.serviceFee}：RM ${Number(fee.serviceFeeAmount).toFixed(2)}`
+        : "",
+      Number(fee.handlingFeeAmount || 0) > 0
+        ? `${t.handlingFee}：RM ${Number(fee.handlingFeeAmount).toFixed(2)}`
+        : "",
+    ].filter(Boolean);
+
     const paymentDetailText = [
       pay?.bankAccount ? `${t.paymentBankAccount}：${pay.bankAccount}` : "",
       pay?.receiverName ? `${t.paymentReceiverName}：${pay.receiverName}` : "",
       pay?.link ? `Payment Link：${pay.link}` : "",
       qrText,
+      ...feeText,
     ]
       .filter(Boolean)
       .join("%0A");
@@ -1815,6 +1997,7 @@ export default function InvoicePage() {
     setNewProductStock("");
     setQty("1");
     setExtraDiscount("0");
+    applyFeeMeta(ZERO_FEE_META);
     setNote("");
     setMsg("");
     setShowPaymentAdd(false);
@@ -1826,6 +2009,52 @@ export default function InvoicePage() {
     if (value === "paid") return t.paid;
     if (value === "cancelled") return t.cancelled;
     return t.sent;
+  }
+
+  function renderChargeInput(
+    label: string,
+    value: string,
+    setValue: (v: string) => void,
+    chargeMode: ChargeMode,
+    setChargeMode: (v: ChargeMode) => void
+  ) {
+    return (
+      <div style={{ ...chargeBoxStyle, borderColor: theme.border, background: theme.panelBg }}>
+        <label style={{ ...labelStyle, color: theme.accent }}>{label}</label>
+
+        <div style={chargeInputRowStyle}>
+          <input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={t.chargeValue}
+            style={{ ...themedInputStyle, marginBottom: 0 }}
+          />
+
+          <select
+            value={chargeMode}
+            onChange={(e) => setChargeMode(e.target.value as ChargeMode)}
+            style={{ ...themedInputStyle, marginBottom: 0 }}
+          >
+            <option value="%">%</option>
+            <option value="RM">RM</option>
+          </select>
+        </div>
+      </div>
+    );
+  }
+
+  function renderOfficialChargeRow(label: string, value: string, mode: ChargeMode, amount: number) {
+    const show = Number(value || 0) > 0 || Number(amount || 0) > 0;
+    if (!show) return null;
+
+    return (
+      <div style={officialSummaryRowStyle}>
+        <span>
+          {label} {mode === "%" ? `(${value || 0}%)` : "(RM)"}
+        </span>
+        <strong>RM {Number(amount || 0).toFixed(2)}</strong>
+      </div>
+    );
   }
 
   const printableInvoice = lastPrintableInvoice || {
@@ -1878,7 +2107,11 @@ export default function InvoicePage() {
     const isSavedRecord = Boolean(inv.id);
     const displayQty = isSavedRecord ? 1 : preview.finalQty;
     const displayPrice = isSavedRecord ? subtotal : preview.price;
+    const lineAfterDiscount = Math.max(subtotal - discount, 0);
     const pay = getPaymentForInvoice(inv);
+    const feeMeta = isSavedRecord
+      ? getFeeMetaForInvoice(inv) || ZERO_FEE_META
+      : buildCurrentFeeMeta();
 
     return (
       <div style={officialInvoiceStyle}>
@@ -1978,7 +2211,7 @@ export default function InvoicePage() {
               <td style={officialTdStyle}>{displayQty}</td>
               <td style={officialTdStyle}>RM {displayPrice.toFixed(2)}</td>
               <td style={officialTdStyle}>RM {discount.toFixed(2)}</td>
-              <td style={officialTdStyle}>RM {total.toFixed(2)}</td>
+              <td style={officialTdStyle}>RM {lineAfterDiscount.toFixed(2)}</td>
             </tr>
           </tbody>
         </table>
@@ -1988,14 +2221,36 @@ export default function InvoicePage() {
             <span>{t.subtotal}</span>
             <strong>RM {subtotal.toFixed(2)}</strong>
           </div>
+
           <div style={officialSummaryRowStyle}>
             <span>{t.discount}</span>
             <strong>RM {discount.toFixed(2)}</strong>
           </div>
+
+          <div style={officialSummaryRowStyle}>
+            <span>{t.taxableTotal}</span>
+            <strong>RM {lineAfterDiscount.toFixed(2)}</strong>
+          </div>
+
+          {renderOfficialChargeRow(t.sst, feeMeta.sstValue, feeMeta.sstMode, feeMeta.sstAmount)}
+          {renderOfficialChargeRow(
+            t.serviceFee,
+            feeMeta.serviceFeeValue,
+            feeMeta.serviceFeeMode,
+            feeMeta.serviceFeeAmount
+          )}
+          {renderOfficialChargeRow(
+            t.handlingFee,
+            feeMeta.handlingFeeValue,
+            feeMeta.handlingFeeMode,
+            feeMeta.handlingFeeAmount
+          )}
+
           <div style={officialTotalRowStyle}>
             <span>{t.total}</span>
             <strong>RM {total.toFixed(2)}</strong>
           </div>
+
           <div style={officialProfitRowStyle}>
             <span>{t.profit}</span>
             <strong>RM {profit.toFixed(2)}</strong>
@@ -2008,8 +2263,52 @@ export default function InvoicePage() {
   }
 
   return (
-    <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
+    <main
+      className="smartacctg-invoice-page"
+      style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
+    >
       <style jsx global>{`
+        html {
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+
+        .smartacctg-invoice-page {
+          font-size: clamp(14px, 1.8vw, 17px);
+        }
+
+        .smartacctg-invoice-page h1 {
+          font-size: clamp(26px, 5vw, 42px);
+          line-height: 1.15;
+        }
+
+        .smartacctg-invoice-page h2 {
+          font-size: clamp(20px, 3.5vw, 30px);
+          line-height: 1.2;
+        }
+
+        .smartacctg-invoice-page h3 {
+          font-size: clamp(18px, 3.5vw, 26px);
+          line-height: 1.25;
+        }
+
+        .smartacctg-invoice-page input,
+        .smartacctg-invoice-page select,
+        .smartacctg-invoice-page button,
+        .smartacctg-invoice-page textarea {
+          font-size: clamp(14px, 2.7vw, 17px) !important;
+        }
+
+        @media (max-width: 520px) {
+          .responsive-actions {
+            grid-template-columns: 1fr !important;
+          }
+
+          .responsive-official-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
         @media print {
           body * {
             visibility: hidden !important;
@@ -2200,12 +2499,7 @@ export default function InvoicePage() {
           </h1>
           <p style={{ ...descStyle, color: theme.muted }}>{t.desc}</p>
 
-          <div
-            style={{
-              ...invoiceNoBox,
-              ...themedPanelStyle,
-            }}
-          >
+          <div style={{ ...invoiceNoBox, ...themedPanelStyle }}>
             <strong>Invoice No：</strong> {invoiceNo}
           </div>
 
@@ -2217,7 +2511,7 @@ export default function InvoicePage() {
               type="date"
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
-              style={{ ...themedInputStyle, maxWidth: 220 }}
+              style={{ ...themedInputStyle, maxWidth: "min(100%, 260px)" }}
             />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.dueDate}</label>
@@ -2225,7 +2519,7 @@ export default function InvoicePage() {
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              style={{ ...themedInputStyle, maxWidth: 220 }}
+              style={{ ...themedInputStyle, maxWidth: "min(100%, 260px)" }}
             />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.status}</label>
@@ -2327,9 +2621,7 @@ export default function InvoicePage() {
                   />
                 </label>
 
-                {newPaymentQr ? (
-                  <img src={newPaymentQr} style={qrPreviewStyle} />
-                ) : null}
+                {newPaymentQr ? <img src={newPaymentQr} style={qrPreviewStyle} /> : null}
 
                 <button onClick={addPaymentOption} style={{ ...addBtnStyle, background: theme.accent }}>
                   {t.addPayment}
@@ -2370,12 +2662,7 @@ export default function InvoicePage() {
 
           <h3>{t.companyInfo}</h3>
 
-          <div
-            style={{
-              ...companyBox,
-              ...themedPanelStyle,
-            }}
-          >
+          <div style={{ ...companyBox, ...themedPanelStyle }}>
             {companyLogoUrl ? (
               <img src={companyLogoUrl} style={logoStyle} />
             ) : (
@@ -2405,36 +2692,11 @@ export default function InvoicePage() {
                 color: theme.panelText,
               }}
             >
-              <input
-                placeholder={t.companyLogoUrl}
-                value={companyLogoUrl}
-                onChange={(e) => setCompanyLogoUrl(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.companyName}
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.companyRegNo}
-                value={companyRegNo}
-                onChange={(e) => setCompanyRegNo(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.phone}
-                value={companyPhone}
-                onChange={(e) => setCompanyPhone(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.address}
-                value={companyAddress}
-                onChange={(e) => setCompanyAddress(e.target.value)}
-                style={themedInputStyle}
-              />
+              <input placeholder={t.companyLogoUrl} value={companyLogoUrl} onChange={(e) => setCompanyLogoUrl(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.companyName} value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.companyRegNo} value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.phone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.address} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={themedInputStyle} />
               <button onClick={saveCompanyInfo} style={{ ...submitSmallBtnStyle, background: theme.accent }}>
                 {t.saveCompany}
               </button>
@@ -2444,26 +2706,16 @@ export default function InvoicePage() {
           <h3>{t.customerInfo}</h3>
 
           <div style={switchRow}>
-            <button
-              onClick={() => setCustomerMode("select")}
-              style={modeBtn(customerMode === "select", theme)}
-            >
+            <button onClick={() => setCustomerMode("select")} style={modeBtn(customerMode === "select", theme)}>
               {t.selectCustomer}
             </button>
-            <button
-              onClick={() => setCustomerMode("new")}
-              style={modeBtn(customerMode === "new", theme)}
-            >
+            <button onClick={() => setCustomerMode("new")} style={modeBtn(customerMode === "new", theme)}>
               {t.newCustomer}
             </button>
           </div>
 
           {customerMode === "select" ? (
-            <select
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              style={themedInputStyle}
-            >
+            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={themedInputStyle}>
               <option value="">{t.chooseCustomer}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -2473,56 +2725,26 @@ export default function InvoicePage() {
             </select>
           ) : (
             <div style={formGrid}>
-              <input
-                placeholder={t.customerName}
-                value={newCustomerName}
-                onChange={(e) => setNewCustomerName(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.customerPhone}
-                value={newCustomerPhone}
-                onChange={(e) => setNewCustomerPhone(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.customerCompany}
-                value={newCustomerCompany}
-                onChange={(e) => setNewCustomerCompany(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.customerAddress}
-                value={newCustomerAddress}
-                onChange={(e) => setNewCustomerAddress(e.target.value)}
-                style={themedInputStyle}
-              />
+              <input placeholder={t.customerName} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.customerPhone} value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.customerCompany} value={newCustomerCompany} onChange={(e) => setNewCustomerCompany(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.customerAddress} value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} style={themedInputStyle} />
             </div>
           )}
 
           <h3>{t.productInfo}</h3>
 
           <div style={switchRow}>
-            <button
-              onClick={() => setProductMode("select")}
-              style={modeBtn(productMode === "select", theme)}
-            >
+            <button onClick={() => setProductMode("select")} style={modeBtn(productMode === "select", theme)}>
               {t.selectProduct}
             </button>
-            <button
-              onClick={() => setProductMode("new")}
-              style={modeBtn(productMode === "new", theme)}
-            >
+            <button onClick={() => setProductMode("new")} style={modeBtn(productMode === "new", theme)}>
               {t.newProduct}
             </button>
           </div>
 
           {productMode === "select" ? (
-            <select
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              style={themedInputStyle}
-            >
+            <select value={productId} onChange={(e) => setProductId(e.target.value)} style={themedInputStyle}>
               <option value="">{t.chooseProduct}</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -2533,30 +2755,10 @@ export default function InvoicePage() {
             </select>
           ) : (
             <div style={formGrid}>
-              <input
-                placeholder={t.productName}
-                value={newProductName}
-                onChange={(e) => setNewProductName(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.price}
-                value={newProductPrice}
-                onChange={(e) => setNewProductPrice(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.cost}
-                value={newProductCost}
-                onChange={(e) => setNewProductCost(e.target.value)}
-                style={themedInputStyle}
-              />
-              <input
-                placeholder={t.stock}
-                value={newProductStock}
-                onChange={(e) => setNewProductStock(e.target.value)}
-                style={themedInputStyle}
-              />
+              <input placeholder={t.productName} value={newProductName} onChange={(e) => setNewProductName(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.price} value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.cost} value={newProductCost} onChange={(e) => setNewProductCost(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.stock} value={newProductStock} onChange={(e) => setNewProductStock(e.target.value)} style={themedInputStyle} />
             </div>
           )}
 
@@ -2564,18 +2766,18 @@ export default function InvoicePage() {
 
           <div style={formGrid}>
             <label style={{ ...labelStyle, color: theme.accent }}>{t.qty}</label>
-            <input
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              style={themedInputStyle}
-            />
+            <input value={qty} onChange={(e) => setQty(e.target.value)} style={themedInputStyle} />
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.extraDiscount}</label>
-            <input
-              value={extraDiscount}
-              onChange={(e) => setExtraDiscount(e.target.value)}
-              style={themedInputStyle}
-            />
+            <input value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} style={themedInputStyle} />
+          </div>
+
+          <h3>{t.extraCharges}</h3>
+
+          <div style={chargeGridStyle}>
+            {renderChargeInput(t.sst, sstValue, setSstValue, sstMode, setSstMode)}
+            {renderChargeInput(t.serviceFee, serviceFeeValue, setServiceFeeValue, serviceFeeMode, setServiceFeeMode)}
+            {renderChargeInput(t.handlingFee, handlingFeeValue, setHandlingFeeValue, handlingFeeMode, setHandlingFeeMode)}
           </div>
 
           <h3>{t.lhdn}</h3>
@@ -2612,17 +2814,11 @@ export default function InvoicePage() {
             {loading ? t.generating : editInvoiceId ? t.saveEdit : t.generate}
           </button>
 
-          <div style={actionRow}>
-            <button
-              onClick={() => printInvoice()}
-              style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}
-            >
+          <div className="responsive-actions" style={actionRow}>
+            <button onClick={() => printInvoice()} style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}>
               {t.print}
             </button>
-            <button
-              onClick={() => downloadPdf()}
-              style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}
-            >
+            <button onClick={() => downloadPdf()} style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}>
               {t.pdf}
             </button>
             <button onClick={() => sendWhatsAppPdf()} style={whatsappBtn}>
@@ -2643,16 +2839,18 @@ export default function InvoicePage() {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
-  padding: 16,
+  padding: "clamp(10px, 3vw, 22px)",
   fontFamily: "sans-serif",
+  fontSize: "clamp(14px, 1.8vw, 17px)",
 };
 
 const topRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  gap: 12,
+  gap: "clamp(8px, 2vw, 14px)",
   marginBottom: 14,
+  flexWrap: "wrap",
 };
 
 const topRightWrapStyle: CSSProperties = {
@@ -2670,7 +2868,7 @@ const langRowStyle: CSSProperties = {
 };
 
 const langBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "8px 12px",
+  padding: "clamp(7px, 2vw, 10px) clamp(10px, 3vw, 14px)",
   borderRadius: 999,
   border: `2px solid ${theme.accent}`,
   background: active ? theme.accent : "#fff",
@@ -2681,7 +2879,7 @@ const langBtn = (active: boolean, theme: any): CSSProperties => ({
 const themeSelectStyle: CSSProperties = {
   border: "2px solid",
   borderRadius: 999,
-  padding: "8px 10px",
+  padding: "clamp(7px, 2vw, 10px) clamp(9px, 3vw, 14px)",
   fontWeight: 900,
 };
 
@@ -2689,14 +2887,14 @@ const backBtn: CSSProperties = {
   background: "#fff",
   border: "2px solid",
   borderRadius: 12,
-  padding: "10px 16px",
+  padding: "clamp(9px, 2.5vw, 12px) clamp(12px, 3vw, 18px)",
   fontWeight: 900,
 };
 
 const cardStyle: CSSProperties = {
   border: "3px solid",
-  borderRadius: 24,
-  padding: 20,
+  borderRadius: "clamp(18px, 4vw, 28px)",
+  padding: "clamp(14px, 4vw, 24px)",
 };
 
 const listHeaderStyle: CSSProperties = {
@@ -2704,32 +2902,37 @@ const listHeaderStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 12,
+  flexWrap: "wrap",
 };
 
 const plusBtnStyle: CSSProperties = {
-  width: 48,
-  height: 48,
+  width: "clamp(44px, 10vw, 54px)",
+  height: "clamp(44px, 10vw, 54px)",
   borderRadius: "999px",
   border: "none",
   color: "#fff",
-  fontSize: 28,
+  fontSize: "clamp(24px, 6vw, 32px)",
   fontWeight: 900,
 };
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontSize: 30,
+  fontSize: "clamp(26px, 5vw, 42px)",
+  lineHeight: 1.15,
 };
 
 const descStyle: CSSProperties = {
   marginBottom: 20,
+  fontSize: "clamp(14px, 2.5vw, 17px)",
+  lineHeight: 1.55,
 };
 
 const invoiceNoBox: CSSProperties = {
   border: "2px solid",
   borderRadius: 14,
-  padding: 12,
+  padding: "clamp(10px, 3vw, 14px)",
   marginBottom: 20,
+  fontSize: "clamp(14px, 2.8vw, 17px)",
 };
 
 const invoiceListStyle: CSSProperties = {
@@ -2744,12 +2947,14 @@ const invoiceItemStyle: CSSProperties = {
   gap: 12,
   border: "2px solid",
   borderRadius: 16,
-  padding: 14,
+  padding: "clamp(12px, 3vw, 16px)",
+  flexWrap: "wrap",
 };
 
 const mutedTextStyle: CSSProperties = {
-  fontSize: 13,
+  fontSize: "clamp(12px, 2.4vw, 14px)",
   marginTop: 4,
+  lineHeight: 1.5,
 };
 
 const recordActionRowStyle: CSSProperties = {
@@ -2765,7 +2970,7 @@ const recordEditBtnStyle: CSSProperties = {
   color: "#fff",
   borderRadius: 8,
   padding: "6px 9px",
-  fontSize: 12,
+  fontSize: "clamp(12px, 2.4vw, 13px)",
   fontWeight: 900,
 };
 
@@ -2775,7 +2980,7 @@ const recordDeleteBtnStyle: CSSProperties = {
   color: "#b91c1c",
   borderRadius: 8,
   padding: "6px 9px",
-  fontSize: 12,
+  fontSize: "clamp(12px, 2.4vw, 13px)",
   fontWeight: 900,
 };
 
@@ -2785,7 +2990,7 @@ const recordWhatsappBtnStyle: CSSProperties = {
   color: "#fff",
   borderRadius: 8,
   padding: "6px 8px",
-  fontSize: 11,
+  fontSize: "clamp(11px, 2.3vw, 13px)",
   fontWeight: 900,
 };
 
@@ -2795,7 +3000,7 @@ const recordShareBtnStyle: CSSProperties = {
   color: "#0f766e",
   borderRadius: 8,
   padding: "6px 9px",
-  fontSize: 12,
+  fontSize: "clamp(12px, 2.4vw, 13px)",
   fontWeight: 900,
 };
 
@@ -2805,13 +3010,13 @@ const emptyStyle: CSSProperties = {
 
 const switchRow: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1fr 1fr",
+  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
   gap: 10,
   marginBottom: 12,
 };
 
 const modeBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "12px",
+  padding: "clamp(10px, 2.8vw, 14px)",
   borderRadius: 12,
   border: `2px solid ${theme.accent}`,
   background: active ? theme.accent : "#fff",
@@ -2827,15 +3032,16 @@ const formGrid: CSSProperties = {
 const labelStyle: CSSProperties = {
   fontWeight: 900,
   marginTop: 6,
+  fontSize: "clamp(14px, 2.8vw, 17px)",
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
-  padding: "13px",
+  padding: "clamp(11px, 3vw, 15px)",
   borderRadius: 12,
   border: "2px solid",
-  fontSize: 16,
+  fontSize: "clamp(14px, 2.7vw, 17px)",
   marginBottom: 8,
 };
 
@@ -2843,7 +3049,7 @@ const paymentToggleBtnStyle: CSSProperties = {
   width: "100%",
   border: "2px solid",
   borderRadius: 12,
-  padding: "12px 14px",
+  padding: "clamp(11px, 3vw, 14px)",
   fontWeight: 900,
   marginBottom: 10,
 };
@@ -2853,7 +3059,7 @@ const paymentAddBoxStyle: CSSProperties = {
   gap: 8,
   border: "1px dashed",
   borderRadius: 16,
-  padding: 12,
+  padding: "clamp(10px, 3vw, 14px)",
   marginBottom: 10,
 };
 
@@ -2863,14 +3069,14 @@ const uploadQrBtnStyle: CSSProperties = {
   justifyContent: "center",
   border: "2px solid",
   borderRadius: 12,
-  padding: "12px 14px",
+  padding: "clamp(10px, 3vw, 14px)",
   fontWeight: 900,
   cursor: "pointer",
 };
 
 const qrPreviewStyle: CSSProperties = {
-  width: 110,
-  height: 110,
+  width: "clamp(92px, 22vw, 120px)",
+  height: "clamp(92px, 22vw, 120px)",
   objectFit: "contain",
   border: "1px solid #cbd5e1",
   borderRadius: 12,
@@ -2882,7 +3088,7 @@ const addBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
   borderRadius: 12,
-  padding: "13px",
+  padding: "clamp(11px, 3vw, 15px)",
   fontWeight: 900,
 };
 
@@ -2901,6 +3107,7 @@ const paymentChipStyle: CSSProperties = {
   borderRadius: 999,
   padding: "6px 10px",
   fontWeight: 800,
+  fontSize: "clamp(12px, 2.5vw, 15px)",
 };
 
 const paymentChipDeleteStyle: CSSProperties = {
@@ -2918,7 +3125,7 @@ const companyBox: CSSProperties = {
   alignItems: "center",
   border: "2px solid",
   borderRadius: 16,
-  padding: 14,
+  padding: "clamp(12px, 3vw, 16px)",
   flexWrap: "wrap",
 };
 
@@ -2926,19 +3133,19 @@ const companyEditBoxStyle: CSSProperties = {
   marginTop: 12,
   border: "2px dashed",
   borderRadius: 16,
-  padding: 14,
+  padding: "clamp(12px, 3vw, 16px)",
 };
 
 const logoStyle: CSSProperties = {
-  width: 72,
-  height: 72,
+  width: "clamp(64px, 15vw, 80px)",
+  height: "clamp(64px, 15vw, 80px)",
   borderRadius: 12,
   objectFit: "cover",
 };
 
 const logoPlaceholder: CSSProperties = {
-  width: 72,
-  height: 72,
+  width: "clamp(64px, 15vw, 80px)",
+  height: "clamp(64px, 15vw, 80px)",
   borderRadius: 12,
   background: "#ccfbf1",
   display: "flex",
@@ -2952,7 +3159,7 @@ const editBtnStyle: CSSProperties = {
   border: "2px solid",
   background: "#fff",
   borderRadius: 12,
-  padding: "10px 12px",
+  padding: "clamp(9px, 2.5vw, 12px)",
   fontWeight: 900,
 };
 
@@ -2960,30 +3167,30 @@ const submitSmallBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
   borderRadius: 12,
-  padding: "12px 14px",
+  padding: "clamp(11px, 3vw, 14px)",
   fontWeight: 900,
 };
 
 const submitBtn: CSSProperties = {
   width: "100%",
   marginTop: 18,
-  padding: "14px",
+  padding: "clamp(13px, 3.2vw, 16px)",
   border: "none",
   borderRadius: 14,
   color: "#fff",
   fontWeight: 900,
-  fontSize: 16,
+  fontSize: "clamp(15px, 3vw, 18px)",
 };
 
 const actionRow: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr",
+  gridTemplateColumns: "repeat(3, 1fr)",
   gap: 10,
   marginTop: 12,
 };
 
 const secondaryBtn: CSSProperties = {
-  padding: "12px",
+  padding: "clamp(11px, 3vw, 14px)",
   borderRadius: 12,
   border: "2px solid",
   background: "#fff",
@@ -2991,7 +3198,7 @@ const secondaryBtn: CSSProperties = {
 };
 
 const whatsappBtn: CSSProperties = {
-  padding: "12px",
+  padding: "clamp(11px, 3vw, 14px)",
   borderRadius: 12,
   border: "none",
   background: "#25D366",
@@ -3002,6 +3209,26 @@ const whatsappBtn: CSSProperties = {
 const msgStyle: CSSProperties = {
   marginTop: 14,
   fontWeight: 900,
+  fontSize: "clamp(14px, 2.8vw, 17px)",
+};
+
+const chargeGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 10,
+};
+
+const chargeBoxStyle: CSSProperties = {
+  border: "2px solid",
+  borderRadius: 16,
+  padding: "clamp(10px, 3vw, 14px)",
+};
+
+const chargeInputRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 92px",
+  gap: 8,
+  alignItems: "center",
 };
 
 const screenPreviewWrapStyle: CSSProperties = {
@@ -3012,12 +3239,12 @@ const screenPreviewWrapStyle: CSSProperties = {
   background: "#f8fafc",
   border: "2px solid",
   borderRadius: 18,
-  padding: 14,
+  padding: "clamp(10px, 3vw, 14px)",
   boxSizing: "border-box",
 };
 
 const screenInvoiceInnerStyle: CSSProperties = {
-  width: 780,
+  width: "min(780px, 780px)",
   minWidth: 780,
   maxWidth: "none",
 };
@@ -3045,6 +3272,7 @@ const officialInvoiceStyle: CSSProperties = {
   width: "100%",
   minHeight: 680,
   fontFamily: "Arial, sans-serif",
+  fontSize: "clamp(12px, 1.7vw, 15px)",
 };
 
 const officialHeaderStyle: CSSProperties = {
@@ -3079,7 +3307,7 @@ const officialLogoPlaceholderStyle: CSSProperties = {
 
 const officialCompanyNameStyle: CSSProperties = {
   margin: 0,
-  fontSize: 22,
+  fontSize: "clamp(18px, 2.8vw, 24px)",
   fontWeight: 900,
 };
 
@@ -3089,7 +3317,7 @@ const officialInvoiceTitleBlockStyle: CSSProperties = {
 
 const officialInvoiceWordStyle: CSSProperties = {
   color: "#0f766e",
-  fontSize: 32,
+  fontSize: "clamp(26px, 4vw, 36px)",
   fontWeight: 900,
   letterSpacing: 1,
 };
@@ -3187,6 +3415,7 @@ const officialSummaryStyle: CSSProperties = {
 const officialSummaryRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
+  gap: 10,
   padding: "10px 0",
   borderBottom: "1px solid #e2e8f0",
 };
@@ -3194,18 +3423,20 @@ const officialSummaryRowStyle: CSSProperties = {
 const officialTotalRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
+  gap: 10,
   padding: "12px 0",
   color: "#0f766e",
-  fontSize: 22,
+  fontSize: "clamp(18px, 3vw, 24px)",
   fontWeight: 900,
 };
 
 const officialProfitRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
+  gap: 10,
   padding: "10px 0",
   color: "#16a34a",
-  fontSize: 18,
+  fontSize: "clamp(16px, 2.6vw, 20px)",
   fontWeight: 900,
 };
 
