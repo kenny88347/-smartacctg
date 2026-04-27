@@ -1,4 +1,4 @@
-"use "use client";
+"use client";
 
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
