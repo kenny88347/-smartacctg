@@ -215,6 +215,120 @@ const FONT_SYSTEM_CSS = `
     max-width: 100% !important;
   }
 
+  .smartacctg-invoice-page .sa-user-toolbar {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(100px, 1fr) auto !important;
+    align-items: center !important;
+    gap: clamp(6px, 2vw, 14px) !important;
+    margin-bottom: clamp(12px, 3vw, 18px) !important;
+  }
+
+  .smartacctg-invoice-page .sa-toolbar-tools {
+    display: contents !important;
+  }
+
+  .smartacctg-invoice-page .sa-back-btn {
+    justify-self: start !important;
+    width: auto !important;
+    min-width: auto !important;
+    max-width: none !important;
+    min-height: clamp(42px, 3.4em, 52px) !important;
+    padding: 0 clamp(10px, 2.6vw, 16px) !important;
+    border-radius: var(--sa-radius-control) !important;
+    border: 2px solid !important;
+    background: #ffffff !important;
+    font-size: var(--sa-btn-fs) !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .smartacctg-invoice-page .sa-theme-select {
+    justify-self: center !important;
+    width: fit-content !important;
+    min-width: max-content !important;
+    max-width: 42vw !important;
+    height: clamp(42px, 3.4em, 52px) !important;
+    min-height: clamp(42px, 3.4em, 52px) !important;
+    padding: 0 clamp(14px, 3vw, 20px) !important;
+    border-radius: 999px !important;
+    border: 2px solid !important;
+    font-size: var(--sa-btn-fs) !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+  }
+
+  .smartacctg-invoice-page .sa-lang-row {
+    justify-self: end !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: clamp(5px, 1.6vw, 8px) !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .smartacctg-invoice-page .sa-lang-btn {
+    width: auto !important;
+    min-width: clamp(42px, 10vw, 58px) !important;
+    max-width: none !important;
+    height: clamp(42px, 3.4em, 52px) !important;
+    min-height: clamp(42px, 3.4em, 52px) !important;
+    padding: 0 clamp(8px, 2vw, 14px) !important;
+    border-radius: 999px !important;
+    border: 2px solid !important;
+    font-size: var(--sa-btn-fs) !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .smartacctg-invoice-page .sa-titlebar {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    align-items: center !important;
+    gap: clamp(10px, 3vw, 16px) !important;
+    margin-top: -6px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .smartacctg-invoice-page .sa-titlebar h1,
+  .smartacctg-invoice-page .sa-titlebar h2,
+  .smartacctg-invoice-page .sa-titlebar h3 {
+    margin: 0 !important;
+    grid-column: 1 !important;
+  }
+
+  .smartacctg-invoice-page .sa-close-x {
+    grid-column: 2 !important;
+    justify-self: end !important;
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    border: 2px solid #ef4444 !important;
+    background: #fee2e2 !important;
+    color: #dc2626 !important;
+    font-size: 28px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+
   @media (max-width: 768px) {
     .smartacctg-invoice-page {
       padding: 12px !important;
@@ -255,6 +369,47 @@ const FONT_SYSTEM_CSS = `
 
     .responsive-actions button {
       width: 100% !important;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .smartacctg-invoice-page .sa-user-toolbar {
+      grid-template-columns: auto minmax(76px, 1fr) auto !important;
+      gap: 5px !important;
+    }
+
+    .smartacctg-invoice-page .sa-back-btn {
+      min-height: 42px !important;
+      padding: 0 8px !important;
+      font-size: 13px !important;
+    }
+
+    .smartacctg-invoice-page .sa-theme-select {
+      max-width: 31vw !important;
+      min-height: 42px !important;
+      height: 42px !important;
+      padding: 0 8px !important;
+      font-size: 13px !important;
+    }
+
+    .smartacctg-invoice-page .sa-lang-row {
+      gap: 4px !important;
+    }
+
+    .smartacctg-invoice-page .sa-lang-btn {
+      min-width: 38px !important;
+      height: 42px !important;
+      min-height: 42px !important;
+      padding: 0 6px !important;
+      font-size: 13px !important;
+    }
+
+    .smartacctg-invoice-page .sa-close-x {
+      width: 44px !important;
+      height: 44px !important;
+      min-width: 44px !important;
+      max-width: 44px !important;
+      font-size: 26px !important;
     }
   }
 
@@ -389,6 +544,7 @@ const DEFAULT_PAYMENT_OPTIONS: PaymentOption[] = [
 const TXT = {
   zh: {
     back: "返回",
+    dashboardBack: "返回控制台",
     close: "关闭",
     title: "发票记录",
     newInvoice: "新发票",
@@ -497,6 +653,7 @@ const TXT = {
   },
   en: {
     back: "Back",
+    dashboardBack: "Back Dashboard",
     close: "Close",
     title: "Invoice Records",
     newInvoice: "New Invoice",
@@ -605,6 +762,7 @@ const TXT = {
   },
   ms: {
     back: "Kembali",
+    dashboardBack: "Kembali Dashboard",
     close: "Tutup",
     title: "Rekod Invois",
     newInvoice: "Invois Baru",
@@ -2461,7 +2619,7 @@ export default function InvoicePage() {
 
   return (
     <main
-      className="smartacctg-invoice-page"
+      className="sa-page smartacctg-invoice-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
       <style jsx global>{`
@@ -2506,20 +2664,21 @@ export default function InvoicePage() {
         }
       `}</style>
 
-      <div className="no-print" style={topRowStyle}>
+      <div className="no-print sa-user-toolbar">
         <button
           onClick={goBack}
-          style={{ ...backBtn, borderColor: theme.border, color: theme.accent }}
+          className="sa-back-btn"
+          style={{ borderColor: theme.border, color: theme.accent }}
         >
-          ← {t.back}
+          ← {t.dashboardBack}
         </button>
 
-        <div style={topRightWrapStyle}>
+        <div className="sa-toolbar-tools">
           <select
             value={themeKey}
             onChange={(e) => switchTheme(e.target.value as ThemeKey)}
+            className="sa-theme-select"
             style={{
-              ...themeSelectStyle,
               borderColor: theme.border,
               color: theme.inputText,
               background: theme.inputBg,
@@ -2532,14 +2691,40 @@ export default function InvoicePage() {
             ))}
           </select>
 
-          <div style={langRowStyle}>
-            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
+          <div className="sa-lang-row">
+            <button
+              onClick={() => switchLang("zh")}
+              className="sa-lang-btn"
+              style={{
+                borderColor: theme.accent,
+                background: lang === "zh" ? theme.accent : "#fff",
+                color: lang === "zh" ? "#fff" : theme.accent,
+              }}
+            >
               中文
             </button>
-            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
+
+            <button
+              onClick={() => switchLang("en")}
+              className="sa-lang-btn"
+              style={{
+                borderColor: theme.accent,
+                background: lang === "en" ? theme.accent : "#fff",
+                color: lang === "en" ? "#fff" : theme.accent,
+              }}
+            >
               EN
             </button>
-            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
+
+            <button
+              onClick={() => switchLang("ms")}
+              className="sa-lang-btn"
+              style={{
+                borderColor: theme.accent,
+                background: lang === "ms" ? theme.accent : "#fff",
+                color: lang === "ms" ? "#fff" : theme.accent,
+              }}
+            >
               BM
             </button>
           </div>
@@ -2653,18 +2838,18 @@ export default function InvoicePage() {
             color: theme.text,
           }}
         >
-          <div style={newFormHeaderStyle}>
-            <button
-              onClick={() => setMode("list")}
-              aria-label={t.close}
-              style={closeXBtnStyle}
-            >
-              ×
-            </button>
-
+          <div className="sa-titlebar">
             <h1 style={{ ...newTitleStyle, color: theme.accent }}>
               {editInvoiceId ? t.edit : t.createTitle}
             </h1>
+
+            <button
+              className="sa-close-x"
+              onClick={() => setMode("list")}
+              aria-label={t.close}
+            >
+              ×
+            </button>
           </div>
 
           <p style={{ ...newDescStyle, color: theme.muted }}>{t.desc}</p>
