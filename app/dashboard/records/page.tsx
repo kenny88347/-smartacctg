@@ -359,6 +359,12 @@ export default function RecordsPage() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
 
+    if (!q.get("refresh")) {
+      q.set("refresh", String(Date.now()));
+      window.location.replace(`${window.location.pathname}?${q.toString()}`);
+      return;
+    }
+
     const urlLang = q.get("lang") as Lang;
     const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
 
@@ -783,15 +789,14 @@ export default function RecordsPage() {
           ? invoices.find((x) => x.id === tx.source_id)
           : null;
 
+      const customerName =
+        customers.find((c) => c.id === filterCustomerId)?.name?.toLowerCase() || "";
+
       const matchType = filterType === "all" || tx.txn_type === filterType;
 
       const matchCustomer =
         !filterCustomerId ||
-        tx.note
-          ?.toLowerCase()
-          .includes(
-            customers.find((c) => c.id === filterCustomerId)?.name?.toLowerCase() || ""
-          ) ||
+        Boolean(tx.note?.toLowerCase().includes(customerName)) ||
         invoice?.customer_id === filterCustomerId;
 
       const matchStart = !filterStartDate || tx.txn_date >= filterStartDate;
@@ -1319,7 +1324,7 @@ const langBtn = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperti
   lineHeight: 1.1,
   textAlign: "center",
   whiteSpace: "nowrap",
-};
+});
 
 const cardStyle: CSSProperties = {
   border: "2px solid",
