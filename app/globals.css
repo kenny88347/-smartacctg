@@ -1,7 +1,7 @@
-/* ================================
-   SmartAcctg 全站统一字体 / 卡片 / 按钮 / X
-   app/globals.css
-================================ */
+/* =========================================================
+   SmartAcctg Global UI Fix
+   放在 app/globals.css 最下面
+   ========================================================= */
 
 :root {
   --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
@@ -15,495 +15,676 @@
   --sa-fs-xl: clamp(21px, 4.4vw, 28px);
   --sa-fs-2xl: clamp(24px, 5.4vw, 34px);
 
-  --sa-border-w: 2px;
-  --sa-radius-card: clamp(18px, 1.45em, 28px);
-  --sa-radius-control: clamp(12px, 0.85em, 16px);
-  --sa-card-pad: clamp(14px, 1.25em, 24px);
-  --sa-control-h: clamp(46px, 3.5em, 58px);
-  --sa-control-x: clamp(14px, 1em, 18px);
+  --sa-control-h: clamp(44px, 3.5em, 54px);
+  --sa-control-x: clamp(12px, 2.8vw, 18px);
 
-  --sa-teal: #0f766e;
+  --sa-border-w: 2px;
+  --sa-radius-control: clamp(12px, 0.85em, 16px);
+  --sa-radius-card: clamp(18px, 1.4em, 28px);
+  --sa-card-pad: clamp(14px, 3vw, 24px);
+
   --sa-red: #dc2626;
-  --sa-red-soft: #fee2e2;
-  --sa-border: #14b8a6;
+  --sa-red-dark: #991b1b;
+  --sa-white: #ffffff;
+  --sa-text: #111827;
+  --sa-muted: #64748b;
+  --sa-border: #cbd5e1;
+}
+
+/* 全站基础 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  font-family: var(--sa-font-family);
+  font-size: var(--sa-fs-base);
+  line-height: 1.5;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html {
-  width: 100%;
-  min-height: 100%;
-  font-size: 16px;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  scroll-behavior: smooth;
+/* SmartAcctg 页面统一字体 */
+.smartacctg-page,
+.smartacctg-dashboard-page,
+.smartacctg-products-page,
+.smartacctg-invoice-page,
+.smartacctg-records-page,
+.smartacctg-customers-page,
+.smartacctg-accounting-page,
+.smartacctg-settings-page,
+.smartacctg-app-page {
+  width: 100% !important;
+  max-width: 100vw !important;
+  min-height: 100vh !important;
+  overflow-x: hidden !important;
+  font-family: var(--sa-font-family) !important;
+  font-size: var(--sa-fs-base) !important;
+  line-height: 1.5 !important;
 }
 
-body {
-  width: 100%;
-  min-height: 100%;
-  margin: 0;
-  padding: 0;
-  font-family: var(--sa-font-family);
-  font-size: var(--sa-fs-base);
-  line-height: 1.5;
-  background: #f8fafc;
-  color: #111827;
-  overflow-x: hidden;
-}
-
-body,
-button,
-input,
-select,
-textarea {
+/* 里面全部元素字体统一 */
+.smartacctg-page *,
+.smartacctg-dashboard-page *,
+.smartacctg-products-page *,
+.smartacctg-invoice-page *,
+.smartacctg-records-page *,
+.smartacctg-customers-page *,
+.smartacctg-accounting-page *,
+.smartacctg-settings-page *,
+.smartacctg-app-page * {
+  box-sizing: border-box !important;
   font-family: var(--sa-font-family) !important;
 }
 
-/* 全站页面基础 */
-main {
-  width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
 /* 标题统一 */
-h1 {
+.smartacctg-page h1,
+.smartacctg-dashboard-page h1,
+.smartacctg-products-page h1,
+.smartacctg-invoice-page h1,
+.smartacctg-records-page h1,
+.smartacctg-customers-page h1,
+.smartacctg-accounting-page h1,
+.smartacctg-settings-page h1,
+.smartacctg-app-page h1 {
   font-size: var(--sa-fs-2xl) !important;
   line-height: 1.15 !important;
+  margin-top: 0 !important;
 }
 
-h2 {
+.smartacctg-page h2,
+.smartacctg-dashboard-page h2,
+.smartacctg-products-page h2,
+.smartacctg-invoice-page h2,
+.smartacctg-records-page h2,
+.smartacctg-customers-page h2,
+.smartacctg-accounting-page h2,
+.smartacctg-settings-page h2,
+.smartacctg-app-page h2 {
   font-size: var(--sa-fs-xl) !important;
   line-height: 1.2 !important;
 }
 
-h3 {
+.smartacctg-page h3,
+.smartacctg-dashboard-page h3,
+.smartacctg-products-page h3,
+.smartacctg-invoice-page h3,
+.smartacctg-records-page h3,
+.smartacctg-customers-page h3,
+.smartacctg-accounting-page h3,
+.smartacctg-settings-page h3,
+.smartacctg-app-page h3 {
   font-size: var(--sa-fs-lg) !important;
   line-height: 1.25 !important;
+  margin-top: clamp(16px, 4vw, 26px) !important;
+  margin-bottom: clamp(8px, 2.5vw, 14px) !important;
 }
 
-h4 {
-  font-size: var(--sa-fs-md) !important;
+/* 普通文字统一 */
+.smartacctg-page p,
+.smartacctg-page div,
+.smartacctg-page span,
+.smartacctg-page label,
+.smartacctg-page td,
+.smartacctg-page th,
+.smartacctg-dashboard-page p,
+.smartacctg-dashboard-page div,
+.smartacctg-dashboard-page span,
+.smartacctg-dashboard-page label,
+.smartacctg-dashboard-page td,
+.smartacctg-dashboard-page th,
+.smartacctg-products-page p,
+.smartacctg-products-page div,
+.smartacctg-products-page span,
+.smartacctg-products-page label,
+.smartacctg-products-page td,
+.smartacctg-products-page th,
+.smartacctg-invoice-page p,
+.smartacctg-invoice-page div,
+.smartacctg-invoice-page span,
+.smartacctg-invoice-page label,
+.smartacctg-invoice-page td,
+.smartacctg-invoice-page th,
+.smartacctg-records-page p,
+.smartacctg-records-page div,
+.smartacctg-records-page span,
+.smartacctg-records-page label,
+.smartacctg-records-page td,
+.smartacctg-records-page th,
+.smartacctg-customers-page p,
+.smartacctg-customers-page div,
+.smartacctg-customers-page span,
+.smartacctg-customers-page label,
+.smartacctg-customers-page td,
+.smartacctg-customers-page th {
+  font-size: var(--sa-fs-base) !important;
 }
 
-p,
-div,
-span,
-label,
-td,
-th {
-  line-height: 1.5;
+/* strong 跟随父级，不突然变大 */
+.smartacctg-page strong,
+.smartacctg-dashboard-page strong,
+.smartacctg-products-page strong,
+.smartacctg-invoice-page strong,
+.smartacctg-records-page strong,
+.smartacctg-customers-page strong,
+.smartacctg-accounting-page strong,
+.smartacctg-settings-page strong {
+  font-size: inherit !important;
 }
 
-/* 输入框 / 选择框统一 */
-input,
-select,
-textarea {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  min-height: var(--sa-control-h);
-  padding-left: var(--sa-control-x);
-  padding-right: var(--sa-control-x);
-  border-radius: var(--sa-radius-control);
+/* input / select / textarea / button 全部统一 */
+.smartacctg-page input,
+.smartacctg-page select,
+.smartacctg-page textarea,
+.smartacctg-page button,
+.smartacctg-dashboard-page input,
+.smartacctg-dashboard-page select,
+.smartacctg-dashboard-page textarea,
+.smartacctg-dashboard-page button,
+.smartacctg-products-page input,
+.smartacctg-products-page select,
+.smartacctg-products-page textarea,
+.smartacctg-products-page button,
+.smartacctg-invoice-page input,
+.smartacctg-invoice-page select,
+.smartacctg-invoice-page textarea,
+.smartacctg-invoice-page button,
+.smartacctg-records-page input,
+.smartacctg-records-page select,
+.smartacctg-records-page textarea,
+.smartacctg-records-page button,
+.smartacctg-customers-page input,
+.smartacctg-customers-page select,
+.smartacctg-customers-page textarea,
+.smartacctg-customers-page button {
   font-size: 16px !important;
-  line-height: 1.35;
+  font-family: var(--sa-font-family) !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
 }
 
-/* iPhone 日期框不撑爆 */
-input[type="date"],
-input[type="month"],
-input[type="number"] {
+/* 输入框统一高度，避免日期框超出 */
+.smartacctg-page input,
+.smartacctg-page select,
+.smartacctg-page textarea,
+.smartacctg-dashboard-page input,
+.smartacctg-dashboard-page select,
+.smartacctg-dashboard-page textarea,
+.smartacctg-products-page input,
+.smartacctg-products-page select,
+.smartacctg-products-page textarea,
+.smartacctg-invoice-page input,
+.smartacctg-invoice-page select,
+.smartacctg-invoice-page textarea,
+.smartacctg-records-page input,
+.smartacctg-records-page select,
+.smartacctg-records-page textarea,
+.smartacctg-customers-page input,
+.smartacctg-customers-page select,
+.smartacctg-customers-page textarea {
+  width: 100% !important;
+  min-height: var(--sa-control-h) !important;
+  padding-left: var(--sa-control-x) !important;
+  padding-right: var(--sa-control-x) !important;
+  border-radius: var(--sa-radius-control) !important;
+  outline: none !important;
+}
+
+/* 日期输入框手机适配 */
+.smartacctg-page input[type="date"],
+.smartacctg-dashboard-page input[type="date"],
+.smartacctg-products-page input[type="date"],
+.smartacctg-invoice-page input[type="date"],
+.smartacctg-records-page input[type="date"],
+.smartacctg-customers-page input[type="date"] {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
   display: block !important;
   -webkit-appearance: none !important;
   appearance: none !important;
-  text-align: center;
-}
-
-input[type="date"]::-webkit-date-and-time-value {
-  text-align: center;
-  min-height: 1.6em;
-}
-
-/* 按钮统一 */
-button {
-  font-family: var(--sa-font-family) !important;
-  font-size: 16px !important;
-  line-height: 1.2;
-  min-width: 0;
-  white-space: normal;
-  cursor: pointer;
-}
-
-/* 图片自动缩放 */
-img,
-video,
-iframe,
-canvas,
-svg {
-  max-width: 100%;
-}
-
-img,
-video,
-iframe {
-  height: auto;
-}
-
-/* 表格防爆屏 */
-table {
-  max-width: 100%;
-}
-
-/* 通用页面容器 */
-.sa-page {
-  width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
-  font-family: var(--sa-font-family) !important;
-  font-size: var(--sa-fs-base);
-}
-
-/* 卡片框：跟随字体自动缩放 */
-.sa-card,
-.smart-card,
-.card,
-section {
-  border-radius: var(--sa-radius-card);
-}
-
-/* 标题栏：X 自动在最右边 */
-.sa-titlebar {
-  display: grid !important;
-  grid-template-columns: 1fr auto !important;
-  align-items: center !important;
-  gap: clamp(10px, 3vw, 16px) !important;
-  width: 100% !important;
-}
-
-.sa-titlebar h1,
-.sa-titlebar h2,
-.sa-titlebar h3 {
-  grid-column: 1 !important;
-  margin: 0 !important;
-}
-
-/* 红色 X 按钮 */
-.sa-close-x,
-button[aria-label="关闭"],
-button[aria-label="Close"],
-button[aria-label="Tutup"] {
-  grid-column: 2 !important;
-  justify-self: end !important;
-  width: 46px !important;
-  height: 46px !important;
-  min-width: 46px !important;
-  max-width: 46px !important;
-  border-radius: 999px !important;
-  border: 2px solid var(--sa-red) !important;
-  background: var(--sa-red-soft) !important;
-  color: var(--sa-red) !important;
-  font-size: 28px !important;
-  font-weight: 900 !important;
-  line-height: 1 !important;
-  padding: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0 !important;
-}
-
-/* 需要全宽的按钮才全宽 */
-.sa-full-btn {
-  width: 100% !important;
-}
-
-/* 不要让所有 button 在手机都 100% */
-@media (max-width: 768px) {
-  body {
-    font-size: var(--sa-fs-sm);
-  }
-
-  h1 {
-    font-size: var(--sa-fs-xl) !important;
-  }
-
-  h2 {
-    font-size: var(--sa-fs-lg) !important;
-  }
-
-  h3 {
-    font-size: var(--sa-fs-md) !important;
-  }
-
-  input,
-  select,
-  textarea {
-    font-size: 16px !important;
-  }
-
-  .sa-mobile-stack {
-    display: flex !important;
-    flex-direction: column !important;
-  }
-
-  .sa-mobile-full {
-    width: 100% !important;
-  }
-}
-
-@media (max-width: 430px) {
-  :root {
-    --sa-card-pad: 14px;
-    --sa-control-h: 50px;
-  }
-
-  main {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
-
-  .sa-titlebar {
-    grid-template-columns: 1fr auto !important;
-  }
-
-  .sa-close-x,
-  button[aria-label="关闭"],
-  button[aria-label="Close"],
-  button[aria-label="Tutup"] {
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    max-width: 44px !important;
-  }
-}
-/* =========================================
-   SmartAcctg 全部用户页面：顶部控制栏 / 主题框 / 语言按钮 / 红色 X
-========================================= */
-
-:root {
-  --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Microsoft YaHei", Arial, sans-serif;
-
-  --sa-fs-base: clamp(14px, 2.8vw, 16px);
-  --sa-fs-btn: 16px;
-
-  --sa-teal: #0f766e;
-  --sa-border: #14b8a6;
-  --sa-red: #dc2626;
-  --sa-red-soft: #fee2e2;
-
-  --sa-radius-control: clamp(12px, 0.85em, 16px);
-  --sa-radius-card: clamp(18px, 1.45em, 28px);
-  --sa-control-h: clamp(42px, 3.4em, 52px);
-  --sa-card-pad: clamp(14px, 1.2em, 24px);
-}
-
-/* 全站字体 */
-body,
-main,
-button,
-input,
-select,
-textarea {
-  font-family: var(--sa-font-family) !important;
-}
-
-/* 全站卡片框跟随字体大小 */
-.sa-card,
-.smart-card,
-.card,
-section {
-  border-radius: var(--sa-radius-card) !important;
-}
-
-/* =========================
-   顶部控制栏
-   左：返回控制台
-   中：主题
-   右：语言
-========================= */
-
-.sa-user-toolbar {
-  width: 100% !important;
-  display: grid !important;
-  grid-template-columns: auto minmax(110px, 1fr) auto !important;
-  align-items: center !important;
-  gap: clamp(6px, 2vw, 14px) !important;
-  margin-bottom: clamp(12px, 3vw, 18px) !important;
-}
-
-/* 让里面包着 select + lang 的 div 拆开变成 grid item */
-.sa-toolbar-tools {
-  display: contents !important;
-}
-
-/* 返回控制台：最左边 */
-.sa-back-btn {
-  justify-self: start !important;
-  width: auto !important;
-  min-width: auto !important;
-  max-width: none !important;
-  min-height: var(--sa-control-h) !important;
-  padding: 0 clamp(10px, 2.6vw, 16px) !important;
-  border-radius: var(--sa-radius-control) !important;
-  border: 2px solid var(--sa-border) !important;
-  background: #ffffff !important;
-  color: var(--sa-teal) !important;
-  font-size: var(--sa-fs-btn) !important;
-  font-weight: 900 !important;
-  line-height: 1.15 !important;
-  white-space: nowrap !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-/* 主题菜单：中间，尺寸适合文字 */
-.sa-theme-select {
-  justify-self: center !important;
-  width: fit-content !important;
-  min-width: max-content !important;
-  max-width: 42vw !important;
-  height: var(--sa-control-h) !important;
-  min-height: var(--sa-control-h) !important;
-  padding: 0 clamp(14px, 3vw, 20px) !important;
-  border-radius: 999px !important;
-  border: 2px solid var(--sa-border) !important;
-  background: #ffffff !important;
-  color: var(--sa-teal) !important;
-  font-size: var(--sa-fs-btn) !important;
-  font-weight: 900 !important;
-  line-height: 1.15 !important;
-  white-space: nowrap !important;
   text-align: center !important;
 }
 
-/* 语言按钮：最右边 */
-.sa-lang-row {
-  justify-self: end !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: clamp(5px, 1.6vw, 8px) !important;
-  flex-wrap: nowrap !important;
+.smartacctg-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value {
+  text-align: center !important;
+  min-height: 1.6em !important;
 }
 
-.sa-lang-btn {
-  width: auto !important;
-  min-width: clamp(42px, 10vw, 58px) !important;
-  max-width: none !important;
-  height: var(--sa-control-h) !important;
-  min-height: var(--sa-control-h) !important;
-  padding: 0 clamp(8px, 2vw, 14px) !important;
-  border-radius: 999px !important;
-  border: 2px solid var(--sa-teal) !important;
-  background: #ffffff !important;
-  color: var(--sa-teal) !important;
-  font-size: var(--sa-fs-btn) !important;
-  font-weight: 900 !important;
-  line-height: 1.15 !important;
-  white-space: nowrap !important;
+/* textarea */
+.smartacctg-page textarea,
+.smartacctg-dashboard-page textarea,
+.smartacctg-products-page textarea,
+.smartacctg-invoice-page textarea,
+.smartacctg-records-page textarea,
+.smartacctg-customers-page textarea {
+  resize: vertical !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+/* 按钮文字居中 */
+.smartacctg-page button,
+.smartacctg-dashboard-page button,
+.smartacctg-products-page button,
+.smartacctg-invoice-page button,
+.smartacctg-records-page button,
+.smartacctg-customers-page button {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+  min-height: var(--sa-control-h);
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  cursor: pointer;
 }
 
-.sa-lang-btn.active {
-  background: var(--sa-teal) !important;
-  color: #ffffff !important;
+/* 图片 / 表格不爆屏 */
+.smartacctg-page img,
+.smartacctg-page video,
+.smartacctg-page iframe,
+.smartacctg-page canvas,
+.smartacctg-dashboard-page img,
+.smartacctg-dashboard-page video,
+.smartacctg-dashboard-page iframe,
+.smartacctg-dashboard-page canvas,
+.smartacctg-products-page img,
+.smartacctg-products-page video,
+.smartacctg-products-page iframe,
+.smartacctg-products-page canvas,
+.smartacctg-invoice-page img,
+.smartacctg-invoice-page video,
+.smartacctg-invoice-page iframe,
+.smartacctg-invoice-page canvas,
+.smartacctg-records-page img,
+.smartacctg-records-page video,
+.smartacctg-records-page iframe,
+.smartacctg-records-page canvas,
+.smartacctg-customers-page img,
+.smartacctg-customers-page video,
+.smartacctg-customers-page iframe,
+.smartacctg-customers-page canvas {
+  max-width: 100% !important;
 }
 
-/* =========================
-   标题 + 红色 X
-========================= */
+.smartacctg-page table,
+.smartacctg-dashboard-page table,
+.smartacctg-products-page table,
+.smartacctg-invoice-page table,
+.smartacctg-records-page table,
+.smartacctg-customers-page table {
+  max-width: 100% !important;
+}
 
-.sa-titlebar {
-  width: 100% !important;
-  display: grid !important;
-  grid-template-columns: 1fr auto !important;
+/* 卡片框：自动跟随文字和内容大小 */
+.smartacctg-page section,
+.smartacctg-dashboard-page section,
+.smartacctg-products-page section,
+.smartacctg-invoice-page section,
+.smartacctg-records-page section,
+.smartacctg-customers-page section {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* 常用卡片 class */
+.sa-card,
+.sa-panel,
+.sa-box,
+.sa-item-card,
+.sa-content-card {
+  border-width: var(--sa-border-w) !important;
+  border-style: solid !important;
+  border-radius: var(--sa-radius-card) !important;
+  padding: var(--sa-card-pad) !important;
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* 内容在卡片里垂直居中 */
+.sa-card,
+.sa-panel,
+.sa-box,
+.sa-item-card,
+.sa-content-card,
+.products-summary-grid > button,
+.products-product-info-grid > div {
   align-items: center !important;
-  gap: clamp(10px, 3vw, 16px) !important;
 }
 
-.sa-titlebar h1,
-.sa-titlebar h2,
-.sa-titlebar h3 {
-  margin: 0 !important;
-  grid-column: 1 !important;
+/* 顶部控制列：左返回，中主题，右语言 */
+.sa-topbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  margin-bottom: 18px !important;
 }
 
-/* 页面里的 X 自动变红色，并在最右边 */
-.sa-close-x,
-button[aria-label="关闭"],
-button[aria-label="Close"],
-button[aria-label="Tutup"] {
-  grid-column: 2 !important;
+.sa-topbar-left {
+  justify-self: start !important;
+  min-width: 0 !important;
+}
+
+.sa-topbar-center {
+  justify-self: center !important;
+  min-width: 0 !important;
+}
+
+.sa-topbar-right {
   justify-self: end !important;
-  width: 46px !important;
-  height: 46px !important;
-  min-width: 46px !important;
-  max-width: 46px !important;
+  min-width: 0 !important;
+}
+
+/* 旧 top row 也统一 */
+.smartacctg-invoice-page > .no-print:first-of-type,
+.smartacctg-products-page > section:first-of-type > div:first-of-type {
+  max-width: 100% !important;
+}
+
+/* 主题下拉框：跟文字大小，不固定太小 */
+.sa-topbar select,
+.smartacctg-products-page select,
+.smartacctg-invoice-page select {
+  height: var(--sa-control-h) !important;
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: 100% !important;
+  padding-left: var(--sa-control-x) !important;
+  padding-right: var(--sa-control-x) !important;
+  white-space: nowrap !important;
+}
+
+/* 语言按钮保持一行 */
+.sa-lang-row,
+.smartacctg-products-page .sa-topbar-right > div,
+.smartacctg-invoice-page .sa-topbar-right > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;
+}
+
+/* 纯红色 X：没有圈圈，没有背景 */
+.sa-close-x,
+button.sa-close-x,
+.smartacctg-page .sa-close-x,
+.smartacctg-products-page .sa-close-x,
+.smartacctg-invoice-page .sa-close-x,
+.smartacctg-records-page .sa-close-x,
+.smartacctg-customers-page .sa-close-x {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
   padding: 0 !important;
-  border-radius: 999px !important;
-  border: 2px solid var(--sa-red) !important;
-  background: var(--sa-red-soft) !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
   color: var(--sa-red) !important;
-  font-size: 28px !important;
+  font-size: clamp(28px, 6vw, 38px) !important;
   font-weight: 900 !important;
   line-height: 1 !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  flex-shrink: 0 !important;
+  cursor: pointer !important;
 }
 
-/* 手机也保持同一行 */
-@media (max-width: 430px) {
-  .sa-user-toolbar {
-    grid-template-columns: auto minmax(92px, 1fr) auto !important;
+.sa-close-x:hover,
+button.sa-close-x:hover {
+  color: var(--sa-red-dark) !important;
+  background: transparent !important;
+}
+
+/* 标题 + X 同一行，X 在最右边 */
+.sa-modal-header,
+.sa-title-x-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin-bottom: 14px !important;
+}
+
+.sa-modal-header h1,
+.sa-modal-header h2,
+.sa-modal-header h3,
+.sa-title-x-row h1,
+.sa-title-x-row h2,
+.sa-title-x-row h3 {
+  margin: 0 !important;
+  min-width: 0 !important;
+}
+
+/* Modal 自动适配手机 */
+.sa-modal,
+.sa-detail-modal {
+  width: 100% !important;
+  max-width: 920px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  border-radius: var(--sa-radius-card) !important;
+  padding: var(--sa-card-pad) !important;
+}
+
+/* 搜索行 */
+.products-search-row,
+.records-search-row,
+.customers-search-row,
+.invoice-search-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+/* 产品 / 卡片 grid */
+.products-summary-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+  gap: clamp(10px, 2vw, 16px) !important;
+}
+
+.products-product-info-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+/* 操作按钮行 */
+.products-action-row,
+.records-action-row,
+.customers-action-row,
+.invoice-action-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+/* 手机适配 */
+@media (max-width: 768px) {
+  .smartacctg-page,
+  .smartacctg-dashboard-page,
+  .smartacctg-products-page,
+  .smartacctg-invoice-page,
+  .smartacctg-records-page,
+  .smartacctg-customers-page,
+  .smartacctg-accounting-page,
+  .smartacctg-settings-page,
+  .smartacctg-app-page {
+    padding: 12px !important;
+  }
+
+  .smartacctg-page h1,
+  .smartacctg-dashboard-page h1,
+  .smartacctg-products-page h1,
+  .smartacctg-invoice-page h1,
+  .smartacctg-records-page h1,
+  .smartacctg-customers-page h1 {
+    font-size: var(--sa-fs-xl) !important;
+  }
+
+  .smartacctg-page h2,
+  .smartacctg-dashboard-page h2,
+  .smartacctg-products-page h2,
+  .smartacctg-invoice-page h2,
+  .smartacctg-records-page h2,
+  .smartacctg-customers-page h2 {
+    font-size: var(--sa-fs-lg) !important;
+  }
+
+  .smartacctg-page h3,
+  .smartacctg-dashboard-page h3,
+  .smartacctg-products-page h3,
+  .smartacctg-invoice-page h3,
+  .smartacctg-records-page h3,
+  .smartacctg-customers-page h3 {
+    font-size: var(--sa-fs-md) !important;
+  }
+
+  .products-search-row,
+  .records-search-row,
+  .customers-search-row,
+  .invoice-search-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .products-search-row button,
+  .records-search-row button,
+  .customers-search-row button,
+  .invoice-search-row button {
+    width: 100% !important;
+  }
+
+  .products-action-row,
+  .records-action-row,
+  .customers-action-row,
+  .invoice-action-row {
+    justify-content: stretch !important;
+  }
+
+  .products-action-row button,
+  .records-action-row button,
+  .customers-action-row button,
+  .invoice-action-row button {
+    flex: 1 1 auto !important;
+  }
+}
+
+/* 很小手机：顶部仍保持同一行，但会缩小一点 */
+@media (max-width: 520px) {
+  .sa-topbar {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
     gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 2px !important;
   }
 
-  .sa-back-btn {
-    min-height: 42px !important;
-    padding: 0 9px !important;
-    font-size: 14px !important;
+  .sa-topbar button,
+  .sa-topbar select {
+    font-size: 13px !important;
+    min-height: 40px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    white-space: nowrap !important;
   }
 
-  .sa-theme-select {
-    max-width: 34vw !important;
-    min-height: 42px !important;
-    height: 42px !important;
-    padding: 0 10px !important;
-    font-size: 14px !important;
+  .sa-lang-row,
+  .smartacctg-products-page .sa-topbar-right > div,
+  .smartacctg-invoice-page .sa-topbar-right > div {
+    gap: 4px !important;
   }
 
-  .sa-lang-row {
-    gap: 5px !important;
+  .smartacctg-page button,
+  .smartacctg-dashboard-page button,
+  .smartacctg-products-page button,
+  .smartacctg-invoice-page button,
+  .smartacctg-records-page button,
+  .smartacctg-customers-page button {
+    font-size: 15px !important;
   }
 
-  .sa-lang-btn {
-    min-width: 40px !important;
-    height: 42px !important;
-    min-height: 42px !important;
-    padding: 0 7px !important;
-    font-size: 14px !important;
+  .products-summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .products-product-info-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .sa-modal-header,
+  .sa-title-x-row {
+    grid-template-columns: minmax(0, 1fr) auto !important;
   }
 
   .sa-close-x,
-  button[aria-label="关闭"],
-  button[aria-label="Close"],
-  button[aria-label="Tutup"] {
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    max-width: 44px !important;
+  button.sa-close-x {
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    font-size: 32px !important;
+  }
+}
+
+/* Print 保持发票干净 */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #printInvoiceArea,
+  #printInvoiceArea * {
+    visibility: visible !important;
+  }
+
+  #printInvoiceArea {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 12mm !important;
+    margin: 0 !important;
+    background: white !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
   }
 }
