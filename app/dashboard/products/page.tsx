@@ -51,6 +51,171 @@ const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 
+const FONT_SYSTEM_CSS = `
+  .smartacctg-products-page {
+    --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Microsoft YaHei", Arial, sans-serif;
+
+    --sa-fs-xs: clamp(11px, 2.4vw, 12px);
+    --sa-fs-sm: clamp(12px, 2.6vw, 14px);
+    --sa-fs-base: clamp(14px, 2.9vw, 16px);
+    --sa-fs-md: clamp(15px, 3.1vw, 18px);
+    --sa-fs-lg: clamp(18px, 3.8vw, 22px);
+    --sa-fs-xl: clamp(22px, 4.8vw, 30px);
+    --sa-fs-2xl: clamp(26px, 6vw, 38px);
+
+    font-family: var(--sa-font-family) !important;
+    font-size: var(--sa-fs-base) !important;
+    line-height: 1.5 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  .smartacctg-products-page,
+  .smartacctg-products-page * {
+    box-sizing: border-box !important;
+    font-family: var(--sa-font-family) !important;
+  }
+
+  .smartacctg-products-page h1 {
+    font-size: var(--sa-fs-2xl) !important;
+    line-height: 1.15 !important;
+  }
+
+  .smartacctg-products-page h2 {
+    font-size: var(--sa-fs-xl) !important;
+    line-height: 1.2 !important;
+  }
+
+  .smartacctg-products-page h3 {
+    font-size: var(--sa-fs-lg) !important;
+    line-height: 1.25 !important;
+    margin-top: clamp(16px, 4vw, 24px) !important;
+    margin-bottom: clamp(8px, 2.5vw, 12px) !important;
+  }
+
+  .smartacctg-products-page p,
+  .smartacctg-products-page div,
+  .smartacctg-products-page span,
+  .smartacctg-products-page label,
+  .smartacctg-products-page td,
+  .smartacctg-products-page th {
+    font-size: var(--sa-fs-base) !important;
+  }
+
+  .smartacctg-products-page strong {
+    font-size: inherit !important;
+  }
+
+  .smartacctg-products-page input,
+  .smartacctg-products-page select,
+  .smartacctg-products-page textarea,
+  .smartacctg-products-page button {
+    font-size: 16px !important;
+    font-family: var(--sa-font-family) !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .smartacctg-products-page input,
+  .smartacctg-products-page select,
+  .smartacctg-products-page textarea {
+    width: 100% !important;
+  }
+
+  .smartacctg-products-page textarea {
+    resize: vertical !important;
+  }
+
+  .smartacctg-products-page img,
+  .smartacctg-products-page video,
+  .smartacctg-products-page iframe,
+  .smartacctg-products-page canvas {
+    max-width: 100% !important;
+  }
+
+  @media (max-width: 768px) {
+    .smartacctg-products-page {
+      padding: 12px !important;
+    }
+
+    .smartacctg-products-page h1 {
+      font-size: var(--sa-fs-xl) !important;
+    }
+
+    .smartacctg-products-page h2 {
+      font-size: var(--sa-fs-lg) !important;
+    }
+
+    .smartacctg-products-page h3 {
+      font-size: var(--sa-fs-md) !important;
+    }
+
+    .smartacctg-products-page p,
+    .smartacctg-products-page div,
+    .smartacctg-products-page span,
+    .smartacctg-products-page label,
+    .smartacctg-products-page td,
+    .smartacctg-products-page th {
+      font-size: var(--sa-fs-sm) !important;
+    }
+
+    .products-search-row {
+      grid-template-columns: 1fr !important;
+    }
+
+    .products-modal-actions {
+      flex-direction: column !important;
+    }
+
+    .products-modal-actions button {
+      width: 100% !important;
+    }
+
+    .products-title-row {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+
+    .products-plus-btn {
+      width: 100% !important;
+      height: 46px !important;
+      border-radius: 14px !important;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .smartacctg-products-page {
+      padding: 10px !important;
+    }
+
+    .smartacctg-products-page button,
+    .smartacctg-products-page input,
+    .smartacctg-products-page select,
+    .smartacctg-products-page textarea {
+      width: 100% !important;
+    }
+
+    .products-summary-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .products-product-info-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .products-action-row {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+
+    .products-action-row button {
+      width: 100% !important;
+    }
+  }
+`;
+
 const TXT = {
   zh: {
     title: "产品管理",
@@ -1004,7 +1169,7 @@ export default function ProductsPage() {
             {t.productNo}: {productCode(p)}
           </div>
 
-          <div style={productInfoGridStyle}>
+          <div className="products-product-info-grid" style={productInfoGridStyle}>
             <div>
               {t.productName}: <strong>{p.name}</strong>
             </div>
@@ -1048,7 +1213,7 @@ export default function ProductsPage() {
           {p.note ? <div style={noteStyle}>{p.note}</div> : null}
         </div>
 
-        <div style={actionRowStyle}>
+        <div className="products-action-row" style={actionRowStyle}>
           <button
             onClick={() => openEditForm(p)}
             style={{
@@ -1069,7 +1234,19 @@ export default function ProductsPage() {
   }
 
   return (
-    <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
+    <main
+      className="smartacctg-products-page"
+      style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
+    >
+      <style jsx global>{`
+        html {
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+
+        ${FONT_SYSTEM_CSS}
+      `}</style>
+
       <section
         style={{
           ...headerCardStyle,
@@ -1116,20 +1293,24 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <div style={titleRowStyle}>
+        <div className="products-title-row" style={titleRowStyle}>
           <div>
             <h1 style={titleStyle}>{t.title}</h1>
             <p style={{ ...subTitleStyle, color: theme.muted }}>{t.subtitle}</p>
             {isTrial ? <div style={trialBadgeStyle}>{t.trial}</div> : null}
           </div>
 
-          <button onClick={openAddForm} style={{ ...plusBtnStyle, background: theme.accent }}>
+          <button
+            className="products-plus-btn"
+            onClick={openAddForm}
+            style={{ ...plusBtnStyle, background: theme.accent }}
+          >
             +
           </button>
         </div>
       </section>
 
-      <section style={summaryGridStyle}>
+      <section className="products-summary-grid" style={summaryGridStyle}>
         <button
           onClick={() => openDetailModal("stock")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
@@ -1173,7 +1354,7 @@ export default function ProductsPage() {
           color: theme.text,
         }}
       >
-        <div style={searchRowStyle}>
+        <div className="products-search-row" style={searchRowStyle}>
           <input
             placeholder={t.search}
             value={search}
@@ -1302,7 +1483,9 @@ export default function ProductsPage() {
             }}
           >
             <div style={modalHeaderStyle}>
-              <h2 style={{ margin: 0 }}>{getDetailTitle()}｜{t.allProductDetails}</h2>
+              <h2 style={{ margin: 0 }}>
+                {getDetailTitle()}｜{t.allProductDetails}
+              </h2>
               <button onClick={() => setDetailMetric(null)} style={modalCloseBtnStyle}>
                 ×
               </button>
@@ -1390,7 +1573,7 @@ export default function ProductsPage() {
               style={textareaStyle}
             />
 
-            <div style={modalActionRowStyle}>
+            <div className="products-modal-actions" style={modalActionRowStyle}>
               <button onClick={saveProduct} style={{ ...addBtnStyle, background: theme.accent }}>
                 {t.save}
               </button>
@@ -1407,10 +1590,14 @@ export default function ProductsPage() {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
+  width: "100%",
+  maxWidth: "100vw",
+  overflowX: "hidden",
   padding: "clamp(10px, 2vw, 24px)",
-  fontFamily: "sans-serif",
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
   boxSizing: "border-box",
-  fontSize: "clamp(14px, 1.6vw, 16px)",
+  fontSize: "var(--sa-fs-base)",
 };
 
 const headerCardStyle: CSSProperties = {
@@ -1440,19 +1627,19 @@ const titleRowStyle: CSSProperties = {
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "clamp(24px, 4.2vw, 34px)",
+  fontSize: "var(--sa-fs-2xl)",
   fontWeight: 900,
 };
 
 const sectionTitleStyle: CSSProperties = {
-  fontSize: "clamp(22px, 3.2vw, 30px)",
+  fontSize: "var(--sa-fs-xl)",
   marginTop: 18,
 };
 
 const subTitleStyle: CSSProperties = {
   marginTop: 8,
   lineHeight: 1.5,
-  fontSize: "clamp(14px, 2vw, 16px)",
+  fontSize: "var(--sa-fs-base)",
 };
 
 const backBtnStyle: CSSProperties = {
@@ -1461,7 +1648,7 @@ const backBtnStyle: CSSProperties = {
   borderRadius: 14,
   padding: "8px 13px",
   fontWeight: 900,
-  fontSize: "clamp(14px, 2.2vw, 18px)",
+  fontSize: "16px",
 };
 
 const themeSelectStyle: CSSProperties = {
@@ -1472,7 +1659,7 @@ const themeSelectStyle: CSSProperties = {
   borderRadius: 999,
   padding: "8px 10px",
   fontWeight: 900,
-  fontSize: "clamp(13px, 2.2vw, 15px)",
+  fontSize: "16px",
   outline: "none",
 };
 
@@ -1490,7 +1677,7 @@ const langBtn = (active: boolean, theme: any): CSSProperties => ({
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
-  fontSize: "clamp(13px, 2.2vw, 15px)",
+  fontSize: "16px",
 });
 
 const plusBtnStyle: CSSProperties = {
@@ -1499,7 +1686,7 @@ const plusBtnStyle: CSSProperties = {
   borderRadius: "999px",
   border: "none",
   color: "#fff",
-  fontSize: "clamp(28px, 5vw, 36px)",
+  fontSize: "28px",
   fontWeight: 900,
 };
 
@@ -1531,7 +1718,6 @@ const summaryCardStyle: CSSProperties = {
   textAlign: "left",
   cursor: "pointer",
   minHeight: 130,
-  fontSize: "clamp(18px, 3.4vw, 28px)",
   fontWeight: 800,
 };
 
@@ -1551,11 +1737,13 @@ const searchRowStyle: CSSProperties = {
 
 const inputStyle: CSSProperties = {
   width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
   boxSizing: "border-box",
   padding: "clamp(12px, 2vw, 15px) clamp(13px, 2vw, 16px)",
   borderRadius: 14,
   border: "1px solid #cbd5e1",
-  fontSize: "clamp(15px, 2vw, 17px)",
+  fontSize: "16px",
   outline: "none",
   background: "#ffffff",
   color: "#111827",
@@ -1573,7 +1761,7 @@ const addBtnStyle: CSSProperties = {
   borderRadius: 14,
   padding: "clamp(12px, 2vw, 15px) clamp(14px, 2.4vw, 18px)",
   fontWeight: 900,
-  fontSize: "clamp(14px, 2vw, 17px)",
+  fontSize: "16px",
 };
 
 const msgBoxStyle: CSSProperties = {
@@ -1607,12 +1795,12 @@ const productTitleRowStyle: CSSProperties = {
 };
 
 const productNameStyle: CSSProperties = {
-  fontSize: "clamp(19px, 3vw, 26px)",
+  fontSize: "var(--sa-fs-lg)",
 };
 
 const mutedStyle: CSSProperties = {
   color: "#64748b",
-  fontSize: "clamp(13px, 1.7vw, 15px)",
+  fontSize: "var(--sa-fs-sm)",
   marginTop: 4,
 };
 
@@ -1621,14 +1809,14 @@ const productInfoGridStyle: CSSProperties = {
   gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
   gap: 10,
   marginTop: 12,
-  fontSize: "clamp(15px, 2vw, 17px)",
+  fontSize: "var(--sa-fs-base)",
 };
 
 const stockBadgeStyle: CSSProperties = {
   color: "#fff",
   padding: "5px 10px",
   borderRadius: 999,
-  fontSize: 13,
+  fontSize: "13px",
   fontWeight: 900,
 };
 
