@@ -112,13 +112,22 @@ const FONT_SYSTEM_CSS = `
     --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
       "Microsoft YaHei", Arial, sans-serif;
 
-    --sa-fs-xs: clamp(11px, 2.4vw, 12px);
-    --sa-fs-sm: clamp(12px, 2.6vw, 14px);
-    --sa-fs-base: clamp(14px, 2.9vw, 16px);
-    --sa-fs-md: clamp(15px, 3.1vw, 18px);
-    --sa-fs-lg: clamp(18px, 3.8vw, 22px);
-    --sa-fs-xl: clamp(22px, 4.8vw, 30px);
-    --sa-fs-2xl: clamp(26px, 6vw, 38px);
+    --sa-fs-xs: clamp(11px, 2.2vw, 12px);
+    --sa-fs-sm: clamp(12px, 2.5vw, 14px);
+    --sa-fs-base: clamp(14px, 2.8vw, 16px);
+    --sa-fs-md: clamp(15px, 3vw, 18px);
+    --sa-fs-lg: clamp(18px, 3.6vw, 22px);
+    --sa-fs-xl: clamp(21px, 4.4vw, 28px);
+    --sa-fs-2xl: clamp(24px, 5.4vw, 34px);
+
+    --sa-border-w: 2px;
+    --sa-radius-card: clamp(18px, 1.4em, 26px);
+    --sa-radius-control: clamp(12px, 0.85em, 16px);
+    --sa-card-pad: clamp(14px, 1.15em, 22px);
+    --sa-control-h: clamp(46px, 3.5em, 56px);
+    --sa-control-x: clamp(14px, 1em, 18px);
+    --sa-btn-fs: 16px;
+    --sa-input-fs: 16px;
 
     font-family: var(--sa-font-family) !important;
     font-size: var(--sa-fs-base) !important;
@@ -151,37 +160,32 @@ const FONT_SYSTEM_CSS = `
     margin-bottom: clamp(10px, 2.5vw, 14px) !important;
   }
 
-  .smartacctg-invoice-page h4 {
-    font-size: var(--sa-fs-md) !important;
-  }
-
   .smartacctg-invoice-page p,
   .smartacctg-invoice-page div,
   .smartacctg-invoice-page span,
   .smartacctg-invoice-page label,
   .smartacctg-invoice-page td,
   .smartacctg-invoice-page th {
-    font-size: var(--sa-fs-base) !important;
-  }
-
-  .smartacctg-invoice-page small {
-    font-size: var(--sa-fs-xs) !important;
-  }
-
-  .smartacctg-invoice-page input,
-  .smartacctg-invoice-page select,
-  .smartacctg-invoice-page textarea,
-  .smartacctg-invoice-page button {
-    font-size: 16px !important;
-    font-family: var(--sa-font-family) !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
+    font-size: var(--sa-fs-base);
   }
 
   .smartacctg-invoice-page input,
   .smartacctg-invoice-page select,
   .smartacctg-invoice-page textarea {
     width: 100% !important;
+    height: auto;
+    min-height: var(--sa-control-h) !important;
+    font-size: var(--sa-input-fs) !important;
+    line-height: 1.35 !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .smartacctg-invoice-page button {
+    font-size: var(--sa-btn-fs);
+    line-height: 1.2;
+    min-width: 0;
+    white-space: normal;
   }
 
   .smartacctg-invoice-page input[type="date"],
@@ -234,24 +238,22 @@ const FONT_SYSTEM_CSS = `
     .smartacctg-invoice-page label,
     .smartacctg-invoice-page td,
     .smartacctg-invoice-page th {
-      font-size: var(--sa-fs-sm) !important;
+      font-size: var(--sa-fs-sm);
     }
 
-    .smartacctg-invoice-page button {
-      width: auto;
-      min-height: 42px !important;
-    }
-  }
-
-  @media (max-width: 430px) {
-    .smartacctg-invoice-page {
-      padding: 10px !important;
-    }
-
-    .smartacctg-invoice-page button,
     .smartacctg-invoice-page input,
     .smartacctg-invoice-page select,
     .smartacctg-invoice-page textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .responsive-actions {
+      grid-template-columns: 1fr !important;
+    }
+
+    .responsive-actions button {
       width: 100% !important;
     }
   }
@@ -1077,8 +1079,7 @@ export default function InvoicePage() {
   const [status, setStatus] = useState("sent");
 
   const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_OPTIONS[0].id);
-  const [paymentOptions, setPaymentOptions] =
-    useState<PaymentOption[]>(DEFAULT_PAYMENT_OPTIONS);
+  const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>(DEFAULT_PAYMENT_OPTIONS);
 
   const [showPaymentAdd, setShowPaymentAdd] = useState(false);
   const [newPaymentName, setNewPaymentName] = useState("");
@@ -1123,8 +1124,7 @@ export default function InvoicePage() {
   const [lastPrintableInvoice, setLastPrintableInvoice] = useState<InvoiceRecord | null>(null);
   const [lastPrintableProductName, setLastPrintableProductName] = useState("");
 
-  const selectedPayment =
-    paymentOptions.find((p) => p.id === paymentMethod) || paymentOptions[0];
+  const selectedPayment = paymentOptions.find((p) => p.id === paymentMethod) || paymentOptions[0];
 
   const paymentMethodText = selectedPayment?.name || paymentMethod || "-";
 
@@ -1378,17 +1378,12 @@ export default function InvoicePage() {
     const addDiscount = Number(extraDiscount || 0);
 
     const price =
-      productMode === "new"
-        ? Number(newProductPrice || 0)
-        : Number(selectedProduct?.price || 0);
+      productMode === "new" ? Number(newProductPrice || 0) : Number(selectedProduct?.price || 0);
 
     const cost =
-      productMode === "new"
-        ? Number(newProductCost || 0)
-        : Number(selectedProduct?.cost || 0);
+      productMode === "new" ? Number(newProductCost || 0) : Number(selectedProduct?.cost || 0);
 
-    const productDiscount =
-      productMode === "new" ? 0 : Number(selectedProduct?.discount || 0);
+    const productDiscount = productMode === "new" ? 0 : Number(selectedProduct?.discount || 0);
 
     const subtotal = roundMoney(price * finalQty);
     const discount = roundMoney(productDiscount + addDiscount);
@@ -2257,8 +2252,7 @@ export default function InvoicePage() {
     note,
   };
 
-  const printableProductName =
-    lastPrintableProductName || activeProductForPreview.name || "-";
+  const printableProductName = lastPrintableProductName || activeProductForPreview.name || "-";
 
   const currentPreviewInvoice: InvoiceRecord = {
     id: "",
@@ -2372,13 +2366,9 @@ export default function InvoicePage() {
                   </div>
                 ) : null}
 
-                {pay?.link ? (
-                  <div style={officialPaymentDetailTextStyle}>{pay.link}</div>
-                ) : null}
+                {pay?.link ? <div style={officialPaymentDetailTextStyle}>{pay.link}</div> : null}
 
-                {pay?.qrCodeUrl ? (
-                  <img src={pay.qrCodeUrl} style={officialInlineQrStyle} />
-                ) : null}
+                {pay?.qrCodeUrl ? <img src={pay.qrCodeUrl} style={officialInlineQrStyle} /> : null}
               </div>
             </div>
           </div>
@@ -2481,12 +2471,6 @@ export default function InvoicePage() {
         }
 
         ${FONT_SYSTEM_CSS}
-
-        @media (max-width: 520px) {
-          .responsive-actions {
-            grid-template-columns: 1fr !important;
-          }
-        }
 
         @media print {
           body * {
@@ -3109,37 +3093,45 @@ const langRowStyle: CSSProperties = {
 };
 
 const langBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "clamp(7px, 2vw, 10px) clamp(10px, 3vw, 14px)",
+  minHeight: "44px",
+  padding: "0 14px",
   borderRadius: 999,
-  border: `2px solid ${theme.accent}`,
+  border: `var(--sa-border-w) solid ${theme.accent}`,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 });
 
 const themeSelectStyle: CSSProperties = {
-  border: "2px solid",
+  border: "var(--sa-border-w) solid",
   borderRadius: 999,
-  padding: "clamp(7px, 2vw, 10px) clamp(9px, 3vw, 14px)",
+  minHeight: "44px",
+  padding: "0 14px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const backBtn: CSSProperties = {
   background: "#fff",
-  border: "2px solid",
-  borderRadius: 12,
-  padding: "clamp(9px, 2.5vw, 12px) clamp(12px, 3vw, 18px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "44px",
+  padding: "0 14px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const closeXBtnStyle: CSSProperties = {
-  width: "clamp(42px, 10vw, 52px)",
-  height: "clamp(42px, 10vw, 52px)",
+  width: 46,
+  height: 46,
+  minWidth: 46,
+  flexShrink: 0,
   borderRadius: "999px",
   border: "2px solid #ef4444",
   background: "#fee2e2",
   color: "#dc2626",
-  fontSize: "clamp(24px, 6vw, 34px)",
+  fontSize: 26,
   fontWeight: 900,
   lineHeight: 1,
   display: "inline-flex",
@@ -3148,9 +3140,9 @@ const closeXBtnStyle: CSSProperties = {
 };
 
 const cardStyle: CSSProperties = {
-  border: "3px solid",
-  borderRadius: 24,
-  padding: "clamp(14px, 4vw, 24px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
 };
 
 const newFormHeaderStyle: CSSProperties = {
@@ -3171,47 +3163,54 @@ const listTitleRowStyle: CSSProperties = {
 };
 
 const plusBtnStyle: CSSProperties = {
-  width: "clamp(44px, 10vw, 54px)",
-  height: "clamp(44px, 10vw, 54px)",
+  width: 48,
+  height: 48,
+  minWidth: 48,
   borderRadius: 999,
   border: "none",
   color: "#fff",
-  fontSize: "clamp(24px, 6vw, 32px)",
+  fontSize: 28,
   fontWeight: 900,
   flexShrink: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "clamp(26px, 5vw, 42px)",
+  fontSize: "var(--sa-fs-2xl)",
   lineHeight: 1.15,
 };
 
 const newTitleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "clamp(24px, 5vw, 34px)",
+  fontSize: "var(--sa-fs-2xl)",
   lineHeight: 1.08,
   fontWeight: 900,
 };
 
 const descStyle: CSSProperties = {
   marginBottom: 20,
-  fontSize: "clamp(14px, 2.5vw, 17px)",
+  fontSize: "var(--sa-fs-base)",
   lineHeight: 1.55,
 };
 
 const newDescStyle: CSSProperties = {
   marginTop: 4,
   marginBottom: 18,
-  fontSize: "clamp(13px, 2.5vw, 16px)",
+  fontSize: "var(--sa-fs-sm)",
   lineHeight: 1.5,
 };
 
 const invoiceNoBox: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 12,
-  padding: "clamp(10px, 3vw, 14px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "clamp(11px, 0.9em, 15px) var(--sa-control-x)",
   marginBottom: 20,
+  minHeight: "var(--sa-control-h)",
+  display: "flex",
+  alignItems: "center",
 };
 
 const invoiceListStyle: CSSProperties = {
@@ -3224,14 +3223,14 @@ const invoiceItemStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "flex-start",
   gap: 12,
-  border: "2px solid",
-  borderRadius: 16,
-  padding: "clamp(12px, 3vw, 16px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
   flexWrap: "wrap",
 };
 
 const mutedTextStyle: CSSProperties = {
-  fontSize: "clamp(12px, 2.4vw, 14px)",
+  fontSize: "var(--sa-fs-sm)",
   marginTop: 4,
   lineHeight: 1.5,
 };
@@ -3247,36 +3246,44 @@ const recordEditBtnStyle: CSSProperties = {
   border: "none",
   background: "#0f766e",
   color: "#fff",
-  borderRadius: 8,
-  padding: "6px 9px",
+  borderRadius: 10,
+  minHeight: 36,
+  padding: "0 10px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const recordDeleteBtnStyle: CSSProperties = {
   border: "none",
   background: "#fee2e2",
   color: "#b91c1c",
-  borderRadius: 8,
-  padding: "6px 9px",
+  borderRadius: 10,
+  minHeight: 36,
+  padding: "0 10px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const recordWhatsappBtnStyle: CSSProperties = {
   border: "none",
   background: "#25D366",
   color: "#fff",
-  borderRadius: 8,
-  padding: "6px 8px",
+  borderRadius: 10,
+  minHeight: 36,
+  padding: "0 10px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const recordShareBtnStyle: CSSProperties = {
-  border: "1px solid #0f766e",
+  border: "var(--sa-border-w) solid #0f766e",
   background: "#fff",
   color: "#0f766e",
-  borderRadius: 8,
-  padding: "6px 9px",
+  borderRadius: 10,
+  minHeight: 36,
+  padding: "0 10px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const emptyStyle: CSSProperties = {
@@ -3291,12 +3298,14 @@ const switchRow: CSSProperties = {
 };
 
 const modeBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "clamp(10px, 2.8vw, 14px)",
-  borderRadius: 12,
-  border: `2px solid ${theme.accent}`,
+  minHeight: "44px",
+  padding: "0 14px",
+  borderRadius: "var(--sa-radius-control)",
+  border: `var(--sa-border-w) solid ${theme.accent}`,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 });
 
 const formGrid: CSSProperties = {
@@ -3310,7 +3319,7 @@ const formGrid: CSSProperties = {
 const labelStyle: CSSProperties = {
   fontWeight: 900,
   marginTop: 6,
-  fontSize: "clamp(14px, 2.8vw, 17px)",
+  fontSize: "var(--sa-fs-base)",
 };
 
 const inputStyle: CSSProperties = {
@@ -3318,12 +3327,14 @@ const inputStyle: CSSProperties = {
   maxWidth: "100%",
   minWidth: 0,
   boxSizing: "border-box",
-  padding: "clamp(11px, 3vw, 15px)",
-  borderRadius: 12,
-  border: "2px solid",
-  fontSize: "clamp(14px, 2.7vw, 17px)",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 var(--sa-control-x)",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid",
+  fontSize: "var(--sa-input-fs)",
   marginBottom: 8,
   display: "block",
+  outline: "none",
 };
 
 const dateInputStyle: CSSProperties = {
@@ -3339,19 +3350,21 @@ const dateInputStyle: CSSProperties = {
 
 const paymentToggleBtnStyle: CSSProperties = {
   width: "100%",
-  border: "2px solid",
-  borderRadius: 12,
-  padding: "clamp(11px, 3vw, 14px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 var(--sa-control-x)",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
   marginBottom: 10,
 };
 
 const paymentAddBoxStyle: CSSProperties = {
   display: "grid",
   gap: 8,
-  border: "2px dashed",
-  borderRadius: 16,
-  padding: "clamp(10px, 3vw, 14px)",
+  border: "var(--sa-border-w) dashed",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
   marginBottom: 10,
 };
 
@@ -3359,10 +3372,12 @@ const uploadQrBtnStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  border: "2px solid",
-  borderRadius: 12,
-  padding: "clamp(10px, 3vw, 14px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "44px",
+  padding: "0 14px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
   cursor: "pointer",
 };
 
@@ -3379,9 +3394,11 @@ const qrPreviewStyle: CSSProperties = {
 const addBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
-  borderRadius: 12,
-  padding: "clamp(11px, 3vw, 15px)",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "44px",
+  padding: "0 16px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const paymentChipWrapStyle: CSSProperties = {
@@ -3392,39 +3409,52 @@ const paymentChipWrapStyle: CSSProperties = {
 };
 
 const paymentChipStyle: CSSProperties = {
-  display: "flex",
+  display: "inline-flex",
   alignItems: "center",
   gap: 8,
-  border: "1px solid",
+  border: "var(--sa-border-w) solid",
   borderRadius: 999,
-  padding: "6px 10px",
+  padding: "7px 8px 7px 13px",
   fontWeight: 800,
+  fontSize: "var(--sa-btn-fs)",
+  width: "auto",
+  maxWidth: "100%",
+  flex: "0 0 auto",
 };
 
 const paymentChipDeleteStyle: CSSProperties = {
   border: "none",
   color: "#fff",
-  width: 22,
-  height: 22,
+  width: 28,
+  height: 28,
+  minWidth: 28,
+  maxWidth: 28,
   borderRadius: 999,
   fontWeight: 900,
+  fontSize: 18,
+  lineHeight: 1,
+  padding: 0,
+  flex: "0 0 28px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const companyBox: CSSProperties = {
   display: "flex",
   gap: 14,
   alignItems: "center",
-  border: "2px solid",
-  borderRadius: 16,
-  padding: "clamp(12px, 3vw, 16px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
   flexWrap: "wrap",
 };
 
 const companyEditBoxStyle: CSSProperties = {
   marginTop: 12,
-  border: "2px dashed",
-  borderRadius: 16,
-  padding: "clamp(12px, 3vw, 16px)",
+  border: "var(--sa-border-w) dashed",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
 };
 
 const logoStyle: CSSProperties = {
@@ -3447,30 +3477,35 @@ const logoPlaceholder: CSSProperties = {
 };
 
 const editBtnStyle: CSSProperties = {
-  border: "2px solid",
+  border: "var(--sa-border-w) solid",
   background: "#fff",
-  borderRadius: 12,
-  padding: "clamp(9px, 2.5vw, 12px)",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "42px",
+  padding: "0 14px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const submitSmallBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
-  borderRadius: 12,
-  padding: "clamp(11px, 3vw, 14px)",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "44px",
+  padding: "0 16px",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const submitBtn: CSSProperties = {
   width: "100%",
   marginTop: 18,
-  padding: "clamp(13px, 3.2vw, 16px)",
+  minHeight: "50px",
+  padding: "0 16px",
   border: "none",
-  borderRadius: 12,
+  borderRadius: "var(--sa-radius-control)",
   color: "#fff",
   fontWeight: 900,
-  fontSize: "clamp(15px, 3vw, 18px)",
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const actionRow: CSSProperties = {
@@ -3481,26 +3516,30 @@ const actionRow: CSSProperties = {
 };
 
 const secondaryBtn: CSSProperties = {
-  padding: "clamp(11px, 3vw, 14px)",
-  borderRadius: 12,
-  border: "2px solid",
+  minHeight: "46px",
+  padding: "0 14px",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid",
   background: "#fff",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const whatsappBtn: CSSProperties = {
-  padding: "clamp(11px, 3vw, 14px)",
-  borderRadius: 12,
+  minHeight: "46px",
+  padding: "0 14px",
+  borderRadius: "var(--sa-radius-control)",
   border: "none",
   background: "#25D366",
   color: "#fff",
   fontWeight: 900,
+  fontSize: "var(--sa-btn-fs)",
 };
 
 const msgStyle: CSSProperties = {
   marginTop: 14,
   fontWeight: 900,
-  fontSize: "clamp(14px, 2.8vw, 17px)",
+  fontSize: "var(--sa-fs-base)",
 };
 
 const chargeGridStyle: CSSProperties = {
@@ -3510,9 +3549,9 @@ const chargeGridStyle: CSSProperties = {
 };
 
 const chargeBoxStyle: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 16,
-  padding: "clamp(10px, 3vw, 14px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
 };
 
 const chargeInputRowStyle: CSSProperties = {
@@ -3525,9 +3564,9 @@ const chargeInputRowStyle: CSSProperties = {
 const signatureInputBoxStyle: CSSProperties = {
   display: "grid",
   gap: 8,
-  border: "2px solid",
-  borderRadius: 16,
-  padding: "clamp(12px, 3vw, 16px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
   marginBottom: 14,
 };
 
@@ -3555,9 +3594,9 @@ const screenPreviewWrapStyle: CSSProperties = {
   overflowY: "hidden",
   WebkitOverflowScrolling: "touch",
   background: "#f8fafc",
-  border: "2px solid",
-  borderRadius: 18,
-  padding: "clamp(10px, 3vw, 14px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
   boxSizing: "border-box",
 };
 
