@@ -1,20 +1,13 @@
-我沒有你 GitHub 目前最新原件，所以不能說這份就是你上次那份「最新保存版」。
-但我直接給你一份完整可複製覆蓋版，放去：
-
-app/dashboard/records/page.tsx
-
-這版會連接 Supabase transactions，支援：新增、修改、刪除、收入/支出/月收入/月支出/結餘統計、搜尋、月份篩選、手機版卡片顯示。
-
-這版假設你的 transactions table 有這些欄位：
-id, user_id, txn_date, txn_type, amount, category_name, debt_amount, note, source_type, source_id, created_at
-
 "use client";
+
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+
 type TxnType = "income" | "expense";
 type FilterType = "all" | TxnType;
 type ThemeKey = "deepTeal" | "pink" | "blackGold" | "lightRed" | "nature" | "sky";
+
 type Txn = {
   id: string;
   user_id?: string;
@@ -28,6 +21,7 @@ type Txn = {
   source_id?: string | null;
   created_at?: string | null;
 };
+
 type Profile = {
   id: string;
   full_name?: string | null;
@@ -36,6 +30,7 @@ type Profile = {
   plan_type?: string | null;
   plan_expiry?: string | null;
 };
+
 type FormState = {
   txn_date: string;
   txn_type: TxnType;
@@ -44,6 +39,7 @@ type FormState = {
   debt_amount: string;
   note: string;
 };
+
 const THEME_DATA: Record<
   ThemeKey,
   {
@@ -132,27 +128,33 @@ const THEME_DATA: Record<
     danger: "#DC2626",
   },
 };
+
 const incomeCategories = ["销售收入", "服务收入", "代理佣金", "充值收入", "订阅收入", "其他收入"];
 const expenseCategories = ["进货成本", "广告费", "交通费", "电话费", "租金", "工资", "水电费", "系统费用", "其他支出"];
+
 function getTodayISO() {
   const now = new Date();
   const offset = now.getTimezoneOffset();
   return new Date(now.getTime() - offset * 60 * 1000).toISOString().slice(0, 10);
 }
+
 function getMonthISO() {
   return getTodayISO().slice(0, 7);
 }
+
 function money(value: number) {
   return `RM ${Number(value || 0).toLocaleString("en-MY", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
+
 function parseAmount(value: string) {
   const cleaned = value.replace(/,/g, "").trim();
   const num = Number(cleaned);
   return Number.isFinite(num) ? num : 0;
 }
+
 function safeDate(value: string) {
   if (!value) return "-";
   const d = new Date(value);
@@ -163,20 +165,26 @@ function safeDate(value: string) {
     day: "2-digit",
   });
 }
+
 export default function RecordsPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [records, setRecords] = useState<Txn[]>([]);
+
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
   const theme = THEME_DATA[themeKey];
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [monthFilter, setMonthFilter] = useState(getMonthISO());
   const [keyword, setKeyword] = useState("");
+
   const [editingId, setEditingId] = useState<string | null>(null);
+
   const [form, setForm] = useState<FormState>({
     txn_date: getTodayISO(),
     txn_type: "income",
@@ -185,46 +193,63 @@ export default function RecordsPage() {
     debt_amount: "",
     note: "",
   });
+
   async function loadData(userId: string) {
     setErrorMsg("");
+
     const profileRes = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+
     if (!profileRes.error && profileRes.data) {
       const p = profileRes.data as Profile;
       setProfile(p);
+
       const savedTheme = p.theme as ThemeKey | null;
       if (savedTheme && THEME_DATA[savedTheme]) {
         setThemeKey(savedTheme);
       }
     }
+
     const { data, error } = await supabase
       .from("transactions")
       .select("*")
       .eq("user_id", userId)
       .order("txn_date", { ascending: false })
       .order("created_at", { ascending: false });
+
     if (error) {
       setErrorMsg(`读取记账记录失败：${error.message}`);
       setRecords([]);
       return;
     }
+
     setRecords((data || []) as Txn[]);
   }
+
   useEffect(() => {
     let mounted = true;
+
     async function init() {
       setLoading(true);
+
       const { data } = await supabase.auth.getSession();
+
       if (!mounted) return;
+
       const currentSession = data.session;
       setSession(currentSession);
+
       if (currentSession?.user?.id) {
         await loadData(currentSession.user.id);
       }
+
       setLoading(false);
     }
+
     init();
+
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
       setSession(currentSession);
+
       if (currentSession?.user?.id) {
         setLoading(true);
         await loadData(currentSession.user.id);
@@ -234,29 +259,38 @@ export default function RecordsPage() {
         setProfile(null);
       }
     });
+
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);
+
   const filteredRecords = useMemo(() => {
     const q = keyword.trim().toLowerCase();
+
     return records.filter((r) => {
       const byType = filterType === "all" ? true : r.txn_type === filterType;
       const byMonth = monthFilter ? r.txn_date?.startsWith(monthFilter) : true;
+
       const text = `${r.category_name || ""} ${r.note || ""} ${r.amount || ""}`.toLowerCase();
       const byKeyword = q ? text.includes(q) : true;
+
       return byType && byMonth && byKeyword;
     });
   }, [records, filterType, monthFilter, keyword]);
+
   const summary = useMemo(() => {
     const income = filteredRecords
       .filter((r) => r.txn_type === "income")
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
     const expense = filteredRecords
       .filter((r) => r.txn_type === "expense")
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
     const debt = filteredRecords.reduce((sum, r) => sum + Number(r.debt_amount || 0), 0);
+
     return {
       income,
       expense,
@@ -265,6 +299,7 @@ export default function RecordsPage() {
       count: filteredRecords.length,
     };
   }, [filteredRecords]);
+
   function resetForm() {
     setEditingId(null);
     setForm({
@@ -276,31 +311,40 @@ export default function RecordsPage() {
       note: "",
     });
   }
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
+
   async function handleSave() {
     if (!session?.user?.id) {
       setErrorMsg("请先登入后再记账。");
       return;
     }
+
     setMessage("");
     setErrorMsg("");
+
     const amount = parseAmount(form.amount);
     const debtAmount = parseAmount(form.debt_amount);
+
     if (!form.txn_date) {
       setErrorMsg("请选择日期。");
       return;
     }
+
     if (amount <= 0) {
       setErrorMsg("请输入正确的金额。");
       return;
     }
+
     if (!form.category_name.trim()) {
       setErrorMsg("请选择或填写分类。");
       return;
     }
+
     setSaving(true);
+
     const payload = {
       user_id: session.user.id,
       txn_date: form.txn_date,
@@ -310,31 +354,38 @@ export default function RecordsPage() {
       debt_amount: debtAmount || 0,
       note: form.note.trim() || null,
     };
+
     if (editingId) {
       const { error } = await supabase
         .from("transactions")
         .update(payload)
         .eq("id", editingId)
         .eq("user_id", session.user.id);
+
       if (error) {
         setSaving(false);
         setErrorMsg(`修改失败：${error.message}`);
         return;
       }
+
       setMessage("记录已更新。");
     } else {
       const { error } = await supabase.from("transactions").insert(payload);
+
       if (error) {
         setSaving(false);
         setErrorMsg(`新增失败：${error.message}`);
         return;
       }
+
       setMessage("记录已新增。");
     }
+
     await loadData(session.user.id);
     resetForm();
     setSaving(false);
   }
+
   function handleEdit(record: Txn) {
     setEditingId(record.id);
     setForm({
@@ -345,32 +396,41 @@ export default function RecordsPage() {
       debt_amount: record.debt_amount ? String(record.debt_amount) : "",
       note: record.note || "",
     });
+
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
+
   async function handleDelete(record: Txn) {
     if (!session?.user?.id) return;
+
     const ok = window.confirm("确定要删除这条记账记录吗？");
     if (!ok) return;
+
     setMessage("");
     setErrorMsg("");
+
     const { error } = await supabase
       .from("transactions")
       .delete()
       .eq("id", record.id)
       .eq("user_id", session.user.id);
+
     if (error) {
       setErrorMsg(`删除失败：${error.message}`);
       return;
     }
+
     setMessage("记录已删除。");
     await loadData(session.user.id);
   }
+
   async function logout() {
     await supabase.auth.signOut();
     window.location.href = "/zh";
   }
+
   function exportCsv() {
     const header = ["日期", "类型", "分类", "金额", "欠款金额", "备注"];
     const rows = filteredRecords.map((r) => [
@@ -381,18 +441,24 @@ export default function RecordsPage() {
       String(r.debt_amount || 0),
       r.note || "",
     ]);
+
     const csv = [header, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
       .join("\n");
+
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement("a");
     a.href = url;
     a.download = `SmartAcctg-records-${monthFilter || "all"}.csv`;
     a.click();
+
     URL.revokeObjectURL(url);
   }
+
   const currentCategories = form.txn_type === "income" ? incomeCategories : expenseCategories;
+
   const styles: Record<string, CSSProperties> = {
     page: {
       minHeight: "100vh",
@@ -666,6 +732,7 @@ export default function RecordsPage() {
       padding: 12,
     },
   };
+
   if (loading) {
     return (
       <main style={styles.page}>
@@ -678,6 +745,7 @@ export default function RecordsPage() {
       </main>
     );
   }
+
   if (!session) {
     return (
       <main style={styles.page}>
@@ -685,6 +753,7 @@ export default function RecordsPage() {
           <div style={styles.card}>
             <h1 style={styles.title}>每日记账</h1>
             <p style={styles.subtitle}>你还没有登入，请先登入后再使用记账功能。</p>
+
             <div style={styles.btnRow}>
               <button style={styles.primaryBtn} onClick={() => (window.location.href = "/zh")}>
                 返回首页登入
@@ -695,6 +764,7 @@ export default function RecordsPage() {
       </main>
     );
   }
+
   return (
     <main style={styles.page}>
       <div style={styles.shell}>
@@ -703,6 +773,7 @@ export default function RecordsPage() {
             <h1 style={styles.title}>每日记账</h1>
             <p style={styles.subtitle}>新增收入 / 支出记录，系统会自动计算本月收入、本月支出和结余。</p>
           </div>
+
           <div style={styles.userBox}>
             <img
               src={profile?.avatar_url || "/default-avatar.png"}
@@ -722,26 +793,32 @@ export default function RecordsPage() {
                 {profile?.plan_expiry ? `｜到期：${profile.plan_expiry}` : ""}
               </div>
             </div>
+
             <button style={styles.ghostBtn} onClick={logout}>
               退出
             </button>
           </div>
         </div>
+
         {message && <div style={styles.info}>{message}</div>}
         {errorMsg && <div style={styles.error}>{errorMsg}</div>}
+
         <section style={styles.statsGrid} className="records-stats-grid">
           <div style={styles.statCard}>
             <div style={styles.statLabel}>筛选记录数</div>
             <div style={styles.statValue}>{summary.count}</div>
           </div>
+
           <div style={styles.statCard}>
             <div style={styles.statLabel}>收入</div>
             <div style={{ ...styles.statValue, color: "#15803D" }}>{money(summary.income)}</div>
           </div>
+
           <div style={styles.statCard}>
             <div style={styles.statLabel}>支出</div>
             <div style={{ ...styles.statValue, color: "#BE123C" }}>{money(summary.expense)}</div>
           </div>
+
           <div style={styles.statCard}>
             <div style={styles.statLabel}>结余</div>
             <div
@@ -754,11 +831,13 @@ export default function RecordsPage() {
             </div>
           </div>
         </section>
+
         <section style={styles.mainGrid} className="records-main-grid">
           <div style={styles.card}>
             <h2 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 900 }}>
               {editingId ? "修改记录" : "新增记录"}
             </h2>
+
             <div style={styles.formGrid}>
               <div style={styles.field}>
                 <label style={styles.label}>日期</label>
@@ -769,6 +848,7 @@ export default function RecordsPage() {
                   onChange={(e) => setField("txn_date", e.target.value)}
                 />
               </div>
+
               <div style={styles.field}>
                 <label style={styles.label}>类型</label>
                 <select
@@ -787,6 +867,7 @@ export default function RecordsPage() {
                   <option value="expense">支出</option>
                 </select>
               </div>
+
               <div style={styles.field}>
                 <label style={styles.label}>金额</label>
                 <input
@@ -800,6 +881,7 @@ export default function RecordsPage() {
                   onChange={(e) => setField("amount", e.target.value)}
                 />
               </div>
+
               <div style={styles.field}>
                 <label style={styles.label}>欠款金额</label>
                 <input
@@ -814,6 +896,7 @@ export default function RecordsPage() {
                 />
               </div>
             </div>
+
             <div style={{ ...styles.field, marginTop: 10 }}>
               <label style={styles.label}>分类</label>
               <input
@@ -829,6 +912,7 @@ export default function RecordsPage() {
                 ))}
               </datalist>
             </div>
+
             <div style={{ ...styles.field, marginTop: 10 }}>
               <label style={styles.label}>备注</label>
               <textarea
@@ -838,20 +922,24 @@ export default function RecordsPage() {
                 onChange={(e) => setField("note", e.target.value)}
               />
             </div>
+
             <div style={styles.btnRow}>
               <button style={styles.primaryBtn} onClick={handleSave} disabled={saving}>
                 {saving ? "保存中..." : editingId ? "保存修改" : "新增记录"}
               </button>
+
               {editingId && (
                 <button style={styles.ghostBtn} onClick={resetForm} disabled={saving}>
                   取消修改
                 </button>
               )}
+
               <button style={styles.ghostBtn} onClick={resetForm} disabled={saving}>
                 清空
               </button>
             </div>
           </div>
+
           <div style={styles.card}>
             <div style={styles.filterRow} className="records-filter-row">
               <select
@@ -863,22 +951,26 @@ export default function RecordsPage() {
                 <option value="income">收入</option>
                 <option value="expense">支出</option>
               </select>
+
               <input
                 style={styles.input}
                 type="month"
                 value={monthFilter}
                 onChange={(e) => setMonthFilter(e.target.value)}
               />
+
               <input
                 style={styles.input}
                 placeholder="搜索分类 / 备注 / 金额"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
               />
+
               <button style={styles.ghostBtn} onClick={exportCsv}>
                 导出
               </button>
             </div>
+
             {filteredRecords.length === 0 ? (
               <div style={styles.empty}>暂无记录。你可以先新增一条收入或支出。</div>
             ) : (
@@ -897,6 +989,7 @@ export default function RecordsPage() {
                         <th style={styles.th}>操作</th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {filteredRecords.map((r) => (
                         <tr key={r.id}>
@@ -944,6 +1037,7 @@ export default function RecordsPage() {
                     </tbody>
                   </table>
                 </div>
+
                 <div style={styles.mobileList} className="records-mobile-list">
                   {filteredRecords.map((r) => (
                     <div key={r.id} style={styles.mobileCard}>
@@ -952,10 +1046,12 @@ export default function RecordsPage() {
                           <div style={{ fontWeight: 900 }}>{r.category_name || "-"}</div>
                           <div style={styles.smallText}>{safeDate(r.txn_date)}</div>
                         </div>
+
                         <span style={r.txn_type === "income" ? styles.badgeIncome : styles.badgeExpense}>
                           {r.txn_type === "income" ? "收入" : "支出"}
                         </span>
                       </div>
+
                       <div
                         style={{
                           fontSize: 20,
@@ -965,17 +1061,21 @@ export default function RecordsPage() {
                       >
                         {money(Number(r.amount || 0))}
                       </div>
+
                       {Number(r.debt_amount || 0) > 0 && (
                         <div style={{ marginTop: 6, color: "#B45309", fontWeight: 800 }}>
                           欠款：{money(Number(r.debt_amount || 0))}
                         </div>
                       )}
+
                       {r.note && <div style={{ marginTop: 8, color: theme.muted, fontSize: 13 }}>{r.note}</div>}
+
                       {r.source_type && (
                         <div style={{ marginTop: 8, color: theme.primaryDark, fontSize: 12, fontWeight: 800 }}>
                           来源：{r.source_type === "invoice" ? "发票系统" : r.source_type}
                         </div>
                       )}
+
                       <div style={{ ...styles.btnRow, marginTop: 10 }}>
                         <button style={styles.editBtn} onClick={() => handleEdit(r)}>
                           修改
@@ -992,25 +1092,31 @@ export default function RecordsPage() {
           </div>
         </section>
       </div>
+
       <style jsx>{`
         @media (max-width: 900px) {
           .records-stats-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
+
           .records-main-grid {
             grid-template-columns: 1fr !important;
           }
+
           .records-filter-row {
             grid-template-columns: 1fr !important;
           }
         }
+
         @media (max-width: 640px) {
           .records-table-wrap {
             display: none;
           }
+
           .records-mobile-list {
             display: flex !important;
           }
+
           input[type="date"],
           input[type="month"] {
             min-width: 0;
