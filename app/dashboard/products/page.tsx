@@ -65,13 +65,11 @@ const FONT_SYSTEM_CSS = `
     --sa-fs-2xl: clamp(26px, 6vw, 38px);
 
     --sa-border-w: 2px;
-    --sa-radius-card: clamp(18px, 1.4em, 26px);
+    --sa-radius-card: clamp(18px, 1.4em, 28px);
     --sa-radius-control: clamp(12px, 0.85em, 16px);
-    --sa-card-pad: clamp(14px, 1.15em, 22px);
-    --sa-control-h: clamp(44px, 3.4em, 54px);
-    --sa-control-x: clamp(12px, 1em, 18px);
-    --sa-btn-fs: 16px;
-    --sa-input-fs: 16px;
+    --sa-card-pad: clamp(14px, 1.15em, 24px);
+    --sa-control-h: clamp(44px, 3.5em, 54px);
+    --sa-control-x: clamp(13px, 1em, 18px);
 
     font-family: var(--sa-font-family) !important;
     font-size: var(--sa-fs-base) !important;
@@ -131,6 +129,7 @@ const FONT_SYSTEM_CSS = `
   .smartacctg-products-page select,
   .smartacctg-products-page textarea {
     width: 100% !important;
+    min-height: var(--sa-control-h) !important;
   }
 
   .smartacctg-products-page textarea {
@@ -144,118 +143,51 @@ const FONT_SYSTEM_CSS = `
     max-width: 100% !important;
   }
 
-  .smartacctg-products-page .sa-user-toolbar {
-    width: 100% !important;
+  .smartacctg-products-page .sa-topbar {
     display: grid !important;
-    grid-template-columns: auto minmax(90px, 1fr) auto !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
     align-items: center !important;
-    gap: clamp(6px, 2vw, 14px) !important;
-    margin-bottom: clamp(14px, 3vw, 20px) !important;
+    gap: 10px !important;
+    margin-bottom: 18px !important;
+    width: 100% !important;
   }
 
-  .smartacctg-products-page .sa-toolbar-tools {
-    display: contents !important;
-  }
-
-  .smartacctg-products-page .sa-back-btn {
+  .smartacctg-products-page .sa-topbar-left {
     justify-self: start !important;
-    width: auto !important;
-    min-width: auto !important;
-    max-width: none !important;
-    min-height: var(--sa-control-h) !important;
-    padding: 0 clamp(10px, 2.6vw, 16px) !important;
-    border-radius: var(--sa-radius-control) !important;
-    border: 2px solid !important;
-    background: #ffffff !important;
-    font-size: var(--sa-btn-fs) !important;
-    font-weight: 900 !important;
-    line-height: 1.15 !important;
-    white-space: nowrap !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    min-width: 0 !important;
   }
 
-  .smartacctg-products-page .sa-theme-select {
+  .smartacctg-products-page .sa-topbar-center {
     justify-self: center !important;
-    width: fit-content !important;
-    min-width: max-content !important;
-    max-width: 42vw !important;
-    height: var(--sa-control-h) !important;
-    min-height: var(--sa-control-h) !important;
-    padding: 0 clamp(14px, 3vw, 20px) !important;
-    border-radius: 999px !important;
-    border: 2px solid !important;
-    font-size: var(--sa-btn-fs) !important;
-    font-weight: 900 !important;
-    line-height: 1.15 !important;
-    white-space: nowrap !important;
-    text-align: center !important;
-    outline: none !important;
+    min-width: 0 !important;
   }
 
-  .smartacctg-products-page .sa-lang-row {
+  .smartacctg-products-page .sa-topbar-right {
     justify-self: end !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: clamp(5px, 1.6vw, 8px) !important;
-    flex-wrap: nowrap !important;
-  }
-
-  .smartacctg-products-page .sa-lang-btn {
-    width: auto !important;
-    min-width: clamp(42px, 10vw, 58px) !important;
-    max-width: none !important;
-    height: var(--sa-control-h) !important;
-    min-height: var(--sa-control-h) !important;
-    padding: 0 clamp(8px, 2vw, 14px) !important;
-    border-radius: 999px !important;
-    border: 2px solid !important;
-    font-size: var(--sa-btn-fs) !important;
-    font-weight: 900 !important;
-    line-height: 1.15 !important;
-    white-space: nowrap !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .smartacctg-products-page .sa-titlebar {
-    width: 100% !important;
-    display: grid !important;
-    grid-template-columns: 1fr auto !important;
-    align-items: center !important;
-    gap: clamp(10px, 3vw, 16px) !important;
-    margin-bottom: 14px !important;
-  }
-
-  .smartacctg-products-page .sa-titlebar h1,
-  .smartacctg-products-page .sa-titlebar h2,
-  .smartacctg-products-page .sa-titlebar h3 {
-    margin: 0 !important;
-    grid-column: 1 !important;
+    min-width: 0 !important;
   }
 
   .smartacctg-products-page .sa-close-x {
-    grid-column: 2 !important;
-    justify-self: end !important;
-    width: 46px !important;
-    height: 46px !important;
-    min-width: 46px !important;
-    max-width: 46px !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
     padding: 0 !important;
-    border-radius: 999px !important;
-    border: 2px solid #ef4444 !important;
-    background: #fee2e2 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
     color: #dc2626 !important;
-    font-size: 28px !important;
+    font-size: 34px !important;
     font-weight: 900 !important;
     line-height: 1 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     flex-shrink: 0 !important;
+  }
+
+  .smartacctg-products-page .sa-close-x:hover {
+    color: #991b1b !important;
   }
 
   @media (max-width: 768px) {
@@ -308,58 +240,49 @@ const FONT_SYSTEM_CSS = `
     }
   }
 
+  @media (max-width: 520px) {
+    .smartacctg-products-page .sa-topbar {
+      grid-template-columns: 1fr !important;
+    }
+
+    .smartacctg-products-page .sa-topbar-left,
+    .smartacctg-products-page .sa-topbar-center,
+    .smartacctg-products-page .sa-topbar-right {
+      justify-self: stretch !important;
+      width: 100% !important;
+    }
+
+    .smartacctg-products-page .sa-topbar button,
+    .smartacctg-products-page .sa-topbar select {
+      width: 100% !important;
+    }
+
+    .smartacctg-products-page .sa-close-x {
+      width: auto !important;
+      height: auto !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      padding: 0 !important;
+      border: none !important;
+      background: transparent !important;
+      font-size: 32px !important;
+    }
+  }
+
   @media (max-width: 430px) {
     .smartacctg-products-page {
       padding: 10px !important;
     }
 
-    .smartacctg-products-page button:not(.sa-back-btn):not(.sa-lang-btn):not(.sa-close-x),
+    .smartacctg-products-page button,
     .smartacctg-products-page input,
-    .smartacctg-products-page select:not(.sa-theme-select),
+    .smartacctg-products-page select,
     .smartacctg-products-page textarea {
       width: 100% !important;
     }
 
-    .smartacctg-products-page .sa-user-toolbar {
-      grid-template-columns: auto minmax(72px, 1fr) auto !important;
-      gap: 5px !important;
-    }
-
-    .smartacctg-products-page .sa-back-btn {
-      width: auto !important;
-      min-height: 42px !important;
-      padding: 0 8px !important;
-      font-size: 13px !important;
-    }
-
-    .smartacctg-products-page .sa-theme-select {
-      width: fit-content !important;
-      max-width: 31vw !important;
-      min-height: 42px !important;
-      height: 42px !important;
-      padding: 0 8px !important;
-      font-size: 13px !important;
-    }
-
-    .smartacctg-products-page .sa-lang-row {
-      gap: 4px !important;
-    }
-
-    .smartacctg-products-page .sa-lang-btn {
-      width: auto !important;
-      min-width: 38px !important;
-      height: 42px !important;
-      min-height: 42px !important;
-      padding: 0 6px !important;
-      font-size: 13px !important;
-    }
-
     .smartacctg-products-page .sa-close-x {
-      width: 44px !important;
-      height: 44px !important;
-      min-width: 44px !important;
-      max-width: 44px !important;
-      font-size: 26px !important;
+      width: auto !important;
     }
 
     .products-summary-grid {
@@ -385,8 +308,7 @@ const TXT = {
   zh: {
     title: "产品管理",
     subtitle: "管理产品、库存、成本、售价、客户专属价格，并联动发票系统与记账系统。",
-    back: "返回",
-    dashboardBack: "返回控制台",
+    back: "返回控制台",
     search: "搜索产品名称 / 编号",
     add: "新增产品",
     edit: "编辑产品",
@@ -438,8 +360,7 @@ const TXT = {
     title: "Product Management",
     subtitle:
       "Manage products, stock, cost, selling price, customer pricing, invoices and accounting links.",
-    back: "Back",
-    dashboardBack: "Back Dashboard",
+    back: "Dashboard",
     search: "Search product name / code",
     add: "Add Product",
     edit: "Edit Product",
@@ -490,8 +411,7 @@ const TXT = {
   ms: {
     title: "Pengurusan Produk",
     subtitle: "Urus produk, stok, kos, harga jualan, harga khas pelanggan, invois dan akaun.",
-    back: "Kembali",
-    dashboardBack: "Kembali Dashboard",
+    back: "Dashboard",
     search: "Cari nama produk / kod",
     add: "Tambah Produk",
     edit: "Edit Produk",
@@ -630,6 +550,7 @@ const THEMES: Record<ThemeKey, any> = {
 
 function readStockMapByKey(key: string): Record<string, number> {
   try {
+    if (typeof window === "undefined") return {};
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : {};
   } catch {
@@ -645,6 +566,7 @@ function getStockMap(): Record<string, number> {
 }
 
 function writeStockMap(map: Record<string, number>) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
   localStorage.setItem(PRODUCT_STOCK_FALLBACK_KEY, JSON.stringify(map));
 }
@@ -729,10 +651,7 @@ export default function ProductsPage() {
     const timer = window.setInterval(reload, 5000);
 
     const handleStorage = (e: StorageEvent) => {
-      if (
-        e.key === PRODUCT_STOCK_MAP_KEY ||
-        e.key === PRODUCT_STOCK_FALLBACK_KEY
-      ) {
+      if (e.key === PRODUCT_STOCK_MAP_KEY || e.key === PRODUCT_STOCK_FALLBACK_KEY) {
         reload();
       }
     };
@@ -1424,29 +1343,24 @@ export default function ProductsPage() {
           color: theme.text,
         }}
       >
-        <div className="sa-user-toolbar">
-          <button
-            onClick={goBack}
-            className="sa-back-btn"
-            style={{
-              ...backBtnStyle,
-              borderColor: theme.border,
-              color: theme.accent,
-            }}
-          >
-            ← {t.dashboardBack}
-          </button>
+        <div className="sa-topbar">
+          <div className="sa-topbar-left">
+            <button
+              onClick={goBack}
+              style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}
+            >
+              ← {t.back}
+            </button>
+          </div>
 
-          <div className="sa-toolbar-tools">
+          <div className="sa-topbar-center">
             <select
               value={themeKey}
               onChange={(e) => switchTheme(e.target.value as ThemeKey)}
-              className="sa-theme-select"
               style={{
                 ...themeSelectStyle,
                 borderColor: theme.border,
                 color: theme.accent,
-                background: "#fff",
               }}
             >
               {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
@@ -1455,27 +1369,17 @@ export default function ProductsPage() {
                 </option>
               ))}
             </select>
+          </div>
 
-            <div className="sa-lang-row" style={langRowStyle}>
-              <button
-                onClick={() => switchLang("zh")}
-                className="sa-lang-btn"
-                style={langBtn(lang === "zh", theme)}
-              >
+          <div className="sa-topbar-right">
+            <div style={langRowStyle}>
+              <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
                 中文
               </button>
-              <button
-                onClick={() => switchLang("en")}
-                className="sa-lang-btn"
-                style={langBtn(lang === "en", theme)}
-              >
+              <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
                 EN
               </button>
-              <button
-                onClick={() => switchLang("ms")}
-                className="sa-lang-btn"
-                style={langBtn(lang === "ms", theme)}
-              >
+              <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
                 BM
               </button>
             </div>
@@ -1671,7 +1575,7 @@ export default function ProductsPage() {
               boxShadow: theme.glow,
             }}
           >
-            <div className="sa-titlebar" style={modalHeaderStyle}>
+            <div style={modalHeaderStyle}>
               <h2 style={{ margin: 0 }}>
                 {getDetailTitle()}｜{t.allProductDetails}
               </h2>
@@ -1705,477 +1609,4 @@ export default function ProductsPage() {
             >
               {t.close}
             </button>
-          </div>
-        </div>
-      )}
-
-      {showForm && (
-        <div style={overlayStyle}>
-          <div
-            style={{
-              ...modalStyle,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-            }}
-          >
-            <div className="sa-titlebar" style={modalHeaderStyle}>
-              <h2 style={{ margin: 0 }}>{editingId ? t.edit : t.add}</h2>
-              <button
-                className="sa-close-x"
-                onClick={resetForm}
-                style={modalCloseBtnStyle}
-              >
-                ×
-              </button>
-            </div>
-
-            <label style={labelStyle}>{t.productName}</label>
-            <input
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              style={inputStyle}
-            />
-
-            <label style={labelStyle}>{t.price}</label>
-            <input
-              value={productPrice}
-              onChange={(e) => setProductPrice(e.target.value)}
-              style={inputStyle}
-              inputMode="decimal"
-            />
-
-            <label style={labelStyle}>{t.cost}</label>
-            <input
-              value={productCost}
-              onChange={(e) => setProductCost(e.target.value)}
-              style={inputStyle}
-              inputMode="decimal"
-            />
-
-            <label style={labelStyle}>{t.discount}</label>
-            <input
-              value={productDiscount}
-              onChange={(e) => setProductDiscount(e.target.value)}
-              style={inputStyle}
-              inputMode="decimal"
-            />
-
-            <label style={labelStyle}>{t.stock}</label>
-            <input
-              value={productStock}
-              onChange={(e) => setProductStock(e.target.value)}
-              style={inputStyle}
-              inputMode="numeric"
-            />
-
-            <label style={labelStyle}>{t.note}</label>
-            <textarea
-              value={productNote}
-              onChange={(e) => setProductNote(e.target.value)}
-              style={textareaStyle}
-            />
-
-            <div className="products-modal-actions" style={modalActionRowStyle}>
-              <button onClick={saveProduct} style={{ ...addBtnStyle, background: theme.accent }}>
-                {t.save}
-              </button>
-              <button onClick={resetForm} style={cancelBtnStyle}>
-                {t.cancel}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
-  );
-}
-
-const pageStyle: CSSProperties = {
-  minHeight: "100vh",
-  width: "100%",
-  maxWidth: "100vw",
-  overflowX: "hidden",
-  padding: "clamp(10px, 2vw, 24px)",
-  fontFamily:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
-  boxSizing: "border-box",
-  fontSize: "var(--sa-fs-base)",
-};
-
-const headerCardStyle: CSSProperties = {
-  border: "3px solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-  marginBottom: 16,
-};
-
-const controlRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-start",
-  gap: 8,
-  flexWrap: "wrap",
-  marginTop: 14,
-  marginBottom: 22,
-};
-
-const titleRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 16,
-  flexWrap: "wrap",
-};
-
-const titleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "var(--sa-fs-2xl)",
-  fontWeight: 900,
-};
-
-const sectionTitleStyle: CSSProperties = {
-  fontSize: "var(--sa-fs-xl)",
-  marginTop: 18,
-};
-
-const subTitleStyle: CSSProperties = {
-  marginTop: 8,
-  lineHeight: 1.5,
-  fontSize: "var(--sa-fs-base)",
-};
-
-const backBtnStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: "var(--sa-radius-control)",
-  minHeight: "var(--sa-control-h)",
-  padding: "0 var(--sa-control-x)",
-  fontWeight: 900,
-  fontSize: "16px",
-};
-
-const themeSelectStyle: CSSProperties = {
-  width: "fit-content",
-  maxWidth: "44vw",
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 999,
-  minHeight: "var(--sa-control-h)",
-  padding: "0 var(--sa-control-x)",
-  fontWeight: 900,
-  fontSize: "16px",
-  outline: "none",
-};
-
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 6,
-  flexWrap: "wrap",
-};
-
-const langBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "0 10px",
-  minWidth: 48,
-  minHeight: "var(--sa-control-h)",
-  borderRadius: 999,
-  border: `2px solid ${theme.accent}`,
-  background: active ? theme.accent : "#fff",
-  color: active ? "#fff" : theme.accent,
-  fontWeight: 900,
-  fontSize: "16px",
-});
-
-const plusBtnStyle: CSSProperties = {
-  width: "clamp(46px, 8vw, 58px)",
-  height: "clamp(46px, 8vw, 58px)",
-  borderRadius: "999px",
-  border: "none",
-  color: "#fff",
-  fontSize: "28px",
-  fontWeight: 900,
-};
-
-const trialBadgeStyle: CSSProperties = {
-  display: "inline-block",
-  marginTop: 8,
-  padding: "6px 10px",
-  borderRadius: 999,
-  background: "#dcfce7",
-  color: "#166534",
-  fontWeight: 800,
-};
-
-const summaryGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-  gap: "clamp(10px, 2vw, 16px)",
-  marginBottom: 16,
-};
-
-const summaryCardStyle: CSSProperties = {
-  background: "#fff",
-  color: "#111827",
-  border: "3px solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-  display: "grid",
-  gap: 12,
-  textAlign: "center",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-  minHeight: 130,
-  fontWeight: 800,
-};
-
-const contentCardStyle: CSSProperties = {
-  border: "3px solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-  marginBottom: 16,
-};
-
-const searchRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 10,
-  alignItems: "center",
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: "100%",
-  minWidth: 0,
-  boxSizing: "border-box",
-  padding: "clamp(12px, 2vw, 15px) clamp(13px, 2vw, 16px)",
-  borderRadius: "var(--sa-radius-control)",
-  border: "1px solid #cbd5e1",
-  fontSize: "16px",
-  outline: "none",
-  background: "#ffffff",
-  color: "#111827",
-};
-
-const textareaStyle: CSSProperties = {
-  ...inputStyle,
-  minHeight: 90,
-  resize: "vertical",
-};
-
-const addBtnStyle: CSSProperties = {
-  border: "none",
-  color: "#fff",
-  borderRadius: "var(--sa-radius-control)",
-  minHeight: "var(--sa-control-h)",
-  padding: "0 var(--sa-control-x)",
-  fontWeight: 900,
-  fontSize: "16px",
-};
-
-const msgBoxStyle: CSSProperties = {
-  marginTop: 12,
-  background: "#fef3c7",
-  color: "#92400e",
-  padding: "10px 12px",
-  borderRadius: 12,
-  fontWeight: 800,
-};
-
-const productListStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-};
-
-const productCardStyle: CSSProperties = {
-  border: "3px solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-  display: "grid",
-  gap: 12,
-};
-
-const productTitleRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const productNameStyle: CSSProperties = {
-  fontSize: "var(--sa-fs-lg)",
-};
-
-const mutedStyle: CSSProperties = {
-  color: "#64748b",
-  fontSize: "var(--sa-fs-sm)",
-  marginTop: 4,
-};
-
-const productInfoGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 10,
-  marginTop: 12,
-  fontSize: "var(--sa-fs-base)",
-};
-
-const stockBadgeStyle: CSSProperties = {
-  color: "#fff",
-  padding: "5px 10px",
-  borderRadius: 999,
-  fontSize: "13px",
-  fontWeight: 900,
-};
-
-const customerPurchaseBoxStyle: CSSProperties = {
-  marginTop: 14,
-  padding: 12,
-  borderRadius: 14,
-  background: "#f8fafc",
-  color: "#111827",
-};
-
-const purchaseListStyle: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  marginTop: 8,
-};
-
-const purchaseItemStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 10,
-  padding: "8px 0",
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const noteStyle: CSSProperties = {
-  marginTop: 10,
-  padding: 10,
-  borderRadius: 12,
-  background: "#f8fafc",
-  color: "#475569",
-};
-
-const actionRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  justifyContent: "flex-end",
-  flexWrap: "wrap",
-};
-
-const editBtnStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 10,
-  minHeight: 38,
-  padding: "0 12px",
-  fontWeight: 900,
-};
-
-const deleteBtnStyle: CSSProperties = {
-  background: "#fee2e2",
-  color: "#b91c1c",
-  border: "none",
-  borderRadius: 10,
-  minHeight: 38,
-  padding: "0 12px",
-  fontWeight: 900,
-};
-
-const formGridStyle: CSSProperties = {
-  display: "grid",
-  gap: 10,
-};
-
-const customerPriceItemStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  padding: "12px 0",
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const overlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15,23,42,0.45)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 18,
-  zIndex: 999,
-};
-
-const modalStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 560,
-  maxHeight: "90vh",
-  overflowY: "auto",
-  background: "#fff",
-  color: "#111827",
-  border: "3px solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-};
-
-const detailModalStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 920,
-  maxHeight: "88vh",
-  overflowY: "auto",
-  background: "#fff",
-  color: "#111827",
-  border: "3px solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-};
-
-const modalHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 14,
-};
-
-const modalCloseBtnStyle: CSSProperties = {
-  width: 46,
-  height: 46,
-  borderRadius: "999px",
-  border: "2px solid #ef4444",
-  background: "#fee2e2",
-  color: "#dc2626",
-  fontSize: 28,
-  fontWeight: 900,
-};
-
-const detailListStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-};
-
-const labelStyle: CSSProperties = {
-  display: "block",
-  fontWeight: 800,
-  marginTop: 12,
-  marginBottom: 6,
-};
-
-const modalActionRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 10,
-  marginTop: 16,
-  flexWrap: "wrap",
-};
-
-const cancelBtnStyle: CSSProperties = {
-  background: "#fff",
-  color: "#0f172a",
-  border: "2px solid #cbd5e1",
-  borderRadius: "var(--sa-radius-control)",
-  minHeight: "var(--sa-control-h)",
-  padding: "0 var(--sa-control-x)",
-  fontWeight: 900,
-};
+          </div
