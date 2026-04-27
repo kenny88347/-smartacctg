@@ -107,6 +107,175 @@ const ZERO_SIGNATURE_META: InvoiceSignatureMeta = {
   signatureImageUrl: "",
 };
 
+const FONT_SYSTEM_CSS = `
+  .smartacctg-invoice-page {
+    --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Microsoft YaHei", Arial, sans-serif;
+
+    --sa-fs-xs: clamp(11px, 2.4vw, 12px);
+    --sa-fs-sm: clamp(12px, 2.6vw, 14px);
+    --sa-fs-base: clamp(14px, 2.9vw, 16px);
+    --sa-fs-md: clamp(15px, 3.1vw, 18px);
+    --sa-fs-lg: clamp(18px, 3.8vw, 22px);
+    --sa-fs-xl: clamp(22px, 4.8vw, 30px);
+    --sa-fs-2xl: clamp(26px, 6vw, 38px);
+
+    font-family: var(--sa-font-family) !important;
+    font-size: var(--sa-fs-base) !important;
+    line-height: 1.5 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  .smartacctg-invoice-page,
+  .smartacctg-invoice-page * {
+    box-sizing: border-box !important;
+    font-family: var(--sa-font-family) !important;
+  }
+
+  .smartacctg-invoice-page h1 {
+    font-size: var(--sa-fs-2xl) !important;
+    line-height: 1.15 !important;
+  }
+
+  .smartacctg-invoice-page h2 {
+    font-size: var(--sa-fs-xl) !important;
+    line-height: 1.2 !important;
+  }
+
+  .smartacctg-invoice-page h3 {
+    font-size: var(--sa-fs-lg) !important;
+    line-height: 1.25 !important;
+    margin-top: clamp(18px, 4vw, 26px) !important;
+    margin-bottom: clamp(10px, 2.5vw, 14px) !important;
+  }
+
+  .smartacctg-invoice-page h4 {
+    font-size: var(--sa-fs-md) !important;
+  }
+
+  .smartacctg-invoice-page p,
+  .smartacctg-invoice-page div,
+  .smartacctg-invoice-page span,
+  .smartacctg-invoice-page label,
+  .smartacctg-invoice-page td,
+  .smartacctg-invoice-page th {
+    font-size: var(--sa-fs-base) !important;
+  }
+
+  .smartacctg-invoice-page small {
+    font-size: var(--sa-fs-xs) !important;
+  }
+
+  .smartacctg-invoice-page input,
+  .smartacctg-invoice-page select,
+  .smartacctg-invoice-page textarea,
+  .smartacctg-invoice-page button {
+    font-size: 16px !important;
+    font-family: var(--sa-font-family) !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .smartacctg-invoice-page input,
+  .smartacctg-invoice-page select,
+  .smartacctg-invoice-page textarea {
+    width: 100% !important;
+  }
+
+  .smartacctg-invoice-page input[type="date"],
+  .smartacctg-invoice-page input[type="month"],
+  .smartacctg-invoice-page input[type="number"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: block !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+
+  .smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value {
+    text-align: center !important;
+    min-height: 1.6em !important;
+  }
+
+  .smartacctg-invoice-page img,
+  .smartacctg-invoice-page video,
+  .smartacctg-invoice-page canvas,
+  .smartacctg-invoice-page iframe {
+    max-width: 100% !important;
+  }
+
+  .smartacctg-invoice-page table {
+    max-width: 100% !important;
+  }
+
+  @media (max-width: 768px) {
+    .smartacctg-invoice-page {
+      padding: 12px !important;
+    }
+
+    .smartacctg-invoice-page h1 {
+      font-size: var(--sa-fs-xl) !important;
+    }
+
+    .smartacctg-invoice-page h2 {
+      font-size: var(--sa-fs-lg) !important;
+    }
+
+    .smartacctg-invoice-page h3 {
+      font-size: var(--sa-fs-md) !important;
+    }
+
+    .smartacctg-invoice-page p,
+    .smartacctg-invoice-page div,
+    .smartacctg-invoice-page span,
+    .smartacctg-invoice-page label,
+    .smartacctg-invoice-page td,
+    .smartacctg-invoice-page th {
+      font-size: var(--sa-fs-sm) !important;
+    }
+
+    .smartacctg-invoice-page button {
+      width: auto;
+      min-height: 42px !important;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .smartacctg-invoice-page {
+      padding: 10px !important;
+    }
+
+    .smartacctg-invoice-page button,
+    .smartacctg-invoice-page input,
+    .smartacctg-invoice-page select,
+    .smartacctg-invoice-page textarea {
+      width: 100% !important;
+    }
+  }
+
+  @media print {
+    .smartacctg-invoice-page,
+    .smartacctg-invoice-page * {
+      font-size: 12px !important;
+    }
+
+    .smartacctg-invoice-page h1 {
+      font-size: 24px !important;
+    }
+
+    .smartacctg-invoice-page h2 {
+      font-size: 20px !important;
+    }
+
+    .smartacctg-invoice-page h3 {
+      font-size: 16px !important;
+    }
+  }
+`;
+
 const THEMES: Record<ThemeKey, any> = {
   deepTeal: {
     name: "深青色",
@@ -2311,54 +2480,7 @@ export default function InvoicePage() {
           text-size-adjust: 100%;
         }
 
-        .smartacctg-invoice-page,
-        .smartacctg-invoice-page * {
-          box-sizing: border-box;
-        }
-
-        .smartacctg-invoice-page {
-          font-size: clamp(14px, 1.8vw, 17px);
-          overflow-x: hidden;
-        }
-
-        .smartacctg-invoice-page h1 {
-          font-size: clamp(24px, 4.5vw, 36px);
-          line-height: 1.12;
-        }
-
-        .smartacctg-invoice-page h2 {
-          font-size: clamp(20px, 3.5vw, 30px);
-          line-height: 1.2;
-        }
-
-        .smartacctg-invoice-page h3 {
-          font-size: clamp(18px, 3.5vw, 26px);
-          line-height: 1.25;
-        }
-
-        .smartacctg-invoice-page input,
-        .smartacctg-invoice-page select,
-        .smartacctg-invoice-page button,
-        .smartacctg-invoice-page textarea {
-          font-size: clamp(14px, 2.7vw, 17px) !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-        }
-
-        .smartacctg-invoice-page input[type="date"] {
-          width: 100% !important;
-          min-width: 0 !important;
-          max-width: 100% !important;
-          display: block !important;
-          -webkit-appearance: none !important;
-          appearance: none !important;
-          text-align: center;
-        }
-
-        .smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value {
-          text-align: center;
-          min-height: 1.6em;
-        }
+        ${FONT_SYSTEM_CSS}
 
         @media (max-width: 520px) {
           .responsive-actions {
@@ -2954,9 +3076,13 @@ export default function InvoicePage() {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
+  width: "100%",
+  maxWidth: "100vw",
+  overflowX: "hidden",
   padding: "clamp(10px, 3vw, 22px)",
-  fontFamily: "sans-serif",
-  fontSize: "clamp(14px, 1.8vw, 17px)",
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
+  fontSize: "var(--sa-fs-base)",
 };
 
 const topRowStyle: CSSProperties = {
