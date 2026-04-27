@@ -1302,7 +1302,7 @@ const langBtn = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperti
   lineHeight: 1.1,
   textAlign: "center",
   whiteSpace: "nowrap",
-};
+});
 
 const cardStyle: CSSProperties = {
   border: "2px solid",
