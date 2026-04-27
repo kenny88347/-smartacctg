@@ -1,13 +1,20 @@
-"use client";
+我沒有你 GitHub 目前最新原件，所以不能說這份就是你上次那份「最新保存版」。
+但我直接給你一份完整可複製覆蓋版，放去：
 
+app/dashboard/records/page.tsx
+
+這版會連接 Supabase transactions，支援：新增、修改、刪除、收入/支出/月收入/月支出/結餘統計、搜尋、月份篩選、手機版卡片顯示。
+
+這版假設你的 transactions table 有這些欄位：
+id, user_id, txn_date, txn_type, amount, category_name, debt_amount, note, source_type, source_id, created_at
+
+"use client";
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-
-type Lang = "zh" | "en" | "ms";
 type TxnType = "income" | "expense";
+type FilterType = "all" | TxnType;
 type ThemeKey = "deepTeal" | "pink" | "blackGold" | "lightRed" | "nature" | "sky";
-
 type Txn = {
   id: string;
   user_id?: string;
@@ -21,1551 +28,996 @@ type Txn = {
   source_id?: string | null;
   created_at?: string | null;
 };
-
-type Customer = {
-  id: string;
-  user_id?: string;
-  name: string;
-  phone?: string | null;
-  company_name?: string | null;
-};
-
-type Product = {
-  id: string;
-  user_id?: string;
-  name: string;
-  price?: number | null;
-  cost?: number | null;
-  stock_qty?: number | null;
-};
-
-type Invoice = {
-  id: string;
-  user_id?: string;
-  customer_id?: string | null;
-  customer_name?: string | null;
-  invoice_no?: string | null;
-  invoice_date?: string | null;
-  created_at?: string | null;
-  total?: number | null;
-  total_profit?: number | null;
-  note?: string | null;
-};
-
 type Profile = {
   id: string;
-  theme: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  theme?: string | null;
+  plan_type?: string | null;
+  plan_expiry?: string | null;
 };
-
-const TRIAL_KEY = "smartacctg_trial";
-const TRIAL_TX_KEY = "smartacctg_trial_transactions";
-const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
-const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
-const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
-
-const LANG_KEY = "smartacctg_lang";
-const THEME_KEY = "smartacctg_theme";
-
-const today = () => new Date().toISOString().slice(0, 10);
-
-const THEMES: Record<
+type FormState = {
+  txn_date: string;
+  txn_type: TxnType;
+  amount: string;
+  category_name: string;
+  debt_amount: string;
+  note: string;
+};
+const THEME_DATA: Record<
   ThemeKey,
   {
     name: string;
-    pageBg: string;
+    primary: string;
+    primaryDark: string;
+    bg: string;
     card: string;
+    soft: string;
     border: string;
-    accent: string;
     text: string;
-    subText: string;
-    softBg: string;
-    glow: string;
+    muted: string;
+    danger: string;
   }
 > = {
   deepTeal: {
     name: "深青色",
-    pageBg: "#ecfdf5",
-    card: "#ffffff",
-    border: "#14b8a6",
-    accent: "#0f766e",
-    text: "#064e3b",
-    subText: "#64748b",
-    softBg: "#ccfbf1",
-    glow: "0 0 0 1px rgba(20,184,166,0.35), 0 16px 36px rgba(20,184,166,0.22)",
+    primary: "#0F766E",
+    primaryDark: "#115E59",
+    bg: "linear-gradient(135deg,#ECFDF5 0%,#F8FAFC 45%,#E0F2FE 100%)",
+    card: "rgba(255,255,255,0.92)",
+    soft: "#CCFBF1",
+    border: "#99F6E4",
+    text: "#0F172A",
+    muted: "#64748B",
+    danger: "#DC2626",
   },
   pink: {
     name: "可爱粉色",
-    pageBg: "#fff7fb",
-    card: "#ffffff",
-    border: "#f472b6",
-    accent: "#db2777",
-    text: "#4a044e",
-    subText: "#831843",
-    softBg: "#fce7f3",
-    glow: "0 0 0 1px rgba(244,114,182,0.32), 0 16px 36px rgba(244,114,182,0.20)",
+    primary: "#DB2777",
+    primaryDark: "#BE185D",
+    bg: "linear-gradient(135deg,#FDF2F8 0%,#FFF7ED 55%,#FCE7F3 100%)",
+    card: "rgba(255,255,255,0.92)",
+    soft: "#FCE7F3",
+    border: "#FBCFE8",
+    text: "#1F2937",
+    muted: "#6B7280",
+    danger: "#DC2626",
   },
   blackGold: {
     name: "黑金商务",
-    pageBg: "#111111",
-    card: "#1f1f1f",
-    border: "#facc15",
-    accent: "#d4af37",
-    text: "#fff7ed",
-    subText: "#d6c8a4",
-    softBg: "#3b2f16",
-    glow: "0 0 0 1px rgba(250,204,21,0.38), 0 16px 38px rgba(250,204,21,0.20)",
+    primary: "#B45309",
+    primaryDark: "#92400E",
+    bg: "linear-gradient(135deg,#111827 0%,#1F2937 50%,#78350F 100%)",
+    card: "rgba(255,255,255,0.94)",
+    soft: "#FEF3C7",
+    border: "#F59E0B",
+    text: "#111827",
+    muted: "#6B7280",
+    danger: "#DC2626",
   },
   lightRed: {
-    name: "可爱浅红",
-    pageBg: "#fff1f2",
-    card: "#ffffff",
-    border: "#fb7185",
-    accent: "#e11d48",
-    text: "#881337",
-    subText: "#9f1239",
-    softBg: "#ffe4e6",
-    glow: "0 0 0 1px rgba(251,113,133,0.35), 0 16px 36px rgba(251,113,133,0.20)",
+    name: "浅红风格",
+    primary: "#E11D48",
+    primaryDark: "#BE123C",
+    bg: "linear-gradient(135deg,#FFF1F2 0%,#FFFFFF 50%,#FFE4E6 100%)",
+    card: "rgba(255,255,255,0.92)",
+    soft: "#FFE4E6",
+    border: "#FDA4AF",
+    text: "#1F2937",
+    muted: "#6B7280",
+    danger: "#DC2626",
   },
   nature: {
     name: "风景自然系",
-    pageBg: "#f0fdf4",
-    card: "#ffffff",
-    border: "#22d3ee",
-    accent: "#0f766e",
-    text: "#14532d",
-    subText: "#166534",
-    softBg: "#dcfce7",
-    glow: "0 0 0 1px rgba(34,211,238,0.32), 0 16px 36px rgba(34,211,238,0.20)",
+    primary: "#15803D",
+    primaryDark: "#166534",
+    bg: "linear-gradient(135deg,#DCFCE7 0%,#F7FEE7 50%,#ECFCCB 100%)",
+    card: "rgba(255,255,255,0.92)",
+    soft: "#DCFCE7",
+    border: "#86EFAC",
+    text: "#14532D",
+    muted: "#4B5563",
+    danger: "#DC2626",
   },
   sky: {
     name: "天空蓝",
-    pageBg: "#eff6ff",
-    card: "#ffffff",
-    border: "#38bdf8",
-    accent: "#0284c7",
-    text: "#0f172a",
-    subText: "#0369a1",
-    softBg: "#dbeafe",
-    glow: "0 0 0 1px rgba(56,189,248,0.35), 0 16px 36px rgba(56,189,248,0.20)",
+    primary: "#0284C7",
+    primaryDark: "#0369A1",
+    bg: "linear-gradient(135deg,#E0F2FE 0%,#F8FAFC 50%,#DBEAFE 100%)",
+    card: "rgba(255,255,255,0.92)",
+    soft: "#E0F2FE",
+    border: "#7DD3FC",
+    text: "#0F172A",
+    muted: "#64748B",
+    danger: "#DC2626",
   },
 };
-
-const TXT = {
-  zh: {
-    title: "帳目紀錄",
-    back: "返回控制台",
-    add: "新增記帳",
-    edit: "编辑",
-    delete: "删除",
-    save: "保存記帳",
-    update: "保存修改",
-    cancel: "取消",
-    close: "关闭",
-    searchTitle: "快速搜索帳目紀錄",
-    search: "搜索日期 / 分类 / 备注 / 金额 / 发票号码 / 客户名称",
-    all: "全部",
-    income: "收入",
-    expense: "支出",
-    balance: "当前余额",
-    monthIncome: "本月收入",
-    monthExpense: "本月支出",
-    date: "日期",
-    type: "类型",
-    amount: "金额",
-    category: "分类 / 标签",
-    debtAmount: "欠款金额",
-    note: "备注",
-    customer: "客户",
-    product: "产品",
-    invoice: "发票",
-    chooseCustomer: "选择客户",
-    chooseProduct: "选择产品",
-    chooseInvoice: "选择发票",
-    noCustomer: "不选择客户",
-    noProduct: "不选择产品",
-    noInvoice: "不选择发票",
-    noRecord: "还没有帳目紀錄",
-    linkedInfo: "联动资料",
-    related: "关联功能",
-    accounting: "记账系统",
-    customers: "客户管理",
-    products: "产品管理",
-    invoices: "发票系统",
-    chooseFeature: "请选择要前往的功能",
-    goFeature: "前往",
-    theme: "主题",
-    language: "语言",
-    saved: "保存成功",
-    deleted: "删除成功",
-    confirmDelete: "确定要删除这笔记录吗？",
-    trialMode: "免费试用模式：资料只会暂存在本机",
-    filterType: "筛选类型",
-    filterCustomer: "筛选客户",
-    startDate: "开始日期",
-    endDate: "结束日期",
-    sourceInvoice: "来自发票",
-    manualRecord: "手动记录",
-  },
-  en: {
-    title: "Accounting Records",
-    back: "Back to Dashboard",
-    add: "Add Record",
-    edit: "Edit",
-    delete: "Delete",
-    save: "Save Record",
-    update: "Save Changes",
-    cancel: "Cancel",
-    close: "Close",
-    searchTitle: "Quick Search Records",
-    search: "Search date / category / note / amount / invoice no. / customer",
-    all: "All",
-    income: "Income",
-    expense: "Expense",
-    balance: "Balance",
-    monthIncome: "Monthly Income",
-    monthExpense: "Monthly Expense",
-    date: "Date",
-    type: "Type",
-    amount: "Amount",
-    category: "Category / Tag",
-    debtAmount: "Debt Amount",
-    note: "Note",
-    customer: "Customer",
-    product: "Product",
-    invoice: "Invoice",
-    chooseCustomer: "Choose Customer",
-    chooseProduct: "Choose Product",
-    chooseInvoice: "Choose Invoice",
-    noCustomer: "No Customer",
-    noProduct: "No Product",
-    noInvoice: "No Invoice",
-    noRecord: "No accounting records yet",
-    linkedInfo: "Linked Info",
-    related: "Linked Features",
-    accounting: "Accounting",
-    customers: "Customers",
-    products: "Products",
-    invoices: "Invoices",
-    chooseFeature: "Choose feature",
-    goFeature: "Go",
-    theme: "Theme",
-    language: "Language",
-    saved: "Saved",
-    deleted: "Deleted",
-    confirmDelete: "Delete this record?",
-    trialMode: "Free trial mode: data is stored locally only",
-    filterType: "Filter Type",
-    filterCustomer: "Filter Customer",
-    startDate: "Start Date",
-    endDate: "End Date",
-    sourceInvoice: "From Invoice",
-    manualRecord: "Manual Record",
-  },
-  ms: {
-    title: "Rekod Akaun",
-    back: "Kembali ke Dashboard",
-    add: "Tambah Rekod",
-    edit: "Edit",
-    delete: "Padam",
-    save: "Simpan Rekod",
-    update: "Simpan Perubahan",
-    cancel: "Batal",
-    close: "Tutup",
-    searchTitle: "Carian Pantas Rekod",
-    search: "Cari tarikh / kategori / catatan / jumlah / no. invois / pelanggan",
-    all: "Semua",
-    income: "Pendapatan",
-    expense: "Perbelanjaan",
-    balance: "Baki",
-    monthIncome: "Pendapatan Bulan Ini",
-    monthExpense: "Perbelanjaan Bulan Ini",
-    date: "Tarikh",
-    type: "Jenis",
-    amount: "Jumlah",
-    category: "Kategori / Tag",
-    debtAmount: "Jumlah Hutang",
-    note: "Catatan",
-    customer: "Pelanggan",
-    product: "Produk",
-    invoice: "Invois",
-    chooseCustomer: "Pilih Pelanggan",
-    chooseProduct: "Pilih Produk",
-    chooseInvoice: "Pilih Invois",
-    noCustomer: "Tiada Pelanggan",
-    noProduct: "Tiada Produk",
-    noInvoice: "Tiada Invois",
-    noRecord: "Tiada rekod akaun lagi",
-    linkedInfo: "Maklumat Berkaitan",
-    related: "Fungsi Berkaitan",
-    accounting: "Sistem Akaun",
-    customers: "Pelanggan",
-    products: "Produk",
-    invoices: "Invois",
-    chooseFeature: "Pilih fungsi",
-    goFeature: "Pergi",
-    theme: "Tema",
-    language: "Bahasa",
-    saved: "Disimpan",
-    deleted: "Dipadam",
-    confirmDelete: "Padam rekod ini?",
-    trialMode: "Mod percubaan: data hanya disimpan dalam telefon ini",
-    filterType: "Tapis Jenis",
-    filterCustomer: "Tapis Pelanggan",
-    startDate: "Tarikh Mula",
-    endDate: "Tarikh Akhir",
-    sourceInvoice: "Daripada Invois",
-    manualRecord: "Rekod Manual",
-  },
-};
-
+const incomeCategories = ["销售收入", "服务收入", "代理佣金", "充值收入", "订阅收入", "其他收入"];
+const expenseCategories = ["进货成本", "广告费", "交通费", "电话费", "租金", "工资", "水电费", "系统费用", "其他支出"];
+function getTodayISO() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  return new Date(now.getTime() - offset * 60 * 1000).toISOString().slice(0, 10);
+}
+function getMonthISO() {
+  return getTodayISO().slice(0, 7);
+}
+function money(value: number) {
+  return `RM ${Number(value || 0).toLocaleString("en-MY", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+function parseAmount(value: string) {
+  const cleaned = value.replace(/,/g, "").trim();
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : 0;
+}
+function safeDate(value: string) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("zh-MY", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
 export default function RecordsPage() {
   const [session, setSession] = useState<Session | null>(null);
-  const [isTrial, setIsTrial] = useState(false);
-  const [lang, setLang] = useState<Lang>("zh");
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [records, setRecords] = useState<Txn[]>([]);
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
-
-  const [transactions, setTransactions] = useState<Txn[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-
-  const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState<"all" | TxnType>("all");
-  const [filterCustomerId, setFilterCustomerId] = useState("");
-  const [filterStartDate, setFilterStartDate] = useState("");
-  const [filterEndDate, setFilterEndDate] = useState("");
-
-  const [showForm, setShowForm] = useState(false);
+  const theme = THEME_DATA[themeKey];
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [monthFilter, setMonthFilter] = useState(getMonthISO());
+  const [keyword, setKeyword] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [msg, setMsg] = useState("");
-
-  const [relatedPath, setRelatedPath] = useState("/dashboard/customers");
-
-  const [form, setForm] = useState({
-    txn_date: today(),
-    txn_type: "income" as TxnType,
+  const [form, setForm] = useState<FormState>({
+    txn_date: getTodayISO(),
+    txn_type: "income",
     amount: "",
     category_name: "",
     debt_amount: "",
     note: "",
-    customer_id: "",
-    product_id: "",
-    invoice_id: "",
   });
-
-  const t = TXT[lang];
-  const theme = THEMES[themeKey];
-
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
-
-    if (!q.get("refresh")) {
-      q.set("refresh", String(Date.now()));
-      window.location.replace(`${window.location.pathname}?${q.toString()}`);
-      return;
-    }
-
-    const urlLang = q.get("lang") as Lang;
-    const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
-
-    if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
-      setLang(urlLang);
-      localStorage.setItem(LANG_KEY, urlLang);
-    } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
-      setLang(savedLang);
-    }
-
-    const urlTheme = q.get("theme") as ThemeKey;
-    const savedTheme = localStorage.getItem(THEME_KEY) as ThemeKey | null;
-
-    if (urlTheme && THEMES[urlTheme]) {
-      setThemeKey(urlTheme);
-      localStorage.setItem(THEME_KEY, urlTheme);
-    } else if (savedTheme && THEMES[savedTheme]) {
-      setThemeKey(savedTheme);
-    }
-
-    const view = q.get("view");
-    if (view === "income") setFilterType("income");
-    if (view === "expense") setFilterType("expense");
-
-    init();
-  }, []);
-
-  async function init() {
-    const q = new URLSearchParams(window.location.search);
-    const mode = q.get("mode");
-    const trialRaw = localStorage.getItem(TRIAL_KEY);
-
-    if ((mode === "trial" || trialRaw) && trialRaw) {
-      const trial = JSON.parse(trialRaw);
-
-      if (Date.now() < Number(trial.expiresAt)) {
-        setIsTrial(true);
-        setSession(null);
-
-        const savedTx = localStorage.getItem(TRIAL_TX_KEY);
-        const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
-        const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
-        const savedInvoices = localStorage.getItem(TRIAL_INVOICES_KEY);
-
-        setTransactions(savedTx ? JSON.parse(savedTx) : []);
-        setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
-        setProducts(savedProducts ? JSON.parse(savedProducts) : []);
-        setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
-
-        return;
+  async function loadData(userId: string) {
+    setErrorMsg("");
+    const profileRes = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    if (!profileRes.error && profileRes.data) {
+      const p = profileRes.data as Profile;
+      setProfile(p);
+      const savedTheme = p.theme as ThemeKey | null;
+      if (savedTheme && THEME_DATA[savedTheme]) {
+        setThemeKey(savedTheme);
       }
-
-      localStorage.removeItem(TRIAL_KEY);
-      localStorage.removeItem(TRIAL_TX_KEY);
-      localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
-      localStorage.removeItem(TRIAL_PRODUCTS_KEY);
-      localStorage.removeItem(TRIAL_INVOICES_KEY);
-      window.location.href = "/zh";
-      return;
     }
-
-    const { data } = await supabase.auth.getSession();
-
-    if (!data.session) {
-      window.location.href = "/zh";
-      return;
-    }
-
-    setIsTrial(false);
-    setSession(data.session);
-
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("theme")
-      .eq("id", data.session.user.id)
-      .single();
-
-    const profile = profileData as Profile | null;
-
-    if (profile?.theme && THEMES[profile.theme as ThemeKey]) {
-      setThemeKey(profile.theme as ThemeKey);
-      localStorage.setItem(THEME_KEY, profile.theme);
-    }
-
-    await loadAll(data.session.user.id);
-  }
-
-  async function loadAll(userId: string) {
-    const { data: txData } = await supabase
+    const { data, error } = await supabase
       .from("transactions")
       .select("*")
       .eq("user_id", userId)
+      .order("txn_date", { ascending: false })
       .order("created_at", { ascending: false });
-
-    const { data: customerData } = await supabase
-      .from("customers")
-      .select("id,name,phone,company_name")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    const { data: productData } = await supabase
-      .from("products")
-      .select("id,name,price,cost,stock_qty")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    const { data: invoiceData } = await supabase
-      .from("invoices")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    setTransactions((txData || []) as Txn[]);
-    setCustomers((customerData || []) as Customer[]);
-    setProducts((productData || []) as Product[]);
-    setInvoices((invoiceData || []) as Invoice[]);
-  }
-
-  function saveTrialTransactions(nextTx: Txn[]) {
-    setTransactions(nextTx);
-    localStorage.setItem(TRIAL_TX_KEY, JSON.stringify(nextTx));
-  }
-
-  function buildUrl(path: string, extra?: string) {
-    const query = new URLSearchParams();
-
-    if (isTrial) {
-      query.set("mode", "trial");
-    }
-
-    query.set("lang", lang);
-    query.set("theme", themeKey);
-    query.set("refresh", String(Date.now()));
-
-    if (extra) {
-      const extraQuery = new URLSearchParams(extra);
-      extraQuery.forEach((value, key) => {
-        query.set(key, value);
-      });
-    }
-
-    return `${path}?${query.toString()}`;
-  }
-
-  function go(path: string, extra?: string) {
-    window.location.href = buildUrl(path, extra);
-  }
-
-  function backToDashboard() {
-    window.location.href = buildUrl("/dashboard");
-  }
-
-  function goRelatedFeature() {
-    go(relatedPath);
-  }
-
-  function switchLang(next: Lang) {
-    setLang(next);
-    localStorage.setItem(LANG_KEY, next);
-
-    const q = new URLSearchParams(window.location.search);
-    q.set("lang", next);
-    q.set("theme", themeKey);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-  }
-
-  async function switchTheme(next: ThemeKey) {
-    setThemeKey(next);
-    localStorage.setItem(THEME_KEY, next);
-
-    const q = new URLSearchParams(window.location.search);
-    q.set("theme", next);
-    q.set("lang", lang);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-
-    if (!isTrial && session) {
-      await supabase.from("profiles").update({ theme: next }).eq("id", session.user.id);
-    }
-  }
-
-  function openNewForm() {
-    setEditingId(null);
-    setForm({
-      txn_date: today(),
-      txn_type: "income",
-      amount: "",
-      category_name: "",
-      debt_amount: "",
-      note: "",
-      customer_id: "",
-      product_id: "",
-      invoice_id: "",
-    });
-    setShowForm(true);
-  }
-
-  function closeForm() {
-    setEditingId(null);
-    setShowForm(false);
-    setForm({
-      txn_date: today(),
-      txn_type: "income",
-      amount: "",
-      category_name: "",
-      debt_amount: "",
-      note: "",
-      customer_id: "",
-      product_id: "",
-      invoice_id: "",
-    });
-  }
-
-  function editTransaction(tx: Txn) {
-    setEditingId(tx.id);
-    setForm({
-      txn_date: tx.txn_date || today(),
-      txn_type: tx.txn_type || "income",
-      amount: String(tx.amount || ""),
-      category_name: tx.category_name || "",
-      debt_amount: String(tx.debt_amount || ""),
-      note: tx.note || "",
-      customer_id: "",
-      product_id: "",
-      invoice_id: tx.source_type === "invoice" && tx.source_id ? tx.source_id : "",
-    });
-    setShowForm(true);
-  }
-
-  function selectedCustomerName() {
-    const c = customers.find((x) => x.id === form.customer_id);
-    return c?.name || "";
-  }
-
-  function selectedProductName() {
-    const p = products.find((x) => x.id === form.product_id);
-    return p?.name || "";
-  }
-
-  function selectedInvoiceText() {
-    const inv = invoices.find((x) => x.id === form.invoice_id);
-    if (!inv) return "";
-
-    return `${inv.invoice_no || inv.id}${inv.customer_name ? `｜${inv.customer_name}` : ""}`;
-  }
-
-  function buildFinalNote() {
-    const parts: string[] = [];
-
-    if (form.customer_id) parts.push(`${t.customer}: ${selectedCustomerName()}`);
-    if (form.product_id) parts.push(`${t.product}: ${selectedProductName()}`);
-    if (form.invoice_id) parts.push(`${t.invoice}: ${selectedInvoiceText()}`);
-    if (form.note.trim()) parts.push(form.note.trim());
-
-    return parts.join("｜") || null;
-  }
-
-  function isSchemaCacheMissingSource(message: string) {
-    return (
-      message.includes("source_type") ||
-      message.includes("source_id") ||
-      message.includes("schema cache")
-    );
-  }
-
-  async function saveTransaction() {
-    if (!form.txn_date || !form.amount || !form.category_name.trim()) return;
-
-    const amount = Number(form.amount || 0);
-    const debt = Number(form.debt_amount || 0);
-    const finalNote = buildFinalNote();
-
-    if (isTrial) {
-      const payload: Txn = {
-        id: editingId || crypto.randomUUID(),
-        user_id: "trial",
-        txn_date: form.txn_date,
-        txn_type: form.txn_type,
-        amount,
-        category_name: form.category_name.trim(),
-        debt_amount: debt,
-        note: finalNote,
-        source_type: form.invoice_id ? "invoice" : null,
-        source_id: form.invoice_id || null,
-        created_at: new Date().toISOString(),
-      };
-
-      const next = editingId
-        ? transactions.map((x) => (x.id === editingId ? payload : x))
-        : [payload, ...transactions];
-
-      saveTrialTransactions(next);
-      setMsg(t.saved);
-      closeForm();
+    if (error) {
+      setErrorMsg(`读取记账记录失败：${error.message}`);
+      setRecords([]);
       return;
     }
-
-    if (!session) return;
-
-    const basicPayload = {
+    setRecords((data || []) as Txn[]);
+  }
+  useEffect(() => {
+    let mounted = true;
+    async function init() {
+      setLoading(true);
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      const currentSession = data.session;
+      setSession(currentSession);
+      if (currentSession?.user?.id) {
+        await loadData(currentSession.user.id);
+      }
+      setLoading(false);
+    }
+    init();
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+      setSession(currentSession);
+      if (currentSession?.user?.id) {
+        setLoading(true);
+        await loadData(currentSession.user.id);
+        setLoading(false);
+      } else {
+        setRecords([]);
+        setProfile(null);
+      }
+    });
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+  const filteredRecords = useMemo(() => {
+    const q = keyword.trim().toLowerCase();
+    return records.filter((r) => {
+      const byType = filterType === "all" ? true : r.txn_type === filterType;
+      const byMonth = monthFilter ? r.txn_date?.startsWith(monthFilter) : true;
+      const text = `${r.category_name || ""} ${r.note || ""} ${r.amount || ""}`.toLowerCase();
+      const byKeyword = q ? text.includes(q) : true;
+      return byType && byMonth && byKeyword;
+    });
+  }, [records, filterType, monthFilter, keyword]);
+  const summary = useMemo(() => {
+    const income = filteredRecords
+      .filter((r) => r.txn_type === "income")
+      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const expense = filteredRecords
+      .filter((r) => r.txn_type === "expense")
+      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const debt = filteredRecords.reduce((sum, r) => sum + Number(r.debt_amount || 0), 0);
+    return {
+      income,
+      expense,
+      balance: income - expense,
+      debt,
+      count: filteredRecords.length,
+    };
+  }, [filteredRecords]);
+  function resetForm() {
+    setEditingId(null);
+    setForm({
+      txn_date: getTodayISO(),
+      txn_type: "income",
+      amount: "",
+      category_name: "",
+      debt_amount: "",
+      note: "",
+    });
+  }
+  function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+  async function handleSave() {
+    if (!session?.user?.id) {
+      setErrorMsg("请先登入后再记账。");
+      return;
+    }
+    setMessage("");
+    setErrorMsg("");
+    const amount = parseAmount(form.amount);
+    const debtAmount = parseAmount(form.debt_amount);
+    if (!form.txn_date) {
+      setErrorMsg("请选择日期。");
+      return;
+    }
+    if (amount <= 0) {
+      setErrorMsg("请输入正确的金额。");
+      return;
+    }
+    if (!form.category_name.trim()) {
+      setErrorMsg("请选择或填写分类。");
+      return;
+    }
+    setSaving(true);
+    const payload = {
       user_id: session.user.id,
       txn_date: form.txn_date,
       txn_type: form.txn_type,
       amount,
       category_name: form.category_name.trim(),
-      debt_amount: debt,
-      note: finalNote,
+      debt_amount: debtAmount || 0,
+      note: form.note.trim() || null,
     };
-
-    const fullPayload = {
-      ...basicPayload,
-      source_type: form.invoice_id ? "invoice" : null,
-      source_id: form.invoice_id || null,
-    };
-
     if (editingId) {
       const { error } = await supabase
         .from("transactions")
-        .update(fullPayload)
+        .update(payload)
         .eq("id", editingId)
         .eq("user_id", session.user.id);
-
       if (error) {
-        if (isSchemaCacheMissingSource(error.message)) {
-          const retry = await supabase
-            .from("transactions")
-            .update(basicPayload)
-            .eq("id", editingId)
-            .eq("user_id", session.user.id);
-
-          if (retry.error) {
-            setMsg(retry.error.message);
-            return;
-          }
-        } else {
-          setMsg(error.message);
-          return;
-        }
+        setSaving(false);
+        setErrorMsg(`修改失败：${error.message}`);
+        return;
       }
+      setMessage("记录已更新。");
     } else {
-      const { error } = await supabase.from("transactions").insert(fullPayload);
-
+      const { error } = await supabase.from("transactions").insert(payload);
       if (error) {
-        if (isSchemaCacheMissingSource(error.message)) {
-          const retry = await supabase.from("transactions").insert(basicPayload);
-
-          if (retry.error) {
-            setMsg(retry.error.message);
-            return;
-          }
-        } else {
-          setMsg(error.message);
-          return;
-        }
+        setSaving(false);
+        setErrorMsg(`新增失败：${error.message}`);
+        return;
       }
+      setMessage("记录已新增。");
     }
-
-    setMsg(t.saved);
-    closeForm();
-    await loadAll(session.user.id);
+    await loadData(session.user.id);
+    resetForm();
+    setSaving(false);
   }
-
-  async function deleteTransaction(id: string) {
-    const yes = window.confirm(t.confirmDelete);
-    if (!yes) return;
-
-    if (isTrial) {
-      const next = transactions.filter((x) => x.id !== id);
-      saveTrialTransactions(next);
-      setMsg(t.deleted);
-      return;
+  function handleEdit(record: Txn) {
+    setEditingId(record.id);
+    setForm({
+      txn_date: record.txn_date || getTodayISO(),
+      txn_type: record.txn_type,
+      amount: String(record.amount || ""),
+      category_name: record.category_name || "",
+      debt_amount: record.debt_amount ? String(record.debt_amount) : "",
+      note: record.note || "",
+    });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-
-    if (!session) return;
-
+  }
+  async function handleDelete(record: Txn) {
+    if (!session?.user?.id) return;
+    const ok = window.confirm("确定要删除这条记账记录吗？");
+    if (!ok) return;
+    setMessage("");
+    setErrorMsg("");
     const { error } = await supabase
       .from("transactions")
       .delete()
-      .eq("id", id)
+      .eq("id", record.id)
       .eq("user_id", session.user.id);
-
     if (error) {
-      setMsg(error.message);
+      setErrorMsg(`删除失败：${error.message}`);
       return;
     }
-
-    setMsg(t.deleted);
-    await loadAll(session.user.id);
+    setMessage("记录已删除。");
+    await loadData(session.user.id);
   }
-
-  const monthKey = new Date().toISOString().slice(0, 7);
-
-  const monthIncome = useMemo(() => {
-    return transactions
-      .filter((x) => x.txn_date?.startsWith(monthKey) && x.txn_type === "income")
-      .reduce((s, x) => s + Number(x.amount || 0), 0);
-  }, [transactions, monthKey]);
-
-  const monthExpense = useMemo(() => {
-    return transactions
-      .filter((x) => x.txn_date?.startsWith(monthKey) && x.txn_type === "expense")
-      .reduce((s, x) => s + Number(x.amount || 0), 0);
-  }, [transactions, monthKey]);
-
-  const balance = useMemo(() => {
-    return transactions.reduce((s, x) => {
-      return x.txn_type === "income"
-        ? s + Number(x.amount || 0)
-        : s - Number(x.amount || 0);
-    }, 0);
-  }, [transactions]);
-
-  const filteredRecords = useMemo(() => {
-    const s = search.toLowerCase().trim();
-
-    return transactions.filter((tx) => {
-      const invoice =
-        tx.source_type === "invoice"
-          ? invoices.find((x) => x.id === tx.source_id)
-          : null;
-
-      const customerName =
-        customers.find((c) => c.id === filterCustomerId)?.name?.toLowerCase() || "";
-
-      const matchType = filterType === "all" || tx.txn_type === filterType;
-
-      const matchCustomer =
-        !filterCustomerId ||
-        Boolean(tx.note?.toLowerCase().includes(customerName)) ||
-        invoice?.customer_id === filterCustomerId;
-
-      const matchStart = !filterStartDate || tx.txn_date >= filterStartDate;
-      const matchEnd = !filterEndDate || tx.txn_date <= filterEndDate;
-
-      const searchText = [
-        tx.txn_date,
-        tx.txn_type,
-        tx.amount,
-        tx.category_name,
-        tx.note,
-        invoice?.invoice_no,
-        invoice?.customer_name,
-        invoice?.total,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      const matchSearch = !s || searchText.includes(s);
-
-      return matchType && matchCustomer && matchStart && matchEnd && matchSearch;
-    });
-  }, [
-    transactions,
-    search,
-    filterType,
-    filterCustomerId,
-    filterStartDate,
-    filterEndDate,
-    invoices,
-    customers,
-  ]);
-
-  function getInvoice(tx: Txn) {
-    if (tx.source_type !== "invoice" || !tx.source_id) return null;
-    return invoices.find((x) => x.id === tx.source_id) || null;
+  async function logout() {
+    await supabase.auth.signOut();
+    window.location.href = "/zh";
   }
-
-  return (
-    <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
-      <section style={topBarStyle}>
-        <button
-          onClick={backToDashboard}
-          style={{
-            ...backBtnStyle,
-            color: theme.accent,
-            borderColor: theme.border,
-          }}
-        >
-          ← {t.back}
-        </button>
-
-        <div style={topRightStyle}>
-          <select
-            value={themeKey}
-            onChange={(e) => switchTheme(e.target.value as ThemeKey)}
-            style={{
-              ...selectSmallStyle,
-              borderColor: theme.border,
-              color: theme.accent,
-            }}
-          >
-            <option value="deepTeal">深青色</option>
-            <option value="pink">可爱粉色</option>
-            <option value="blackGold">黑金商务</option>
-            <option value="lightRed">可爱浅红</option>
-            <option value="nature">风景自然系</option>
-            <option value="sky">天空蓝</option>
-          </select>
-
-          <div style={langRowStyle}>
-            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
-              中
-            </button>
-            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
-              EN
-            </button>
-            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
-              BM
-            </button>
+  function exportCsv() {
+    const header = ["日期", "类型", "分类", "金额", "欠款金额", "备注"];
+    const rows = filteredRecords.map((r) => [
+      r.txn_date,
+      r.txn_type === "income" ? "收入" : "支出",
+      r.category_name || "",
+      String(r.amount || 0),
+      String(r.debt_amount || 0),
+      r.note || "",
+    ]);
+    const csv = [header, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `SmartAcctg-records-${monthFilter || "all"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  const currentCategories = form.txn_type === "income" ? incomeCategories : expenseCategories;
+  const styles: Record<string, CSSProperties> = {
+    page: {
+      minHeight: "100vh",
+      background: theme.bg,
+      color: theme.text,
+      padding: "18px",
+      fontFamily:
+        '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
+    },
+    shell: {
+      maxWidth: 1180,
+      margin: "0 auto",
+    },
+    topBar: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 16,
+      flexWrap: "wrap",
+    },
+    titleBox: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 4,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 900,
+      margin: 0,
+      color: theme.text,
+      letterSpacing: "-0.03em",
+    },
+    subtitle: {
+      margin: 0,
+      color: theme.muted,
+      fontSize: 13,
+      lineHeight: 1.5,
+    },
+    userBox: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      background: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: 18,
+      padding: "8px 10px",
+      boxShadow: "0 12px 30px rgba(15,23,42,0.08)",
+    },
+    avatar: {
+      width: 38,
+      height: 38,
+      borderRadius: "50%",
+      objectFit: "cover",
+      background: theme.soft,
+      border: `2px solid ${theme.border}`,
+    },
+    smallText: {
+      fontSize: 12,
+      color: theme.muted,
+      lineHeight: 1.4,
+    },
+    card: {
+      background: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: 22,
+      padding: 16,
+      boxShadow: "0 18px 40px rgba(15,23,42,0.08)",
+      backdropFilter: "blur(16px)",
+    },
+    statsGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+      gap: 12,
+      marginBottom: 14,
+    },
+    statCard: {
+      background: theme.card,
+      border: `1px solid ${theme.border}`,
+      borderRadius: 20,
+      padding: 14,
+      boxShadow: "0 12px 30px rgba(15,23,42,0.07)",
+    },
+    statLabel: {
+      fontSize: 12,
+      color: theme.muted,
+      marginBottom: 8,
+    },
+    statValue: {
+      fontSize: 20,
+      fontWeight: 900,
+      letterSpacing: "-0.03em",
+    },
+    mainGrid: {
+      display: "grid",
+      gridTemplateColumns: "390px minmax(0, 1fr)",
+      gap: 14,
+      alignItems: "start",
+    },
+    formGrid: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+    },
+    field: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+    },
+    label: {
+      fontSize: 12,
+      color: theme.muted,
+      fontWeight: 700,
+    },
+    input: {
+      width: "100%",
+      boxSizing: "border-box",
+      border: `1px solid ${theme.border}`,
+      borderRadius: 14,
+      padding: "11px 12px",
+      fontSize: 14,
+      outline: "none",
+      background: "rgba(255,255,255,0.96)",
+      color: theme.text,
+      minWidth: 0,
+    },
+    textarea: {
+      width: "100%",
+      boxSizing: "border-box",
+      border: `1px solid ${theme.border}`,
+      borderRadius: 14,
+      padding: "11px 12px",
+      fontSize: 14,
+      outline: "none",
+      background: "rgba(255,255,255,0.96)",
+      color: theme.text,
+      minHeight: 86,
+      resize: "vertical",
+      fontFamily: "inherit",
+    },
+    btnRow: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginTop: 12,
+    },
+    primaryBtn: {
+      border: "none",
+      borderRadius: 14,
+      padding: "11px 14px",
+      background: theme.primary,
+      color: "#fff",
+      fontWeight: 900,
+      cursor: "pointer",
+      boxShadow: "0 12px 24px rgba(15,118,110,0.22)",
+    },
+    ghostBtn: {
+      border: `1px solid ${theme.border}`,
+      borderRadius: 14,
+      padding: "10px 14px",
+      background: "rgba(255,255,255,0.8)",
+      color: theme.text,
+      fontWeight: 800,
+      cursor: "pointer",
+    },
+    dangerBtn: {
+      border: "none",
+      borderRadius: 12,
+      padding: "8px 10px",
+      background: "#FEE2E2",
+      color: theme.danger,
+      fontWeight: 900,
+      cursor: "pointer",
+    },
+    editBtn: {
+      border: "none",
+      borderRadius: 12,
+      padding: "8px 10px",
+      background: theme.soft,
+      color: theme.primaryDark,
+      fontWeight: 900,
+      cursor: "pointer",
+    },
+    filterRow: {
+      display: "grid",
+      gridTemplateColumns: "120px 150px minmax(0, 1fr) auto",
+      gap: 10,
+      marginBottom: 12,
+      alignItems: "center",
+    },
+    tableWrap: {
+      overflowX: "auto",
+      borderRadius: 16,
+      border: `1px solid ${theme.border}`,
+      background: "rgba(255,255,255,0.72)",
+    },
+    table: {
+      width: "100%",
+      borderCollapse: "collapse",
+      minWidth: 760,
+      fontSize: 13,
+    },
+    th: {
+      textAlign: "left",
+      padding: "12px 10px",
+      background: theme.soft,
+      color: theme.text,
+      fontSize: 12,
+      whiteSpace: "nowrap",
+    },
+    td: {
+      padding: "12px 10px",
+      borderTop: `1px solid ${theme.border}`,
+      verticalAlign: "top",
+    },
+    badgeIncome: {
+      display: "inline-flex",
+      borderRadius: 999,
+      padding: "4px 9px",
+      background: "#DCFCE7",
+      color: "#166534",
+      fontSize: 12,
+      fontWeight: 900,
+      whiteSpace: "nowrap",
+    },
+    badgeExpense: {
+      display: "inline-flex",
+      borderRadius: 999,
+      padding: "4px 9px",
+      background: "#FFE4E6",
+      color: "#BE123C",
+      fontSize: 12,
+      fontWeight: 900,
+      whiteSpace: "nowrap",
+    },
+    info: {
+      padding: "10px 12px",
+      borderRadius: 14,
+      background: "#ECFDF5",
+      color: "#047857",
+      fontSize: 13,
+      fontWeight: 700,
+      marginBottom: 12,
+      border: "1px solid #A7F3D0",
+    },
+    error: {
+      padding: "10px 12px",
+      borderRadius: 14,
+      background: "#FEF2F2",
+      color: "#B91C1C",
+      fontSize: 13,
+      fontWeight: 700,
+      marginBottom: 12,
+      border: "1px solid #FECACA",
+    },
+    empty: {
+      textAlign: "center",
+      color: theme.muted,
+      padding: "34px 12px",
+      fontSize: 14,
+    },
+    mobileList: {
+      display: "none",
+      flexDirection: "column",
+      gap: 10,
+    },
+    mobileCard: {
+      border: `1px solid ${theme.border}`,
+      background: "rgba(255,255,255,0.82)",
+      borderRadius: 18,
+      padding: 12,
+    },
+  };
+  if (loading) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.shell}>
+          <div style={styles.card}>
+            <h1 style={styles.title}>每日记账</h1>
+            <p style={styles.subtitle}>正在读取你的记账资料...</p>
           </div>
         </div>
-      </section>
-
-      {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
-      {msg ? <div style={msgStyle}>{msg}</div> : null}
-
-      <section
-        style={{
-          ...cardStyle,
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-        }}
-      >
-        <div style={recordHeaderStyle}>
-          <h1 style={titleStyle}>{t.title}</h1>
-
-          <button
-            onClick={openNewForm}
-            style={{
-              ...plusBtnStyle,
-              background: theme.accent,
-            }}
-          >
-            ＋
-          </button>
-        </div>
-
-        <section style={statsGridStyle}>
-          <div style={{ ...statCardStyle, borderColor: theme.border }}>
-            <span>{t.balance}</span>
-            <strong style={{ ...statAmountStyle, color: theme.accent }}>
-              RM {balance.toFixed(2)}
-            </strong>
-          </div>
-
-          <div style={{ ...statCardStyle, borderColor: theme.border }}>
-            <span>{t.monthIncome}</span>
-            <strong style={{ ...statAmountStyle, color: "#16a34a" }}>
-              RM {monthIncome.toFixed(2)}
-            </strong>
-          </div>
-
-          <div style={{ ...statCardStyle, borderColor: theme.border }}>
-            <span>{t.monthExpense}</span>
-            <strong style={{ ...statAmountStyle, color: "#dc2626" }}>
-              RM {monthExpense.toFixed(2)}
-            </strong>
-          </div>
-        </section>
-      </section>
-
-      <section
-        style={{
-          ...cardStyle,
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-        }}
-      >
-        <h2 style={sectionTitleStyle}>{t.searchTitle}</h2>
-
-        <div style={responsiveGridStyle}>
-          <input
-            placeholder={t.search}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
-          />
-
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value as "all" | TxnType)}
-            style={{ ...inputStyle, borderColor: theme.border }}
-          >
-            <option value="all">{t.all}</option>
-            <option value="income">{t.income}</option>
-            <option value="expense">{t.expense}</option>
-          </select>
-
-          <select
-            value={filterCustomerId}
-            onChange={(e) => setFilterCustomerId(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
-          >
-            <option value="">{t.filterCustomer}</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-
-          <div style={dateWrapStyle}>
-            <label style={{ ...dateLabelStyle, color: theme.subText }}>{t.startDate}</label>
-            <input
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              style={{ ...dateInputStyle, borderColor: theme.border }}
-            />
-          </div>
-
-          <div style={dateWrapStyle}>
-            <label style={{ ...dateLabelStyle, color: theme.subText }}>{t.endDate}</label>
-            <input
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              style={{ ...dateInputStyle, borderColor: theme.border }}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section
-        style={{
-          ...cardStyle,
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-        }}
-      >
-        {filteredRecords.length === 0 ? (
-          <p style={{ color: theme.subText }}>{t.noRecord}</p>
-        ) : (
-          filteredRecords.map((tx) => {
-            const invoice = getInvoice(tx);
-
-            return (
-              <div
-                key={tx.id}
-                style={{
-                  ...recordCardStyle,
-                  borderColor: theme.border,
-                  background: theme.card,
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <h3 style={recordTitleStyle}>
-                    {tx.txn_type === "income" ? t.income : t.expense} ·{" "}
-                    {tx.category_name || "-"}
-                  </h3>
-
-                  <p style={{ ...mutedStyle, color: theme.subText }}>
-                    {t.date}: {tx.txn_date} | {t.amount}: RM{" "}
-                    {Number(tx.amount || 0).toFixed(2)}
-                  </p>
-
-                  {Number(tx.debt_amount || 0) > 0 ? (
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.debtAmount}: RM {Number(tx.debt_amount || 0).toFixed(2)}
-                    </p>
-                  ) : null}
-
-                  {invoice ? (
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.sourceInvoice}: {invoice.invoice_no || invoice.id}{" "}
-                      {invoice.customer_name ? `｜${invoice.customer_name}` : ""}
-                    </p>
-                  ) : (
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.manualRecord}
-                    </p>
-                  )}
-
-                  {tx.note ? (
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.note}: {tx.note}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div style={actionRowStyle}>
-                  <button
-                    onClick={() => editTransaction(tx)}
-                    style={{
-                      ...actionBtnStyle,
-                      background: theme.accent,
-                    }}
-                  >
-                    {t.edit}
-                  </button>
-
-                  <button onClick={() => deleteTransaction(tx.id)} style={deleteBtnStyle}>
-                    {t.delete}
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </section>
-
-      <section
-        style={{
-          ...cardStyle,
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-        }}
-      >
-        <h2 style={sectionTitleStyle}>{t.related}</h2>
-
-        <div style={relatedMenuRowStyle}>
-          <select
-            value={relatedPath}
-            onChange={(e) => setRelatedPath(e.target.value)}
-            style={{
-              ...inputStyle,
-              borderColor: theme.border,
-            }}
-          >
-            <option value="/dashboard/customers">{t.customers}</option>
-            <option value="/dashboard/products">{t.products}</option>
-            <option value="/dashboard/invoices">{t.invoices}</option>
-          </select>
-
-          <button
-            onClick={goRelatedFeature}
-            style={{
-              ...primaryBtnStyle,
-              background: theme.accent,
-              marginTop: 0,
-            }}
-          >
-            {t.goFeature}
-          </button>
-        </div>
-      </section>
-
-      {showForm ? (
-        <div style={overlayStyle}>
-          <section
-            style={{
-              ...modalStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div style={modalHeaderStyle}>
-              <h2 style={modalTitleStyle}>{editingId ? t.update : t.add}</h2>
-
-              <button onClick={closeForm} style={closeBtnStyle}>
-                X
+      </main>
+    );
+  }
+  if (!session) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.shell}>
+          <div style={styles.card}>
+            <h1 style={styles.title}>每日记账</h1>
+            <p style={styles.subtitle}>你还没有登入，请先登入后再使用记账功能。</p>
+            <div style={styles.btnRow}>
+              <button style={styles.primaryBtn} onClick={() => (window.location.href = "/zh")}>
+                返回首页登入
               </button>
             </div>
-
-            <div style={responsiveGridStyle}>
-              <div style={dateWrapStyle}>
-                <label style={{ ...dateLabelStyle, color: theme.subText }}>{t.date}</label>
+          </div>
+        </div>
+      </main>
+    );
+  }
+  return (
+    <main style={styles.page}>
+      <div style={styles.shell}>
+        <div style={styles.topBar}>
+          <div style={styles.titleBox}>
+            <h1 style={styles.title}>每日记账</h1>
+            <p style={styles.subtitle}>新增收入 / 支出记录，系统会自动计算本月收入、本月支出和结余。</p>
+          </div>
+          <div style={styles.userBox}>
+            <img
+              src={profile?.avatar_url || "/default-avatar.png"}
+              alt="avatar"
+              style={styles.avatar}
+              onError={(e) => {
+                e.currentTarget.src =
+                  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='100%25' height='100%25' rx='40' fill='%23ccfbf1'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='%230f766e'%3E人%3C/text%3E%3C/svg%3E";
+              }}
+            />
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 13 }}>
+                {profile?.full_name || session.user.email || "SmartAcctg 用户"}
+              </div>
+              <div style={styles.smallText}>
+                {profile?.plan_type ? `配套：${profile.plan_type}` : "配套：Free"}
+                {profile?.plan_expiry ? `｜到期：${profile.plan_expiry}` : ""}
+              </div>
+            </div>
+            <button style={styles.ghostBtn} onClick={logout}>
+              退出
+            </button>
+          </div>
+        </div>
+        {message && <div style={styles.info}>{message}</div>}
+        {errorMsg && <div style={styles.error}>{errorMsg}</div>}
+        <section style={styles.statsGrid} className="records-stats-grid">
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>筛选记录数</div>
+            <div style={styles.statValue}>{summary.count}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>收入</div>
+            <div style={{ ...styles.statValue, color: "#15803D" }}>{money(summary.income)}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>支出</div>
+            <div style={{ ...styles.statValue, color: "#BE123C" }}>{money(summary.expense)}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>结余</div>
+            <div
+              style={{
+                ...styles.statValue,
+                color: summary.balance >= 0 ? theme.primaryDark : "#BE123C",
+              }}
+            >
+              {money(summary.balance)}
+            </div>
+          </div>
+        </section>
+        <section style={styles.mainGrid} className="records-main-grid">
+          <div style={styles.card}>
+            <h2 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 900 }}>
+              {editingId ? "修改记录" : "新增记录"}
+            </h2>
+            <div style={styles.formGrid}>
+              <div style={styles.field}>
+                <label style={styles.label}>日期</label>
                 <input
+                  style={styles.input}
                   type="date"
                   value={form.txn_date}
-                  onChange={(e) => setForm({ ...form, txn_date: e.target.value })}
-                  style={{ ...dateInputStyle, borderColor: theme.border }}
+                  onChange={(e) => setField("txn_date", e.target.value)}
                 />
               </div>
-
-              <select
-                value={form.txn_type}
-                onChange={(e) => setForm({ ...form, txn_type: e.target.value as TxnType })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              >
-                <option value="income">{t.income}</option>
-                <option value="expense">{t.expense}</option>
-              </select>
-
+              <div style={styles.field}>
+                <label style={styles.label}>类型</label>
+                <select
+                  style={styles.input}
+                  value={form.txn_type}
+                  onChange={(e) => {
+                    const nextType = e.target.value as TxnType;
+                    setForm((prev) => ({
+                      ...prev,
+                      txn_type: nextType,
+                      category_name: "",
+                    }));
+                  }}
+                >
+                  <option value="income">收入</option>
+                  <option value="expense">支出</option>
+                </select>
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>金额</label>
+                <input
+                  style={styles.input}
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="例如：100.00"
+                  value={form.amount}
+                  onChange={(e) => setField("amount", e.target.value)}
+                />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>欠款金额</label>
+                <input
+                  style={styles.input}
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="没有可留空"
+                  value={form.debt_amount}
+                  onChange={(e) => setField("debt_amount", e.target.value)}
+                />
+              </div>
+            </div>
+            <div style={{ ...styles.field, marginTop: 10 }}>
+              <label style={styles.label}>分类</label>
               <input
-                placeholder={t.amount}
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              />
-
-              <input
-                placeholder={t.category}
+                style={styles.input}
+                list="record-categories"
+                placeholder="选择或自己输入分类"
                 value={form.category_name}
-                onChange={(e) => setForm({ ...form, category_name: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                onChange={(e) => setField("category_name", e.target.value)}
               />
-
-              <input
-                placeholder={t.debtAmount}
-                value={form.debt_amount}
-                onChange={(e) => setForm({ ...form, debt_amount: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              />
-
-              <input
-                placeholder={t.note}
+              <datalist id="record-categories">
+                {currentCategories.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+            <div style={{ ...styles.field, marginTop: 10 }}>
+              <label style={styles.label}>备注</label>
+              <textarea
+                style={styles.textarea}
+                placeholder="例如：客户付款、购买产品、广告费用..."
                 value={form.note}
-                onChange={(e) => setForm({ ...form, note: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                onChange={(e) => setField("note", e.target.value)}
               />
             </div>
-
-            <h3 style={sectionTitleStyle}>{t.linkedInfo}</h3>
-
-            <div style={responsiveGridStyle}>
-              <select
-                value={form.customer_id}
-                onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              >
-                <option value="">{t.noCustomer}</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={form.product_id}
-                onChange={(e) => setForm({ ...form, product_id: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              >
-                <option value="">{t.noProduct}</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={form.invoice_id}
-                onChange={(e) => setForm({ ...form, invoice_id: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              >
-                <option value="">{t.noInvoice}</option>
-                {invoices.map((inv) => (
-                  <option key={inv.id} value={inv.id}>
-                    {inv.invoice_no || inv.id}{" "}
-                    {inv.customer_name ? `- ${inv.customer_name}` : ""} - RM{" "}
-                    {Number(inv.total || 0).toFixed(2)}
-                  </option>
-                ))}
-              </select>
+            <div style={styles.btnRow}>
+              <button style={styles.primaryBtn} onClick={handleSave} disabled={saving}>
+                {saving ? "保存中..." : editingId ? "保存修改" : "新增记录"}
+              </button>
+              {editingId && (
+                <button style={styles.ghostBtn} onClick={resetForm} disabled={saving}>
+                  取消修改
+                </button>
+              )}
+              <button style={styles.ghostBtn} onClick={resetForm} disabled={saving}>
+                清空
+              </button>
             </div>
-
-            <button
-              onClick={saveTransaction}
-              style={{
-                ...primaryBtnStyle,
-                background: theme.accent,
-              }}
-            >
-              {editingId ? t.update : t.save}
-            </button>
-
-            <button
-              onClick={closeForm}
-              style={{
-                ...secondaryBtnStyle,
-                borderColor: theme.border,
-                color: theme.accent,
-              }}
-            >
-              {t.cancel}
-            </button>
-          </section>
-        </div>
-      ) : null}
+          </div>
+          <div style={styles.card}>
+            <div style={styles.filterRow} className="records-filter-row">
+              <select
+                style={styles.input}
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as FilterType)}
+              >
+                <option value="all">全部</option>
+                <option value="income">收入</option>
+                <option value="expense">支出</option>
+              </select>
+              <input
+                style={styles.input}
+                type="month"
+                value={monthFilter}
+                onChange={(e) => setMonthFilter(e.target.value)}
+              />
+              <input
+                style={styles.input}
+                placeholder="搜索分类 / 备注 / 金额"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+              />
+              <button style={styles.ghostBtn} onClick={exportCsv}>
+                导出
+              </button>
+            </div>
+            {filteredRecords.length === 0 ? (
+              <div style={styles.empty}>暂无记录。你可以先新增一条收入或支出。</div>
+            ) : (
+              <>
+                <div style={styles.tableWrap} className="records-table-wrap">
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>日期</th>
+                        <th style={styles.th}>类型</th>
+                        <th style={styles.th}>分类</th>
+                        <th style={styles.th}>金额</th>
+                        <th style={styles.th}>欠款</th>
+                        <th style={styles.th}>备注</th>
+                        <th style={styles.th}>来源</th>
+                        <th style={styles.th}>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRecords.map((r) => (
+                        <tr key={r.id}>
+                          <td style={styles.td}>{safeDate(r.txn_date)}</td>
+                          <td style={styles.td}>
+                            <span style={r.txn_type === "income" ? styles.badgeIncome : styles.badgeExpense}>
+                              {r.txn_type === "income" ? "收入" : "支出"}
+                            </span>
+                          </td>
+                          <td style={styles.td}>
+                            <strong>{r.category_name || "-"}</strong>
+                          </td>
+                          <td
+                            style={{
+                              ...styles.td,
+                              fontWeight: 900,
+                              color: r.txn_type === "income" ? "#15803D" : "#BE123C",
+                            }}
+                          >
+                            {money(Number(r.amount || 0))}
+                          </td>
+                          <td style={styles.td}>{Number(r.debt_amount || 0) > 0 ? money(Number(r.debt_amount)) : "-"}</td>
+                          <td style={styles.td}>{r.note || "-"}</td>
+                          <td style={styles.td}>
+                            {r.source_type ? (
+                              <span style={{ ...styles.smallText, color: theme.primaryDark, fontWeight: 800 }}>
+                                {r.source_type === "invoice" ? "发票系统" : r.source_type}
+                              </span>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td style={styles.td}>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button style={styles.editBtn} onClick={() => handleEdit(r)}>
+                                修改
+                              </button>
+                              <button style={styles.dangerBtn} onClick={() => handleDelete(r)}>
+                                删除
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={styles.mobileList} className="records-mobile-list">
+                  {filteredRecords.map((r) => (
+                    <div key={r.id} style={styles.mobileCard}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 900 }}>{r.category_name || "-"}</div>
+                          <div style={styles.smallText}>{safeDate(r.txn_date)}</div>
+                        </div>
+                        <span style={r.txn_type === "income" ? styles.badgeIncome : styles.badgeExpense}>
+                          {r.txn_type === "income" ? "收入" : "支出"}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 20,
+                          fontWeight: 900,
+                          color: r.txn_type === "income" ? "#15803D" : "#BE123C",
+                        }}
+                      >
+                        {money(Number(r.amount || 0))}
+                      </div>
+                      {Number(r.debt_amount || 0) > 0 && (
+                        <div style={{ marginTop: 6, color: "#B45309", fontWeight: 800 }}>
+                          欠款：{money(Number(r.debt_amount || 0))}
+                        </div>
+                      )}
+                      {r.note && <div style={{ marginTop: 8, color: theme.muted, fontSize: 13 }}>{r.note}</div>}
+                      {r.source_type && (
+                        <div style={{ marginTop: 8, color: theme.primaryDark, fontSize: 12, fontWeight: 800 }}>
+                          来源：{r.source_type === "invoice" ? "发票系统" : r.source_type}
+                        </div>
+                      )}
+                      <div style={{ ...styles.btnRow, marginTop: 10 }}>
+                        <button style={styles.editBtn} onClick={() => handleEdit(r)}>
+                          修改
+                        </button>
+                        <button style={styles.dangerBtn} onClick={() => handleDelete(r)}>
+                          删除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      </div>
+      <style jsx>{`
+        @media (max-width: 900px) {
+          .records-stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .records-main-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .records-filter-row {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .records-table-wrap {
+            display: none;
+          }
+          .records-mobile-list {
+            display: flex !important;
+          }
+          input[type="date"],
+          input[type="month"] {
+            min-width: 0;
+            width: 100%;
+          }
+        }
+      `}</style>
     </main>
   );
 }
-
-const pageStyle: CSSProperties = {
-  minHeight: "100vh",
-  padding: "clamp(10px, 2vw, 24px)",
-  fontFamily: "sans-serif",
-  fontSize: "clamp(14px, 2vw, 16px)",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 18,
-  flexWrap: "wrap",
-};
-
-const topRightStyle: CSSProperties = {
-  marginLeft: "auto",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  gap: 10,
-  flexWrap: "wrap",
-  maxWidth: "100%",
-};
-
-const backBtnStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 12,
-  padding: "clamp(8px, 1.6vw, 12px) clamp(10px, 2vw, 16px)",
-  fontSize: "clamp(13px, 2.2vw, 16px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  maxWidth: "100%",
-  whiteSpace: "normal",
-  lineHeight: 1.25,
-};
-
-const selectSmallStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 999,
-  padding: "clamp(7px, 1.5vw, 9px) clamp(9px, 2vw, 12px)",
-  fontSize: "clamp(12px, 2vw, 15px)",
-  fontWeight: 900,
-  outline: "none",
-  maxWidth: "100%",
-  height: "clamp(38px, 7vw, 44px)",
-};
-
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: "clamp(4px, 1vw, 8px)",
-  flexWrap: "wrap",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  maxWidth: "100%",
-};
-
-const langBtn = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
-  minWidth: "clamp(38px, 8vw, 58px)",
-  minHeight: "clamp(36px, 7vw, 42px)",
-  padding: "clamp(7px, 1.6vw, 10px) clamp(8px, 2vw, 14px)",
-  borderRadius: 999,
-  border: `2px solid ${theme.border}`,
-  background: active ? theme.accent : "#fff",
-  color: active ? "#fff" : theme.accent,
-  fontSize: "clamp(12px, 2.5vw, 15px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  lineHeight: 1.1,
-  textAlign: "center",
-  whiteSpace: "nowrap",
-});
-
-const cardStyle: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 22,
-  padding: "clamp(14px, 2vw, 22px)",
-  marginBottom: 18,
-};
-
-const recordHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 14,
-};
-
-const titleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(24px, 4vw, 34px)",
-  lineHeight: 1.15,
-};
-
-const sectionTitleStyle: CSSProperties = {
-  marginTop: 0,
-  fontSize: "clamp(18px, 3vw, 24px)",
-};
-
-const plusBtnStyle: CSSProperties = {
-  width: "clamp(40px, 9vw, 46px)",
-  height: "clamp(40px, 9vw, 46px)",
-  borderRadius: "999px",
-  color: "#fff",
-  border: "none",
-  fontSize: "clamp(24px, 5vw, 28px)",
-  fontWeight: 900,
-  lineHeight: 1,
-  cursor: "pointer",
-  flexShrink: 0,
-};
-
-const statsGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-  gap: 12,
-  marginTop: 14,
-};
-
-const statCardStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 18,
-  padding: "clamp(12px, 2vw, 16px)",
-  minHeight: 96,
-};
-
-const statAmountStyle: CSSProperties = {
-  display: "block",
-  marginTop: 14,
-  fontSize: "clamp(18px, 3vw, 22px)",
-  fontWeight: 900,
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: "100%",
-  minWidth: 0,
-  boxSizing: "border-box",
-  padding: "13px 14px",
-  borderRadius: 12,
-  border: "1px solid",
-  fontSize: "clamp(14px, 2vw, 16px)",
-  outline: "none",
-  minHeight: 48,
-};
-
-const responsiveGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 12,
-};
-
-const relatedMenuRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 12,
-  alignItems: "center",
-};
-
-const recordCardStyle: CSSProperties = {
-  border: "1px solid",
-  borderRadius: 18,
-  padding: "clamp(14px, 2vw, 18px)",
-  marginBottom: 14,
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr)",
-  gap: 14,
-};
-
-const recordTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(18px, 3vw, 22px)",
-  overflowWrap: "anywhere",
-};
-
-const mutedStyle: CSSProperties = {
-  fontSize: "clamp(13px, 2vw, 14px)",
-  overflowWrap: "anywhere",
-};
-
-const actionRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  alignItems: "center",
-  flexWrap: "wrap",
-};
-
-const actionBtnStyle: CSSProperties = {
-  width: "clamp(96px, 22vw, 130px)",
-  minHeight: 42,
-  color: "#fff",
-  border: "none",
-  borderRadius: 10,
-  padding: "9px 10px",
-  fontSize: "clamp(12px, 2vw, 14px)",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const deleteBtnStyle: CSSProperties = {
-  width: "clamp(96px, 22vw, 130px)",
-  minHeight: 42,
-  background: "#fee2e2",
-  color: "#b91c1c",
-  border: "none",
-  borderRadius: 10,
-  padding: "9px 10px",
-  fontSize: "clamp(12px, 2vw, 14px)",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const primaryBtnStyle: CSSProperties = {
-  marginTop: 16,
-  color: "#fff",
-  border: "none",
-  borderRadius: 12,
-  padding: "13px 18px",
-  fontSize: "clamp(14px, 2vw, 16px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  minHeight: 48,
-};
-
-const secondaryBtnStyle: CSSProperties = {
-  marginTop: 16,
-  marginLeft: 10,
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 12,
-  padding: "11px 18px",
-  fontSize: "clamp(14px, 2vw, 16px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  minHeight: 46,
-};
-
-const msgStyle: CSSProperties = {
-  background: "#dcfce7",
-  color: "#166534",
-  padding: 12,
-  borderRadius: 12,
-  marginBottom: 14,
-  fontWeight: 800,
-};
-
-const trialMsgStyle: CSSProperties = {
-  background: "#fef3c7",
-  color: "#92400e",
-  padding: 12,
-  borderRadius: 12,
-  marginBottom: 14,
-  fontWeight: 800,
-};
-
-const overlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15, 23, 42, 0.52)",
-  padding: "clamp(12px, 3vw, 24px)",
-  zIndex: 999,
-  overflowY: "auto",
-};
-
-const modalStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 900,
-  margin: "0 auto",
-  border: "2px solid",
-  borderRadius: 24,
-  padding: "clamp(16px, 3vw, 24px)",
-};
-
-const modalHeaderStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  marginBottom: 16,
-};
-
-const modalTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(22px, 4vw, 30px)",
-};
-
-const closeBtnStyle: CSSProperties = {
-  background: "#dc2626",
-  color: "#fff",
-  border: "none",
-  width: 42,
-  height: 42,
-  borderRadius: 999,
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const dateWrapStyle: CSSProperties = {
-  width: "100%",
-};
-
-const dateLabelStyle: CSSProperties = {
-  display: "block",
-  fontSize: 13,
-  fontWeight: 800,
-  marginBottom: 5,
-};
-
-const dateInputStyle: CSSProperties = {
-  ...inputStyle,
-  height: 48,
-  minHeight: 48,
-  appearance: "none",
-  WebkitAppearance: "none",
-};
