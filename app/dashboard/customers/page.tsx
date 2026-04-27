@@ -39,10 +39,27 @@ type CustomerPrice = {
   custom_price: number;
 };
 
+type Invoice = {
+  id: string;
+  user_id?: string;
+  customer_id?: string | null;
+  customer_name?: string | null;
+  invoice_no?: string | null;
+  invoice_date?: string | null;
+  created_at?: string | null;
+  subtotal?: number | null;
+  total?: number | null;
+  total_cost?: number | null;
+  total_profit?: number | null;
+  note?: string | null;
+  status?: string | null;
+};
+
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
 const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
+const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 
 const LANG_KEY = "smartacctg_lang";
 const THEME_KEY = "smartacctg_theme";
@@ -165,6 +182,14 @@ const TXT = {
     delete: "删除",
     whatsapp: "WhatsApp",
     invoice: "开发票",
+    invoiceRecords: "发票记录",
+    createNewInvoice: "新增发票",
+    invoiceNo: "发票号码",
+    invoiceDate: "发票日期",
+    invoiceTotal: "发票总额",
+    invoiceProfit: "利润",
+    noInvoice: "这个客户还没有发票记录",
+    selectedCustomer: "当前客户",
     accounting: "记账系统",
     products: "产品管理",
     invoices: "发票系统",
@@ -220,6 +245,14 @@ const TXT = {
     delete: "Delete",
     whatsapp: "WhatsApp",
     invoice: "Invoice",
+    invoiceRecords: "Invoice Records",
+    createNewInvoice: "Create Invoice",
+    invoiceNo: "Invoice No.",
+    invoiceDate: "Invoice Date",
+    invoiceTotal: "Invoice Total",
+    invoiceProfit: "Profit",
+    noInvoice: "No invoice records for this customer yet",
+    selectedCustomer: "Selected Customer",
     accounting: "Accounting",
     products: "Products",
     invoices: "Invoices",
@@ -275,6 +308,14 @@ const TXT = {
     delete: "Padam",
     whatsapp: "WhatsApp",
     invoice: "Invois",
+    invoiceRecords: "Rekod Invois",
+    createNewInvoice: "Tambah Invois",
+    invoiceNo: "No. Invois",
+    invoiceDate: "Tarikh Invois",
+    invoiceTotal: "Jumlah Invois",
+    invoiceProfit: "Untung",
+    noInvoice: "Pelanggan ini belum ada rekod invois",
+    selectedCustomer: "Pelanggan Dipilih",
     accounting: "Sistem Akaun",
     products: "Produk",
     invoices: "Invois",
@@ -308,6 +349,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerPrices, setCustomerPrices] = useState<CustomerPrice[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | CustomerStatus>("all");
@@ -320,6 +362,9 @@ export default function CustomersPage() {
   const [priceCustomerName, setPriceCustomerName] = useState("");
   const [priceProductId, setPriceProductId] = useState("");
   const [customPrice, setCustomPrice] = useState("");
+
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceCustomer, setInvoiceCustomer] = useState<Customer | null>(null);
 
   const [formPriceProductId, setFormPriceProductId] = useState("");
   const [formCustomPrice, setFormCustomPrice] = useState("");
@@ -385,10 +430,12 @@ export default function CustomersPage() {
         const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
         const savedPrices = localStorage.getItem(TRIAL_CUSTOMER_PRICES_KEY);
         const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
+        const savedInvoices = localStorage.getItem(TRIAL_INVOICES_KEY);
 
         setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
         setCustomerPrices(savedPrices ? JSON.parse(savedPrices) : []);
         setProducts(savedProducts ? JSON.parse(savedProducts) : []);
+        setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
 
         return;
       }
@@ -397,6 +444,7 @@ export default function CustomersPage() {
       localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
       localStorage.removeItem(TRIAL_CUSTOMER_PRICES_KEY);
       localStorage.removeItem(TRIAL_PRODUCTS_KEY);
+      localStorage.removeItem(TRIAL_INVOICES_KEY);
       window.location.href = "/zh";
       return;
     }
@@ -443,9 +491,16 @@ export default function CustomersPage() {
       .select("*")
       .eq("user_id", userId);
 
+    const { data: invoiceData } = await supabase
+      .from("invoices")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
     setCustomers((customerData || []) as Customer[]);
     setProducts((productData || []) as Product[]);
     setCustomerPrices((priceData || []) as CustomerPrice[]);
+    setInvoices((invoiceData || []) as Invoice[]);
   }
 
   function saveTrialCustomers(nextCustomers: Customer[]) {
@@ -478,10 +533,22 @@ export default function CustomersPage() {
     go(relatedPath);
   }
 
-  function openInvoiceForCustomer(c: Customer) {
+  function openInvoiceRecords(c: Customer) {
+    setInvoiceCustomer(c);
+    setShowInvoiceModal(true);
+  }
+
+  function closeInvoiceModal() {
+    setInvoiceCustomer(null);
+    setShowInvoiceModal(false);
+  }
+
+  function goCreateInvoiceForCustomer() {
+    if (!invoiceCustomer) return;
+
     go(
       "/dashboard/invoices",
-      `customerId=${encodeURIComponent(c.id)}&customerName=${encodeURIComponent(c.name)}&from=customers`
+      `customerId=${encodeURIComponent(invoiceCustomer.id)}&customerName=${encodeURIComponent(invoiceCustomer.name)}&from=customers`
     );
   }
 
@@ -817,6 +884,20 @@ export default function CustomersPage() {
   const formSelectedProduct = products.find((p) => p.id === formPriceProductId);
   const targetPrices = customerPrices.filter((p) => p.customer_id === priceCustomerId);
 
+  const selectedCustomerInvoices = useMemo(() => {
+    if (!invoiceCustomer) return [];
+
+    return invoices.filter((inv) => {
+      const matchById = inv.customer_id && inv.customer_id === invoiceCustomer.id;
+      const matchByName =
+        inv.customer_name &&
+        invoiceCustomer.name &&
+        inv.customer_name.toLowerCase() === invoiceCustomer.name.toLowerCase();
+
+      return matchById || matchByName;
+    });
+  }, [invoices, invoiceCustomer]);
+
   return (
     <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
       <section style={topBarStyle}>
@@ -977,7 +1058,7 @@ export default function CustomersPage() {
                   </div>
 
                   <div style={actionRowStyle}>
-                    <button onClick={() => openInvoiceForCustomer(c)} style={invoiceBtnStyle}>
+                    <button onClick={() => openInvoiceRecords(c)} style={invoiceBtnStyle}>
                       {t.invoice}
                     </button>
 
@@ -985,8 +1066,7 @@ export default function CustomersPage() {
                       onClick={() => openPriceModal(c)}
                       style={{
                         ...priceBtnStyle,
-                        borderColor: theme.border,
-                        color: theme.accent,
+                        background: theme.accent,
                       }}
                     >
                       {t.priceTitle}
@@ -1275,6 +1355,93 @@ export default function CustomersPage() {
           </section>
         </div>
       ) : null}
+
+      {showInvoiceModal ? (
+        <div style={overlayStyle}>
+          <section
+            style={{
+              ...modalStyle,
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <div style={modalHeaderStyle}>
+              <div>
+                <h2 style={modalTitleStyle}>{t.invoiceRecords}</h2>
+                <p style={{ ...mutedStyle, color: theme.subText, margin: "6px 0 0" }}>
+                  {t.selectedCustomer}: {invoiceCustomer?.name || "-"}
+                </p>
+              </div>
+
+              <button onClick={closeInvoiceModal} style={closeBtnStyle}>
+                X
+              </button>
+            </div>
+
+            <button
+              onClick={goCreateInvoiceForCustomer}
+              style={{
+                ...primaryBtnStyle,
+                background: theme.accent,
+                marginTop: 0,
+              }}
+            >
+              {t.createNewInvoice}
+            </button>
+
+            <div style={{ marginTop: 16 }}>
+              {selectedCustomerInvoices.length === 0 ? (
+                <p style={{ color: theme.subText }}>{t.noInvoice}</p>
+              ) : (
+                selectedCustomerInvoices.map((inv) => {
+                  const dateText =
+                    inv.invoice_date ||
+                    (inv.created_at ? inv.created_at.slice(0, 10) : "-");
+
+                  return (
+                    <div
+                      key={inv.id}
+                      style={{
+                        ...invoiceRecordCardStyle,
+                        borderColor: theme.border,
+                        background: theme.softBg,
+                      }}
+                    >
+                      <div>
+                        <strong>
+                          {t.invoiceNo}: {inv.invoice_no || inv.id}
+                        </strong>
+
+                        <p style={{ ...mutedStyle, color: theme.subText }}>
+                          {t.invoiceDate}: {dateText}
+                        </p>
+
+                        {inv.note ? (
+                          <p style={{ ...mutedStyle, color: theme.subText }}>
+                            {inv.note}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div style={invoiceAmountBoxStyle}>
+                        <strong>
+                          {t.invoiceTotal}: RM {Number(inv.total || 0).toFixed(2)}
+                        </strong>
+
+                        <span style={{ color: theme.subText }}>
+                          {t.invoiceProfit}: RM {Number(inv.total_profit || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -1290,6 +1457,7 @@ const pageStyle: CSSProperties = {
   minHeight: "100vh",
   padding: "clamp(10px, 2vw, 24px)",
   fontFamily: "sans-serif",
+  fontSize: "clamp(14px, 2vw, 16px)",
 };
 
 const topBarStyle: CSSProperties = {
@@ -1333,6 +1501,7 @@ const selectSmallStyle: CSSProperties = {
   fontWeight: 900,
   outline: "none",
   maxWidth: "100%",
+  height: "clamp(38px, 7vw, 44px)",
 };
 
 const langRowStyle: CSSProperties = {
@@ -1346,6 +1515,7 @@ const langRowStyle: CSSProperties = {
 
 const langBtn = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
   minWidth: "clamp(38px, 8vw, 58px)",
+  minHeight: "clamp(36px, 7vw, 42px)",
   padding: "clamp(7px, 1.6vw, 10px) clamp(8px, 2vw, 14px)",
   borderRadius: 999,
   border: `2px solid ${theme.border}`,
@@ -1408,6 +1578,7 @@ const inputStyle: CSSProperties = {
   border: "1px solid",
   fontSize: "clamp(14px, 2vw, 16px)",
   outline: "none",
+  minHeight: 48,
 };
 
 const responsiveGridStyle: CSSProperties = {
@@ -1462,54 +1633,49 @@ const actionRowStyle: CSSProperties = {
   flexWrap: "wrap",
 };
 
-const invoiceBtnStyle: CSSProperties = {
-  background: "#0ea5e9",
-  color: "#fff",
+const actionBtnBaseStyle: CSSProperties = {
+  width: "clamp(112px, 24vw, 145px)",
+  minHeight: 42,
   border: "none",
   borderRadius: 10,
-  padding: "9px 12px",
-  fontWeight: 800,
+  padding: "9px 10px",
+  fontSize: "clamp(12px, 2vw, 14px)",
+  fontWeight: 900,
   cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  lineHeight: 1.2,
+  whiteSpace: "normal",
+};
+
+const invoiceBtnStyle: CSSProperties = {
+  ...actionBtnBaseStyle,
+  background: "#0ea5e9",
+  color: "#fff",
 };
 
 const priceBtnStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 10,
-  padding: "8px 12px",
-  fontWeight: 900,
-  cursor: "pointer",
+  ...actionBtnBaseStyle,
+  color: "#fff",
 };
 
 const whatsappBtnStyle: CSSProperties = {
+  ...actionBtnBaseStyle,
   background: "#25D366",
   color: "#fff",
-  border: "none",
-  borderRadius: 10,
-  padding: "9px 12px",
-  fontSize: "clamp(13px, 2vw, 15px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  whiteSpace: "nowrap",
 };
 
 const editBtnStyle: CSSProperties = {
+  ...actionBtnBaseStyle,
   color: "#fff",
-  border: "none",
-  borderRadius: 10,
-  padding: "9px 12px",
-  fontWeight: 800,
-  cursor: "pointer",
 };
 
 const deleteBtnStyle: CSSProperties = {
+  ...actionBtnBaseStyle,
   background: "#fee2e2",
   color: "#b91c1c",
-  border: "none",
-  borderRadius: 10,
-  padding: "9px 12px",
-  fontWeight: 800,
-  cursor: "pointer",
 };
 
 const primaryBtnStyle: CSSProperties = {
@@ -1518,8 +1684,10 @@ const primaryBtnStyle: CSSProperties = {
   border: "none",
   borderRadius: 12,
   padding: "13px 18px",
+  fontSize: "clamp(14px, 2vw, 16px)",
   fontWeight: 900,
   cursor: "pointer",
+  minHeight: 48,
 };
 
 const secondaryBtnStyle: CSSProperties = {
@@ -1529,8 +1697,10 @@ const secondaryBtnStyle: CSSProperties = {
   border: "2px solid",
   borderRadius: 12,
   padding: "11px 18px",
+  fontSize: "clamp(14px, 2vw, 16px)",
   fontWeight: 900,
   cursor: "pointer",
+  minHeight: 46,
 };
 
 const msgStyle: CSSProperties = {
@@ -1621,4 +1791,20 @@ const priceItemStyle: CSSProperties = {
   justifyContent: "space-between",
   gap: 12,
   flexWrap: "wrap",
+};
+
+const invoiceRecordCardStyle: CSSProperties = {
+  border: "1px solid",
+  borderRadius: 16,
+  padding: "clamp(12px, 2vw, 16px)",
+  marginBottom: 12,
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  gap: 10,
+};
+
+const invoiceAmountBoxStyle: CSSProperties = {
+  display: "grid",
+  gap: 6,
+  fontSize: "clamp(13px, 2vw, 15px)",
 };
