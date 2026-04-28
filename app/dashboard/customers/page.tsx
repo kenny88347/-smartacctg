@@ -1039,7 +1039,7 @@ export default function CustomersPage() {
           </button>
         </div>
 
-        <div style={searchGridStyle}>
+        <div className="customers-search-row" style={searchGridStyle}>
           <input
             placeholder={t.search}
             value={search}
@@ -1234,13 +1234,7 @@ export default function CustomersPage() {
             <div className="sa-modal-header" style={modalHeaderStyle}>
               <h2 style={modalTitleStyle}>{t.formTitle}</h2>
 
-              <button
-                onClick={closeForm}
-                style={{
-                  ...closeTextBtnStyle,
-                  color: "#dc2626",
-                }}
-              >
+              <button type="button" onClick={closeForm} style={closeTextBtnStyle}>
                 {t.close}
               </button>
             </div>
@@ -1431,13 +1425,7 @@ export default function CustomersPage() {
                 </p>
               </div>
 
-              <button
-                onClick={closePriceModal}
-                style={{
-                  ...closeTextBtnStyle,
-                  color: "#dc2626",
-                }}
-              >
+              <button type="button" onClick={closePriceModal} style={closeTextBtnStyle}>
                 {t.close}
               </button>
             </div>
@@ -1537,13 +1525,7 @@ export default function CustomersPage() {
                 </p>
               </div>
 
-              <button
-                onClick={closeInvoiceModal}
-                style={{
-                  ...closeTextBtnStyle,
-                  color: "#dc2626",
-                }}
-              >
+              <button type="button" onClick={closeInvoiceModal} style={closeTextBtnStyle}>
                 {t.close}
               </button>
             </div>
@@ -1857,10 +1839,12 @@ const modalTitleStyle: CSSProperties = {
 };
 
 const closeTextBtnStyle: CSSProperties = {
-  background: "transparent",
-  border: "none",
-  padding: "0 4px",
-  minHeight: 0,
+  background: "#fee2e2",
+  color: "#dc2626",
+  border: "2px solid #fecaca",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 14px",
+  minHeight: 44,
   width: "auto",
   height: "auto",
   fontWeight: 900,
@@ -1913,12 +1897,6 @@ const invoiceRecordCardStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr)",
   gap: 10,
-};
-
-const invoiceAmountBoxStyle: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  fontSize: "var(--sa-fs-sm)",
 };
 
 const invoiceAmountBoxStyle: CSSProperties = {
