@@ -25,7 +25,7 @@ type Txn = {
 type Customer = {
   id: string;
   user_id?: string;
-  name: string;
+  name?: string | null;
   phone?: string | null;
   company_name?: string | null;
 };
@@ -33,7 +33,7 @@ type Customer = {
 type Product = {
   id: string;
   user_id?: string;
-  name: string;
+  name?: string | null;
   price?: number | null;
   cost?: number | null;
   stock_qty?: number | null;
@@ -53,8 +53,8 @@ type Invoice = {
 };
 
 type Profile = {
-  id: string;
-  theme: string | null;
+  id?: string;
+  theme?: string | null;
 };
 
 const TRIAL_KEY = "smartacctg_trial";
@@ -152,16 +152,16 @@ const THEMES: Record<
 
 const TXT = {
   zh: {
-    title: "帳目紀錄",
+    title: "帐目记录",
     back: "返回控制台",
-    add: "新增記帳",
+    add: "新增记账",
     edit: "编辑",
     delete: "删除",
-    save: "保存記帳",
+    save: "保存记账",
     update: "保存修改",
     cancel: "取消",
     close: "关闭",
-    searchTitle: "快速搜索帳目紀錄",
+    searchTitle: "快速搜索帐目记录",
     search: "搜索日期 / 分类 / 备注 / 金额 / 发票号码 / 客户名称",
     all: "全部",
     income: "收入",
@@ -184,22 +184,17 @@ const TXT = {
     noCustomer: "不选择客户",
     noProduct: "不选择产品",
     noInvoice: "不选择发票",
-    noRecord: "还没有帳目紀錄",
+    noRecord: "还没有帐目记录",
     linkedInfo: "联动资料",
     related: "关联功能",
-    accounting: "记账系统",
     customers: "客户管理",
     products: "产品管理",
     invoices: "发票系统",
-    chooseFeature: "请选择要前往的功能",
     goFeature: "前往",
-    theme: "主题",
-    language: "语言",
     saved: "保存成功",
     deleted: "删除成功",
     confirmDelete: "确定要删除这笔记录吗？",
     trialMode: "免费试用模式：资料只会暂存在本机",
-    filterType: "筛选类型",
     filterCustomer: "筛选客户",
     startDate: "开始日期",
     endDate: "结束日期",
@@ -242,19 +237,14 @@ const TXT = {
     noRecord: "No accounting records yet",
     linkedInfo: "Linked Info",
     related: "Linked Features",
-    accounting: "Accounting",
     customers: "Customers",
     products: "Products",
     invoices: "Invoices",
-    chooseFeature: "Choose feature",
     goFeature: "Go",
-    theme: "Theme",
-    language: "Language",
     saved: "Saved",
     deleted: "Deleted",
     confirmDelete: "Delete this record?",
     trialMode: "Free trial mode: data is stored locally only",
-    filterType: "Filter Type",
     filterCustomer: "Filter Customer",
     startDate: "Start Date",
     endDate: "End Date",
@@ -297,19 +287,14 @@ const TXT = {
     noRecord: "Tiada rekod akaun lagi",
     linkedInfo: "Maklumat Berkaitan",
     related: "Fungsi Berkaitan",
-    accounting: "Sistem Akaun",
     customers: "Pelanggan",
     products: "Produk",
     invoices: "Invois",
-    chooseFeature: "Pilih fungsi",
     goFeature: "Pergi",
-    theme: "Tema",
-    language: "Bahasa",
     saved: "Disimpan",
     deleted: "Dipadam",
     confirmDelete: "Padam rekod ini?",
     trialMode: "Mod percubaan: data hanya disimpan dalam telefon ini",
-    filterType: "Tapis Jenis",
     filterCustomer: "Tapis Pelanggan",
     startDate: "Tarikh Mula",
     endDate: "Tarikh Akhir",
@@ -317,6 +302,38 @@ const TXT = {
     manualRecord: "Rekod Manual",
   },
 };
+
+function makeId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function safeLocalGet(key: string) {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(key);
+}
+
+function safeLocalSet(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, value);
+}
+
+function safeLocalRemove(key: string) {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(key);
+}
+
+function isSchemaCacheMissingSource(message: string) {
+  const lower = String(message || "").toLowerCase();
+
+  return (
+    lower.includes("source_type") ||
+    lower.includes("source_id") ||
+    lower.includes("schema cache") ||
+    lower.includes("could not find") ||
+    lower.includes("column")
+  );
+}
 
 export default function RecordsPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -365,22 +382,22 @@ export default function RecordsPage() {
       return;
     }
 
-    const urlLang = q.get("lang") as Lang;
-    const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
+    const urlLang = q.get("lang") as Lang | null;
+    const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
 
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
       setLang(urlLang);
-      localStorage.setItem(LANG_KEY, urlLang);
+      safeLocalSet(LANG_KEY, urlLang);
     } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
       setLang(savedLang);
     }
 
-    const urlTheme = q.get("theme") as ThemeKey;
-    const savedTheme = localStorage.getItem(THEME_KEY) as ThemeKey | null;
+    const urlTheme = q.get("theme") as ThemeKey | null;
+    const savedTheme = safeLocalGet(THEME_KEY) as ThemeKey | null;
 
     if (urlTheme && THEMES[urlTheme]) {
       setThemeKey(urlTheme);
-      localStorage.setItem(THEME_KEY, urlTheme);
+      safeLocalSet(THEME_KEY, urlTheme);
     } else if (savedTheme && THEMES[savedTheme]) {
       setThemeKey(savedTheme);
     }
@@ -395,7 +412,7 @@ export default function RecordsPage() {
   async function init() {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
-    const trialRaw = localStorage.getItem(TRIAL_KEY);
+    const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
       const trial = JSON.parse(trialRaw);
@@ -404,10 +421,10 @@ export default function RecordsPage() {
         setIsTrial(true);
         setSession(null);
 
-        const savedTx = localStorage.getItem(TRIAL_TX_KEY);
-        const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
-        const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
-        const savedInvoices = localStorage.getItem(TRIAL_INVOICES_KEY);
+        const savedTx = safeLocalGet(TRIAL_TX_KEY);
+        const savedCustomers = safeLocalGet(TRIAL_CUSTOMERS_KEY);
+        const savedProducts = safeLocalGet(TRIAL_PRODUCTS_KEY);
+        const savedInvoices = safeLocalGet(TRIAL_INVOICES_KEY);
 
         setTransactions(savedTx ? JSON.parse(savedTx) : []);
         setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
@@ -417,11 +434,11 @@ export default function RecordsPage() {
         return;
       }
 
-      localStorage.removeItem(TRIAL_KEY);
-      localStorage.removeItem(TRIAL_TX_KEY);
-      localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
-      localStorage.removeItem(TRIAL_PRODUCTS_KEY);
-      localStorage.removeItem(TRIAL_INVOICES_KEY);
+      safeLocalRemove(TRIAL_KEY);
+      safeLocalRemove(TRIAL_TX_KEY);
+      safeLocalRemove(TRIAL_CUSTOMERS_KEY);
+      safeLocalRemove(TRIAL_PRODUCTS_KEY);
+      safeLocalRemove(TRIAL_INVOICES_KEY);
       window.location.href = "/zh";
       return;
     }
@@ -446,7 +463,7 @@ export default function RecordsPage() {
 
     if (profile?.theme && THEMES[profile.theme as ThemeKey]) {
       setThemeKey(profile.theme as ThemeKey);
-      localStorage.setItem(THEME_KEY, profile.theme);
+      safeLocalSet(THEME_KEY, profile.theme);
     }
 
     await loadAll(data.session.user.id);
@@ -461,13 +478,13 @@ export default function RecordsPage() {
 
     const { data: customerData } = await supabase
       .from("customers")
-      .select("id,name,phone,company_name")
+      .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     const { data: productData } = await supabase
       .from("products")
-      .select("id,name,price,cost,stock_qty")
+      .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -485,15 +502,13 @@ export default function RecordsPage() {
 
   function saveTrialTransactions(nextTx: Txn[]) {
     setTransactions(nextTx);
-    localStorage.setItem(TRIAL_TX_KEY, JSON.stringify(nextTx));
+    safeLocalSet(TRIAL_TX_KEY, JSON.stringify(nextTx));
   }
 
   function buildUrl(path: string, extra?: string) {
     const query = new URLSearchParams();
 
-    if (isTrial) {
-      query.set("mode", "trial");
-    }
+    if (isTrial) query.set("mode", "trial");
 
     query.set("lang", lang);
     query.set("theme", themeKey);
@@ -523,7 +538,7 @@ export default function RecordsPage() {
 
   function switchLang(next: Lang) {
     setLang(next);
-    localStorage.setItem(LANG_KEY, next);
+    safeLocalSet(LANG_KEY, next);
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
@@ -531,22 +546,6 @@ export default function RecordsPage() {
     q.set("refresh", String(Date.now()));
 
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-  }
-
-  async function switchTheme(next: ThemeKey) {
-    setThemeKey(next);
-    localStorage.setItem(THEME_KEY, next);
-
-    const q = new URLSearchParams(window.location.search);
-    q.set("theme", next);
-    q.set("lang", lang);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-
-    if (!isTrial && session) {
-      await supabase.from("profiles").update({ theme: next }).eq("id", session.user.id);
-    }
   }
 
   function openNewForm() {
@@ -625,15 +624,9 @@ export default function RecordsPage() {
     return parts.join("｜") || null;
   }
 
-  function isSchemaCacheMissingSource(message: string) {
-    return (
-      message.includes("source_type") ||
-      message.includes("source_id") ||
-      message.includes("schema cache")
-    );
-  }
-
   async function saveTransaction() {
+    setMsg("");
+
     if (!form.txn_date || !form.amount || !form.category_name.trim()) return;
 
     const amount = Number(form.amount || 0);
@@ -642,7 +635,7 @@ export default function RecordsPage() {
 
     if (isTrial) {
       const payload: Txn = {
-        id: editingId || crypto.randomUUID(),
+        id: editingId || makeId(),
         user_id: "trial",
         txn_date: form.txn_date,
         txn_type: form.txn_type,
@@ -837,60 +830,72 @@ export default function RecordsPage() {
   }
 
   return (
-    <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
-      <section style={topBarStyle}>
-        <button
-          onClick={backToDashboard}
-          style={{
-            ...backBtnStyle,
-            color: theme.accent,
-            borderColor: theme.border,
-          }}
-        >
-          ← {t.back}
-        </button>
-
-        <div style={topRightStyle}>
-          <select
-            value={themeKey}
-            onChange={(e) => switchTheme(e.target.value as ThemeKey)}
+    <main
+      className="smartacctg-page smartacctg-records-page"
+      style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
+    >
+      <div className="sa-topbar">
+        <div className="sa-topbar-left">
+          <button
+            onClick={backToDashboard}
             style={{
-              ...selectSmallStyle,
-              borderColor: theme.border,
+              ...backBtnStyle,
               color: theme.accent,
+              borderColor: theme.border,
             }}
           >
-            <option value="deepTeal">深青色</option>
-            <option value="pink">可爱粉色</option>
-            <option value="blackGold">黑金商务</option>
-            <option value="lightRed">可爱浅红</option>
-            <option value="nature">风景自然系</option>
-            <option value="sky">天空蓝</option>
-          </select>
+            ← {t.back}
+          </button>
+        </div>
 
-          <div style={langRowStyle}>
-            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
-              中
+        <div className="sa-topbar-center" aria-hidden="true" />
+
+        <div className="sa-topbar-right">
+          <div className="sa-lang-row">
+            <button
+              onClick={() => switchLang("zh")}
+              className="sa-lang-btn"
+              style={langBtnStyle(lang === "zh", theme)}
+            >
+              中文
             </button>
-            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
+
+            <button
+              onClick={() => switchLang("en")}
+              className="sa-lang-btn"
+              style={langBtnStyle(lang === "en", theme)}
+            >
               EN
             </button>
-            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
+
+            <button
+              onClick={() => switchLang("ms")}
+              className="sa-lang-btn"
+              style={langBtnStyle(lang === "ms", theme)}
+            >
               BM
             </button>
           </div>
         </div>
-      </section>
+      </div>
 
-      {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
-      {msg ? <div style={msgStyle}>{msg}</div> : null}
+      {isTrial ? (
+        <div style={trialMsgStyle}>{t.trialMode}</div>
+      ) : null}
+
+      {msg ? (
+        <div style={{ ...msgStyle, background: theme.softBg, color: theme.text }}>
+          {msg}
+        </div>
+      ) : null}
 
       <section
+        className="sa-card"
         style={{
-          ...cardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
+          color: theme.text,
         }}
       >
         <div style={recordHeaderStyle}>
@@ -898,45 +903,68 @@ export default function RecordsPage() {
 
           <button
             onClick={openNewForm}
+            aria-label={t.add}
             style={{
               ...plusBtnStyle,
               background: theme.accent,
             }}
           >
-            ＋
+            +
           </button>
         </div>
 
-        <section style={statsGridStyle}>
-          <div style={{ ...statCardStyle, borderColor: theme.border }}>
-            <span>{t.balance}</span>
+        <div style={statsGridStyle}>
+          <button
+            type="button"
+            style={{
+              ...statCardStyle,
+              borderColor: theme.border,
+            }}
+            onClick={() => setFilterType("all")}
+          >
+            <span style={statLabelStyle}>{t.balance}</span>
             <strong style={{ ...statAmountStyle, color: theme.accent }}>
               RM {balance.toFixed(2)}
             </strong>
-          </div>
+          </button>
 
-          <div style={{ ...statCardStyle, borderColor: theme.border }}>
-            <span>{t.monthIncome}</span>
+          <button
+            type="button"
+            style={{
+              ...statCardStyle,
+              borderColor: theme.border,
+            }}
+            onClick={() => setFilterType("income")}
+          >
+            <span style={statLabelStyle}>{t.monthIncome}</span>
             <strong style={{ ...statAmountStyle, color: "#16a34a" }}>
               RM {monthIncome.toFixed(2)}
             </strong>
-          </div>
+          </button>
 
-          <div style={{ ...statCardStyle, borderColor: theme.border }}>
-            <span>{t.monthExpense}</span>
+          <button
+            type="button"
+            style={{
+              ...statCardStyle,
+              borderColor: theme.border,
+            }}
+            onClick={() => setFilterType("expense")}
+          >
+            <span style={statLabelStyle}>{t.monthExpense}</span>
             <strong style={{ ...statAmountStyle, color: "#dc2626" }}>
               RM {monthExpense.toFixed(2)}
             </strong>
-          </div>
-        </section>
+          </button>
+        </div>
       </section>
 
       <section
+        className="sa-card"
         style={{
-          ...cardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
+          color: theme.text,
         }}
       >
         <h2 style={sectionTitleStyle}>{t.searchTitle}</h2>
@@ -967,13 +995,15 @@ export default function RecordsPage() {
             <option value="">{t.filterCustomer}</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {c.name || "-"}
               </option>
             ))}
           </select>
 
           <div style={dateWrapStyle}>
-            <label style={{ ...dateLabelStyle, color: theme.subText }}>{t.startDate}</label>
+            <label style={{ ...dateLabelStyle, color: theme.subText }}>
+              {t.startDate}
+            </label>
             <input
               type="date"
               value={filterStartDate}
@@ -983,7 +1013,9 @@ export default function RecordsPage() {
           </div>
 
           <div style={dateWrapStyle}>
-            <label style={{ ...dateLabelStyle, color: theme.subText }}>{t.endDate}</label>
+            <label style={{ ...dateLabelStyle, color: theme.subText }}>
+              {t.endDate}
+            </label>
             <input
               type="date"
               value={filterEndDate}
@@ -995,90 +1027,100 @@ export default function RecordsPage() {
       </section>
 
       <section
+        className="sa-card"
         style={{
-          ...cardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
+          color: theme.text,
         }}
       >
         {filteredRecords.length === 0 ? (
-          <p style={{ color: theme.subText }}>{t.noRecord}</p>
+          <p style={{ color: theme.subText, fontWeight: 800 }}>{t.noRecord}</p>
         ) : (
-          filteredRecords.map((tx) => {
-            const invoice = getInvoice(tx);
+          <div style={recordListStyle}>
+            {filteredRecords.map((tx) => {
+              const invoice = getInvoice(tx);
+              const isIncome = tx.txn_type === "income";
 
-            return (
-              <div
-                key={tx.id}
-                style={{
-                  ...recordCardStyle,
-                  borderColor: theme.border,
-                  background: theme.card,
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <h3 style={recordTitleStyle}>
-                    {tx.txn_type === "income" ? t.income : t.expense} ·{" "}
-                    {tx.category_name || "-"}
-                  </h3>
+              return (
+                <div
+                  key={tx.id}
+                  className="sa-item-card"
+                  style={{
+                    borderColor: theme.border,
+                    background: theme.card,
+                    color: theme.text,
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={recordTitleStyle}>
+                      {isIncome ? t.income : t.expense} · {tx.category_name || "-"}
+                    </h3>
 
-                  <p style={{ ...mutedStyle, color: theme.subText }}>
-                    {t.date}: {tx.txn_date} | {t.amount}: RM{" "}
-                    {Number(tx.amount || 0).toFixed(2)}
-                  </p>
-
-                  {Number(tx.debt_amount || 0) > 0 ? (
                     <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.debtAmount}: RM {Number(tx.debt_amount || 0).toFixed(2)}
+                      {t.date}: {tx.txn_date} ｜ {t.amount}:{" "}
+                      <strong style={{ color: isIncome ? "#16a34a" : "#dc2626" }}>
+                        RM {Number(tx.amount || 0).toFixed(2)}
+                      </strong>
                     </p>
-                  ) : null}
 
-                  {invoice ? (
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.sourceInvoice}: {invoice.invoice_no || invoice.id}{" "}
-                      {invoice.customer_name ? `｜${invoice.customer_name}` : ""}
-                    </p>
-                  ) : (
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.manualRecord}
-                    </p>
-                  )}
+                    {Number(tx.debt_amount || 0) > 0 ? (
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.debtAmount}: RM {Number(tx.debt_amount || 0).toFixed(2)}
+                      </p>
+                    ) : null}
 
-                  {tx.note ? (
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.note}: {tx.note}
-                    </p>
-                  ) : null}
+                    {invoice ? (
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.sourceInvoice}: {invoice.invoice_no || invoice.id}{" "}
+                        {invoice.customer_name ? `｜${invoice.customer_name}` : ""}
+                      </p>
+                    ) : (
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.manualRecord}
+                      </p>
+                    )}
+
+                    {tx.note ? (
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.note}: {tx.note}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="records-action-row" style={actionRowStyle}>
+                    <button
+                      onClick={() => editTransaction(tx)}
+                      style={{
+                        ...actionBtnStyle,
+                        background: theme.accent,
+                      }}
+                    >
+                      {t.edit}
+                    </button>
+
+                    <button
+                      onClick={() => deleteTransaction(tx.id)}
+                      style={deleteBtnStyle}
+                    >
+                      {t.delete}
+                    </button>
+                  </div>
                 </div>
-
-                <div style={actionRowStyle}>
-                  <button
-                    onClick={() => editTransaction(tx)}
-                    style={{
-                      ...actionBtnStyle,
-                      background: theme.accent,
-                    }}
-                  >
-                    {t.edit}
-                  </button>
-
-                  <button onClick={() => deleteTransaction(tx.id)} style={deleteBtnStyle}>
-                    {t.delete}
-                  </button>
-                </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </section>
 
       <section
+        className="sa-card"
         style={{
-          ...cardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
+          color: theme.text,
         }}
       >
         <h2 style={sectionTitleStyle}>{t.related}</h2>
@@ -1087,10 +1129,7 @@ export default function RecordsPage() {
           <select
             value={relatedPath}
             onChange={(e) => setRelatedPath(e.target.value)}
-            style={{
-              ...inputStyle,
-              borderColor: theme.border,
-            }}
+            style={{ ...inputStyle, borderColor: theme.border }}
           >
             <option value="/dashboard/customers">{t.customers}</option>
             <option value="/dashboard/products">{t.products}</option>
@@ -1113,6 +1152,7 @@ export default function RecordsPage() {
       {showForm ? (
         <div style={overlayStyle}>
           <section
+            className="sa-modal"
             style={{
               ...modalStyle,
               background: theme.card,
@@ -1121,17 +1161,25 @@ export default function RecordsPage() {
               color: theme.text,
             }}
           >
-            <div style={modalHeaderStyle}>
+            <div className="sa-modal-header">
               <h2 style={modalTitleStyle}>{editingId ? t.update : t.add}</h2>
 
-              <button onClick={closeForm} style={closeBtnStyle}>
-                X
+              <button
+                onClick={closeForm}
+                style={{
+                  ...closeTextBtnStyle,
+                  color: "#dc2626",
+                }}
+              >
+                {t.close}
               </button>
             </div>
 
             <div style={responsiveGridStyle}>
               <div style={dateWrapStyle}>
-                <label style={{ ...dateLabelStyle, color: theme.subText }}>{t.date}</label>
+                <label style={{ ...dateLabelStyle, color: theme.subText }}>
+                  {t.date}
+                </label>
                 <input
                   type="date"
                   value={form.txn_date}
@@ -1142,7 +1190,9 @@ export default function RecordsPage() {
 
               <select
                 value={form.txn_type}
-                onChange={(e) => setForm({ ...form, txn_type: e.target.value as TxnType })}
+                onChange={(e) =>
+                  setForm({ ...form, txn_type: e.target.value as TxnType })
+                }
                 style={{ ...inputStyle, borderColor: theme.border }}
               >
                 <option value="income">{t.income}</option>
@@ -1154,6 +1204,7 @@ export default function RecordsPage() {
                 value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
                 style={{ ...inputStyle, borderColor: theme.border }}
+                inputMode="decimal"
               />
 
               <input
@@ -1168,6 +1219,7 @@ export default function RecordsPage() {
                 value={form.debt_amount}
                 onChange={(e) => setForm({ ...form, debt_amount: e.target.value })}
                 style={{ ...inputStyle, borderColor: theme.border }}
+                inputMode="decimal"
               />
 
               <input
@@ -1189,7 +1241,7 @@ export default function RecordsPage() {
                 <option value="">{t.noCustomer}</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {c.name || "-"}
                   </option>
                 ))}
               </select>
@@ -1202,7 +1254,7 @@ export default function RecordsPage() {
                 <option value="">{t.noProduct}</option>
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
+                    {p.name || "-"} - RM {Number(p.price || 0).toFixed(2)}
                   </option>
                 ))}
               </select>
@@ -1223,26 +1275,30 @@ export default function RecordsPage() {
               </select>
             </div>
 
-            <button
-              onClick={saveTransaction}
-              style={{
-                ...primaryBtnStyle,
-                background: theme.accent,
-              }}
-            >
-              {editingId ? t.update : t.save}
-            </button>
+            <div style={modalActionRowStyle}>
+              <button
+                onClick={saveTransaction}
+                style={{
+                  ...primaryBtnStyle,
+                  background: theme.accent,
+                  marginTop: 0,
+                }}
+              >
+                {editingId ? t.update : t.save}
+              </button>
 
-            <button
-              onClick={closeForm}
-              style={{
-                ...secondaryBtnStyle,
-                borderColor: theme.border,
-                color: theme.accent,
-              }}
-            >
-              {t.cancel}
-            </button>
+              <button
+                onClick={closeForm}
+                style={{
+                  ...secondaryBtnStyle,
+                  borderColor: theme.border,
+                  color: theme.accent,
+                  marginTop: 0,
+                }}
+              >
+                {t.cancel}
+              </button>
+            </div>
           </section>
         </div>
       ) : null}
@@ -1252,90 +1308,34 @@ export default function RecordsPage() {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
+  width: "100%",
+  maxWidth: "100vw",
+  overflowX: "hidden",
   padding: "clamp(10px, 2vw, 24px)",
-  fontFamily: "sans-serif",
-  fontSize: "clamp(14px, 2vw, 16px)",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 18,
-  flexWrap: "wrap",
-};
-
-const topRightStyle: CSSProperties = {
-  marginLeft: "auto",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  gap: 10,
-  flexWrap: "wrap",
-  maxWidth: "100%",
 };
 
 const backBtnStyle: CSSProperties = {
   background: "#fff",
   border: "2px solid",
-  borderRadius: 12,
-  padding: "clamp(8px, 1.6vw, 12px) clamp(10px, 2vw, 16px)",
-  fontSize: "clamp(13px, 2.2vw, 16px)",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 var(--sa-control-x)",
+  minHeight: "var(--sa-control-h)",
   fontWeight: 900,
-  cursor: "pointer",
-  maxWidth: "100%",
-  whiteSpace: "normal",
-  lineHeight: 1.25,
+  whiteSpace: "nowrap",
 };
 
-const selectSmallStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 999,
-  padding: "clamp(7px, 1.5vw, 9px) clamp(9px, 2vw, 12px)",
-  fontSize: "clamp(12px, 2vw, 15px)",
-  fontWeight: 900,
-  outline: "none",
-  maxWidth: "100%",
-  height: "clamp(38px, 7vw, 44px)",
-};
-
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: "clamp(4px, 1vw, 8px)",
-  flexWrap: "wrap",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  maxWidth: "100%",
-};
-
-const langBtn = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
-  minWidth: "clamp(38px, 8vw, 58px)",
-  minHeight: "clamp(36px, 7vw, 42px)",
-  padding: "clamp(7px, 1.6vw, 10px) clamp(8px, 2vw, 14px)",
-  borderRadius: 999,
-  border: `2px solid ${theme.border}`,
+const langBtnStyle = (
+  active: boolean,
+  theme: (typeof THEMES)[ThemeKey]
+): CSSProperties => ({
+  borderColor: theme.accent,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
-  fontSize: "clamp(12px, 2.5vw, 15px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  lineHeight: 1.1,
-  textAlign: "center",
-  whiteSpace: "nowrap",
 });
 
-const cardStyle: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 22,
-  padding: "clamp(14px, 2vw, 22px)",
-  marginBottom: 18,
-};
-
 const recordHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
   gap: 12,
   marginBottom: 14,
@@ -1343,25 +1343,28 @@ const recordHeaderStyle: CSSProperties = {
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "clamp(24px, 4vw, 34px)",
-  lineHeight: 1.15,
+  fontWeight: 900,
+  lineHeight: 1.12,
 };
 
 const sectionTitleStyle: CSSProperties = {
   marginTop: 0,
-  fontSize: "clamp(18px, 3vw, 24px)",
+  marginBottom: 14,
+  fontWeight: 900,
 };
 
 const plusBtnStyle: CSSProperties = {
-  width: "clamp(40px, 9vw, 46px)",
-  height: "clamp(40px, 9vw, 46px)",
-  borderRadius: "999px",
+  width: 52,
+  height: 52,
+  minWidth: 52,
+  minHeight: 52,
+  borderRadius: 999,
   color: "#fff",
   border: "none",
-  fontSize: "clamp(24px, 5vw, 28px)",
+  fontSize: 30,
   fontWeight: 900,
   lineHeight: 1,
-  cursor: "pointer",
+  padding: 0,
   flexShrink: 0,
 };
 
@@ -1374,17 +1377,28 @@ const statsGridStyle: CSSProperties = {
 
 const statCardStyle: CSSProperties = {
   background: "#fff",
-  border: "2px solid",
-  borderRadius: 18,
-  padding: "clamp(12px, 2vw, 16px)",
-  minHeight: 96,
+  color: "#111827",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+  minHeight: 120,
+  textAlign: "left",
+  cursor: "pointer",
+  display: "grid",
+  alignContent: "center",
+  gap: 12,
+};
+
+const statLabelStyle: CSSProperties = {
+  color: "#111827",
+  fontWeight: 900,
 };
 
 const statAmountStyle: CSSProperties = {
   display: "block",
-  marginTop: 14,
-  fontSize: "clamp(18px, 3vw, 22px)",
   fontWeight: 900,
+  fontSize: "var(--sa-fs-xl)",
+  lineHeight: 1.15,
 };
 
 const inputStyle: CSSProperties = {
@@ -1392,12 +1406,20 @@ const inputStyle: CSSProperties = {
   maxWidth: "100%",
   minWidth: 0,
   boxSizing: "border-box",
-  padding: "13px 14px",
-  borderRadius: 12,
-  border: "1px solid",
-  fontSize: "clamp(14px, 2vw, 16px)",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 var(--sa-control-x)",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid",
+  background: "#ffffff",
+  color: "#111827",
   outline: "none",
-  minHeight: 48,
+};
+
+const dateInputStyle: CSSProperties = {
+  ...inputStyle,
+  appearance: "none",
+  WebkitAppearance: "none",
+  textAlign: "center",
 };
 
 const responsiveGridStyle: CSSProperties = {
@@ -1413,100 +1435,84 @@ const relatedMenuRowStyle: CSSProperties = {
   alignItems: "center",
 };
 
-const recordCardStyle: CSSProperties = {
-  border: "1px solid",
-  borderRadius: 18,
-  padding: "clamp(14px, 2vw, 18px)",
-  marginBottom: 14,
+const recordListStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr)",
   gap: 14,
 };
 
 const recordTitleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "clamp(18px, 3vw, 22px)",
   overflowWrap: "anywhere",
+  fontWeight: 900,
 };
 
 const mutedStyle: CSSProperties = {
-  fontSize: "clamp(13px, 2vw, 14px)",
   overflowWrap: "anywhere",
+  lineHeight: 1.55,
+  margin: "8px 0 0",
 };
 
 const actionRowStyle: CSSProperties = {
   display: "flex",
   gap: 8,
   alignItems: "center",
+  justifyContent: "flex-end",
   flexWrap: "wrap",
 };
 
 const actionBtnStyle: CSSProperties = {
-  width: "clamp(96px, 22vw, 130px)",
-  minHeight: 42,
+  minWidth: 104,
+  minHeight: 44,
   color: "#fff",
   border: "none",
-  borderRadius: 10,
-  padding: "9px 10px",
-  fontSize: "clamp(12px, 2vw, 14px)",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 14px",
   fontWeight: 900,
-  cursor: "pointer",
 };
 
 const deleteBtnStyle: CSSProperties = {
-  width: "clamp(96px, 22vw, 130px)",
-  minHeight: 42,
+  minWidth: 104,
+  minHeight: 44,
   background: "#fee2e2",
   color: "#b91c1c",
   border: "none",
-  borderRadius: 10,
-  padding: "9px 10px",
-  fontSize: "clamp(12px, 2vw, 14px)",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 14px",
   fontWeight: 900,
-  cursor: "pointer",
 };
 
 const primaryBtnStyle: CSSProperties = {
-  marginTop: 16,
   color: "#fff",
   border: "none",
-  borderRadius: 12,
-  padding: "13px 18px",
-  fontSize: "clamp(14px, 2vw, 16px)",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 18px",
+  minHeight: "var(--sa-control-h)",
   fontWeight: 900,
-  cursor: "pointer",
-  minHeight: 48,
 };
 
 const secondaryBtnStyle: CSSProperties = {
-  marginTop: 16,
-  marginLeft: 10,
   background: "#fff",
-  border: "2px solid",
-  borderRadius: 12,
-  padding: "11px 18px",
-  fontSize: "clamp(14px, 2vw, 16px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 18px",
+  minHeight: "var(--sa-control-h)",
   fontWeight: 900,
-  cursor: "pointer",
-  minHeight: 46,
 };
 
 const msgStyle: CSSProperties = {
-  background: "#dcfce7",
-  color: "#166534",
   padding: 12,
-  borderRadius: 12,
+  borderRadius: "var(--sa-radius-control)",
   marginBottom: 14,
-  fontWeight: 800,
+  fontWeight: 900,
 };
 
 const trialMsgStyle: CSSProperties = {
   background: "#fef3c7",
   color: "#92400e",
   padding: 12,
-  borderRadius: 12,
+  borderRadius: "var(--sa-radius-control)",
   marginBottom: 14,
-  fontWeight: 800,
+  fontWeight: 900,
 };
 
 const overlayStyle: CSSProperties = {
@@ -1522,33 +1528,21 @@ const modalStyle: CSSProperties = {
   width: "100%",
   maxWidth: 900,
   margin: "0 auto",
-  border: "2px solid",
-  borderRadius: 24,
-  padding: "clamp(16px, 3vw, 24px)",
-};
-
-const modalHeaderStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  marginBottom: 16,
+  border: "var(--sa-border-w) solid",
 };
 
 const modalTitleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "clamp(22px, 4vw, 30px)",
+  fontWeight: 900,
 };
 
-const closeBtnStyle: CSSProperties = {
-  background: "#dc2626",
-  color: "#fff",
+const closeTextBtnStyle: CSSProperties = {
+  background: "transparent",
   border: "none",
-  width: 42,
-  height: 42,
-  borderRadius: 999,
+  padding: "0 4px",
+  minHeight: 0,
   fontWeight: 900,
-  cursor: "pointer",
+  fontSize: "var(--sa-fs-base)",
 };
 
 const dateWrapStyle: CSSProperties = {
@@ -1557,15 +1551,13 @@ const dateWrapStyle: CSSProperties = {
 
 const dateLabelStyle: CSSProperties = {
   display: "block",
-  fontSize: 13,
-  fontWeight: 800,
-  marginBottom: 5,
+  fontWeight: 900,
+  marginBottom: 6,
 };
 
-const dateInputStyle: CSSProperties = {
-  ...inputStyle,
-  height: 48,
-  minHeight: 48,
-  appearance: "none",
-  WebkitAppearance: "none",
+const modalActionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 10,
+  marginTop: 18,
+  flexWrap: "wrap",
 };
