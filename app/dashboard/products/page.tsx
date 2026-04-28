@@ -54,323 +54,6 @@ const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 const TEAL_VALUE = "#16a34a";
 const BLACK_LABEL = "#111827";
 
-const FONT_SYSTEM_CSS = `
-  .smartacctg-products-page {
-    --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-      "Microsoft YaHei", Arial, sans-serif;
-
-    --sa-fs-xs: clamp(13px, 2.7vw, 14px);
-    --sa-fs-sm: clamp(15px, 3vw, 16px);
-    --sa-fs-base: clamp(16px, 3.4vw, 18px);
-    --sa-fs-md: clamp(18px, 3.8vw, 21px);
-    --sa-fs-lg: clamp(22px, 4.8vw, 27px);
-    --sa-fs-xl: clamp(26px, 5.8vw, 35px);
-    --sa-fs-2xl: clamp(32px, 7vw, 45px);
-
-    --sa-control-h: clamp(50px, 10vw, 60px);
-    --sa-control-x: clamp(14px, 3vw, 18px);
-    --sa-radius-control: clamp(14px, 3vw, 20px);
-    --sa-radius-card: clamp(22px, 4vw, 34px);
-    --sa-card-pad: clamp(18px, 4vw, 30px);
-
-    font-family: var(--sa-font-family) !important;
-    font-size: var(--sa-fs-base) !important;
-    line-height: 1.6 !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    overflow-x: hidden !important;
-  }
-
-  .smartacctg-products-page,
-  .smartacctg-products-page * {
-    box-sizing: border-box !important;
-    font-family: var(--sa-font-family) !important;
-  }
-
-  .smartacctg-products-page h1 {
-    font-size: var(--sa-fs-2xl) !important;
-    line-height: 1.12 !important;
-    font-weight: 900 !important;
-    letter-spacing: -0.03em !important;
-  }
-
-  .smartacctg-products-page h2 {
-    font-size: var(--sa-fs-xl) !important;
-    line-height: 1.2 !important;
-    font-weight: 900 !important;
-    letter-spacing: -0.02em !important;
-  }
-
-  .smartacctg-products-page h3 {
-    font-size: var(--sa-fs-lg) !important;
-    line-height: 1.25 !important;
-    font-weight: 900 !important;
-    margin-top: clamp(20px, 5vw, 30px) !important;
-    margin-bottom: clamp(10px, 3vw, 16px) !important;
-  }
-
-  .smartacctg-products-page p,
-  .smartacctg-products-page div,
-  .smartacctg-products-page span,
-  .smartacctg-products-page label,
-  .smartacctg-products-page td,
-  .smartacctg-products-page th {
-    font-size: var(--sa-fs-base) !important;
-  }
-
-  .smartacctg-products-page strong {
-    font-size: inherit !important;
-    font-weight: 900 !important;
-  }
-
-  .smartacctg-products-page input,
-  .smartacctg-products-page select,
-  .smartacctg-products-page textarea,
-  .smartacctg-products-page button {
-    font-size: var(--sa-fs-base) !important;
-    font-family: var(--sa-font-family) !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  .smartacctg-products-page input,
-  .smartacctg-products-page select,
-  .smartacctg-products-page textarea {
-    width: 100% !important;
-    min-height: var(--sa-control-h) !important;
-    padding-left: var(--sa-control-x) !important;
-    padding-right: var(--sa-control-x) !important;
-    border-radius: var(--sa-radius-control) !important;
-  }
-
-  .smartacctg-products-page button {
-    min-height: var(--sa-control-h) !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    line-height: 1.2 !important;
-    white-space: normal !important;
-  }
-
-  .smartacctg-products-page textarea {
-    resize: vertical !important;
-    padding-top: 14px !important;
-    padding-bottom: 14px !important;
-  }
-
-  .smartacctg-products-page img,
-  .smartacctg-products-page video,
-  .smartacctg-products-page iframe,
-  .smartacctg-products-page canvas {
-    max-width: 100% !important;
-  }
-
-  .products-topbar {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-    width: 100% !important;
-    margin-bottom: 16px !important;
-  }
-
-  .products-topbar-left {
-    display: flex !important;
-    justify-content: flex-start !important;
-    min-width: 0 !important;
-  }
-
-  .products-topbar-right {
-    display: flex !important;
-    justify-content: flex-end !important;
-    min-width: 0 !important;
-  }
-
-  .products-lang-row {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: 6px !important;
-    flex-wrap: nowrap !important;
-  }
-
-  .products-title-row {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: start !important;
-    gap: 12px !important;
-    width: 100% !important;
-  }
-
-  .products-title-text {
-    min-width: 0 !important;
-  }
-
-  .products-plus-btn {
-    width: 58px !important;
-    height: 58px !important;
-    min-width: 58px !important;
-    min-height: 58px !important;
-    max-width: 58px !important;
-    border-radius: 999px !important;
-    padding: 0 !important;
-    flex-shrink: 0 !important;
-  }
-
-  .products-summary-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 14px !important;
-    width: 100% !important;
-  }
-
-  .products-summary-grid button {
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  .products-summary-grid button span {
-    color: #111827 !important;
-    font-size: clamp(15px, 3.2vw, 20px) !important;
-    font-weight: 900 !important;
-    line-height: 1.25 !important;
-  }
-
-  .products-summary-grid button strong {
-    color: #16a34a !important;
-    font-size: clamp(24px, 5.4vw, 42px) !important;
-    font-weight: 900 !important;
-    line-height: 1.08 !important;
-    word-break: keep-all !important;
-  }
-
-  .products-product-info-grid div {
-    font-size: var(--sa-fs-base) !important;
-  }
-
-  .products-modal-header {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: center !important;
-    gap: 12px !important;
-    margin-bottom: 16px !important;
-  }
-
-  .products-modal-header h2 {
-    margin: 0 !important;
-  }
-
-  @media (max-width: 768px) {
-    .smartacctg-products-page {
-      padding: 12px !important;
-    }
-
-    .smartacctg-products-page h1 {
-      font-size: var(--sa-fs-xl) !important;
-    }
-
-    .smartacctg-products-page h2 {
-      font-size: var(--sa-fs-lg) !important;
-    }
-
-    .smartacctg-products-page h3 {
-      font-size: var(--sa-fs-md) !important;
-    }
-
-    .smartacctg-products-page p,
-    .smartacctg-products-page div,
-    .smartacctg-products-page span,
-    .smartacctg-products-page label,
-    .smartacctg-products-page td,
-    .smartacctg-products-page th {
-      font-size: var(--sa-fs-base) !important;
-    }
-
-    .products-search-row {
-      grid-template-columns: 1fr !important;
-    }
-
-    .products-search-row button {
-      width: 100% !important;
-    }
-
-    .products-modal-actions {
-      flex-direction: column !important;
-    }
-
-    .products-modal-actions button {
-      width: 100% !important;
-    }
-  }
-
-  @media (max-width: 430px) {
-    .smartacctg-products-page {
-      padding: 10px !important;
-    }
-
-    .products-topbar {
-      gap: 5px !important;
-    }
-
-    .products-topbar button {
-      font-size: 14px !important;
-      min-height: 44px !important;
-      height: 44px !important;
-      padding-left: 8px !important;
-      padding-right: 8px !important;
-      white-space: nowrap !important;
-    }
-
-    .products-lang-row {
-      gap: 4px !important;
-    }
-
-    .products-lang-row button {
-      min-width: 44px !important;
-    }
-
-    .products-summary-grid {
-      display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 12px !important;
-    }
-
-    .products-summary-grid button {
-      min-height: 150px !important;
-      padding: 14px 8px !important;
-    }
-
-    .products-summary-grid button span {
-      font-size: clamp(15px, 3.6vw, 18px) !important;
-    }
-
-    .products-summary-grid button strong {
-      font-size: clamp(22px, 5.2vw, 30px) !important;
-    }
-
-    .products-product-info-grid {
-      grid-template-columns: 1fr !important;
-    }
-
-    .products-action-row {
-      flex-direction: column !important;
-      align-items: stretch !important;
-    }
-
-    .products-action-row button {
-      width: 100% !important;
-    }
-
-    .products-plus-btn {
-      width: 52px !important;
-      height: 52px !important;
-      min-width: 52px !important;
-      min-height: 52px !important;
-      max-width: 52px !important;
-    }
-  }
-`;
-
 const TXT = {
   zh: {
     title: "产品管理",
@@ -544,7 +227,7 @@ const THEMES: Record<ThemeKey, any> = {
     soft: "#ccfbf1",
   },
   pink: {
-    name: "可愛粉色",
+    name: "可爱粉色",
     pageBg: "#fff7fb",
     card: "#ffffff",
     itemCard: "#ffffff",
@@ -572,7 +255,7 @@ const THEMES: Record<ThemeKey, any> = {
     soft: "#2a2112",
   },
   lightRed: {
-    name: "可愛淺紅",
+    name: "可爱浅红",
     pageBg: "#fff1f2",
     card: "#ffffff",
     itemCard: "#ffffff",
@@ -615,9 +298,24 @@ const THEMES: Record<ThemeKey, any> = {
   },
 };
 
+function safeLocalGet(key: string) {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(key);
+}
+
+function safeLocalSet(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, value);
+}
+
+function safeLocalRemove(key: string) {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(key);
+}
+
 function readStockMapByKey(key: string): Record<string, number> {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = safeLocalGet(key);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -632,8 +330,8 @@ function getStockMap(): Record<string, number> {
 }
 
 function writeStockMap(map: Record<string, number>) {
-  localStorage.setItem(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
-  localStorage.setItem(PRODUCT_STOCK_FALLBACK_KEY, JSON.stringify(map));
+  safeLocalSet(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
+  safeLocalSet(PRODUCT_STOCK_FALLBACK_KEY, JSON.stringify(map));
 }
 
 function saveStockValue(productId: string, stock: number) {
@@ -687,17 +385,22 @@ export default function ProductsPage() {
     const query = new URLSearchParams(window.location.search);
 
     const urlLang = query.get("lang") as Lang | null;
-    const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
-    const savedTheme = localStorage.getItem(THEME_KEY) as ThemeKey | null;
+    const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
 
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
       setLang(urlLang);
-      localStorage.setItem(LANG_KEY, urlLang);
+      safeLocalSet(LANG_KEY, urlLang);
     } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
       setLang(savedLang);
     }
 
-    if (savedTheme && THEMES[savedTheme]) {
+    const urlTheme = query.get("theme") as ThemeKey | null;
+    const savedTheme = safeLocalGet(THEME_KEY) as ThemeKey | null;
+
+    if (urlTheme && THEMES[urlTheme]) {
+      setThemeKey(urlTheme);
+      safeLocalSet(THEME_KEY, urlTheme);
+    } else if (savedTheme && THEMES[savedTheme]) {
       setThemeKey(savedTheme);
     }
 
@@ -785,6 +488,7 @@ export default function ProductsPage() {
     return {
       ...row,
       id: String(row?.id || ""),
+      name: String(row?.name || ""),
       price: Number(row?.price || 0),
       cost: Number(row?.cost || 0),
       discount: Number(row?.discount || 0),
@@ -796,7 +500,7 @@ export default function ProductsPage() {
   async function init() {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
-    const trialRaw = localStorage.getItem(TRIAL_KEY);
+    const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
       const trial = JSON.parse(trialRaw);
@@ -804,9 +508,9 @@ export default function ProductsPage() {
       if (Date.now() < Number(trial.expiresAt)) {
         setIsTrial(true);
 
-        const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
-        const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
-        const savedCustomerPrices = localStorage.getItem(TRIAL_CUSTOMER_PRICES_KEY);
+        const savedProducts = safeLocalGet(TRIAL_PRODUCTS_KEY);
+        const savedCustomers = safeLocalGet(TRIAL_CUSTOMERS_KEY);
+        const savedCustomerPrices = safeLocalGet(TRIAL_CUSTOMER_PRICES_KEY);
 
         const productRows = savedProducts ? JSON.parse(savedProducts) : [];
 
@@ -816,10 +520,10 @@ export default function ProductsPage() {
         return;
       }
 
-      localStorage.removeItem(TRIAL_KEY);
-      localStorage.removeItem(TRIAL_PRODUCTS_KEY);
-      localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
-      localStorage.removeItem(TRIAL_CUSTOMER_PRICES_KEY);
+      safeLocalRemove(TRIAL_KEY);
+      safeLocalRemove(TRIAL_PRODUCTS_KEY);
+      safeLocalRemove(TRIAL_CUSTOMERS_KEY);
+      safeLocalRemove(TRIAL_CUSTOMER_PRICES_KEY);
       window.location.href = "/zh";
       return;
     }
@@ -846,7 +550,7 @@ export default function ProductsPage() {
 
     if (profile?.theme && THEMES[profile.theme as ThemeKey]) {
       setThemeKey(profile.theme as ThemeKey);
-      localStorage.setItem(THEME_KEY, profile.theme);
+      safeLocalSet(THEME_KEY, profile.theme);
     }
 
     await loadProducts(userId);
@@ -893,24 +597,27 @@ export default function ProductsPage() {
     nextCustomers = customers,
     nextCustomerPrices = customerPrices
   ) {
-    localStorage.setItem(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
-    localStorage.setItem(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
-    localStorage.setItem(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextCustomerPrices));
+    safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
+    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
+    safeLocalSet(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextCustomerPrices));
   }
 
   function switchLang(next: Lang) {
     setLang(next);
-    localStorage.setItem(LANG_KEY, next);
+    safeLocalSet(LANG_KEY, next);
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
   function goBack() {
     window.location.href = isTrial
-      ? `/dashboard?mode=trial&lang=${lang}`
-      : `/dashboard?lang=${lang}`;
+      ? `/dashboard?mode=trial&lang=${lang}&theme=${themeKey}`
+      : `/dashboard?lang=${lang}&theme=${themeKey}`;
   }
 
   function productCode(p: Product) {
@@ -1289,8 +996,8 @@ export default function ProductsPage() {
     return (
       <div
         key={p.id}
+        className="sa-item-card"
         style={{
-          ...productCardStyle,
           background: theme.itemCard,
           color: theme.itemText,
           borderColor: theme.border,
@@ -1381,34 +1088,40 @@ export default function ProductsPage() {
       className="smartacctg-page smartacctg-products-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
-      <style jsx global>{`
-        html {
-          -webkit-text-size-adjust: 100%;
-          text-size-adjust: 100%;
-        }
-
-        ${FONT_SYSTEM_CSS}
-      `}</style>
-
-      <div className="products-topbar" style={topBarStyle}>
-        <div className="products-topbar-left">
+      <div className="sa-topbar">
+        <div className="sa-topbar-left">
           <button
             onClick={goBack}
+            className="sa-back-btn"
             style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}
           >
             ← {t.back}
           </button>
         </div>
 
-        <div className="products-topbar-right">
-          <div className="products-lang-row" style={langRowStyle}>
-            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
+        <div className="sa-topbar-center" aria-hidden="true" />
+
+        <div className="sa-topbar-right">
+          <div className="sa-lang-row">
+            <button
+              onClick={() => switchLang("zh")}
+              className="sa-lang-btn"
+              style={langBtnStyle(lang === "zh", theme)}
+            >
               中文
             </button>
-            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
+            <button
+              onClick={() => switchLang("en")}
+              className="sa-lang-btn"
+              style={langBtnStyle(lang === "en", theme)}
+            >
               EN
             </button>
-            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
+            <button
+              onClick={() => switchLang("ms")}
+              className="sa-lang-btn"
+              style={langBtnStyle(lang === "ms", theme)}
+            >
               BM
             </button>
           </div>
@@ -1416,24 +1129,24 @@ export default function ProductsPage() {
       </div>
 
       <section
+        className="sa-card"
         style={{
-          ...headerCardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
           color: theme.text,
         }}
       >
-        <div className="products-title-row" style={titleRowStyle}>
-          <div className="products-title-text">
+        <div style={titleRowStyle}>
+          <div>
             <h1 style={titleStyle}>{t.title}</h1>
             <p style={{ ...subTitleStyle, color: theme.muted }}>{t.subtitle}</p>
             {isTrial ? <div style={trialBadgeStyle}>{t.trial}</div> : null}
           </div>
 
           <button
-            className="products-plus-btn"
             onClick={openAddForm}
+            aria-label={t.add}
             style={{ ...plusBtnStyle, background: theme.accent }}
           >
             +
@@ -1476,9 +1189,9 @@ export default function ProductsPage() {
       </section>
 
       <section
+        className="sa-card"
         id="productDetails"
         style={{
-          ...contentCardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
@@ -1512,8 +1225,8 @@ export default function ProductsPage() {
       </section>
 
       <section
+        className="sa-card"
         style={{
-          ...contentCardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
@@ -1590,8 +1303,8 @@ export default function ProductsPage() {
       </section>
 
       <section
+        className="sa-card"
         style={{
-          ...contentCardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
@@ -1604,16 +1317,17 @@ export default function ProductsPage() {
         <p>{t.link3}</p>
       </section>
 
-      {detailMetric && (
+      {detailMetric ? (
         <div style={overlayStyle}>
           <div
+            className="sa-modal"
             style={{
               ...detailModalStyle,
               borderColor: theme.border,
               boxShadow: theme.glow,
             }}
           >
-            <div className="products-modal-header" style={modalHeaderStyle}>
+            <div className="sa-modal-header" style={modalHeaderStyle}>
               <h2>
                 {getDetailTitle()}｜{t.allProductDetails}
               </h2>
@@ -1650,18 +1364,19 @@ export default function ProductsPage() {
             </button>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {showForm && (
+      {showForm ? (
         <div style={overlayStyle}>
           <div
+            className="sa-modal"
             style={{
               ...modalStyle,
               borderColor: theme.border,
               boxShadow: theme.glow,
             }}
           >
-            <div className="products-modal-header" style={modalHeaderStyle}>
+            <div className="sa-modal-header" style={modalHeaderStyle}>
               <h2>{editingId ? t.edit : t.add}</h2>
 
               <button type="button" onClick={resetForm} style={closeTextBtnStyle}>
@@ -1726,7 +1441,7 @@ export default function ProductsPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </main>
   );
 }
@@ -1736,28 +1451,26 @@ const pageStyle: CSSProperties = {
   width: "100%",
   maxWidth: "100vw",
   overflowX: "hidden",
-  padding: "clamp(10px, 2vw, 24px)",
-  fontFamily:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
+  padding: "clamp(10px, 3vw, 22px)",
   boxSizing: "border-box",
   fontSize: "var(--sa-fs-base)",
 };
 
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 8,
-  width: "100%",
-  marginBottom: 16,
+const backBtnStyle: CSSProperties = {
+  background: "#fff",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 var(--sa-control-x)",
+  fontWeight: 900,
+  whiteSpace: "nowrap",
 };
 
-const headerCardStyle: CSSProperties = {
-  border: "3px solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-  marginBottom: 16,
-};
+const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
+  borderColor: theme.accent,
+  background: active ? theme.accent : "#fff",
+  color: active ? "#fff" : theme.accent,
+});
 
 const titleRowStyle: CSSProperties = {
   display: "grid",
@@ -1787,36 +1500,6 @@ const subTitleStyle: CSSProperties = {
   fontSize: "var(--sa-fs-base)",
   fontWeight: 700,
 };
-
-const backBtnStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 999,
-  padding: "0 13px",
-  minHeight: 48,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-  whiteSpace: "nowrap",
-};
-
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 6,
-  flexWrap: "nowrap",
-};
-
-const langBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "0 12px",
-  minWidth: 54,
-  minHeight: 48,
-  borderRadius: 999,
-  border: `2px solid ${theme.accent}`,
-  background: active ? theme.accent : "#fff",
-  color: active ? "#fff" : theme.accent,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-  whiteSpace: "nowrap",
-});
 
 const plusBtnStyle: CSSProperties = {
   width: 58,
@@ -1853,7 +1536,7 @@ const summaryGridStyle: CSSProperties = {
 const summaryCardStyle: CSSProperties = {
   background: "#fff",
   color: BLACK_LABEL,
-  border: "3px solid",
+  border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "clamp(14px, 3vw, 24px)",
   display: "flex",
@@ -1861,7 +1544,7 @@ const summaryCardStyle: CSSProperties = {
   gap: 12,
   textAlign: "center",
   cursor: "pointer",
-  minHeight: 160,
+  minHeight: 150,
   fontWeight: 900,
   alignItems: "center",
   justifyContent: "center",
@@ -1885,13 +1568,6 @@ const summaryValueStyle: CSSProperties = {
   wordBreak: "keep-all",
 };
 
-const contentCardStyle: CSSProperties = {
-  border: "3px solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-  marginBottom: 16,
-};
-
 const searchRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
@@ -1907,8 +1583,8 @@ const inputStyle: CSSProperties = {
   minHeight: "var(--sa-control-h)",
   padding: "0 var(--sa-control-x)",
   borderRadius: "var(--sa-radius-control)",
-  border: "1px solid #cbd5e1",
-  fontSize: "var(--sa-fs-base)",
+  border: "var(--sa-border-w) solid #cbd5e1",
+  fontSize: "16px",
   outline: "none",
   background: "#ffffff",
   color: "#111827",
@@ -1937,19 +1613,11 @@ const msgBoxStyle: CSSProperties = {
   background: "#fef3c7",
   color: "#92400e",
   padding: "12px 14px",
-  borderRadius: 14,
+  borderRadius: "var(--sa-radius-control)",
   fontWeight: 900,
 };
 
 const productListStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-};
-
-const productCardStyle: CSSProperties = {
-  border: "3px solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
   display: "grid",
   gap: 12,
 };
@@ -1993,7 +1661,7 @@ const stockBadgeStyle: CSSProperties = {
 const customerPurchaseBoxStyle: CSSProperties = {
   marginTop: 14,
   padding: 14,
-  borderRadius: 16,
+  borderRadius: "var(--sa-radius-control)",
   background: "#f8fafc",
   color: "#111827",
 };
@@ -2015,7 +1683,7 @@ const purchaseItemStyle: CSSProperties = {
 const noteStyle: CSSProperties = {
   marginTop: 10,
   padding: 12,
-  borderRadius: 14,
+  borderRadius: "var(--sa-radius-control)",
   background: "#f8fafc",
   color: "#475569",
   lineHeight: 1.55,
@@ -2030,8 +1698,8 @@ const actionRowStyle: CSSProperties = {
 
 const editBtnStyle: CSSProperties = {
   background: "#fff",
-  border: "2px solid",
-  borderRadius: 12,
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
   padding: "0 14px",
   minHeight: 46,
   fontWeight: 900,
@@ -2042,7 +1710,7 @@ const deleteBtnStyle: CSSProperties = {
   background: "#fee2e2",
   color: "#b91c1c",
   border: "none",
-  borderRadius: 12,
+  borderRadius: "var(--sa-radius-control)",
   padding: "0 14px",
   minHeight: 46,
   fontWeight: 900,
@@ -2080,9 +1748,7 @@ const modalStyle: CSSProperties = {
   overflowY: "auto",
   background: "#fff",
   color: "#111827",
-  border: "3px solid",
-  borderRadius: 22,
-  padding: 20,
+  border: "var(--sa-border-w) solid",
 };
 
 const detailModalStyle: CSSProperties = {
@@ -2092,16 +1758,10 @@ const detailModalStyle: CSSProperties = {
   overflowY: "auto",
   background: "#fff",
   color: "#111827",
-  border: "3px solid",
-  borderRadius: 22,
-  padding: 20,
+  border: "var(--sa-border-w) solid",
 };
 
 const modalHeaderStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  alignItems: "center",
-  gap: 12,
   marginBottom: 16,
 };
 
@@ -2114,6 +1774,8 @@ const closeTextBtnStyle: CSSProperties = {
   minHeight: 44,
   width: "auto",
   height: "auto",
+  minWidth: 0,
+  maxWidth: "none",
   fontWeight: 900,
   fontSize: "var(--sa-fs-base)",
   lineHeight: 1.2,
@@ -2144,7 +1806,7 @@ const cancelBtnStyle: CSSProperties = {
   background: "#fff",
   color: "#0f172a",
   border: "2px solid #cbd5e1",
-  borderRadius: 12,
+  borderRadius: "var(--sa-radius-control)",
   padding: "0 16px",
   minHeight: "var(--sa-control-h)",
   fontWeight: 900,
