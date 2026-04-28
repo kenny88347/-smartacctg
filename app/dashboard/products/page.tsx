@@ -1156,14 +1156,6 @@ export default function ProductsPage() {
 
       <section className="products-summary-grid" style={summaryGridStyle}>
         <button
-          onClick={() => openDetailModal("stock")}
-          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
-        >
-          <span style={summaryLabelStyle}>{t.stock}</span>
-          <strong style={summaryValueStyle}>{productSummary.totalStock}</strong>
-        </button>
-
-        <button
           onClick={() => openDetailModal("cost")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
         >
@@ -1185,6 +1177,14 @@ export default function ProductsPage() {
         >
           <span style={summaryLabelStyle}>{t.profit}</span>
           <strong style={summaryValueStyle}>RM {productSummary.totalProfit.toFixed(2)}</strong>
+        </button>
+
+        <button
+          onClick={() => openDetailModal("stock")}
+          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
+        >
+          <span style={summaryLabelStyle}>{t.stock}</span>
+          <strong style={summaryValueStyle}>{productSummary.totalStock}</strong>
         </button>
       </section>
 
@@ -1766,12 +1766,12 @@ const modalHeaderStyle: CSSProperties = {
 };
 
 const closeTextBtnStyle: CSSProperties = {
-  background: "#fee2e2",
+  background: "transparent",
   color: "#dc2626",
-  border: "2px solid #fecaca",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 14px",
-  minHeight: 44,
+  border: "none",
+  boxShadow: "none",
+  padding: "0 4px",
+  minHeight: 0,
   width: "auto",
   height: "auto",
   minWidth: 0,
