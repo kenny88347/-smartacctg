@@ -113,299 +113,48 @@ const ZERO_SIGNATURE_META: InvoiceSignatureMeta = {
   signatureImageUrl: "",
 };
 
-const FONT_SYSTEM_CSS = `
-  .smartacctg-invoice-page {
-    --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-      "Microsoft YaHei", Arial, sans-serif;
-
-    --sa-fs-xs: clamp(12px, 2.5vw, 13px);
-    --sa-fs-sm: clamp(14px, 2.9vw, 15px);
-    --sa-fs-base: clamp(16px, 3.3vw, 18px);
-    --sa-fs-md: clamp(18px, 3.8vw, 21px);
-    --sa-fs-lg: clamp(21px, 4.5vw, 26px);
-    --sa-fs-xl: clamp(25px, 5.5vw, 34px);
-    --sa-fs-2xl: clamp(30px, 6.5vw, 42px);
-
-    --sa-border-w: 3px;
-    --sa-radius-card: clamp(22px, 4vw, 34px);
-    --sa-radius-control: clamp(14px, 3vw, 20px);
-    --sa-card-pad: clamp(18px, 4vw, 30px);
-    --sa-control-h: clamp(52px, 10vw, 62px);
-    --sa-control-x: clamp(14px, 3vw, 20px);
-    --sa-btn-fs: var(--sa-fs-base);
-    --sa-input-fs: 16px;
-
-    font-family: var(--sa-font-family) !important;
-    font-size: var(--sa-fs-base) !important;
-    line-height: 1.55 !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    overflow-x: hidden !important;
-  }
-
-  .smartacctg-invoice-page,
-  .smartacctg-invoice-page * {
-    box-sizing: border-box !important;
-    font-family: var(--sa-font-family) !important;
-  }
-
-  .smartacctg-invoice-page h1 {
-    font-size: var(--sa-fs-2xl) !important;
-    line-height: 1.12 !important;
-    font-weight: 900 !important;
-  }
-
-  .smartacctg-invoice-page h2 {
-    font-size: var(--sa-fs-xl) !important;
-    line-height: 1.2 !important;
-    font-weight: 900 !important;
-  }
-
-  .smartacctg-invoice-page h3 {
-    font-size: var(--sa-fs-lg) !important;
-    line-height: 1.25 !important;
-    font-weight: 900 !important;
-    margin-top: clamp(20px, 5vw, 30px) !important;
-    margin-bottom: clamp(10px, 3vw, 16px) !important;
-  }
-
-  .smartacctg-invoice-page p,
-  .smartacctg-invoice-page div,
-  .smartacctg-invoice-page span,
-  .smartacctg-invoice-page label,
-  .smartacctg-invoice-page td,
-  .smartacctg-invoice-page th {
-    font-size: var(--sa-fs-base);
-  }
-
-  .smartacctg-invoice-page input,
-  .smartacctg-invoice-page select,
-  .smartacctg-invoice-page textarea {
-    width: 100% !important;
-    height: auto !important;
-    min-height: var(--sa-control-h) !important;
-    font-size: var(--sa-input-fs) !important;
-    line-height: 1.35 !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  .smartacctg-invoice-page button {
-    font-size: var(--sa-btn-fs);
-    line-height: 1.2;
-    min-width: 0;
-    white-space: normal;
-  }
-
-  .smartacctg-invoice-page input[type="date"],
-  .smartacctg-invoice-page input[type="month"],
-  .smartacctg-invoice-page input[type="number"] {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    display: block !important;
-    -webkit-appearance: none !important;
-    appearance: none !important;
-    min-height: 58px !important;
-    padding: 0 12px !important;
-    overflow: hidden !important;
-    line-height: 58px !important;
-  }
-
-  .smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value {
-    text-align: center !important;
-    width: 100% !important;
-    display: block !important;
-    min-height: 1.6em !important;
-    line-height: 1.6em !important;
-  }
-
-  .smartacctg-invoice-page img,
-  .smartacctg-invoice-page video,
-  .smartacctg-invoice-page canvas,
-  .smartacctg-invoice-page iframe {
-    max-width: 100% !important;
-  }
-
-  .smartacctg-invoice-page table {
-    max-width: 100% !important;
-  }
-
-  .smartacctg-invoice-page .sa-user-toolbar {
-    width: 100% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-    margin-bottom: clamp(12px, 3vw, 18px) !important;
-  }
-
-  .smartacctg-invoice-page .sa-back-btn {
-    width: auto !important;
-    min-width: auto !important;
-    max-width: none !important;
-    min-height: clamp(42px, 3.4em, 52px) !important;
-    padding: 0 clamp(10px, 2.6vw, 16px) !important;
-    border-radius: var(--sa-radius-control) !important;
-    border: 2px solid !important;
-    background: #ffffff !important;
-    font-size: var(--sa-btn-fs) !important;
-    font-weight: 900 !important;
-    line-height: 1.15 !important;
-    white-space: nowrap !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .smartacctg-invoice-page .sa-lang-row {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: clamp(5px, 1.6vw, 8px) !important;
-    flex-wrap: nowrap !important;
-  }
-
-  .smartacctg-invoice-page .sa-lang-btn {
-    width: auto !important;
-    min-width: clamp(42px, 10vw, 58px) !important;
-    max-width: none !important;
-    height: clamp(42px, 3.4em, 52px) !important;
-    min-height: clamp(42px, 3.4em, 52px) !important;
-    padding: 0 clamp(8px, 2vw, 14px) !important;
-    border-radius: 999px !important;
-    border: 2px solid !important;
-    font-size: var(--sa-btn-fs) !important;
-    font-weight: 900 !important;
-    line-height: 1.15 !important;
-    white-space: nowrap !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .smartacctg-invoice-page .sa-titlebar {
-    width: 100% !important;
-    display: grid !important;
-    grid-template-columns: 1fr auto !important;
-    align-items: center !important;
-    gap: clamp(10px, 3vw, 16px) !important;
-    margin-top: -6px !important;
-    margin-bottom: 4px !important;
-  }
-
-  .smartacctg-invoice-page .sa-titlebar h1 {
-    margin: 0 !important;
-    grid-column: 1 !important;
-  }
-
-  .smartacctg-invoice-page .sa-close-x {
-    grid-column: 2 !important;
-    justify-self: end !important;
-    width: auto !important;
-    height: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    max-width: none !important;
-    padding: 0 4px !important;
-    border: none !important;
-    background: transparent !important;
-    color: #dc2626 !important;
-    font-size: 38px !important;
-    font-weight: 900 !important;
-    line-height: 1 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  @media (max-width: 768px) {
-    .smartacctg-invoice-page {
-      padding: 12px !important;
-    }
-
-    .smartacctg-invoice-page h1 {
-      font-size: var(--sa-fs-xl) !important;
-    }
-
-    .smartacctg-invoice-page h2 {
-      font-size: var(--sa-fs-lg) !important;
-    }
-
-    .smartacctg-invoice-page h3 {
-      font-size: var(--sa-fs-md) !important;
-    }
-
-    .smartacctg-invoice-page p,
-    .smartacctg-invoice-page div,
-    .smartacctg-invoice-page span,
-    .smartacctg-invoice-page label,
-    .smartacctg-invoice-page td,
-    .smartacctg-invoice-page th {
-      font-size: var(--sa-fs-base);
-    }
-
-    .smartacctg-invoice-page input,
-    .smartacctg-invoice-page select,
-    .smartacctg-invoice-page textarea {
-      font-size: 16px !important;
-    }
-  }
-
-  @media (max-width: 520px) {
-    .responsive-actions {
-      grid-template-columns: 1fr !important;
-    }
-
-    .responsive-actions button {
-      width: 100% !important;
-    }
-  }
-
-  @media (max-width: 430px) {
-    .smartacctg-invoice-page .sa-user-toolbar {
-      gap: 5px !important;
-    }
-
-    .smartacctg-invoice-page .sa-back-btn {
-      min-height: 42px !important;
-      padding: 0 8px !important;
-      font-size: 13px !important;
-    }
-
-    .smartacctg-invoice-page .sa-lang-row {
-      gap: 4px !important;
-    }
-
-    .smartacctg-invoice-page .sa-lang-btn {
-      min-width: 38px !important;
-      height: 42px !important;
-      min-height: 42px !important;
-      padding: 0 6px !important;
-      font-size: 13px !important;
-    }
-
-    .smartacctg-invoice-page .sa-close-x {
-      font-size: 36px !important;
-    }
+/**
+ * 这里保留很少 CSS，只做两件事：
+ * 1. 让关闭按钮文字跟随语言切换
+ * 2. 保留列印区域控制
+ *
+ * 其他字体、按钮、日期框、顶部语言按钮，都会跟随 app/globals.css
+ */
+const INVOICE_PAGE_CSS = `
+  body .smartacctg-invoice-page button.sa-close-x::before {
+    content: attr(data-close-text) !important;
   }
 
   @media print {
-    .smartacctg-invoice-page,
-    .smartacctg-invoice-page * {
-      font-size: 12px !important;
+    body * {
+      visibility: hidden !important;
     }
 
-    .smartacctg-invoice-page h1 {
-      font-size: 24px !important;
+    #printInvoiceArea,
+    #printInvoiceArea * {
+      visibility: visible !important;
     }
 
-    .smartacctg-invoice-page h2 {
-      font-size: 20px !important;
+    #printInvoiceArea {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 210mm !important;
+      min-height: 297mm !important;
+      padding: 12mm !important;
+      margin: 0 !important;
+      background: white !important;
+      color: #111827 !important;
+      box-shadow: none !important;
     }
 
-    .smartacctg-invoice-page h3 {
-      font-size: 16px !important;
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    .no-print {
+      display: none !important;
     }
   }
 `;
@@ -1831,7 +1580,11 @@ export default function InvoicePage() {
     });
   }
 
-  async function insertTransactionSafe(invoiceId: string, finalCustomer: Customer, finalProduct: Product) {
+  async function insertTransactionSafe(
+    invoiceId: string,
+    finalCustomer: Customer,
+    finalProduct: Product
+  ) {
     await insertAdaptive("transactions", {
       user_id: userId,
       txn_date: invoiceDate,
@@ -2354,7 +2107,10 @@ export default function InvoicePage() {
     setChargeMode: (v: ChargeMode) => void
   ) {
     return (
-      <div style={{ ...chargeBoxStyle, borderColor: theme.border, background: theme.panelBg }}>
+      <div
+        className="sa-panel"
+        style={{ ...chargeBoxStyle, borderColor: theme.border, background: theme.panelBg }}
+      >
         <label style={{ ...labelStyle, color: theme.accent }}>{label}</label>
 
         <div style={chargeInputRowStyle}>
@@ -2461,7 +2217,7 @@ export default function InvoicePage() {
         <div style={officialHeaderStyle}>
           <div style={officialCompanyBlockStyle}>
             {companyLogoUrl ? (
-              <img src={companyLogoUrl} style={officialLogoStyle} />
+              <img src={companyLogoUrl} style={officialLogoStyle} alt="Company Logo" />
             ) : (
               <div style={officialLogoPlaceholderStyle}>LOGO</div>
             )}
@@ -2527,7 +2283,9 @@ export default function InvoicePage() {
 
                 {pay?.link ? <div style={officialPaymentDetailTextStyle}>{pay.link}</div> : null}
 
-                {pay?.qrCodeUrl ? <img src={pay.qrCodeUrl} style={officialInlineQrStyle} /> : null}
+                {pay?.qrCodeUrl ? (
+                  <img src={pay.qrCodeUrl} style={officialInlineQrStyle} alt="Payment QR" />
+                ) : null}
               </div>
             </div>
           </div>
@@ -2608,7 +2366,11 @@ export default function InvoicePage() {
           <div style={officialSignatureWrapStyle}>
             <div style={officialSignatureBoxStyle}>
               {signatureMeta.signatureImageUrl ? (
-                <img src={signatureMeta.signatureImageUrl} style={officialSignatureImageStyle} />
+                <img
+                  src={signatureMeta.signatureImageUrl}
+                  style={officialSignatureImageStyle}
+                  alt="Signature"
+                />
               ) : null}
 
               {signatureMeta.signatureText ? (
@@ -2626,49 +2388,11 @@ export default function InvoicePage() {
 
   return (
     <main
-      className="sa-page smartacctg-invoice-page"
+      className="smartacctg-page smartacctg-invoice-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
       <style jsx global>{`
-        html {
-          -webkit-text-size-adjust: 100%;
-          text-size-adjust: 100%;
-        }
-
-        ${FONT_SYSTEM_CSS}
-
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-
-          #printInvoiceArea,
-          #printInvoiceArea * {
-            visibility: visible !important;
-          }
-
-          #printInvoiceArea {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 210mm !important;
-            min-height: 297mm !important;
-            padding: 12mm !important;
-            margin: 0 !important;
-            background: white !important;
-            color: #111827 !important;
-            box-shadow: none !important;
-          }
-
-          @page {
-            size: A4 portrait;
-            margin: 0;
-          }
-
-          .no-print {
-            display: none !important;
-          }
-        }
+        ${INVOICE_PAGE_CSS}
       `}</style>
 
       <div className="no-print sa-user-toolbar">
@@ -2721,7 +2445,7 @@ export default function InvoicePage() {
 
       {mode === "list" && (
         <section
-          className="no-print"
+          className="no-print sa-card"
           style={{
             ...cardStyle,
             background: theme.card,
@@ -2758,6 +2482,7 @@ export default function InvoicePage() {
               {filteredInvoices.map((inv) => (
                 <div
                   key={inv.id}
+                  className="sa-item-card"
                   style={{
                     ...invoiceItemStyle,
                     background: theme.itemBg,
@@ -2782,7 +2507,7 @@ export default function InvoicePage() {
                       {t.phone}：{inv.customer_phone || "-"}
                     </div>
 
-                    <div style={recordActionRowStyle}>
+                    <div className="invoice-action-row" style={recordActionRowStyle}>
                       <button onClick={() => startEditInvoice(inv)} style={recordEditBtnStyle}>
                         {t.edit}
                       </button>
@@ -2817,7 +2542,7 @@ export default function InvoicePage() {
 
       {mode === "new" && (
         <section
-          className="no-print"
+          className="no-print sa-card"
           style={{
             ...cardStyle,
             background: theme.card,
@@ -2833,16 +2558,17 @@ export default function InvoicePage() {
 
             <button
               className="sa-close-x"
+              data-close-text={t.close}
               onClick={() => setMode("list")}
               aria-label={t.close}
             >
-              ×
+              {t.close}
             </button>
           </div>
 
           <p style={{ ...newDescStyle, color: theme.muted }}>{t.desc}</p>
 
-          <div style={{ ...invoiceNoBox, ...themedPanelStyle }}>
+          <div className="sa-panel" style={{ ...invoiceNoBox, ...themedPanelStyle }}>
             <strong>Invoice No：</strong> {invoiceNo}
           </div>
 
@@ -2911,6 +2637,7 @@ export default function InvoicePage() {
 
             {showPaymentAdd && (
               <div
+                className="sa-panel"
                 style={{
                   ...paymentAddBoxStyle,
                   borderColor: theme.border,
@@ -2970,7 +2697,7 @@ export default function InvoicePage() {
                   />
                 </label>
 
-                {newPaymentQr ? <img src={newPaymentQr} style={qrPreviewStyle} /> : null}
+                {newPaymentQr ? <img src={newPaymentQr} style={qrPreviewStyle} alt="QR Preview" /> : null}
 
                 <button onClick={addPaymentOption} style={{ ...addBtnStyle, background: theme.accent }}>
                   {t.addPayment}
@@ -2989,9 +2716,9 @@ export default function InvoicePage() {
 
           <h3>{t.companyInfo}</h3>
 
-          <div style={{ ...companyBox, ...themedPanelStyle }}>
+          <div className="sa-panel" style={{ ...companyBox, ...themedPanelStyle }}>
             {companyLogoUrl ? (
-              <img src={companyLogoUrl} style={logoStyle} />
+              <img src={companyLogoUrl} style={logoStyle} alt="Company Logo" />
             ) : (
               <div style={logoPlaceholder}>LOGO</div>
             )}
@@ -3013,6 +2740,7 @@ export default function InvoicePage() {
 
           {showCompanyEdit && (
             <div
+              className="sa-panel"
               style={{
                 ...companyEditBoxStyle,
                 borderColor: theme.border,
@@ -3103,7 +2831,13 @@ export default function InvoicePage() {
           <h3>{t.extraCharges}</h3>
 
           <div style={chargeGridStyle}>
-            {renderChargeInput(t.chargeDiscount, chargeDiscountValue, setChargeDiscountValue, chargeDiscountMode, setChargeDiscountMode)}
+            {renderChargeInput(
+              t.chargeDiscount,
+              chargeDiscountValue,
+              setChargeDiscountValue,
+              chargeDiscountMode,
+              setChargeDiscountMode
+            )}
             {renderChargeInput(t.sst, sstValue, setSstValue, sstMode, setSstMode)}
             {renderChargeInput(t.serviceFee, serviceFeeValue, setServiceFeeValue, serviceFeeMode, setServiceFeeMode)}
             {renderChargeInput(t.handlingFee, handlingFeeValue, setHandlingFeeValue, handlingFeeMode, setHandlingFeeMode)}
@@ -3125,6 +2859,7 @@ export default function InvoicePage() {
           <h3>{t.signature}</h3>
 
           <div
+            className="sa-panel"
             style={{
               ...signatureInputBoxStyle,
               borderColor: theme.border,
@@ -3165,7 +2900,9 @@ export default function InvoicePage() {
 
             {signatureImageUrl || signatureText ? (
               <div style={signatureMiniPreviewStyle}>
-                {signatureImageUrl ? <img src={signatureImageUrl} style={signatureMiniImageStyle} /> : null}
+                {signatureImageUrl ? (
+                  <img src={signatureImageUrl} style={signatureMiniImageStyle} alt="Signature Preview" />
+                ) : null}
                 {signatureText ? <strong>{signatureText}</strong> : null}
               </div>
             ) : null}
@@ -3174,6 +2911,7 @@ export default function InvoicePage() {
           <h3>{t.preview}</h3>
 
           <div
+            className="sa-panel"
             style={{
               ...screenPreviewWrapStyle,
               borderColor: theme.border,
@@ -3193,7 +2931,7 @@ export default function InvoicePage() {
             {loading ? t.generating : editInvoiceId ? t.saveEdit : t.generate}
           </button>
 
-          <div className="responsive-actions" style={actionRow}>
+          <div className="responsive-actions invoice-action-row" style={actionRow}>
             <button onClick={() => printInvoice()} style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}>
               {t.print}
             </button>
