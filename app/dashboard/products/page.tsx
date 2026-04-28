@@ -51,6 +51,9 @@ const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 
+const TEAL_VALUE = "#0f766e";
+const BLACK_LABEL = "#111827";
+
 const FONT_SYSTEM_CSS = `
   .smartacctg-products-page {
     --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
@@ -163,24 +166,24 @@ const FONT_SYSTEM_CSS = `
   }
 
   .products-topbar {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    display: flex !important;
     align-items: center !important;
+    justify-content: space-between !important;
     gap: 8px !important;
     width: 100% !important;
     margin-bottom: 16px !important;
   }
 
   .products-topbar-left {
-    justify-self: start !important;
-  }
-
-  .products-topbar-center {
-    justify-self: center !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    min-width: 0 !important;
   }
 
   .products-topbar-right {
-    justify-self: end !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    min-width: 0 !important;
   }
 
   .products-lang-row {
@@ -191,12 +194,37 @@ const FONT_SYSTEM_CSS = `
     flex-wrap: nowrap !important;
   }
 
+  .products-title-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .products-title-text {
+    min-width: 0 !important;
+  }
+
+  .products-plus-btn {
+    width: 58px !important;
+    height: 58px !important;
+    min-width: 58px !important;
+    min-height: 58px !important;
+    max-width: 58px !important;
+    border-radius: 999px !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
   .products-summary-grid button span {
+    color: #111827 !important;
     font-size: var(--sa-fs-base) !important;
     font-weight: 900 !important;
   }
 
   .products-summary-grid button strong {
+    color: #0f766e !important;
     font-size: var(--sa-fs-xl) !important;
     font-weight: 900 !important;
   }
@@ -258,17 +286,6 @@ const FONT_SYSTEM_CSS = `
     .products-modal-actions button {
       width: 100% !important;
     }
-
-    .products-title-row {
-      flex-direction: column !important;
-      align-items: stretch !important;
-    }
-
-    .products-plus-btn {
-      width: 100% !important;
-      height: var(--sa-control-h) !important;
-      border-radius: var(--sa-radius-control) !important;
-    }
   }
 
   @media (max-width: 430px) {
@@ -277,12 +294,10 @@ const FONT_SYSTEM_CSS = `
     }
 
     .products-topbar {
-      grid-template-columns: auto minmax(100px, 1fr) auto !important;
-      gap: 4px !important;
+      gap: 5px !important;
     }
 
-    .products-topbar button,
-    .products-topbar select {
+    .products-topbar button {
       font-size: 14px !important;
       min-height: 44px !important;
       height: 44px !important;
@@ -314,6 +329,14 @@ const FONT_SYSTEM_CSS = `
 
     .products-action-row button {
       width: 100% !important;
+    }
+
+    .products-plus-btn {
+      width: 52px !important;
+      height: 52px !important;
+      min-width: 52px !important;
+      min-height: 52px !important;
+      max-width: 52px !important;
     }
   }
 `;
@@ -857,15 +880,6 @@ export default function ProductsPage() {
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
-  async function switchTheme(next: ThemeKey) {
-    setThemeKey(next);
-    localStorage.setItem(THEME_KEY, next);
-
-    if (!isTrial && session) {
-      await supabase.from("profiles").update({ theme: next }).eq("id", session.user.id);
-    }
-  }
-
   function goBack() {
     window.location.href = isTrial
       ? `/dashboard?mode=trial&lang=${lang}`
@@ -1359,24 +1373,6 @@ export default function ProductsPage() {
           </button>
         </div>
 
-        <div className="products-topbar-center">
-          <select
-            value={themeKey}
-            onChange={(e) => switchTheme(e.target.value as ThemeKey)}
-            style={{
-              ...themeSelectStyle,
-              borderColor: theme.border,
-              color: theme.accent,
-            }}
-          >
-            {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
-              <option key={key} value={key}>
-                {THEMES[key].name}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div className="products-topbar-right">
           <div className="products-lang-row" style={langRowStyle}>
             <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
@@ -1402,7 +1398,7 @@ export default function ProductsPage() {
         }}
       >
         <div className="products-title-row" style={titleRowStyle}>
-          <div>
+          <div className="products-title-text">
             <h1 style={titleStyle}>{t.title}</h1>
             <p style={{ ...subTitleStyle, color: theme.muted }}>{t.subtitle}</p>
             {isTrial ? <div style={trialBadgeStyle}>{t.trial}</div> : null}
@@ -1423,32 +1419,32 @@ export default function ProductsPage() {
           onClick={() => openDetailModal("stock")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
         >
-          <span>{t.stock}</span>
-          <strong>{productSummary.totalStock}</strong>
+          <span style={summaryLabelStyle}>{t.stock}</span>
+          <strong style={summaryValueStyle}>{productSummary.totalStock}</strong>
         </button>
 
         <button
           onClick={() => openDetailModal("cost")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
         >
-          <span>{t.summaryCost}</span>
-          <strong>RM {productSummary.totalCost.toFixed(2)}</strong>
+          <span style={summaryLabelStyle}>{t.summaryCost}</span>
+          <strong style={summaryValueStyle}>RM {productSummary.totalCost.toFixed(2)}</strong>
         </button>
 
         <button
           onClick={() => openDetailModal("price")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
         >
-          <span>{t.summaryPrice}</span>
-          <strong>RM {productSummary.totalValue.toFixed(2)}</strong>
+          <span style={summaryLabelStyle}>{t.summaryPrice}</span>
+          <strong style={summaryValueStyle}>RM {productSummary.totalValue.toFixed(2)}</strong>
         </button>
 
         <button
           onClick={() => openDetailModal("profit")}
           style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
         >
-          <span>{t.profit}</span>
-          <strong>RM {productSummary.totalProfit.toFixed(2)}</strong>
+          <span style={summaryLabelStyle}>{t.profit}</span>
+          <strong style={summaryValueStyle}>RM {productSummary.totalProfit.toFixed(2)}</strong>
         </button>
       </section>
 
@@ -1714,9 +1710,9 @@ const pageStyle: CSSProperties = {
 };
 
 const topBarStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)",
+  display: "flex",
   alignItems: "center",
+  justifyContent: "space-between",
   gap: 8,
   width: "100%",
   marginBottom: 16,
@@ -1730,11 +1726,11 @@ const headerCardStyle: CSSProperties = {
 };
 
 const titleRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 16,
-  flexWrap: "wrap",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "start",
+  gap: 12,
+  width: "100%",
 };
 
 const titleStyle: CSSProperties = {
@@ -1769,20 +1765,6 @@ const backBtnStyle: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const themeSelectStyle: CSSProperties = {
-  width: "auto",
-  minWidth: 118,
-  maxWidth: "100%",
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 999,
-  padding: "0 12px",
-  minHeight: 48,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-  outline: "none",
-};
-
 const langRowStyle: CSSProperties = {
   display: "flex",
   gap: 6,
@@ -1803,13 +1785,17 @@ const langBtn = (active: boolean, theme: any): CSSProperties => ({
 });
 
 const plusBtnStyle: CSSProperties = {
-  width: "100%",
-  height: "var(--sa-control-h)",
-  borderRadius: "var(--sa-radius-control)",
+  width: 58,
+  height: 58,
+  minWidth: 58,
+  minHeight: 58,
+  maxWidth: 58,
+  borderRadius: 999,
   border: "none",
   color: "#fff",
   fontSize: "var(--sa-fs-xl)",
   fontWeight: 900,
+  padding: 0,
 };
 
 const trialBadgeStyle: CSSProperties = {
@@ -1831,7 +1817,7 @@ const summaryGridStyle: CSSProperties = {
 
 const summaryCardStyle: CSSProperties = {
   background: "#fff",
-  color: "#111827",
+  color: BLACK_LABEL,
   border: "3px solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
@@ -1843,6 +1829,18 @@ const summaryCardStyle: CSSProperties = {
   fontWeight: 900,
   alignItems: "center",
   justifyItems: "center",
+};
+
+const summaryLabelStyle: CSSProperties = {
+  color: BLACK_LABEL,
+  fontWeight: 900,
+  fontSize: "var(--sa-fs-base)",
+};
+
+const summaryValueStyle: CSSProperties = {
+  color: TEAL_VALUE,
+  fontWeight: 900,
+  fontSize: "var(--sa-fs-xl)",
 };
 
 const contentCardStyle: CSSProperties = {
