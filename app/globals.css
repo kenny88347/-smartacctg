@@ -362,7 +362,6 @@ body {
 .sa-box,
 .sa-item-card,
 .sa-content-card,
-.products-summary-grid > button,
 .products-product-info-grid > div {
   align-items: center !important;
 }
@@ -476,9 +475,14 @@ body {
   flex: 0 0 auto !important;
 }
 
-/* 把 X 强制改成「关闭」：无圈圈，无背景 */
+/* 关闭按钮：无卡片框、无背景、无边框 */
 .sa-close-x,
 button.sa-close-x,
+span.sa-close-x,
+.sa-modal-header > button:last-child,
+.sa-modal-header > span:last-child,
+.products-modal-header > button:last-child,
+.products-modal-header > span:last-child,
 .smartacctg-page .sa-close-x,
 .smartacctg-products-page .sa-close-x,
 .smartacctg-invoice-page .sa-close-x,
@@ -489,7 +493,7 @@ button.sa-close-x,
   min-width: 0 !important;
   min-height: 0 !important;
   max-width: none !important;
-  padding: 0 !important;
+  padding: 0 4px !important;
   margin: 0 !important;
   border: none !important;
   border-radius: 0 !important;
@@ -507,6 +511,11 @@ button.sa-close-x,
 
 .sa-close-x::before,
 button.sa-close-x::before,
+span.sa-close-x::before,
+.sa-modal-header > button:last-child::before,
+.sa-modal-header > span:last-child::before,
+.products-modal-header > button:last-child::before,
+.products-modal-header > span:last-child::before,
 .smartacctg-page .sa-close-x::before,
 .smartacctg-products-page .sa-close-x::before,
 .smartacctg-invoice-page .sa-close-x::before,
@@ -521,13 +530,25 @@ button.sa-close-x::before,
 }
 
 .sa-close-x:hover,
-button.sa-close-x:hover {
+button.sa-close-x:hover,
+span.sa-close-x:hover,
+.sa-modal-header > button:last-child:hover,
+.sa-modal-header > span:last-child:hover,
+.products-modal-header > button:last-child:hover,
+.products-modal-header > span:last-child:hover {
   color: transparent !important;
   background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .sa-close-x:hover::before,
-button.sa-close-x:hover::before {
+button.sa-close-x:hover::before,
+span.sa-close-x:hover::before,
+.sa-modal-header > button:last-child:hover::before,
+.sa-modal-header > span:last-child:hover::before,
+.products-modal-header > button:last-child:hover::before,
+.products-modal-header > span:last-child:hover::before {
   color: var(--sa-red-dark) !important;
 }
 
@@ -583,13 +604,46 @@ button.sa-close-x:hover::before {
   align-items: center !important;
 }
 
-/* 产品 / 卡片 grid */
+/* 统计卡片：全系统默认 2 列 */
+.sa-stats-grid,
 .products-summary-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: clamp(10px, 2vw, 16px) !important;
+  width: 100% !important;
 }
 
+/* 产品统计卡片固定顺序：
+   第一行：成本左、售价右
+   第二行：预计利润左、库存数量右 */
+.sa-stat-cost {
+  order: 1 !important;
+}
+
+.sa-stat-price {
+  order: 2 !important;
+}
+
+.sa-stat-profit {
+  order: 3 !important;
+}
+
+.sa-stat-stock {
+  order: 4 !important;
+}
+
+.sa-stat-card,
+.products-summary-grid > button {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+/* 产品资料 grid */
 .products-product-info-grid {
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
@@ -676,6 +730,11 @@ button.sa-close-x:hover::before {
   .invoice-action-row button {
     flex: 1 1 auto !important;
   }
+
+  .sa-stats-grid,
+  .products-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
 /* 很小手机：顶部仍保持同一行，但会缩小一点 */
@@ -740,8 +799,17 @@ button.sa-close-x:hover::before {
     font-size: 15px !important;
   }
 
+  /* 小手机也保持 2 列 */
+  .sa-stats-grid,
   .products-summary-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .sa-stat-card,
+  .products-summary-grid > button {
+    min-height: 130px !important;
+    padding: 12px 8px !important;
   }
 
   .products-product-info-grid {
@@ -756,19 +824,29 @@ button.sa-close-x:hover::before {
   }
 
   .sa-close-x,
-  button.sa-close-x {
+  button.sa-close-x,
+  span.sa-close-x,
+  .sa-modal-header > button:last-child,
+  .sa-modal-header > span:last-child,
+  .products-modal-header > button:last-child,
+  .products-modal-header > span:last-child {
     width: auto !important;
     height: auto !important;
     min-width: 0 !important;
     min-height: 0 !important;
-    padding: 0 !important;
+    padding: 0 4px !important;
     border: none !important;
     background: transparent !important;
     font-size: 0 !important;
   }
 
   .sa-close-x::before,
-  button.sa-close-x::before {
+  button.sa-close-x::before,
+  span.sa-close-x::before,
+  .sa-modal-header > button:last-child::before,
+  .sa-modal-header > span:last-child::before,
+  .products-modal-header > button:last-child::before,
+  .products-modal-header > span:last-child::before {
     content: "关闭" !important;
     font-size: 16px !important;
   }
