@@ -60,6 +60,9 @@ type PaymentOption = {
 };
 
 type InvoiceFeeMeta = {
+  chargeDiscountMode: ChargeMode;
+  chargeDiscountValue: string;
+  chargeDiscountAmount: number;
   sstMode: ChargeMode;
   sstValue: string;
   sstAmount: number;
@@ -91,6 +94,9 @@ const INVOICE_FEE_META_KEY = "smartacctg_invoice_fee_meta";
 const INVOICE_SIGNATURE_META_KEY = "smartacctg_invoice_signature_meta";
 
 const ZERO_FEE_META: InvoiceFeeMeta = {
+  chargeDiscountMode: "%",
+  chargeDiscountValue: "0",
+  chargeDiscountAmount: 0,
   sstMode: "%",
   sstValue: "0",
   sstAmount: 0,
@@ -112,26 +118,26 @@ const FONT_SYSTEM_CSS = `
     --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
       "Microsoft YaHei", Arial, sans-serif;
 
-    --sa-fs-xs: clamp(11px, 2.2vw, 12px);
-    --sa-fs-sm: clamp(12px, 2.5vw, 14px);
-    --sa-fs-base: clamp(14px, 2.8vw, 16px);
-    --sa-fs-md: clamp(15px, 3vw, 18px);
-    --sa-fs-lg: clamp(18px, 3.6vw, 22px);
-    --sa-fs-xl: clamp(21px, 4.4vw, 28px);
-    --sa-fs-2xl: clamp(24px, 5.4vw, 34px);
+    --sa-fs-xs: clamp(12px, 2.5vw, 13px);
+    --sa-fs-sm: clamp(14px, 2.9vw, 15px);
+    --sa-fs-base: clamp(16px, 3.3vw, 18px);
+    --sa-fs-md: clamp(18px, 3.8vw, 21px);
+    --sa-fs-lg: clamp(21px, 4.5vw, 26px);
+    --sa-fs-xl: clamp(25px, 5.5vw, 34px);
+    --sa-fs-2xl: clamp(30px, 6.5vw, 42px);
 
-    --sa-border-w: 2px;
-    --sa-radius-card: clamp(18px, 1.4em, 26px);
-    --sa-radius-control: clamp(12px, 0.85em, 16px);
-    --sa-card-pad: clamp(14px, 1.15em, 22px);
-    --sa-control-h: clamp(46px, 3.5em, 56px);
-    --sa-control-x: clamp(14px, 1em, 18px);
-    --sa-btn-fs: 16px;
+    --sa-border-w: 3px;
+    --sa-radius-card: clamp(22px, 4vw, 34px);
+    --sa-radius-control: clamp(14px, 3vw, 20px);
+    --sa-card-pad: clamp(18px, 4vw, 30px);
+    --sa-control-h: clamp(52px, 10vw, 62px);
+    --sa-control-x: clamp(14px, 3vw, 20px);
+    --sa-btn-fs: var(--sa-fs-base);
     --sa-input-fs: 16px;
 
     font-family: var(--sa-font-family) !important;
     font-size: var(--sa-fs-base) !important;
-    line-height: 1.5 !important;
+    line-height: 1.55 !important;
     width: 100% !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
@@ -145,19 +151,22 @@ const FONT_SYSTEM_CSS = `
 
   .smartacctg-invoice-page h1 {
     font-size: var(--sa-fs-2xl) !important;
-    line-height: 1.15 !important;
+    line-height: 1.12 !important;
+    font-weight: 900 !important;
   }
 
   .smartacctg-invoice-page h2 {
     font-size: var(--sa-fs-xl) !important;
     line-height: 1.2 !important;
+    font-weight: 900 !important;
   }
 
   .smartacctg-invoice-page h3 {
     font-size: var(--sa-fs-lg) !important;
     line-height: 1.25 !important;
-    margin-top: clamp(18px, 4vw, 26px) !important;
-    margin-bottom: clamp(10px, 2.5vw, 14px) !important;
+    font-weight: 900 !important;
+    margin-top: clamp(20px, 5vw, 30px) !important;
+    margin-bottom: clamp(10px, 3vw, 16px) !important;
   }
 
   .smartacctg-invoice-page p,
@@ -173,7 +182,7 @@ const FONT_SYSTEM_CSS = `
   .smartacctg-invoice-page select,
   .smartacctg-invoice-page textarea {
     width: 100% !important;
-    height: auto;
+    height: auto !important;
     min-height: var(--sa-control-h) !important;
     font-size: var(--sa-input-fs) !important;
     line-height: 1.35 !important;
@@ -197,11 +206,18 @@ const FONT_SYSTEM_CSS = `
     display: block !important;
     -webkit-appearance: none !important;
     appearance: none !important;
+    min-height: 58px !important;
+    padding: 0 12px !important;
+    overflow: hidden !important;
+    line-height: 58px !important;
   }
 
   .smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value {
     text-align: center !important;
+    width: 100% !important;
+    display: block !important;
     min-height: 1.6em !important;
+    line-height: 1.6em !important;
   }
 
   .smartacctg-invoice-page img,
@@ -217,19 +233,14 @@ const FONT_SYSTEM_CSS = `
 
   .smartacctg-invoice-page .sa-user-toolbar {
     width: 100% !important;
-    display: grid !important;
-    grid-template-columns: auto minmax(100px, 1fr) auto !important;
+    display: flex !important;
     align-items: center !important;
-    gap: clamp(6px, 2vw, 14px) !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
     margin-bottom: clamp(12px, 3vw, 18px) !important;
   }
 
-  .smartacctg-invoice-page .sa-toolbar-tools {
-    display: contents !important;
-  }
-
   .smartacctg-invoice-page .sa-back-btn {
-    justify-self: start !important;
     width: auto !important;
     min-width: auto !important;
     max-width: none !important;
@@ -247,25 +258,7 @@ const FONT_SYSTEM_CSS = `
     justify-content: center !important;
   }
 
-  .smartacctg-invoice-page .sa-theme-select {
-    justify-self: center !important;
-    width: fit-content !important;
-    min-width: max-content !important;
-    max-width: 42vw !important;
-    height: clamp(42px, 3.4em, 52px) !important;
-    min-height: clamp(42px, 3.4em, 52px) !important;
-    padding: 0 clamp(14px, 3vw, 20px) !important;
-    border-radius: 999px !important;
-    border: 2px solid !important;
-    font-size: var(--sa-btn-fs) !important;
-    font-weight: 900 !important;
-    line-height: 1.15 !important;
-    white-space: nowrap !important;
-    text-align: center !important;
-  }
-
   .smartacctg-invoice-page .sa-lang-row {
-    justify-self: end !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
@@ -301,9 +294,7 @@ const FONT_SYSTEM_CSS = `
     margin-bottom: 4px !important;
   }
 
-  .smartacctg-invoice-page .sa-titlebar h1,
-  .smartacctg-invoice-page .sa-titlebar h2,
-  .smartacctg-invoice-page .sa-titlebar h3 {
+  .smartacctg-invoice-page .sa-titlebar h1 {
     margin: 0 !important;
     grid-column: 1 !important;
   }
@@ -311,22 +302,21 @@ const FONT_SYSTEM_CSS = `
   .smartacctg-invoice-page .sa-close-x {
     grid-column: 2 !important;
     justify-self: end !important;
-    width: 46px !important;
-    height: 46px !important;
-    min-width: 46px !important;
-    max-width: 46px !important;
-    padding: 0 !important;
-    border-radius: 999px !important;
-    border: 2px solid #ef4444 !important;
-    background: #fee2e2 !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    padding: 0 4px !important;
+    border: none !important;
+    background: transparent !important;
     color: #dc2626 !important;
-    font-size: 28px !important;
+    font-size: 38px !important;
     font-weight: 900 !important;
     line-height: 1 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    flex-shrink: 0 !important;
   }
 
   @media (max-width: 768px) {
@@ -352,7 +342,7 @@ const FONT_SYSTEM_CSS = `
     .smartacctg-invoice-page label,
     .smartacctg-invoice-page td,
     .smartacctg-invoice-page th {
-      font-size: var(--sa-fs-sm);
+      font-size: var(--sa-fs-base);
     }
 
     .smartacctg-invoice-page input,
@@ -374,20 +364,11 @@ const FONT_SYSTEM_CSS = `
 
   @media (max-width: 430px) {
     .smartacctg-invoice-page .sa-user-toolbar {
-      grid-template-columns: auto minmax(76px, 1fr) auto !important;
       gap: 5px !important;
     }
 
     .smartacctg-invoice-page .sa-back-btn {
       min-height: 42px !important;
-      padding: 0 8px !important;
-      font-size: 13px !important;
-    }
-
-    .smartacctg-invoice-page .sa-theme-select {
-      max-width: 31vw !important;
-      min-height: 42px !important;
-      height: 42px !important;
       padding: 0 8px !important;
       font-size: 13px !important;
     }
@@ -405,11 +386,7 @@ const FONT_SYSTEM_CSS = `
     }
 
     .smartacctg-invoice-page .sa-close-x {
-      width: 44px !important;
-      height: 44px !important;
-      min-width: 44px !important;
-      max-width: 44px !important;
-      font-size: 26px !important;
+      font-size: 36px !important;
     }
   }
 
@@ -608,11 +585,12 @@ const TXT = {
     invoiceContent: "5. 发票内容",
     qty: "数量",
     extraDiscount: "额外折扣 RM",
-    extraCharges: "6. SST / 服务费 / 手续费",
-    chargeValue: "数值",
+    extraCharges: "6. 折扣 / SST / 服务费 / 手续费",
+    chargeValue: "数值，可填负数",
     sst: "SST",
     serviceFee: "服务费",
     handlingFee: "手续费",
+    chargeDiscount: "折扣",
     lhdn: "7. Malaysia LHDN e-Invoice 预留资料",
     signature: "8. 签名",
     signatureText: "签名文字",
@@ -717,11 +695,12 @@ const TXT = {
     invoiceContent: "5. Invoice Content",
     qty: "Quantity",
     extraDiscount: "Extra Discount RM",
-    extraCharges: "6. SST / Service Fee / Handling Fee",
-    chargeValue: "Value",
+    extraCharges: "6. Discount / SST / Service Fee / Handling Fee",
+    chargeValue: "Value, negative allowed",
     sst: "SST",
     serviceFee: "Service Fee",
     handlingFee: "Handling Fee",
+    chargeDiscount: "Discount",
     lhdn: "7. Malaysia LHDN e-Invoice Reserved Fields",
     signature: "8. Signature",
     signatureText: "Signature Text",
@@ -826,11 +805,12 @@ const TXT = {
     invoiceContent: "5. Kandungan Invois",
     qty: "Kuantiti",
     extraDiscount: "Diskaun Tambahan RM",
-    extraCharges: "6. SST / Caj Servis / Caj Pengendalian",
-    chargeValue: "Nilai",
+    extraCharges: "6. Diskaun / SST / Caj Servis / Caj Pengendalian",
+    chargeValue: "Nilai, boleh negatif",
     sst: "SST",
     serviceFee: "Caj Servis",
     handlingFee: "Caj Pengendalian",
+    chargeDiscount: "Diskaun",
     lhdn: "7. Ruang Simpanan Malaysia LHDN e-Invoice",
     signature: "8. Tandatangan",
     signatureText: "Teks Tandatangan",
@@ -887,6 +867,18 @@ function calcCharge(value: string, mode: ChargeMode, base: number) {
   const num = Number(value || 0);
   if (mode === "%") return roundMoney((Math.max(base, 0) * num) / 100);
   return roundMoney(num);
+}
+
+function calcAlwaysDiscount(value: string, mode: ChargeMode, base: number) {
+  const raw = calcCharge(value, mode, base);
+  if (raw === 0) return 0;
+  return -Math.abs(raw);
+}
+
+function formatSignedRM(value: number) {
+  const num = Number(value || 0);
+  const sign = num < 0 ? "- " : "";
+  return `${sign}RM ${Math.abs(num).toFixed(2)}`;
 }
 
 function safeLocalGet(key: string) {
@@ -1249,6 +1241,9 @@ export default function InvoicePage() {
   const [qty, setQty] = useState("1");
   const [extraDiscount, setExtraDiscount] = useState("0");
 
+  const [chargeDiscountMode, setChargeDiscountMode] = useState<ChargeMode>("%");
+  const [chargeDiscountValue, setChargeDiscountValue] = useState("0");
+
   const [sstMode, setSstMode] = useState<ChargeMode>("%");
   const [sstValue, setSstValue] = useState("0");
   const [serviceFeeMode, setServiceFeeMode] = useState<ChargeMode>("%");
@@ -1283,7 +1278,6 @@ export default function InvoicePage() {
   const [lastPrintableProductName, setLastPrintableProductName] = useState("");
 
   const selectedPayment = paymentOptions.find((p) => p.id === paymentMethod) || paymentOptions[0];
-
   const paymentMethodText = selectedPayment?.name || paymentMethod || "-";
 
   const themedInputStyle: CSSProperties = {
@@ -1333,15 +1327,6 @@ export default function InvoicePage() {
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-  }
-
-  async function switchTheme(next: ThemeKey) {
-    setThemeKey(next);
-    safeLocalSet(THEME_KEY, next);
-
-    if (!isTrial && userId) {
-      await supabase.from("profiles").update({ theme: next }).eq("id", userId);
-    }
   }
 
   async function init() {
@@ -1547,11 +1532,23 @@ export default function InvoicePage() {
     const discount = roundMoney(productDiscount + addDiscount);
     const taxableBase = roundMoney(Math.max(subtotal - discount, 0));
 
+    const chargeDiscountAmount = calcAlwaysDiscount(
+      chargeDiscountValue,
+      chargeDiscountMode,
+      taxableBase
+    );
+
     const sstAmount = calcCharge(sstValue, sstMode, taxableBase);
     const serviceFeeAmount = calcCharge(serviceFeeValue, serviceFeeMode, taxableBase);
     const handlingFeeAmount = calcCharge(handlingFeeValue, handlingFeeMode, taxableBase);
 
-    const total = roundMoney(taxableBase + sstAmount + serviceFeeAmount + handlingFeeAmount);
+    const total = roundMoney(
+      Math.max(
+        taxableBase + chargeDiscountAmount + sstAmount + serviceFeeAmount + handlingFeeAmount,
+        0
+      )
+    );
+
     const totalCost = roundMoney(cost * finalQty);
     const profit = roundMoney(total - totalCost);
 
@@ -1562,6 +1559,7 @@ export default function InvoicePage() {
       subtotal,
       discount,
       taxableBase,
+      chargeDiscountAmount,
       sstAmount,
       serviceFeeAmount,
       handlingFeeAmount,
@@ -1576,6 +1574,8 @@ export default function InvoicePage() {
     newProductPrice,
     newProductCost,
     selectedProduct,
+    chargeDiscountValue,
+    chargeDiscountMode,
     sstValue,
     sstMode,
     serviceFeeValue,
@@ -1586,6 +1586,9 @@ export default function InvoicePage() {
 
   function buildCurrentFeeMeta(): InvoiceFeeMeta {
     return {
+      chargeDiscountMode,
+      chargeDiscountValue,
+      chargeDiscountAmount: preview.chargeDiscountAmount,
       sstMode,
       sstValue,
       sstAmount: preview.sstAmount,
@@ -1605,7 +1608,11 @@ export default function InvoicePage() {
   }
 
   function applyFeeMeta(meta?: InvoiceFeeMeta | null) {
-    const fee = meta || ZERO_FEE_META;
+    const fee: any = meta || ZERO_FEE_META;
+
+    setChargeDiscountMode(fee.chargeDiscountMode || "%");
+    setChargeDiscountValue(fee.chargeDiscountValue || "0");
+
     setSstMode(fee.sstMode || "%");
     setSstValue(fee.sstValue || "0");
     setServiceFeeMode(fee.serviceFeeMode || "%");
@@ -1724,17 +1731,6 @@ export default function InvoicePage() {
     setNewPaymentLink("");
     setNewPaymentQr("");
     setShowPaymentAdd(false);
-  }
-
-  function deletePaymentOption(id: string) {
-    const next = paymentOptions.filter((x) => x.id !== id);
-    const finalNext = next.length > 0 ? next : DEFAULT_PAYMENT_OPTIONS;
-
-    savePaymentOptions(finalNext);
-
-    if (paymentMethod === id) {
-      setPaymentMethod(finalNext[0].id);
-    }
   }
 
   function saveTrialData(nextCustomers: Customer[], nextProducts: Product[], nextInvoices = invoices) {
@@ -2245,12 +2241,17 @@ export default function InvoicePage() {
         : "";
 
     const feeText = [
-      Number(fee.sstAmount || 0) > 0 ? `${t.sst}：RM ${Number(fee.sstAmount).toFixed(2)}` : "",
-      Number(fee.serviceFeeAmount || 0) > 0
-        ? `${t.serviceFee}：RM ${Number(fee.serviceFeeAmount).toFixed(2)}`
+      Number(fee.chargeDiscountAmount || 0) !== 0
+        ? `${t.chargeDiscount}：${formatSignedRM(Number(fee.chargeDiscountAmount || 0))}`
         : "",
-      Number(fee.handlingFeeAmount || 0) > 0
-        ? `${t.handlingFee}：RM ${Number(fee.handlingFeeAmount).toFixed(2)}`
+      Number(fee.sstAmount || 0) !== 0
+        ? `${t.sst}：${formatSignedRM(Number(fee.sstAmount || 0))}`
+        : "",
+      Number(fee.serviceFeeAmount || 0) !== 0
+        ? `${t.serviceFee}：${formatSignedRM(Number(fee.serviceFeeAmount || 0))}`
+        : "",
+      Number(fee.handlingFeeAmount || 0) !== 0
+        ? `${t.handlingFee}：${formatSignedRM(Number(fee.handlingFeeAmount || 0))}`
         : "",
     ].filter(Boolean);
 
@@ -2378,7 +2379,7 @@ export default function InvoicePage() {
   }
 
   function renderOfficialChargeRow(label: string, value: string, mode: ChargeMode, amount: number) {
-    const show = Number(value || 0) > 0 || Number(amount || 0) > 0;
+    const show = Number(value || 0) !== 0 || Number(amount || 0) !== 0;
     if (!show) return null;
 
     return (
@@ -2386,7 +2387,7 @@ export default function InvoicePage() {
         <span>
           {label} {mode === "%" ? `(${value || 0}%)` : "(RM)"}
         </span>
-        <strong>RM {Number(amount || 0).toFixed(2)}</strong>
+        <strong>{formatSignedRM(Number(amount || 0))}</strong>
       </div>
     );
   }
@@ -2443,7 +2444,7 @@ export default function InvoicePage() {
     const lineAfterDiscount = Math.max(subtotal - discount, 0);
     const pay = getPaymentForInvoice(inv);
 
-    const feeMeta = isSavedRecord
+    const feeMeta: InvoiceFeeMeta = isSavedRecord
       ? getFeeMetaForInvoice(inv) || ZERO_FEE_META
       : buildCurrentFeeMeta();
 
@@ -2570,6 +2571,12 @@ export default function InvoicePage() {
             <strong>RM {lineAfterDiscount.toFixed(2)}</strong>
           </div>
 
+          {renderOfficialChargeRow(
+            t.chargeDiscount,
+            feeMeta.chargeDiscountValue,
+            feeMeta.chargeDiscountMode,
+            feeMeta.chargeDiscountAmount
+          )}
           {renderOfficialChargeRow(t.sst, feeMeta.sstValue, feeMeta.sstMode, feeMeta.sstAmount)}
           {renderOfficialChargeRow(
             t.serviceFee,
@@ -2673,61 +2680,42 @@ export default function InvoicePage() {
           ← {t.dashboardBack}
         </button>
 
-        <div className="sa-toolbar-tools">
-          <select
-            value={themeKey}
-            onChange={(e) => switchTheme(e.target.value as ThemeKey)}
-            className="sa-theme-select"
+        <div className="sa-lang-row">
+          <button
+            onClick={() => switchLang("zh")}
+            className="sa-lang-btn"
             style={{
-              borderColor: theme.border,
-              color: theme.inputText,
-              background: theme.inputBg,
+              borderColor: theme.accent,
+              background: lang === "zh" ? theme.accent : "#fff",
+              color: lang === "zh" ? "#fff" : theme.accent,
             }}
           >
-            {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
-              <option key={key} value={key}>
-                {THEMES[key].name}
-              </option>
-            ))}
-          </select>
+            中文
+          </button>
 
-          <div className="sa-lang-row">
-            <button
-              onClick={() => switchLang("zh")}
-              className="sa-lang-btn"
-              style={{
-                borderColor: theme.accent,
-                background: lang === "zh" ? theme.accent : "#fff",
-                color: lang === "zh" ? "#fff" : theme.accent,
-              }}
-            >
-              中文
-            </button>
+          <button
+            onClick={() => switchLang("en")}
+            className="sa-lang-btn"
+            style={{
+              borderColor: theme.accent,
+              background: lang === "en" ? theme.accent : "#fff",
+              color: lang === "en" ? "#fff" : theme.accent,
+            }}
+          >
+            EN
+          </button>
 
-            <button
-              onClick={() => switchLang("en")}
-              className="sa-lang-btn"
-              style={{
-                borderColor: theme.accent,
-                background: lang === "en" ? theme.accent : "#fff",
-                color: lang === "en" ? "#fff" : theme.accent,
-              }}
-            >
-              EN
-            </button>
-
-            <button
-              onClick={() => switchLang("ms")}
-              className="sa-lang-btn"
-              style={{
-                borderColor: theme.accent,
-                background: lang === "ms" ? theme.accent : "#fff",
-                color: lang === "ms" ? "#fff" : theme.accent,
-              }}
-            >
-              BM
-            </button>
-          </div>
+          <button
+            onClick={() => switchLang("ms")}
+            className="sa-lang-btn"
+            style={{
+              borderColor: theme.accent,
+              background: lang === "ms" ? theme.accent : "#fff",
+              color: lang === "ms" ? "#fff" : theme.accent,
+            }}
+          >
+            BM
+          </button>
         </div>
       </div>
 
@@ -2860,23 +2848,29 @@ export default function InvoicePage() {
 
           <h3>{t.invoiceInfo}</h3>
 
+          <div style={dateTwoColGridStyle}>
+            <div style={fieldBlockStyle}>
+              <label style={{ ...labelStyle, color: theme.accent }}>{t.invoiceDate}</label>
+              <input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                style={themedDateInputStyle}
+              />
+            </div>
+
+            <div style={fieldBlockStyle}>
+              <label style={{ ...labelStyle, color: theme.accent }}>{t.dueDate}</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                style={themedDateInputStyle}
+              />
+            </div>
+          </div>
+
           <div style={formGrid}>
-            <label style={{ ...labelStyle, color: theme.accent }}>{t.invoiceDate}</label>
-            <input
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-              style={themedDateInputStyle}
-            />
-
-            <label style={{ ...labelStyle, color: theme.accent }}>{t.dueDate}</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              style={themedDateInputStyle}
-            />
-
             <label style={{ ...labelStyle, color: theme.accent }}>{t.status}</label>
             <select
               value={status}
@@ -2983,28 +2977,6 @@ export default function InvoicePage() {
                 </button>
               </div>
             )}
-
-            <div style={paymentChipWrapStyle}>
-              {paymentOptions.map((p) => (
-                <div
-                  key={p.id}
-                  style={{
-                    ...paymentChipStyle,
-                    borderColor: theme.border,
-                    color: theme.accent,
-                    background: theme.inputBg,
-                  }}
-                >
-                  <span>{p.name}</span>
-                  <button
-                    onClick={() => deletePaymentOption(p.id)}
-                    style={{ ...paymentChipDeleteStyle, background: theme.accent }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.note}</label>
             <input
@@ -3131,6 +3103,7 @@ export default function InvoicePage() {
           <h3>{t.extraCharges}</h3>
 
           <div style={chargeGridStyle}>
+            {renderChargeInput(t.chargeDiscount, chargeDiscountValue, setChargeDiscountValue, chargeDiscountMode, setChargeDiscountMode)}
             {renderChargeInput(t.sst, sstValue, setSstValue, sstMode, setSstMode)}
             {renderChargeInput(t.serviceFee, serviceFeeValue, setServiceFeeValue, serviceFeeMode, setServiceFeeMode)}
             {renderChargeInput(t.handlingFee, handlingFeeValue, setHandlingFeeValue, handlingFeeMode, setHandlingFeeMode)}
@@ -3254,89 +3227,10 @@ const pageStyle: CSSProperties = {
   fontSize: "var(--sa-fs-base)",
 };
 
-const topRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "clamp(8px, 2vw, 14px)",
-  marginBottom: 14,
-  flexWrap: "wrap",
-};
-
-const topRightWrapStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  flexWrap: "wrap",
-  justifyContent: "flex-end",
-};
-
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const langBtn = (active: boolean, theme: any): CSSProperties => ({
-  minHeight: "44px",
-  padding: "0 14px",
-  borderRadius: 999,
-  border: `var(--sa-border-w) solid ${theme.accent}`,
-  background: active ? theme.accent : "#fff",
-  color: active ? "#fff" : theme.accent,
-  fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
-});
-
-const themeSelectStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  borderRadius: 999,
-  minHeight: "44px",
-  padding: "0 14px",
-  fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
-};
-
-const backBtn: CSSProperties = {
-  background: "#fff",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-control)",
-  minHeight: "44px",
-  padding: "0 14px",
-  fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
-};
-
-const closeXBtnStyle: CSSProperties = {
-  width: 46,
-  height: 46,
-  minWidth: 46,
-  flexShrink: 0,
-  borderRadius: "999px",
-  border: "2px solid #ef4444",
-  background: "#fee2e2",
-  color: "#dc2626",
-  fontSize: 26,
-  fontWeight: 900,
-  lineHeight: 1,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
 const cardStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
-};
-
-const newFormHeaderStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "auto 1fr",
-  alignItems: "center",
-  gap: "clamp(10px, 3vw, 14px)",
-  marginTop: "-6px",
-  marginBottom: 4,
 };
 
 const listTitleRowStyle: CSSProperties = {
@@ -3348,13 +3242,13 @@ const listTitleRowStyle: CSSProperties = {
 };
 
 const plusBtnStyle: CSSProperties = {
-  width: 48,
-  height: 48,
-  minWidth: 48,
+  width: 52,
+  height: 52,
+  minWidth: 52,
   borderRadius: 999,
   border: "none",
   color: "#fff",
-  fontSize: 28,
+  fontSize: 30,
   fontWeight: 900,
   flexShrink: 0,
   display: "inline-flex",
@@ -3384,8 +3278,8 @@ const descStyle: CSSProperties = {
 const newDescStyle: CSSProperties = {
   marginTop: 4,
   marginBottom: 18,
-  fontSize: "var(--sa-fs-sm)",
-  lineHeight: 1.5,
+  fontSize: "var(--sa-fs-base)",
+  lineHeight: 1.55,
 };
 
 const invoiceNoBox: CSSProperties = {
@@ -3432,8 +3326,8 @@ const recordEditBtnStyle: CSSProperties = {
   background: "#0f766e",
   color: "#fff",
   borderRadius: 10,
-  minHeight: 36,
-  padding: "0 10px",
+  minHeight: 38,
+  padding: "0 12px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
 };
@@ -3443,8 +3337,8 @@ const recordDeleteBtnStyle: CSSProperties = {
   background: "#fee2e2",
   color: "#b91c1c",
   borderRadius: 10,
-  minHeight: 36,
-  padding: "0 10px",
+  minHeight: 38,
+  padding: "0 12px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
 };
@@ -3454,8 +3348,8 @@ const recordWhatsappBtnStyle: CSSProperties = {
   background: "#25D366",
   color: "#fff",
   borderRadius: 10,
-  minHeight: 36,
-  padding: "0 10px",
+  minHeight: 38,
+  padding: "0 12px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
 };
@@ -3465,8 +3359,8 @@ const recordShareBtnStyle: CSSProperties = {
   background: "#fff",
   color: "#0f766e",
   borderRadius: 10,
-  minHeight: 36,
-  padding: "0 10px",
+  minHeight: 38,
+  padding: "0 12px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
 };
@@ -3483,7 +3377,7 @@ const switchRow: CSSProperties = {
 };
 
 const modeBtn = (active: boolean, theme: any): CSSProperties => ({
-  minHeight: "44px",
+  minHeight: "48px",
   padding: "0 14px",
   borderRadius: "var(--sa-radius-control)",
   border: `var(--sa-border-w) solid ${theme.accent}`,
@@ -3495,15 +3389,30 @@ const modeBtn = (active: boolean, theme: any): CSSProperties => ({
 
 const formGrid: CSSProperties = {
   display: "grid",
-  gap: 6,
+  gap: 8,
   width: "100%",
   maxWidth: "100%",
   minWidth: 0,
 };
 
+const dateTwoColGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  width: "100%",
+  marginBottom: 10,
+};
+
+const fieldBlockStyle: CSSProperties = {
+  minWidth: 0,
+  width: "100%",
+};
+
 const labelStyle: CSSProperties = {
   fontWeight: 900,
   marginTop: 6,
+  marginBottom: 6,
+  display: "block",
   fontSize: "var(--sa-fs-base)",
 };
 
@@ -3531,6 +3440,8 @@ const dateInputStyle: CSSProperties = {
   WebkitAppearance: "none" as any,
   appearance: "none" as any,
   textAlign: "center",
+  paddingLeft: 10,
+  paddingRight: 10,
 };
 
 const paymentToggleBtnStyle: CSSProperties = {
@@ -3559,7 +3470,7 @@ const uploadQrBtnStyle: CSSProperties = {
   justifyContent: "center",
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: "44px",
+  minHeight: "48px",
   padding: "0 14px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
@@ -3580,49 +3491,10 @@ const addBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: "44px",
+  minHeight: "48px",
   padding: "0 16px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
-};
-
-const paymentChipWrapStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 8,
-  marginBottom: 10,
-};
-
-const paymentChipStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  border: "var(--sa-border-w) solid",
-  borderRadius: 999,
-  padding: "7px 8px 7px 13px",
-  fontWeight: 800,
-  fontSize: "var(--sa-btn-fs)",
-  width: "auto",
-  maxWidth: "100%",
-  flex: "0 0 auto",
-};
-
-const paymentChipDeleteStyle: CSSProperties = {
-  border: "none",
-  color: "#fff",
-  width: 28,
-  height: 28,
-  minWidth: 28,
-  maxWidth: 28,
-  borderRadius: 999,
-  fontWeight: 900,
-  fontSize: 18,
-  lineHeight: 1,
-  padding: 0,
-  flex: "0 0 28px",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
 };
 
 const companyBox: CSSProperties = {
@@ -3665,7 +3537,7 @@ const editBtnStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   background: "#fff",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: "42px",
+  minHeight: "46px",
   padding: "0 14px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
@@ -3675,7 +3547,7 @@ const submitSmallBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: "44px",
+  minHeight: "48px",
   padding: "0 16px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
@@ -3684,7 +3556,7 @@ const submitSmallBtnStyle: CSSProperties = {
 const submitBtn: CSSProperties = {
   width: "100%",
   marginTop: 18,
-  minHeight: "50px",
+  minHeight: "54px",
   padding: "0 16px",
   border: "none",
   borderRadius: "var(--sa-radius-control)",
@@ -3701,7 +3573,7 @@ const actionRow: CSSProperties = {
 };
 
 const secondaryBtn: CSSProperties = {
-  minHeight: "46px",
+  minHeight: "50px",
   padding: "0 14px",
   borderRadius: "var(--sa-radius-control)",
   border: "var(--sa-border-w) solid",
@@ -3711,7 +3583,7 @@ const secondaryBtn: CSSProperties = {
 };
 
 const whatsappBtn: CSSProperties = {
-  minHeight: "46px",
+  minHeight: "50px",
   padding: "0 14px",
   borderRadius: "var(--sa-radius-control)",
   border: "none",
