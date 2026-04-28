@@ -51,7 +51,7 @@ const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 
-const TEAL_VALUE = "#0f766e";
+const TEAL_VALUE = "#16a34a";
 const BLACK_LABEL = "#111827";
 
 const FONT_SYSTEM_CSS = `
@@ -217,16 +217,31 @@ const FONT_SYSTEM_CSS = `
     flex-shrink: 0 !important;
   }
 
+  .products-summary-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+
+  .products-summary-grid button {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
   .products-summary-grid button span {
     color: #111827 !important;
-    font-size: var(--sa-fs-base) !important;
+    font-size: clamp(15px, 3.2vw, 20px) !important;
     font-weight: 900 !important;
+    line-height: 1.25 !important;
   }
 
   .products-summary-grid button strong {
-    color: #0f766e !important;
-    font-size: var(--sa-fs-xl) !important;
+    color: #16a34a !important;
+    font-size: clamp(24px, 5.4vw, 42px) !important;
     font-weight: 900 !important;
+    line-height: 1.08 !important;
+    word-break: keep-all !important;
   }
 
   .products-product-info-grid div {
@@ -315,7 +330,22 @@ const FONT_SYSTEM_CSS = `
     }
 
     .products-summary-grid {
-      grid-template-columns: 1fr 1fr !important;
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 12px !important;
+    }
+
+    .products-summary-grid button {
+      min-height: 150px !important;
+      padding: 14px 8px !important;
+    }
+
+    .products-summary-grid button span {
+      font-size: clamp(15px, 3.6vw, 18px) !important;
+    }
+
+    .products-summary-grid button strong {
+      font-size: clamp(22px, 5.2vw, 30px) !important;
     }
 
     .products-product-info-grid {
@@ -1810,9 +1840,10 @@ const trialBadgeStyle: CSSProperties = {
 
 const summaryGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-  gap: "clamp(10px, 2vw, 16px)",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "clamp(12px, 2vw, 16px)",
   marginBottom: 16,
+  width: "100%",
 };
 
 const summaryCardStyle: CSSProperties = {
@@ -1820,27 +1851,34 @@ const summaryCardStyle: CSSProperties = {
   color: BLACK_LABEL,
   border: "3px solid",
   borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-  display: "grid",
-  gap: 14,
+  padding: "clamp(14px, 3vw, 24px)",
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
   textAlign: "center",
   cursor: "pointer",
-  minHeight: 150,
+  minHeight: 160,
   fontWeight: 900,
   alignItems: "center",
-  justifyItems: "center",
+  justifyContent: "center",
+  width: "100%",
+  minWidth: 0,
 };
 
 const summaryLabelStyle: CSSProperties = {
   color: BLACK_LABEL,
   fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
+  fontSize: "clamp(15px, 3.2vw, 20px)",
+  lineHeight: 1.25,
 };
 
 const summaryValueStyle: CSSProperties = {
   color: TEAL_VALUE,
   fontWeight: 900,
-  fontSize: "var(--sa-fs-xl)",
+  fontSize: "clamp(24px, 5.4vw, 42px)",
+  lineHeight: 1.08,
+  whiteSpace: "normal",
+  wordBreak: "keep-all",
 };
 
 const contentCardStyle: CSSProperties = {
