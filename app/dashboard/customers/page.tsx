@@ -55,6 +55,11 @@ type Invoice = {
   status?: string | null;
 };
 
+type Profile = {
+  id?: string;
+  theme?: string | null;
+};
+
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
@@ -157,6 +162,7 @@ const TXT = {
     save: "保存资料",
     update: "保存修改",
     cancelEdit: "取消编辑",
+    cancel: "取消",
     close: "关闭",
     search: "搜索客户名称 / 手机号码 / 公司名称 / 电子邮件",
     all: "全部",
@@ -204,13 +210,11 @@ const TXT = {
     noPrice: "还没有设置专属价格",
     saved: "保存成功",
     deleted: "删除成功",
-    theme: "主题",
-    language: "语言",
     related: "关联功能",
-    chooseRelated: "请选择要前往的功能",
     goFeature: "前往",
     trialMode: "免费试用模式：资料只会暂存在本机",
     confirmDelete: "确定要删除这个客户吗？",
+    balance: "余额",
   },
   en: {
     pageTitle: "Customer Records",
@@ -220,6 +224,7 @@ const TXT = {
     save: "Save",
     update: "Save Changes",
     cancelEdit: "Cancel Edit",
+    cancel: "Cancel",
     close: "Close",
     search: "Search customer name / phone / company / email",
     all: "All",
@@ -267,13 +272,11 @@ const TXT = {
     noPrice: "No special price yet",
     saved: "Saved",
     deleted: "Deleted",
-    theme: "Theme",
-    language: "Language",
     related: "Linked Features",
-    chooseRelated: "Choose linked feature",
     goFeature: "Go",
     trialMode: "Free trial mode: data is stored locally only",
     confirmDelete: "Confirm delete this customer?",
+    balance: "Balance",
   },
   ms: {
     pageTitle: "Rekod Pelanggan",
@@ -283,6 +286,7 @@ const TXT = {
     save: "Simpan",
     update: "Simpan Perubahan",
     cancelEdit: "Batal Edit",
+    cancel: "Batal",
     close: "Tutup",
     search: "Cari nama pelanggan / telefon / syarikat / email",
     all: "Semua",
@@ -330,15 +334,50 @@ const TXT = {
     noPrice: "Belum ada harga khas",
     saved: "Disimpan",
     deleted: "Dipadam",
-    theme: "Tema",
-    language: "Bahasa",
     related: "Fungsi Berkaitan",
-    chooseRelated: "Pilih fungsi",
     goFeature: "Pergi",
     trialMode: "Mod percubaan: data hanya disimpan dalam telefon ini",
     confirmDelete: "Padam pelanggan ini?",
+    balance: "Baki",
   },
 };
+
+function makeId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function safeLocalGet(key: string) {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(key);
+}
+
+function safeLocalSet(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, value);
+}
+
+function safeLocalRemove(key: string) {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(key);
+}
+
+function isSchemaColumnError(error: any) {
+  const message = String(error?.message || "").toLowerCase();
+
+  return (
+    message.includes("schema cache") ||
+    message.includes("could not find") ||
+    message.includes("column")
+  );
+}
+
+function statusText(status: CustomerStatus, t: any) {
+  if (status === "vip") return t.vip;
+  if (status === "debt") return t.debt;
+  if (status === "blocked") return t.blocked;
+  return t.normal;
+}
 
 export default function CustomersPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -392,22 +431,22 @@ export default function CustomersPage() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
 
-    const urlLang = q.get("lang") as Lang;
-    const savedLang = localStorage.getItem(LANG_KEY) as Lang | null;
+    const urlLang = q.get("lang") as Lang | null;
+    const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
 
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
       setLang(urlLang);
-      localStorage.setItem(LANG_KEY, urlLang);
+      safeLocalSet(LANG_KEY, urlLang);
     } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
       setLang(savedLang);
     }
 
-    const urlTheme = q.get("theme") as ThemeKey;
-    const savedTheme = localStorage.getItem(THEME_KEY) as ThemeKey | null;
+    const urlTheme = q.get("theme") as ThemeKey | null;
+    const savedTheme = safeLocalGet(THEME_KEY) as ThemeKey | null;
 
     if (urlTheme && THEMES[urlTheme]) {
       setThemeKey(urlTheme);
-      localStorage.setItem(THEME_KEY, urlTheme);
+      safeLocalSet(THEME_KEY, urlTheme);
     } else if (savedTheme && THEMES[savedTheme]) {
       setThemeKey(savedTheme);
     }
@@ -418,7 +457,7 @@ export default function CustomersPage() {
   async function init() {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
-    const trialRaw = localStorage.getItem(TRIAL_KEY);
+    const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
       const trial = JSON.parse(trialRaw);
@@ -427,10 +466,10 @@ export default function CustomersPage() {
         setIsTrial(true);
         setSession(null);
 
-        const savedCustomers = localStorage.getItem(TRIAL_CUSTOMERS_KEY);
-        const savedPrices = localStorage.getItem(TRIAL_CUSTOMER_PRICES_KEY);
-        const savedProducts = localStorage.getItem(TRIAL_PRODUCTS_KEY);
-        const savedInvoices = localStorage.getItem(TRIAL_INVOICES_KEY);
+        const savedCustomers = safeLocalGet(TRIAL_CUSTOMERS_KEY);
+        const savedPrices = safeLocalGet(TRIAL_CUSTOMER_PRICES_KEY);
+        const savedProducts = safeLocalGet(TRIAL_PRODUCTS_KEY);
+        const savedInvoices = safeLocalGet(TRIAL_INVOICES_KEY);
 
         setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
         setCustomerPrices(savedPrices ? JSON.parse(savedPrices) : []);
@@ -440,11 +479,11 @@ export default function CustomersPage() {
         return;
       }
 
-      localStorage.removeItem(TRIAL_KEY);
-      localStorage.removeItem(TRIAL_CUSTOMERS_KEY);
-      localStorage.removeItem(TRIAL_CUSTOMER_PRICES_KEY);
-      localStorage.removeItem(TRIAL_PRODUCTS_KEY);
-      localStorage.removeItem(TRIAL_INVOICES_KEY);
+      safeLocalRemove(TRIAL_KEY);
+      safeLocalRemove(TRIAL_CUSTOMERS_KEY);
+      safeLocalRemove(TRIAL_CUSTOMER_PRICES_KEY);
+      safeLocalRemove(TRIAL_PRODUCTS_KEY);
+      safeLocalRemove(TRIAL_INVOICES_KEY);
       window.location.href = "/zh";
       return;
     }
@@ -465,9 +504,11 @@ export default function CustomersPage() {
       .eq("id", data.session.user.id)
       .single();
 
-    if (profileData?.theme && THEMES[profileData.theme as ThemeKey]) {
-      setThemeKey(profileData.theme as ThemeKey);
-      localStorage.setItem(THEME_KEY, profileData.theme);
+    const profile = profileData as Profile | null;
+
+    if (profile?.theme && THEMES[profile.theme as ThemeKey]) {
+      setThemeKey(profile.theme as ThemeKey);
+      safeLocalSet(THEME_KEY, profile.theme);
     }
 
     await loadAll(data.session.user.id);
@@ -505,20 +546,31 @@ export default function CustomersPage() {
 
   function saveTrialCustomers(nextCustomers: Customer[]) {
     setCustomers(nextCustomers);
-    localStorage.setItem(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
+    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
   }
 
   function saveTrialPrices(nextPrices: CustomerPrice[]) {
     setCustomerPrices(nextPrices);
-    localStorage.setItem(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextPrices));
+    safeLocalSet(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextPrices));
   }
 
   function buildUrl(path: string, extra?: string) {
-    const base = isTrial
-      ? `${path}?mode=trial&lang=${lang}&theme=${themeKey}`
-      : `${path}?lang=${lang}&theme=${themeKey}`;
+    const query = new URLSearchParams();
 
-    return extra ? `${base}&${extra}` : base;
+    if (isTrial) query.set("mode", "trial");
+
+    query.set("lang", lang);
+    query.set("theme", themeKey);
+    query.set("refresh", String(Date.now()));
+
+    if (extra) {
+      const extraQuery = new URLSearchParams(extra);
+      extraQuery.forEach((value, key) => {
+        query.set(key, value);
+      });
+    }
+
+    return `${path}?${query.toString()}`;
   }
 
   function go(path: string, extra?: string) {
@@ -548,35 +600,22 @@ export default function CustomersPage() {
 
     go(
       "/dashboard/invoices",
-      `customerId=${encodeURIComponent(invoiceCustomer.id)}&customerName=${encodeURIComponent(invoiceCustomer.name)}&from=customers`
+      `customerId=${encodeURIComponent(invoiceCustomer.id)}&customerName=${encodeURIComponent(
+        invoiceCustomer.name
+      )}&from=customers`
     );
   }
 
   function switchLang(next: Lang) {
     setLang(next);
-    localStorage.setItem(LANG_KEY, next);
+    safeLocalSet(LANG_KEY, next);
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
     q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-  }
-
-  async function switchTheme(next: ThemeKey) {
-    setThemeKey(next);
-    localStorage.setItem(THEME_KEY, next);
-
-    const q = new URLSearchParams(window.location.search);
-    q.set("theme", next);
-    q.set("lang", lang);
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-
-    if (!isTrial && session) {
-      await supabase
-        .from("profiles")
-        .update({ theme: next })
-        .eq("id", session.user.id);
-    }
   }
 
   function openNewCustomerForm() {
@@ -623,7 +662,7 @@ export default function CustomersPage() {
         )
       : [
           {
-            id: crypto.randomUUID(),
+            id: makeId(),
             customer_id: customerId,
             product_id: productId,
             custom_price: price,
@@ -637,26 +676,44 @@ export default function CustomersPage() {
   async function upsertDbPrice(customerId: string, productId: string, price: number) {
     if (!session) return "No session";
 
-    const { error } = await supabase.from("customer_prices").upsert(
-      {
-        user_id: session.user.id,
-        customer_id: customerId,
-        product_id: productId,
-        custom_price: price,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "user_id,customer_id,product_id",
-      }
-    );
+    const existing = await supabase
+      .from("customer_prices")
+      .select("id")
+      .eq("user_id", session.user.id)
+      .eq("customer_id", customerId)
+      .eq("product_id", productId)
+      .maybeSingle();
+
+    if (existing.error && !isSchemaColumnError(existing.error)) {
+      return existing.error.message;
+    }
+
+    if (existing.data?.id) {
+      const { error } = await supabase
+        .from("customer_prices")
+        .update({ custom_price: price })
+        .eq("id", existing.data.id)
+        .eq("user_id", session.user.id);
+
+      return error?.message || "";
+    }
+
+    const { error } = await supabase.from("customer_prices").insert({
+      user_id: session.user.id,
+      customer_id: customerId,
+      product_id: productId,
+      custom_price: price,
+    });
 
     return error?.message || "";
   }
 
   async function saveCustomer() {
+    setMsg("");
+
     if (!form.name.trim()) return;
 
-    const customerId = editingId || crypto.randomUUID();
+    const customerId = editingId || makeId();
 
     const payload: Customer = {
       id: customerId,
@@ -707,7 +764,6 @@ export default function CustomersPage() {
       paid_amount: payload.paid_amount,
       last_payment_date: payload.last_payment_date,
       note: payload.note,
-      updated_at: new Date().toISOString(),
     };
 
     let savedCustomerId = editingId || "";
@@ -826,6 +882,8 @@ export default function CustomersPage() {
   }
 
   async function saveCustomerPrice() {
+    setMsg("");
+
     if (!priceCustomerId || !priceProductId || !customPrice) return;
 
     if (isTrial) {
@@ -899,60 +957,70 @@ export default function CustomersPage() {
   }, [invoices, invoiceCustomer]);
 
   return (
-    <main style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}>
-      <section style={topBarStyle}>
-        <button
-          onClick={backToDashboard}
-          style={{
-            ...backBtnStyle,
-            color: theme.accent,
-            borderColor: theme.border,
-          }}
-        >
-          ← {t.back}
-        </button>
-
-        <div style={topRightStyle}>
-          <select
-            value={themeKey}
-            onChange={(e) => switchTheme(e.target.value as ThemeKey)}
+    <main
+      className="smartacctg-page smartacctg-customers-page"
+      style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
+    >
+      <div className="sa-topbar">
+        <div className="sa-topbar-left">
+          <button
+            onClick={backToDashboard}
             style={{
-              ...selectSmallStyle,
-              borderColor: theme.border,
+              ...backBtnStyle,
               color: theme.accent,
+              borderColor: theme.border,
             }}
           >
-            <option value="deepTeal">深青色</option>
-            <option value="pink">可爱粉色</option>
-            <option value="blackGold">黑金商务</option>
-            <option value="lightRed">可爱浅红</option>
-            <option value="nature">风景自然系</option>
-            <option value="sky">天空蓝</option>
-          </select>
+            ← {t.back}
+          </button>
+        </div>
 
-          <div style={langRowStyle}>
-            <button onClick={() => switchLang("zh")} style={langBtn(lang === "zh", theme)}>
-              中
+        <div className="sa-topbar-center" aria-hidden="true" />
+
+        <div className="sa-topbar-right">
+          <div className="sa-lang-row">
+            <button
+              onClick={() => switchLang("zh")}
+              className="sa-lang-btn"
+              style={langBtnStyle(lang === "zh", theme)}
+            >
+              中文
             </button>
-            <button onClick={() => switchLang("en")} style={langBtn(lang === "en", theme)}>
+
+            <button
+              onClick={() => switchLang("en")}
+              className="sa-lang-btn"
+              style={langBtnStyle(lang === "en", theme)}
+            >
               EN
             </button>
-            <button onClick={() => switchLang("ms")} style={langBtn(lang === "ms", theme)}>
+
+            <button
+              onClick={() => switchLang("ms")}
+              className="sa-lang-btn"
+              style={langBtnStyle(lang === "ms", theme)}
+            >
               BM
             </button>
           </div>
         </div>
-      </section>
+      </div>
 
       {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
-      {msg ? <div style={msgStyle}>{msg}</div> : null}
+
+      {msg ? (
+        <div style={{ ...msgStyle, background: theme.softBg, color: theme.text }}>
+          {msg}
+        </div>
+      ) : null}
 
       <section
+        className="sa-card"
         style={{
-          ...cardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
+          color: theme.text,
         }}
       >
         <div style={recordHeaderStyle}>
@@ -960,157 +1028,165 @@ export default function CustomersPage() {
 
           <button
             onClick={openNewCustomerForm}
+            aria-label={t.add}
             style={{
               ...plusBtnStyle,
               background: theme.accent,
             }}
           >
-            ＋
+            +
           </button>
         </div>
 
-        <input
-          placeholder={t.search}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            ...inputStyle,
-            borderColor: theme.border,
-          }}
-        />
+        <div style={searchGridStyle}>
+          <input
+            placeholder={t.search}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              ...inputStyle,
+              borderColor: theme.border,
+            }}
+          />
 
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as "all" | CustomerStatus)}
-          style={{
-            ...inputStyle,
-            borderColor: theme.border,
-            marginTop: 12,
-          }}
-        >
-          <option value="all">{t.all}</option>
-          <option value="normal">{t.normal}</option>
-          <option value="vip">{t.vip}</option>
-          <option value="debt">{t.debt}</option>
-          <option value="blocked">{t.blocked}</option>
-        </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as "all" | CustomerStatus)}
+            style={{
+              ...inputStyle,
+              borderColor: theme.border,
+            }}
+          >
+            <option value="all">{t.all}</option>
+            <option value="normal">{t.normal}</option>
+            <option value="vip">{t.vip}</option>
+            <option value="debt">{t.debt}</option>
+            <option value="blocked">{t.blocked}</option>
+          </select>
+        </div>
 
         <div style={customerListStyle}>
           {filteredCustomers.length === 0 ? (
-            <p style={{ color: theme.subText }}>{t.noCustomers}</p>
+            <p style={{ color: theme.subText, fontWeight: 800 }}>{t.noCustomers}</p>
           ) : (
-            filteredCustomers.map((c) => {
-              const debtLeft = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
-              const prices = customerPrices.filter((p) => p.customer_id === c.id);
+            <div style={customerGridStyle}>
+              {filteredCustomers.map((c) => {
+                const debtLeft = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
+                const prices = customerPrices.filter((p) => p.customer_id === c.id);
 
-              return (
-                <div
-                  key={c.id}
-                  style={{
-                    ...customerCardStyle,
-                    borderColor: theme.border,
-                    background: theme.card,
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <h3 style={customerNameStyle}>
-                      {c.name}{" "}
-                      <span
+                return (
+                  <div
+                    key={c.id}
+                    className="sa-item-card"
+                    style={{
+                      borderColor: theme.border,
+                      background: theme.card,
+                      color: theme.text,
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <h3 style={customerNameStyle}>
+                        {c.name}{" "}
+                        <span
+                          style={{
+                            ...badgeStyle,
+                            background: theme.softBg,
+                            color: theme.accent,
+                          }}
+                        >
+                          {statusText(c.status || "normal", t)}
+                        </span>
+                      </h3>
+
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.phone}: {c.phone || "-"} ｜ {t.email}: {c.email || "-"}
+                      </p>
+
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.companyName}: {c.company_name || "-"}
+                      </p>
+
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.debtAmount}: RM {Number(c.debt_amount || 0).toFixed(2)} ｜{" "}
+                        {t.paidAmount}: RM {Number(c.paid_amount || 0).toFixed(2)} ｜{" "}
+                        {t.balance}: RM {debtLeft.toFixed(2)}
+                      </p>
+
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.lastPaymentDate}: {c.last_payment_date || "-"}
+                      </p>
+
+                      {prices.length > 0 ? (
+                        <p style={{ ...mutedStyle, color: theme.subText }}>
+                          {t.currentPrices}:{" "}
+                          {prices
+                            .map((cp) => {
+                              const product = products.find((p) => p.id === cp.product_id);
+                              return `${product?.name || "Product"} RM ${Number(
+                                cp.custom_price
+                              ).toFixed(2)}`;
+                            })
+                            .join(" / ")}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="customers-action-row" style={actionRowStyle}>
+                      <button onClick={() => openInvoiceRecords(c)} style={invoiceBtnStyle}>
+                        {t.invoice}
+                      </button>
+
+                      <button
+                        onClick={() => openPriceModal(c)}
                         style={{
-                          ...badgeStyle,
-                          background: theme.softBg,
-                          color: theme.accent,
+                          ...priceBtnStyle,
+                          background: theme.accent,
                         }}
                       >
-                        {statusText(c.status || "normal", t)}
-                      </span>
-                    </h3>
+                        {t.priceTitle}
+                      </button>
 
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.phone}: {c.phone || "-"} | {t.email}: {c.email || "-"}
-                    </p>
+                      <button
+                        onClick={() => openCustomerWhatsApp(c.phone)}
+                        disabled={!c.phone}
+                        title={t.whatsapp}
+                        style={{
+                          ...whatsappBtnStyle,
+                          opacity: c.phone ? 1 : 0.45,
+                        }}
+                      >
+                        {t.whatsapp}
+                      </button>
 
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.companyName}: {c.company_name || "-"}
-                    </p>
+                      <button
+                        onClick={() => editCustomer(c)}
+                        style={{
+                          ...editBtnStyle,
+                          background: theme.accent,
+                        }}
+                      >
+                        {t.edit}
+                      </button>
 
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.debtAmount}: RM {Number(c.debt_amount || 0).toFixed(2)} |{" "}
-                      {t.paidAmount}: RM {Number(c.paid_amount || 0).toFixed(2)} |{" "}
-                      Balance: RM {debtLeft.toFixed(2)}
-                    </p>
-
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
-                      {t.lastPaymentDate}: {c.last_payment_date || "-"}
-                    </p>
-
-                    {prices.length > 0 ? (
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
-                        {t.currentPrices}:{" "}
-                        {prices
-                          .map((cp) => {
-                            const product = products.find((p) => p.id === cp.product_id);
-                            return `${product?.name || "Product"} RM ${Number(cp.custom_price).toFixed(2)}`;
-                          })
-                          .join(" / ")}
-                      </p>
-                    ) : null}
+                      <button onClick={() => deleteCustomer(c.id)} style={deleteBtnStyle}>
+                        {t.delete}
+                      </button>
+                    </div>
                   </div>
-
-                  <div style={actionRowStyle}>
-                    <button onClick={() => openInvoiceRecords(c)} style={invoiceBtnStyle}>
-                      {t.invoice}
-                    </button>
-
-                    <button
-                      onClick={() => openPriceModal(c)}
-                      style={{
-                        ...priceBtnStyle,
-                        background: theme.accent,
-                      }}
-                    >
-                      {t.priceTitle}
-                    </button>
-
-                    <button
-                      onClick={() => openCustomerWhatsApp(c.phone)}
-                      disabled={!c.phone}
-                      title={t.whatsapp}
-                      style={{
-                        ...whatsappBtnStyle,
-                        opacity: c.phone ? 1 : 0.45,
-                      }}
-                    >
-                      {t.whatsapp}
-                    </button>
-
-                    <button
-                      onClick={() => editCustomer(c)}
-                      style={{
-                        ...editBtnStyle,
-                        background: theme.accent,
-                      }}
-                    >
-                      {t.edit}
-                    </button>
-
-                    <button onClick={() => deleteCustomer(c.id)} style={deleteBtnStyle}>
-                      {t.delete}
-                    </button>
-                  </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
       </section>
 
       <section
+        className="sa-card"
         style={{
-          ...cardStyle,
           background: theme.card,
           borderColor: theme.border,
           boxShadow: theme.glow,
+          color: theme.text,
         }}
       >
         <h2 style={sectionTitleStyle}>{t.related}</h2>
@@ -1145,666 +1221,6 @@ export default function CustomersPage() {
       {showForm ? (
         <div style={overlayStyle}>
           <section
+            className="sa-modal"
             style={{
-              ...modalStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div style={modalHeaderStyle}>
-              <h2 style={modalTitleStyle}>{t.formTitle}</h2>
-
-              <button onClick={closeForm} style={closeBtnStyle}>
-                X
-              </button>
-            </div>
-
-            <h3>{t.personal}</h3>
-            <div style={responsiveGridStyle}>
-              <input placeholder={t.name} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-              <input placeholder={t.phone} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-              <input placeholder={t.email} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-            </div>
-
-            <h3>{t.company}</h3>
-            <div style={responsiveGridStyle}>
-              <input placeholder={t.companyName} value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-              <input placeholder={t.regNo} value={form.company_reg_no} onChange={(e) => setForm({ ...form, company_reg_no: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-              <input placeholder={t.companyPhone} value={form.company_phone} onChange={(e) => setForm({ ...form, company_phone: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-              <input placeholder={t.address} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-            </div>
-
-            <h3>{t.status}</h3>
-            <div style={responsiveGridStyle}>
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as CustomerStatus })} style={{ ...inputStyle, borderColor: theme.border }}>
-                <option value="normal">{t.normal}</option>
-                <option value="vip">{t.vip}</option>
-                <option value="debt">{t.debt}</option>
-                <option value="blocked">{t.blocked}</option>
-              </select>
-
-              <input placeholder={t.debtAmount} value={form.debt_amount} onChange={(e) => setForm({ ...form, debt_amount: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-              <input placeholder={t.paidAmount} value={form.paid_amount} onChange={(e) => setForm({ ...form, paid_amount: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-
-              <div style={dateWrapStyle}>
-                <label style={{ ...dateLabelStyle, color: theme.subText }}>{t.lastPaymentDate}</label>
-                <input
-                  type="date"
-                  value={form.last_payment_date}
-                  onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })}
-                  style={{
-                    ...dateInputStyle,
-                    borderColor: theme.border,
-                  }}
-                />
-              </div>
-
-              <input placeholder={t.note} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={{ ...inputStyle, borderColor: theme.border }} />
-            </div>
-
-            <h3>{t.priceTitle}</h3>
-            <div style={responsiveGridStyle}>
-              <select
-                value={formPriceProductId}
-                onChange={(e) => setFormPriceProductId(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              >
-                <option value="">{t.chooseProduct}</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                placeholder={t.customPrice}
-                value={formCustomPrice}
-                onChange={(e) => setFormCustomPrice(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              />
-            </div>
-
-            {formSelectedProduct ? (
-              <p style={{ ...mutedStyle, color: theme.subText }}>
-                {t.productNormalPrice}: RM {Number(formSelectedProduct.price || 0).toFixed(2)}
-              </p>
-            ) : null}
-
-            <button
-              onClick={saveCustomer}
-              style={{
-                ...primaryBtnStyle,
-                background: theme.accent,
-              }}
-            >
-              {editingId ? t.update : t.save}
-            </button>
-
-            {editingId ? (
-              <button
-                onClick={resetForm}
-                style={{
-                  ...secondaryBtnStyle,
-                  borderColor: theme.border,
-                  color: theme.accent,
-                }}
-              >
-                {t.cancelEdit}
-              </button>
-            ) : null}
-          </section>
-        </div>
-      ) : null}
-
-      {showPriceModal ? (
-        <div style={overlayStyle}>
-          <section
-            style={{
-              ...modalStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div style={modalHeaderStyle}>
-              <div>
-                <h2 style={modalTitleStyle}>{t.priceTitle}</h2>
-                <p style={{ ...mutedStyle, color: theme.subText, margin: "6px 0 0" }}>
-                  {t.chooseCustomer}: {priceCustomerName || "-"}
-                </p>
-              </div>
-
-              <button onClick={closePriceModal} style={closeBtnStyle}>
-                X
-              </button>
-            </div>
-
-            <div style={responsiveGridStyle}>
-              <select
-                value={priceProductId}
-                onChange={(e) => setPriceProductId(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  borderColor: theme.border,
-                }}
-              >
-                <option value="">{t.chooseProduct}</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                placeholder={t.customPrice}
-                value={customPrice}
-                onChange={(e) => setCustomPrice(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  borderColor: theme.border,
-                }}
-              />
-            </div>
-
-            {selectedProduct ? (
-              <p style={{ ...mutedStyle, color: theme.subText }}>
-                {t.productNormalPrice}: RM {Number(selectedProduct.price || 0).toFixed(2)}
-              </p>
-            ) : null}
-
-            <button
-              onClick={saveCustomerPrice}
-              style={{
-                ...primaryBtnStyle,
-                background: theme.accent,
-              }}
-            >
-              {t.savePrice}
-            </button>
-
-            <div style={{ marginTop: 16 }}>
-              <h3>{t.currentPrices}</h3>
-
-              {targetPrices.length === 0 ? (
-                <p style={{ color: theme.subText }}>{t.noPrice}</p>
-              ) : (
-                targetPrices.map((cp) => {
-                  const product = products.find((p) => p.id === cp.product_id);
-
-                  return (
-                    <div
-                      key={cp.id}
-                      style={{
-                        ...priceItemStyle,
-                        borderColor: theme.border,
-                        background: theme.softBg,
-                      }}
-                    >
-                      <strong>{product?.name || "Product"}</strong>
-                      <span>RM {Number(cp.custom_price || 0).toFixed(2)}</span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {showInvoiceModal ? (
-        <div style={overlayStyle}>
-          <section
-            style={{
-              ...modalStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div style={modalHeaderStyle}>
-              <div>
-                <h2 style={modalTitleStyle}>{t.invoiceRecords}</h2>
-                <p style={{ ...mutedStyle, color: theme.subText, margin: "6px 0 0" }}>
-                  {t.selectedCustomer}: {invoiceCustomer?.name || "-"}
-                </p>
-              </div>
-
-              <button onClick={closeInvoiceModal} style={closeBtnStyle}>
-                X
-              </button>
-            </div>
-
-            <button
-              onClick={goCreateInvoiceForCustomer}
-              style={{
-                ...primaryBtnStyle,
-                background: theme.accent,
-                marginTop: 0,
-              }}
-            >
-              {t.createNewInvoice}
-            </button>
-
-            <div style={{ marginTop: 16 }}>
-              {selectedCustomerInvoices.length === 0 ? (
-                <p style={{ color: theme.subText }}>{t.noInvoice}</p>
-              ) : (
-                selectedCustomerInvoices.map((inv) => {
-                  const dateText =
-                    inv.invoice_date ||
-                    (inv.created_at ? inv.created_at.slice(0, 10) : "-");
-
-                  return (
-                    <div
-                      key={inv.id}
-                      style={{
-                        ...invoiceRecordCardStyle,
-                        borderColor: theme.border,
-                        background: theme.softBg,
-                      }}
-                    >
-                      <div>
-                        <strong>
-                          {t.invoiceNo}: {inv.invoice_no || inv.id}
-                        </strong>
-
-                        <p style={{ ...mutedStyle, color: theme.subText }}>
-                          {t.invoiceDate}: {dateText}
-                        </p>
-
-                        {inv.note ? (
-                          <p style={{ ...mutedStyle, color: theme.subText }}>
-                            {inv.note}
-                          </p>
-                        ) : null}
-                      </div>
-
-                      <div style={invoiceAmountBoxStyle}>
-                        <strong>
-                          {t.invoiceTotal}: RM {Number(inv.total || 0).toFixed(2)}
-                        </strong>
-
-                        <span style={{ color: theme.subText }}>
-                          {t.invoiceProfit}: RM {Number(inv.total_profit || 0).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </section>
-        </div>
-      ) : null}
-    </main>
-  );
-}
-
-function statusText(status: CustomerStatus, t: any) {
-  if (status === "vip") return t.vip;
-  if (status === "debt") return t.debt;
-  if (status === "blocked") return t.blocked;
-  return t.normal;
-}
-
-const pageStyle: CSSProperties = {
-  minHeight: "100vh",
-  padding: "clamp(10px, 2vw, 24px)",
-  fontFamily: "sans-serif",
-  fontSize: "clamp(14px, 2vw, 16px)",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 18,
-  flexWrap: "wrap",
-};
-
-const topRightStyle: CSSProperties = {
-  marginLeft: "auto",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  gap: 10,
-  flexWrap: "wrap",
-  maxWidth: "100%",
-};
-
-const backBtnStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 12,
-  padding: "clamp(8px, 1.6vw, 12px) clamp(10px, 2vw, 16px)",
-  fontSize: "clamp(13px, 2.2vw, 16px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  maxWidth: "100%",
-  whiteSpace: "normal",
-  lineHeight: 1.25,
-};
-
-const selectSmallStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 999,
-  padding: "clamp(7px, 1.5vw, 9px) clamp(9px, 2vw, 12px)",
-  fontSize: "clamp(12px, 2vw, 15px)",
-  fontWeight: 900,
-  outline: "none",
-  maxWidth: "100%",
-  height: "clamp(38px, 7vw, 44px)",
-};
-
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: "clamp(4px, 1vw, 8px)",
-  flexWrap: "wrap",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  maxWidth: "100%",
-};
-
-const langBtn = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
-  minWidth: "clamp(38px, 8vw, 58px)",
-  minHeight: "clamp(36px, 7vw, 42px)",
-  padding: "clamp(7px, 1.6vw, 10px) clamp(8px, 2vw, 14px)",
-  borderRadius: 999,
-  border: `2px solid ${theme.border}`,
-  background: active ? theme.accent : "#fff",
-  color: active ? "#fff" : theme.accent,
-  fontSize: "clamp(12px, 2.5vw, 15px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  lineHeight: 1.1,
-  textAlign: "center",
-  whiteSpace: "nowrap",
-});
-
-const cardStyle: CSSProperties = {
-  border: "2px solid",
-  borderRadius: 22,
-  padding: "clamp(14px, 2vw, 22px)",
-  marginBottom: 18,
-};
-
-const recordHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 14,
-};
-
-const titleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(24px, 4vw, 34px)",
-  lineHeight: 1.15,
-};
-
-const sectionTitleStyle: CSSProperties = {
-  marginTop: 0,
-  fontSize: "clamp(20px, 3vw, 26px)",
-};
-
-const plusBtnStyle: CSSProperties = {
-  width: "clamp(40px, 9vw, 46px)",
-  height: "clamp(40px, 9vw, 46px)",
-  borderRadius: "999px",
-  color: "#fff",
-  border: "none",
-  fontSize: "clamp(24px, 5vw, 28px)",
-  fontWeight: 900,
-  lineHeight: 1,
-  cursor: "pointer",
-  flexShrink: 0,
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: "100%",
-  minWidth: 0,
-  boxSizing: "border-box",
-  padding: "13px 14px",
-  borderRadius: 12,
-  border: "1px solid",
-  fontSize: "clamp(14px, 2vw, 16px)",
-  outline: "none",
-  minHeight: 48,
-};
-
-const responsiveGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 12,
-};
-
-const relatedMenuRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 12,
-  alignItems: "center",
-};
-
-const customerListStyle: CSSProperties = {
-  marginTop: 18,
-};
-
-const customerCardStyle: CSSProperties = {
-  border: "1px solid",
-  borderRadius: 18,
-  padding: "clamp(14px, 2vw, 18px)",
-  marginBottom: 14,
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr)",
-  gap: 14,
-};
-
-const customerNameStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(18px, 3vw, 22px)",
-  overflowWrap: "anywhere",
-};
-
-const mutedStyle: CSSProperties = {
-  fontSize: "clamp(13px, 2vw, 14px)",
-  overflowWrap: "anywhere",
-};
-
-const badgeStyle: CSSProperties = {
-  padding: "3px 9px",
-  borderRadius: 999,
-  fontSize: 12,
-  whiteSpace: "nowrap",
-};
-
-const actionRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  alignItems: "center",
-  flexWrap: "wrap",
-};
-
-const actionBtnBaseStyle: CSSProperties = {
-  width: "clamp(112px, 24vw, 145px)",
-  minHeight: 42,
-  border: "none",
-  borderRadius: 10,
-  padding: "9px 10px",
-  fontSize: "clamp(12px, 2vw, 14px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  textAlign: "center",
-  lineHeight: 1.2,
-  whiteSpace: "normal",
-};
-
-const invoiceBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  background: "#0ea5e9",
-  color: "#fff",
-};
-
-const priceBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  color: "#fff",
-};
-
-const whatsappBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  background: "#25D366",
-  color: "#fff",
-};
-
-const editBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  color: "#fff",
-};
-
-const deleteBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  background: "#fee2e2",
-  color: "#b91c1c",
-};
-
-const primaryBtnStyle: CSSProperties = {
-  marginTop: 16,
-  color: "#fff",
-  border: "none",
-  borderRadius: 12,
-  padding: "13px 18px",
-  fontSize: "clamp(14px, 2vw, 16px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  minHeight: 48,
-};
-
-const secondaryBtnStyle: CSSProperties = {
-  marginTop: 16,
-  marginLeft: 10,
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: 12,
-  padding: "11px 18px",
-  fontSize: "clamp(14px, 2vw, 16px)",
-  fontWeight: 900,
-  cursor: "pointer",
-  minHeight: 46,
-};
-
-const msgStyle: CSSProperties = {
-  background: "#dcfce7",
-  color: "#166534",
-  padding: 12,
-  borderRadius: 12,
-  marginBottom: 14,
-  fontWeight: 800,
-};
-
-const trialMsgStyle: CSSProperties = {
-  background: "#fef3c7",
-  color: "#92400e",
-  padding: 12,
-  borderRadius: 12,
-  marginBottom: 14,
-  fontWeight: 800,
-};
-
-const overlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15, 23, 42, 0.52)",
-  padding: "clamp(12px, 3vw, 24px)",
-  zIndex: 999,
-  overflowY: "auto",
-};
-
-const modalStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 900,
-  margin: "0 auto",
-  border: "2px solid",
-  borderRadius: 24,
-  padding: "clamp(16px, 3vw, 24px)",
-};
-
-const modalHeaderStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  marginBottom: 12,
-};
-
-const modalTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(22px, 4vw, 30px)",
-};
-
-const closeBtnStyle: CSSProperties = {
-  background: "#dc2626",
-  color: "#fff",
-  border: "none",
-  width: 42,
-  height: 42,
-  borderRadius: 999,
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const dateWrapStyle: CSSProperties = {
-  width: "100%",
-};
-
-const dateLabelStyle: CSSProperties = {
-  display: "block",
-  fontSize: 13,
-  fontWeight: 800,
-  marginBottom: 5,
-};
-
-const dateInputStyle: CSSProperties = {
-  ...inputStyle,
-  height: 48,
-  minHeight: 48,
-  appearance: "none",
-  WebkitAppearance: "none",
-};
-
-const priceItemStyle: CSSProperties = {
-  border: "1px solid",
-  borderRadius: 14,
-  padding: "12px 14px",
-  marginBottom: 10,
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  flexWrap: "wrap",
-};
-
-const invoiceRecordCardStyle: CSSProperties = {
-  border: "1px solid",
-  borderRadius: 16,
-  padding: "clamp(12px, 2vw, 16px)",
-  marginBottom: 12,
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr)",
-  gap: 10,
-};
-
-const invoiceAmountBoxStyle: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  fontSize: "clamp(13px, 2vw, 15px)",
-};
+              ...modal
