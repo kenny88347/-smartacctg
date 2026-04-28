@@ -1154,34 +1154,58 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      <section className="products-summary-grid" style={summaryGridStyle}>
+      <section className="sa-stats-grid products-summary-grid" style={summaryGridStyle}>
         <button
+          className="sa-stat-card sa-stat-cost"
           onClick={() => openDetailModal("cost")}
-          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
+          style={{
+            ...summaryCardStyle,
+            order: 1,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+          }}
         >
           <span style={summaryLabelStyle}>{t.summaryCost}</span>
           <strong style={summaryValueStyle}>RM {productSummary.totalCost.toFixed(2)}</strong>
         </button>
 
         <button
+          className="sa-stat-card sa-stat-price"
           onClick={() => openDetailModal("price")}
-          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
+          style={{
+            ...summaryCardStyle,
+            order: 2,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+          }}
         >
           <span style={summaryLabelStyle}>{t.summaryPrice}</span>
           <strong style={summaryValueStyle}>RM {productSummary.totalValue.toFixed(2)}</strong>
         </button>
 
         <button
+          className="sa-stat-card sa-stat-profit"
           onClick={() => openDetailModal("profit")}
-          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
+          style={{
+            ...summaryCardStyle,
+            order: 3,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+          }}
         >
           <span style={summaryLabelStyle}>{t.profit}</span>
           <strong style={summaryValueStyle}>RM {productSummary.totalProfit.toFixed(2)}</strong>
         </button>
 
         <button
+          className="sa-stat-card sa-stat-stock"
           onClick={() => openDetailModal("stock")}
-          style={{ ...summaryCardStyle, borderColor: theme.border, boxShadow: theme.glow }}
+          style={{
+            ...summaryCardStyle,
+            order: 4,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+          }}
         >
           <span style={summaryLabelStyle}>{t.stock}</span>
           <strong style={summaryValueStyle}>{productSummary.totalStock}</strong>
@@ -1332,13 +1356,17 @@ export default function ProductsPage() {
                 {getDetailTitle()}｜{t.allProductDetails}
               </h2>
 
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={() => setDetailMetric(null)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setDetailMetric(null);
+                }}
                 style={closeTextBtnStyle}
               >
                 {t.close}
-              </button>
+              </span>
             </div>
 
             <input
@@ -1379,9 +1407,17 @@ export default function ProductsPage() {
             <div className="sa-modal-header" style={modalHeaderStyle}>
               <h2>{editingId ? t.edit : t.add}</h2>
 
-              <button type="button" onClick={resetForm} style={closeTextBtnStyle}>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={resetForm}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") resetForm();
+                }}
+                style={closeTextBtnStyle}
+              >
                 {t.close}
-              </button>
+              </span>
             </div>
 
             <label style={labelStyle}>{t.productName}</label>
@@ -1766,6 +1802,9 @@ const modalHeaderStyle: CSSProperties = {
 };
 
 const closeTextBtnStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   background: "transparent",
   color: "#dc2626",
   border: "none",
@@ -1780,6 +1819,7 @@ const closeTextBtnStyle: CSSProperties = {
   fontSize: "var(--sa-fs-base)",
   lineHeight: 1.2,
   whiteSpace: "nowrap",
+  cursor: "pointer",
 };
 
 const detailListStyle: CSSProperties = {
