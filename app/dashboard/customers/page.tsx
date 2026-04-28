@@ -965,6 +965,7 @@ export default function CustomersPage() {
         <div className="sa-topbar-left">
           <button
             onClick={backToDashboard}
+            className="sa-back-btn"
             style={{
               ...backBtnStyle,
               color: theme.accent,
@@ -1223,4 +1224,701 @@ export default function CustomersPage() {
           <section
             className="sa-modal"
             style={{
-              ...modal
+              ...modalStyle,
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <div className="sa-modal-header" style={modalHeaderStyle}>
+              <h2 style={modalTitleStyle}>{t.formTitle}</h2>
+
+              <button
+                onClick={closeForm}
+                style={{
+                  ...closeTextBtnStyle,
+                  color: "#dc2626",
+                }}
+              >
+                {t.close}
+              </button>
+            </div>
+
+            <h3>{t.personal}</h3>
+
+            <div style={responsiveGridStyle}>
+              <input
+                placeholder={t.name}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+
+              <input
+                placeholder={t.phone}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+
+              <input
+                placeholder={t.email}
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+            </div>
+
+            <h3>{t.company}</h3>
+
+            <div style={responsiveGridStyle}>
+              <input
+                placeholder={t.companyName}
+                value={form.company_name}
+                onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+
+              <input
+                placeholder={t.regNo}
+                value={form.company_reg_no}
+                onChange={(e) => setForm({ ...form, company_reg_no: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+
+              <input
+                placeholder={t.companyPhone}
+                value={form.company_phone}
+                onChange={(e) => setForm({ ...form, company_phone: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+
+              <input
+                placeholder={t.address}
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+            </div>
+
+            <h3>{t.status}</h3>
+
+            <div style={responsiveGridStyle}>
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value as CustomerStatus })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              >
+                <option value="normal">{t.normal}</option>
+                <option value="vip">{t.vip}</option>
+                <option value="debt">{t.debt}</option>
+                <option value="blocked">{t.blocked}</option>
+              </select>
+
+              <input
+                placeholder={t.debtAmount}
+                value={form.debt_amount}
+                onChange={(e) => setForm({ ...form, debt_amount: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+
+              <input
+                placeholder={t.paidAmount}
+                value={form.paid_amount}
+                onChange={(e) => setForm({ ...form, paid_amount: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+
+              <div style={dateWrapStyle}>
+                <label style={{ ...dateLabelStyle, color: theme.subText }}>
+                  {t.lastPaymentDate}
+                </label>
+
+                <input
+                  type="date"
+                  value={form.last_payment_date}
+                  onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })}
+                  style={{ ...dateInputStyle, borderColor: theme.border }}
+                />
+              </div>
+
+              <input
+                placeholder={t.note}
+                value={form.note}
+                onChange={(e) => setForm({ ...form, note: e.target.value })}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+            </div>
+
+            <h3>{t.priceTitle}</h3>
+
+            <div style={responsiveGridStyle}>
+              <select
+                value={formPriceProductId}
+                onChange={(e) => setFormPriceProductId(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              >
+                <option value="">{t.chooseProduct}</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                placeholder={t.customPrice}
+                value={formCustomPrice}
+                onChange={(e) => setFormCustomPrice(e.target.value)}
+                style={{ ...inputStyle, borderColor: theme.border }}
+              />
+            </div>
+
+            {formSelectedProduct ? (
+              <p style={{ ...mutedStyle, color: theme.subText }}>
+                {t.productNormalPrice}: RM {Number(formSelectedProduct.price || 0).toFixed(2)}
+              </p>
+            ) : null}
+
+            <div style={modalActionRowStyle}>
+              <button
+                onClick={saveCustomer}
+                style={{
+                  ...primaryBtnStyle,
+                  background: theme.accent,
+                  marginTop: 0,
+                }}
+              >
+                {editingId ? t.update : t.save}
+              </button>
+
+              <button
+                onClick={editingId ? resetForm : closeForm}
+                style={{
+                  ...secondaryBtnStyle,
+                  borderColor: theme.border,
+                  color: theme.accent,
+                  marginTop: 0,
+                  marginLeft: 0,
+                }}
+              >
+                {editingId ? t.cancelEdit : t.cancel}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {showPriceModal ? (
+        <div style={overlayStyle}>
+          <section
+            className="sa-modal"
+            style={{
+              ...modalStyle,
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <div className="sa-modal-header" style={modalHeaderStyle}>
+              <div>
+                <h2 style={modalTitleStyle}>{t.priceTitle}</h2>
+
+                <p style={{ ...mutedStyle, color: theme.subText, margin: "6px 0 0" }}>
+                  {t.chooseCustomer}: {priceCustomerName || "-"}
+                </p>
+              </div>
+
+              <button
+                onClick={closePriceModal}
+                style={{
+                  ...closeTextBtnStyle,
+                  color: "#dc2626",
+                }}
+              >
+                {t.close}
+              </button>
+            </div>
+
+            <div style={responsiveGridStyle}>
+              <select
+                value={priceProductId}
+                onChange={(e) => setPriceProductId(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  borderColor: theme.border,
+                }}
+              >
+                <option value="">{t.chooseProduct}</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                placeholder={t.customPrice}
+                value={customPrice}
+                onChange={(e) => setCustomPrice(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  borderColor: theme.border,
+                }}
+              />
+            </div>
+
+            {selectedProduct ? (
+              <p style={{ ...mutedStyle, color: theme.subText }}>
+                {t.productNormalPrice}: RM {Number(selectedProduct.price || 0).toFixed(2)}
+              </p>
+            ) : null}
+
+            <button
+              onClick={saveCustomerPrice}
+              style={{
+                ...primaryBtnStyle,
+                background: theme.accent,
+              }}
+            >
+              {t.savePrice}
+            </button>
+
+            <div style={{ marginTop: 16 }}>
+              <h3>{t.currentPrices}</h3>
+
+              {targetPrices.length === 0 ? (
+                <p style={{ color: theme.subText }}>{t.noPrice}</p>
+              ) : (
+                targetPrices.map((cp) => {
+                  const product = products.find((p) => p.id === cp.product_id);
+
+                  return (
+                    <div
+                      key={cp.id}
+                      style={{
+                        ...priceItemStyle,
+                        borderColor: theme.border,
+                        background: theme.softBg,
+                        color: theme.text,
+                      }}
+                    >
+                      <strong>{product?.name || "Product"}</strong>
+                      <span>RM {Number(cp.custom_price || 0).toFixed(2)}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {showInvoiceModal ? (
+        <div style={overlayStyle}>
+          <section
+            className="sa-modal"
+            style={{
+              ...modalStyle,
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <div className="sa-modal-header" style={modalHeaderStyle}>
+              <div>
+                <h2 style={modalTitleStyle}>{t.invoiceRecords}</h2>
+
+                <p style={{ ...mutedStyle, color: theme.subText, margin: "6px 0 0" }}>
+                  {t.selectedCustomer}: {invoiceCustomer?.name || "-"}
+                </p>
+              </div>
+
+              <button
+                onClick={closeInvoiceModal}
+                style={{
+                  ...closeTextBtnStyle,
+                  color: "#dc2626",
+                }}
+              >
+                {t.close}
+              </button>
+            </div>
+
+            <button
+              onClick={goCreateInvoiceForCustomer}
+              style={{
+                ...primaryBtnStyle,
+                background: theme.accent,
+                marginTop: 0,
+              }}
+            >
+              {t.createNewInvoice}
+            </button>
+
+            <div style={{ marginTop: 16 }}>
+              {selectedCustomerInvoices.length === 0 ? (
+                <p style={{ color: theme.subText }}>{t.noInvoice}</p>
+              ) : (
+                selectedCustomerInvoices.map((inv) => {
+                  const dateText =
+                    inv.invoice_date || (inv.created_at ? inv.created_at.slice(0, 10) : "-");
+
+                  return (
+                    <div
+                      key={inv.id}
+                      style={{
+                        ...invoiceRecordCardStyle,
+                        borderColor: theme.border,
+                        background: theme.softBg,
+                        color: theme.text,
+                      }}
+                    >
+                      <div>
+                        <strong>
+                          {t.invoiceNo}: {inv.invoice_no || inv.id}
+                        </strong>
+
+                        <p style={{ ...mutedStyle, color: theme.subText }}>
+                          {t.invoiceDate}: {dateText}
+                        </p>
+
+                        {inv.note ? (
+                          <p style={{ ...mutedStyle, color: theme.subText }}>{inv.note}</p>
+                        ) : null}
+                      </div>
+
+                      <div style={invoiceAmountBoxStyle}>
+                        <strong>
+                          {t.invoiceTotal}: RM {Number(inv.total || 0).toFixed(2)}
+                        </strong>
+
+                        <span style={{ color: theme.subText }}>
+                          {t.invoiceProfit}: RM {Number(inv.total_profit || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </main>
+  );
+}
+
+const pageStyle: CSSProperties = {
+  minHeight: "100vh",
+  width: "100%",
+  maxWidth: "100vw",
+  overflowX: "hidden",
+  padding: "clamp(10px, 3vw, 22px)",
+  fontSize: "var(--sa-fs-base)",
+};
+
+const backBtnStyle: CSSProperties = {
+  background: "#fff",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 var(--sa-control-x)",
+  fontWeight: 900,
+  whiteSpace: "nowrap",
+};
+
+const langBtnStyle = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
+  borderColor: theme.accent,
+  background: active ? theme.accent : "#fff",
+  color: active ? "#fff" : theme.accent,
+});
+
+const recordHeaderStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 14,
+};
+
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-2xl)",
+  lineHeight: 1.15,
+  fontWeight: 900,
+};
+
+const sectionTitleStyle: CSSProperties = {
+  marginTop: 0,
+  marginBottom: 14,
+  fontSize: "var(--sa-fs-xl)",
+  fontWeight: 900,
+};
+
+const plusBtnStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  minWidth: 52,
+  minHeight: 52,
+  borderRadius: 999,
+  color: "#fff",
+  border: "none",
+  fontSize: 30,
+  fontWeight: 900,
+  lineHeight: 1,
+  flexShrink: 0,
+};
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 var(--sa-control-x)",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid",
+  fontSize: "16px",
+  outline: "none",
+  background: "#ffffff",
+  color: "#111827",
+};
+
+const searchGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(180px, 260px)",
+  gap: 10,
+  alignItems: "center",
+};
+
+const responsiveGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 12,
+};
+
+const relatedMenuRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 12,
+  alignItems: "center",
+};
+
+const customerListStyle: CSSProperties = {
+  marginTop: 18,
+};
+
+const customerGridStyle: CSSProperties = {
+  display: "grid",
+  gap: 14,
+};
+
+const customerNameStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-lg)",
+  lineHeight: 1.25,
+  overflowWrap: "anywhere",
+};
+
+const mutedStyle: CSSProperties = {
+  fontSize: "var(--sa-fs-sm)",
+  lineHeight: 1.55,
+  overflowWrap: "anywhere",
+};
+
+const badgeStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "3px 9px",
+  borderRadius: 999,
+  fontSize: "var(--sa-fs-xs)",
+  fontWeight: 900,
+  whiteSpace: "nowrap",
+};
+
+const actionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 8,
+  alignItems: "center",
+  justifyContent: "flex-end",
+  flexWrap: "wrap",
+};
+
+const actionBtnBaseStyle: CSSProperties = {
+  width: "clamp(112px, 24vw, 150px)",
+  minHeight: 44,
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 12px",
+  fontSize: "var(--sa-fs-sm)",
+  fontWeight: 900,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  lineHeight: 1.2,
+  whiteSpace: "normal",
+};
+
+const invoiceBtnStyle: CSSProperties = {
+  ...actionBtnBaseStyle,
+  background: "#0ea5e9",
+  color: "#fff",
+};
+
+const priceBtnStyle: CSSProperties = {
+  ...actionBtnBaseStyle,
+  color: "#fff",
+};
+
+const whatsappBtnStyle: CSSProperties = {
+  ...actionBtnBaseStyle,
+  background: "#25D366",
+  color: "#fff",
+};
+
+const editBtnStyle: CSSProperties = {
+  ...actionBtnBaseStyle,
+  color: "#fff",
+};
+
+const deleteBtnStyle: CSSProperties = {
+  ...actionBtnBaseStyle,
+  background: "#fee2e2",
+  color: "#b91c1c",
+};
+
+const primaryBtnStyle: CSSProperties = {
+  marginTop: 16,
+  color: "#fff",
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 18px",
+  fontWeight: 900,
+  minHeight: "var(--sa-control-h)",
+};
+
+const secondaryBtnStyle: CSSProperties = {
+  marginTop: 16,
+  marginLeft: 10,
+  background: "#fff",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 18px",
+  fontWeight: 900,
+  minHeight: "var(--sa-control-h)",
+};
+
+const msgStyle: CSSProperties = {
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+  fontWeight: 900,
+};
+
+const trialMsgStyle: CSSProperties = {
+  background: "#fef3c7",
+  color: "#92400e",
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+  fontWeight: 900,
+};
+
+const overlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15, 23, 42, 0.52)",
+  padding: "clamp(12px, 3vw, 24px)",
+  zIndex: 999,
+  overflowY: "auto",
+};
+
+const modalStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 900,
+  margin: "0 auto",
+  border: "var(--sa-border-w) solid",
+};
+
+const modalHeaderStyle: CSSProperties = {
+  marginBottom: 12,
+};
+
+const modalTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-xl)",
+  fontWeight: 900,
+};
+
+const closeTextBtnStyle: CSSProperties = {
+  background: "transparent",
+  border: "none",
+  padding: "0 4px",
+  minHeight: 0,
+  width: "auto",
+  height: "auto",
+  fontWeight: 900,
+  fontSize: "var(--sa-fs-base)",
+  lineHeight: 1.2,
+  whiteSpace: "nowrap",
+};
+
+const modalActionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+  marginTop: 16,
+};
+
+const dateWrapStyle: CSSProperties = {
+  width: "100%",
+};
+
+const dateLabelStyle: CSSProperties = {
+  display: "block",
+  fontSize: "var(--sa-fs-sm)",
+  fontWeight: 900,
+  marginBottom: 6,
+};
+
+const dateInputStyle: CSSProperties = {
+  ...inputStyle,
+  appearance: "none",
+  WebkitAppearance: "none",
+};
+
+const priceItemStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "12px 14px",
+  marginBottom: 10,
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+  fontWeight: 900,
+};
+
+const invoiceRecordCardStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "clamp(12px, 2vw, 16px)",
+  marginBottom: 12,
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  gap: 10,
+};
+
+const invoiceAmountBoxStyle: CSSProperties = {
+  display: "grid",
+  gap: 6,
+  fontSize: "var(--sa-fs-sm)",
+};
+
+@mediaCode;
