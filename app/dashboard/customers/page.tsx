@@ -1921,4 +1921,8 @@ const invoiceAmountBoxStyle: CSSProperties = {
   fontSize: "var(--sa-fs-sm)",
 };
 
-@mediaCode;
+const invoiceAmountBoxStyle: CSSProperties = {
+  display: "grid",
+  gap: 6,
+  fontSize: "var(--sa-fs-sm)",
+};
