@@ -665,6 +665,7 @@ function safeLocalRemove(key: string) {
 
 function isSchemaColumnError(error: any) {
   const message = String(error?.message || "").toLowerCase();
+
   return (
     message.includes("schema cache") ||
     message.includes("could not find") ||
@@ -677,6 +678,7 @@ function getMissingColumnName(error: any) {
   const match1 = message.match(/Could not find the '([^']+)' column/i);
   const match2 = message.match(/column "([^"]+)" does not exist/i);
   const match3 = message.match(/column '([^']+)' does not exist/i);
+
   return match1?.[1] || match2?.[1] || match3?.[1] || "";
 }
 
@@ -819,6 +821,7 @@ function writeStockMap(map: Record<string, number>) {
 
 function saveStockValue(productId: string, stock: number) {
   if (!productId) return;
+
   const map = readStockMap();
   map[productId] = Number(stock || 0);
   writeStockMap(map);
@@ -846,6 +849,7 @@ function normalizeProduct(row: any): Product {
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+
     reader.onload = () => resolve(String(reader.result || ""));
     reader.onerror = () => reject(new Error("Upload failed"));
     reader.readAsDataURL(file);
@@ -917,7 +921,6 @@ function formatDateTime(value?: string | null, fallbackDate?: string | null) {
     return value || fallbackDate || "-";
   }
 }
-
 export default function InvoicePage() {
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
@@ -1024,6 +1027,7 @@ export default function InvoicePage() {
 
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
     if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
+
     return "zh";
   }
 
@@ -1034,6 +1038,7 @@ export default function InvoicePage() {
 
     if (urlTheme && THEMES[urlTheme]) return urlTheme;
     if (saved && THEMES[saved]) return saved;
+
     return "deepTeal";
   }
 
@@ -1043,6 +1048,8 @@ export default function InvoicePage() {
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
+    q.set("theme", themeKey);
+
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
@@ -1058,11 +1065,6 @@ export default function InvoicePage() {
     const fullscreenParam = q.get("fullscreen");
 
     if (fullscreenParam === "1") setFullscreen(true);
-    if (openParam === "new") {
-      setTimeout(() => {
-        openNewInvoice(true);
-      }, 100);
-    }
 
     const savedPayment = safeLocalGet(PAYMENT_OPTIONS_KEY);
     if (savedPayment) {
@@ -1094,6 +1096,12 @@ export default function InvoicePage() {
         setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
         setProducts(trialProducts.map((p: any) => normalizeProduct(p)));
         setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
+
+        if (openParam === "new") {
+          setTimeout(() => {
+            openNewInvoice(fullscreenParam === "1");
+          }, 100);
+        }
 
         return;
       }
@@ -1135,6 +1143,12 @@ export default function InvoicePage() {
     await loadCustomers(uid);
     await loadProducts(uid);
     await loadInvoices(uid);
+
+    if (openParam === "new") {
+      setTimeout(() => {
+        openNewInvoice(fullscreenParam === "1");
+      }, 100);
+    }
   }
 
   async function loadCustomers(uid: string) {
@@ -1216,7 +1230,7 @@ export default function InvoicePage() {
     const qty = Number(item.qty || 0);
     const discount = Number(item.discount || 0);
     const lineSubtotal = roundMoney(price * qty);
-    const lineTotal = roundMoney(Math.max(lineSubtotal - discount, 0));
+    const lineTotal = roundMoney(lineSubtotal - discount);
     const lineCost = roundMoney(cost * qty);
     const lineProfit = roundMoney(lineTotal - lineCost);
 
@@ -1242,7 +1256,7 @@ export default function InvoicePage() {
   const preview = useMemo(() => {
     const subtotal = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.lineSubtotal, 0));
     const itemDiscount = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.discount, 0));
-    const taxableBase = roundMoney(Math.max(subtotal - itemDiscount, 0));
+    const taxableBase = roundMoney(subtotal - itemDiscount);
 
     const chargeDiscountAmount = calcCharge(
       chargeDiscount.value,
@@ -1255,10 +1269,7 @@ export default function InvoicePage() {
     const handlingFeeAmount = calcCharge(handlingFee.value, handlingFee.mode, taxableBase);
 
     const total = roundMoney(
-      Math.max(
-        taxableBase + chargeDiscountAmount + sstAmount + serviceFeeAmount + handlingFeeAmount,
-        0
-      )
+      taxableBase + chargeDiscountAmount + sstAmount + serviceFeeAmount + handlingFeeAmount
     );
 
     const totalCost = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.lineCost, 0));
@@ -1334,7 +1345,6 @@ export default function InvoicePage() {
     if (!paymentMethod) return;
 
     const next = paymentOptions.filter((p) => p.id !== paymentMethod);
-
     const fixed = next.length > 0 ? next : DEFAULT_PAYMENT_OPTIONS;
 
     savePaymentOptions(fixed);
@@ -1714,6 +1724,7 @@ export default function InvoicePage() {
         finalItems.forEach(({ product, calc }) => {
           const newStock = Math.max(Number(product.stock_qty || 0) - Number(calc.qty || 0), 0);
           saveStockValue(product.id, newStock);
+
           nextProducts = nextProducts.map((p) =>
             p.id === product.id ? { ...p, stock_qty: newStock } : p
           );
@@ -1731,6 +1742,7 @@ export default function InvoicePage() {
 
         setMsg(t.trialSuccess);
         setMode("list");
+        setFullscreen(false);
         setLoading(false);
         return;
       }
@@ -1772,6 +1784,7 @@ export default function InvoicePage() {
 
       setMsg(t.success);
       setMode("list");
+      setFullscreen(false);
     } catch (error: any) {
       setMsg(t.fail + (error?.message || String(error)));
     }
@@ -1811,6 +1824,7 @@ export default function InvoicePage() {
       safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(next));
       setMsg(t.saved);
       setMode("list");
+      setFullscreen(false);
       setEditInvoiceId(null);
       setLoading(false);
       return;
@@ -1825,6 +1839,7 @@ export default function InvoicePage() {
 
       setMsg(t.saved);
       setMode("list");
+      setFullscreen(false);
       setEditInvoiceId(null);
     } catch (error: any) {
       setMsg(t.fail + (error?.message || String(error)));
@@ -1891,11 +1906,13 @@ export default function InvoicePage() {
     if (value === "draft") return t.draft;
     if (value === "paid") return t.paid;
     if (value === "cancelled") return t.cancelled;
+
     return t.sent;
   }
 
   function getPaymentForInvoice(inv?: InvoiceRecord | null) {
     const value = inv?.payment_method || paymentMethodText;
+
     return paymentOptions.find((p) => p.id === value || p.name === value) || selectedPayment || null;
   }
 
@@ -1960,6 +1977,7 @@ export default function InvoicePage() {
 
     setTimeout(() => {
       window.print();
+
       setTimeout(() => {
         window.location.href = `https://wa.me/?text=${text}`;
       }, 800);
@@ -1988,6 +2006,7 @@ export default function InvoicePage() {
   function goBack() {
     const q = new URLSearchParams(window.location.search);
     const modeParam = q.get("mode");
+
     window.location.href =
       modeParam === "trial"
         ? `/dashboard?mode=trial&lang=${lang}&theme=${themeKey}`
@@ -2036,6 +2055,7 @@ export default function InvoicePage() {
     const q = new URLSearchParams(window.location.search);
     q.delete("open");
     q.delete("fullscreen");
+
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
@@ -2083,6 +2103,7 @@ export default function InvoicePage() {
         <span>
           {label} {charge.mode === "%" ? `(${charge.value || 0}%)` : "(RM)"}
         </span>
+
         <strong style={{ color: isNegative ? "#dc2626" : "#111827" }}>
           {formatSignedRM(Number(amount || 0))}
         </strong>
@@ -2195,7 +2216,7 @@ export default function InvoicePage() {
     const total = Number(inv.total || 0);
     const totalCost = Number(inv.total_cost || 0);
     const profit = Number(inv.total_profit ?? total - totalCost);
-    const lineAfterDiscount = Math.max(subtotal - discount, 0);
+    const lineAfterDiscount = subtotal - discount;
     const pay = getPaymentForInvoice(inv);
 
     const showIssuerSignature = Boolean(signatureText?.trim()) || Boolean(signatureImageUrl?.trim());
@@ -2305,7 +2326,14 @@ export default function InvoicePage() {
                 >
                   {formatSignedRM(Number(x.calc.discount || 0))}
                 </td>
-                <td style={officialTdStyle}>RM {Number(x.calc.lineTotal || 0).toFixed(2)}</td>
+                <td
+                  style={{
+                    ...officialTdStyle,
+                    color: Number(x.calc.lineTotal || 0) < 0 ? "#dc2626" : "#111827",
+                  }}
+                >
+                  {formatSignedRM(Number(x.calc.lineTotal || 0))}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -2326,7 +2354,9 @@ export default function InvoicePage() {
 
           <div style={officialSummaryRowStyle}>
             <span>{t.taxableTotal}</span>
-            <strong>RM {lineAfterDiscount.toFixed(2)}</strong>
+            <strong style={{ color: amountColor(lineAfterDiscount, "#111827") }}>
+              {formatSignedRM(lineAfterDiscount)}
+            </strong>
           </div>
 
           {renderOfficialChargeRow(t.chargeDiscount, chargeDiscount, preview.chargeDiscountAmount)}
@@ -2336,7 +2366,9 @@ export default function InvoicePage() {
 
           <div style={officialTotalRowStyle}>
             <span>{t.total}</span>
-            <strong>RM {total.toFixed(2)}</strong>
+            <strong style={{ color: amountColor(total, "#0f766e") }}>
+              {formatSignedRM(total)}
+            </strong>
           </div>
 
           <div style={officialProfitRowStyle}>
@@ -2387,8 +2419,7 @@ export default function InvoicePage() {
       </div>
     );
   }
-
-  return (
+    return (
     <main
       className="smartacctg-page smartacctg-invoice-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
@@ -2952,11 +2983,16 @@ export default function InvoicePage() {
                     </div>
 
                     <div>
-                      <label style={{ ...labelStyle, color: theme.accent }}>{t.lineDiscount}</label>
+                      <label style={{ ...labelStyle, color: theme.accent }}>
+                        {t.lineDiscount}
+                      </label>
                       <input
                         value={item.discount}
                         onChange={(e) => updateItem(item.id, { discount: e.target.value })}
-                        style={themedInputStyle}
+                        style={{
+                          ...themedInputStyle,
+                          color: Number(item.discount || 0) < 0 ? "#dc2626" : theme.inputText,
+                        }}
                       />
                     </div>
                   </div>
@@ -3371,7 +3407,7 @@ const modeBtn = (active: boolean, theme: any): CSSProperties => ({
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
-};
+});
 
 const formGrid: CSSProperties = {
   display: "grid",
