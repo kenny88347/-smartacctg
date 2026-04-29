@@ -92,6 +92,9 @@ const TXT = {
     customerPriceList: "已设置的客户专属价格",
     noCustomer: "还没有客户资料，请先去客户管理新增客户。",
     confirmDelete: "确定要删除这个产品吗？",
+    deleteTitle: "删除产品确认",
+    deleteWarning: "请确认以下产品资料，删除后这个产品会从产品管理移除。",
+    confirmDeleteBtn: "确认删除产品",
     deleteSuccess: "产品已删除",
     deleteFail: "删除失败：这个产品可能已经被发票使用，不能直接删除。",
     saveSuccess: "保存成功",
@@ -144,6 +147,9 @@ const TXT = {
     customerPriceList: "Saved Customer Prices",
     noCustomer: "No customers yet. Please add customers first.",
     confirmDelete: "Delete this product?",
+    deleteTitle: "Confirm Product Deletion",
+    deleteWarning: "Please check this product info. After deletion, it will be removed from Product Management.",
+    confirmDeleteBtn: "Delete Product",
     deleteSuccess: "Product deleted",
     deleteFail: "Delete failed: this product may already be used by invoices.",
     saveSuccess: "Saved",
@@ -195,6 +201,9 @@ const TXT = {
     customerPriceList: "Harga Khas Tersimpan",
     noCustomer: "Belum ada pelanggan. Sila tambah pelanggan dahulu.",
     confirmDelete: "Padam produk ini?",
+    deleteTitle: "Sahkan Padam Produk",
+    deleteWarning: "Sila semak maklumat produk ini. Selepas dipadam, produk akan dikeluarkan.",
+    confirmDeleteBtn: "Padam Produk",
     deleteSuccess: "Produk dipadam",
     deleteFail: "Gagal padam: produk ini mungkin telah digunakan dalam invois.",
     saveSuccess: "Disimpan",
@@ -375,6 +384,9 @@ export default function ProductsPage() {
   const [priceCustomerId, setPriceCustomerId] = useState("");
   const [priceProductId, setPriceProductId] = useState("");
   const [customPrice, setCustomPrice] = useState("");
+
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [msg, setMsg] = useState("");
 
@@ -624,6 +636,15 @@ export default function ProductsPage() {
     return `P-${String(p.id).slice(0, 8).toUpperCase()}`;
   }
 
+  function getProductProfit(p: Product) {
+    return Number(p.price || 0) - Number(p.cost || 0) - Number(p.discount || 0);
+  }
+
+  function getProductMargin(p: Product) {
+    const profit = getProductProfit(p);
+    return Number(p.price || 0) > 0 ? (profit / Number(p.price || 0)) * 100 : 0;
+  }
+
   function resetForm() {
     setEditingId(null);
     setProductName("");
@@ -633,11 +654,6 @@ export default function ProductsPage() {
     setProductStock("");
     setProductNote("");
     setShowForm(false);
-  }
-
-  function openAddForm() {
-    resetForm();
-    setShowForm(true);
   }
 
   function openEditForm(p: Product) {
@@ -788,10 +804,30 @@ export default function ProductsPage() {
     resetForm();
   }
 
-  async function deleteProduct(p: Product) {
-    const ok = window.confirm(t.confirmDelete);
-    if (!ok) return;
+  function requestDeleteProduct(p: Product) {
+    setDeleteTarget(p);
+  }
 
+  function closeDeleteModal() {
+    if (deleting) return;
+    setDeleteTarget(null);
+  }
+
+  async function confirmDeleteProduct() {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
+    setMsg("");
+
+    try {
+      await deleteProduct(deleteTarget);
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function deleteProduct(p: Product) {
     if (isTrial) {
       const nextProducts = products.filter((x) => x.id !== p.id);
       const nextPrices = customerPrices.filter((x) => x.product_id !== p.id);
@@ -988,8 +1024,8 @@ export default function ProductsPage() {
   }
 
   function renderProductDetailCard(p: Product) {
-    const profit = Number(p.price || 0) - Number(p.cost || 0) - Number(p.discount || 0);
-    const margin = Number(p.price || 0) > 0 ? (profit / Number(p.price || 0)) * 100 : 0;
+    const profit = getProductProfit(p);
+    const margin = getProductMargin(p);
     const purchaseList = getCustomerPurchaseList(p.id);
     const stockStatus = getStockStatus(p);
 
@@ -1075,9 +1111,117 @@ export default function ProductsPage() {
             {t.edit}
           </button>
 
-          <button onClick={() => deleteProduct(p)} style={deleteBtnStyle}>
+          <button onClick={() => requestDeleteProduct(p)} style={deleteBtnStyle}>
             {t.delete}
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderDeleteModal() {
+    if (!deleteTarget) return null;
+
+    const stockStatus = getStockStatus(deleteTarget);
+    const profit = getProductProfit(deleteTarget);
+    const margin = getProductMargin(deleteTarget);
+
+    return (
+      <div style={overlayStyle}>
+        <div
+          className="sa-modal"
+          style={{
+            ...deleteModalStyle,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+          }}
+        >
+          <div style={deleteHeaderStyle}>
+            <div>
+              <h2 style={deleteTitleStyle}>{t.deleteTitle}</h2>
+              <p style={deleteWarningTextStyle}>{t.deleteWarning}</p>
+            </div>
+
+            <button type="button" onClick={closeDeleteModal} style={deleteCloseBtnStyle}>
+              {t.close}
+            </button>
+          </div>
+
+          <div style={deleteProductTopStyle}>
+            <div>
+              <div style={deleteProductNameStyle}>{deleteTarget.name}</div>
+              <div style={deleteProductCodeStyle}>
+                {t.productNo}: {productCode(deleteTarget)}
+              </div>
+            </div>
+
+            <span style={{ ...stockBadgeStyle, background: stockStatus.color }}>
+              {stockStatus.label}
+            </span>
+          </div>
+
+          <div style={deleteInfoGridStyle}>
+            <div style={deleteInfoItemStyle}>
+              <span>{t.stock}</span>
+              <strong>{Number(deleteTarget.stock_qty || 0)}</strong>
+            </div>
+
+            <div style={deleteInfoItemStyle}>
+              <span>{t.summaryCost}</span>
+              <strong>RM {Number(deleteTarget.cost || 0).toFixed(2)}</strong>
+            </div>
+
+            <div style={deleteInfoItemStyle}>
+              <span>{t.summaryPrice}</span>
+              <strong>RM {Number(deleteTarget.price || 0).toFixed(2)}</strong>
+            </div>
+
+            <div style={deleteInfoItemStyle}>
+              <span>{t.discount}</span>
+              <strong>RM {Number(deleteTarget.discount || 0).toFixed(2)}</strong>
+            </div>
+
+            <div style={deleteInfoItemStyle}>
+              <span>{t.profit}</span>
+              <strong style={{ color: profit < 0 ? "#dc2626" : "#16a34a" }}>
+                RM {profit.toFixed(2)}
+              </strong>
+            </div>
+
+            <div style={deleteInfoItemStyle}>
+              <span>{t.margin}</span>
+              <strong style={{ color: margin < 0 ? "#dc2626" : "#16a34a" }}>
+                {margin.toFixed(1)}%
+              </strong>
+            </div>
+          </div>
+
+          {deleteTarget.note ? (
+            <div style={deleteNoteStyle}>
+              <strong>{t.note}</strong>
+              <p>{deleteTarget.note}</p>
+            </div>
+          ) : null}
+
+          <div style={deleteActionRowStyle}>
+            <button
+              type="button"
+              onClick={closeDeleteModal}
+              disabled={deleting}
+              style={cancelDeleteBtnStyle}
+            >
+              {t.cancel}
+            </button>
+
+            <button
+              type="button"
+              onClick={confirmDeleteProduct}
+              disabled={deleting}
+              style={confirmDeleteBtnStyle}
+            >
+              {deleting ? "..." : t.confirmDeleteBtn}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1143,14 +1287,6 @@ export default function ProductsPage() {
             <p style={{ ...subTitleStyle, color: theme.muted }}>{t.subtitle}</p>
             {isTrial ? <div style={trialBadgeStyle}>{t.trial}</div> : null}
           </div>
-
-          <button
-            onClick={openAddForm}
-            aria-label={t.add}
-            style={{ ...plusBtnStyle, background: theme.accent }}
-          >
-            +
-          </button>
         </div>
       </section>
 
@@ -1229,10 +1365,6 @@ export default function ProductsPage() {
             onChange={(e) => setSearch(e.target.value)}
             style={inputStyle}
           />
-
-          <button onClick={openAddForm} style={{ ...addBtnStyle, background: theme.accent }}>
-            + {t.add}
-          </button>
         </div>
 
         {msg ? <div style={msgBoxStyle}>{msg}</div> : null}
@@ -1478,6 +1610,8 @@ export default function ProductsPage() {
           </div>
         </div>
       ) : null}
+
+      {renderDeleteModal()}
     </main>
   );
 }
@@ -1510,7 +1644,7 @@ const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
 
 const titleRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gridTemplateColumns: "minmax(0, 1fr)",
   alignItems: "start",
   gap: 12,
   width: "100%",
@@ -1535,20 +1669,6 @@ const subTitleStyle: CSSProperties = {
   lineHeight: 1.65,
   fontSize: "var(--sa-fs-base)",
   fontWeight: 700,
-};
-
-const plusBtnStyle: CSSProperties = {
-  width: 58,
-  height: 58,
-  minWidth: 58,
-  minHeight: 58,
-  maxWidth: 58,
-  borderRadius: 999,
-  border: "none",
-  color: "#fff",
-  fontSize: "var(--sa-fs-xl)",
-  fontWeight: 900,
-  padding: 0,
 };
 
 const trialBadgeStyle: CSSProperties = {
@@ -1606,7 +1726,7 @@ const summaryValueStyle: CSSProperties = {
 
 const searchRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gridTemplateColumns: "minmax(0, 1fr)",
   gap: 10,
   alignItems: "center",
 };
@@ -1849,6 +1969,129 @@ const cancelBtnStyle: CSSProperties = {
   borderRadius: "var(--sa-radius-control)",
   padding: "0 16px",
   minHeight: "var(--sa-control-h)",
+  fontWeight: 900,
+  fontSize: "var(--sa-fs-base)",
+};
+
+const deleteModalStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 620,
+  maxHeight: "90vh",
+  overflowY: "auto",
+  background: "#fff",
+  color: "#111827",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "clamp(18px, 4vw, 28px)",
+};
+
+const deleteHeaderStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 12,
+  alignItems: "start",
+  marginBottom: 18,
+};
+
+const deleteTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-xl)",
+  fontWeight: 900,
+  color: "#b91c1c",
+  lineHeight: 1.2,
+};
+
+const deleteWarningTextStyle: CSSProperties = {
+  margin: "8px 0 0",
+  color: "#64748b",
+  fontWeight: 800,
+  lineHeight: 1.55,
+};
+
+const deleteCloseBtnStyle: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "#dc2626",
+  fontWeight: 900,
+  fontSize: "var(--sa-fs-base)",
+  cursor: "pointer",
+  padding: 0,
+};
+
+const deleteProductTopStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  flexWrap: "wrap",
+  padding: 16,
+  borderRadius: "var(--sa-radius-control)",
+  background: "#fef2f2",
+  border: "2px solid #fecaca",
+  marginBottom: 14,
+};
+
+const deleteProductNameStyle: CSSProperties = {
+  fontSize: "var(--sa-fs-lg)",
+  fontWeight: 900,
+  color: "#7f1d1d",
+  lineHeight: 1.25,
+};
+
+const deleteProductCodeStyle: CSSProperties = {
+  marginTop: 4,
+  color: "#64748b",
+  fontWeight: 800,
+};
+
+const deleteInfoGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  marginBottom: 14,
+};
+
+const deleteInfoItemStyle: CSSProperties = {
+  display: "grid",
+  gap: 6,
+  padding: 14,
+  borderRadius: "var(--sa-radius-control)",
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+};
+
+const deleteNoteStyle: CSSProperties = {
+  padding: 14,
+  borderRadius: "var(--sa-radius-control)",
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  marginBottom: 14,
+  lineHeight: 1.55,
+};
+
+const deleteActionRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 10,
+  marginTop: 16,
+};
+
+const cancelDeleteBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  borderRadius: "var(--sa-radius-control)",
+  border: "2px solid #cbd5e1",
+  background: "#fff",
+  color: "#0f172a",
+  fontWeight: 900,
+  fontSize: "var(--sa-fs-base)",
+};
+
+const confirmDeleteBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  borderRadius: "var(--sa-radius-control)",
+  border: "none",
+  background: "#dc2626",
+  color: "#fff",
   fontWeight: 900,
   fontSize: "var(--sa-fs-base)",
 };
