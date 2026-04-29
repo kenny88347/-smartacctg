@@ -31,13 +31,14 @@ type Txn = {
   note?: string | null;
 };
 
-type CustomerDebt = {
+type Customer = {
   id: string;
-  name: string | null;
+  name?: string | null;
+  phone?: string | null;
+  company_name?: string | null;
   debt_amount?: number | null;
   paid_amount?: number | null;
   last_payment_date?: string | null;
-  status?: string | null;
 };
 
 const TRIAL_KEY = "smartacctg_trial";
@@ -55,24 +56,21 @@ const TXT = {
     monthIncome: "本月收入",
     monthExpense: "本月支出",
     expectedProfit: "预计利润",
-    showAllRecords: "看全部记录",
+    viewAllRecords: "看全部记录",
     hideAllRecords: "收起记录",
     customerDebt: "客户欠款",
-    showAllDebt: "查看欠款",
-    hideAllDebt: "收起欠款",
+    hideCustomerDebt: "收起欠款",
+    nearDebt: "快到期欠款",
     noDebt: "暂无客户欠款",
-    noRecord: "还没有记录",
+    quickAction: "快速记录 / 开发票",
     accounting: "记账系统",
     customers: "客户管理",
     products: "产品管理",
     invoices: "发票系统",
-    pageMenu: "页面菜单",
-    quickRecordInvoice: "快速纪录/开发票",
-    quickRecord: "记账",
-    quickInvoice: "发票",
-    quickCustomer: "客户",
-    quickProduct: "产品",
-    notification: "通知：之后你有什么系统通知，这里会显示；如果文字太长，会自动慢跑显示。",
+    accountingShort: "记账",
+    invoiceShort: "发票",
+    customerShort: "客户",
+    productShort: "产品",
     back: "返回",
     changeAvatar: "更换头像",
     settings: "设置",
@@ -96,6 +94,9 @@ const TXT = {
     saved: "保存成功",
     income: "收入",
     expense: "支出",
+    noRecord: "还没有记录",
+    notice:
+      "通知：之后系统通知、订阅提醒、客户欠款提醒、发票提醒都会显示在这里。",
   },
   en: {
     dashboard: "Dashboard",
@@ -104,25 +105,21 @@ const TXT = {
     monthIncome: "Monthly Income",
     monthExpense: "Monthly Expense",
     expectedProfit: "Estimated Profit",
-    showAllRecords: "Show All Records",
+    viewAllRecords: "View All Records",
     hideAllRecords: "Hide Records",
     customerDebt: "Customer Debt",
-    showAllDebt: "View Debt",
-    hideAllDebt: "Hide Debt",
+    hideCustomerDebt: "Hide Debt",
+    nearDebt: "Upcoming Debt",
     noDebt: "No customer debt",
-    noRecord: "No records yet",
+    quickAction: "Quick Record / Invoice",
     accounting: "Accounting",
     customers: "Customers",
     products: "Products",
     invoices: "Invoices",
-    pageMenu: "Page Menu",
-    quickRecordInvoice: "Quick Record/Invoice",
-    quickRecord: "Record",
-    quickInvoice: "Invoice",
-    quickCustomer: "Customer",
-    quickProduct: "Product",
-    notification:
-      "Notice: Future system notifications will appear here. Long messages will scroll automatically.",
+    accountingShort: "Record",
+    invoiceShort: "Invoice",
+    customerShort: "Customer",
+    productShort: "Product",
     back: "Back",
     changeAvatar: "Change Avatar",
     settings: "Settings",
@@ -146,6 +143,9 @@ const TXT = {
     saved: "Saved",
     income: "Income",
     expense: "Expense",
+    noRecord: "No records yet",
+    notice:
+      "Notice: system notifications, subscription reminders, customer debt reminders and invoice reminders will appear here.",
   },
   ms: {
     dashboard: "Papan Pemuka",
@@ -154,25 +154,21 @@ const TXT = {
     monthIncome: "Pendapatan Bulan Ini",
     monthExpense: "Perbelanjaan Bulan Ini",
     expectedProfit: "Anggaran Untung",
-    showAllRecords: "Papar Semua Rekod",
+    viewAllRecords: "Lihat Semua Rekod",
     hideAllRecords: "Tutup Rekod",
     customerDebt: "Hutang Pelanggan",
-    showAllDebt: "Lihat Hutang",
-    hideAllDebt: "Tutup Hutang",
+    hideCustomerDebt: "Tutup Hutang",
+    nearDebt: "Hutang Hampir Tamat",
     noDebt: "Tiada hutang pelanggan",
-    noRecord: "Tiada rekod",
+    quickAction: "Rekod Pantas / Invois",
     accounting: "Sistem Akaun",
     customers: "Pelanggan",
     products: "Produk",
     invoices: "Invois",
-    pageMenu: "Menu Halaman",
-    quickRecordInvoice: "Rekod/Invois Pantas",
-    quickRecord: "Rekod",
-    quickInvoice: "Invois",
-    quickCustomer: "Pelanggan",
-    quickProduct: "Produk",
-    notification:
-      "Notis: Notifikasi sistem akan dipaparkan di sini. Mesej panjang akan bergerak automatik.",
+    accountingShort: "Rekod",
+    invoiceShort: "Invois",
+    customerShort: "Pelanggan",
+    productShort: "Produk",
     back: "Kembali",
     changeAvatar: "Tukar Avatar",
     settings: "Tetapan",
@@ -196,6 +192,9 @@ const TXT = {
     saved: "Disimpan",
     income: "Pendapatan",
     expense: "Perbelanjaan",
+    noRecord: "Tiada rekod",
+    notice:
+      "Notis: peringatan sistem, langganan, hutang pelanggan dan invois akan dipaparkan di sini.",
   },
 };
 
@@ -289,16 +288,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [lang, setLang] = useState<Lang>("zh");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Txn[]>([]);
-  const [customers, setCustomers] = useState<CustomerDebt[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   const [showMenu, setShowMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showThemes, setShowThemes] = useState(false);
-
-  const [showAllRecords, setShowAllRecords] = useState(false);
-  const [showAllDebt, setShowAllDebt] = useState(false);
-  const [showBottomMenu, setShowBottomMenu] = useState(false);
-  const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const [showRecordsPanel, setShowRecordsPanel] = useState(false);
+  const [showDebtPanel, setShowDebtPanel] = useState(false);
+  const [showQuickPanel, setShowQuickPanel] = useState(false);
 
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
@@ -321,7 +318,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     const urlLang = q.get("lang") as Lang | null;
     const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
-    const view = q.get("view") as "balance" | "income" | "expense" | null;
 
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
       setLang(urlLang);
@@ -340,9 +336,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       setThemeKey(savedTheme);
     }
 
-    if (view === "balance" || view === "income" || view === "expense") {
-      setRecordView(view);
-    }
+    const view = q.get("view") as "balance" | "income" | "expense" | null;
+    if (view === "balance" || view === "income" || view === "expense") setRecordView(view);
 
     init();
   }, []);
@@ -415,15 +410,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .eq("user_id", userId)
       .order("txn_date", { ascending: false });
 
-    setTransactions((txData || []) as Txn[]);
-
     const { data: customerData } = await supabase
       .from("customers")
-      .select("id,name,debt_amount,paid_amount,last_payment_date,status")
+      .select("id,name,phone,company_name,debt_amount,paid_amount,last_payment_date")
       .eq("user_id", userId)
       .order("last_payment_date", { ascending: true });
 
-    setCustomers((customerData || []) as CustomerDebt[]);
+    setTransactions((txData || []) as Txn[]);
+    setCustomers((customerData || []) as Customer[]);
   }
 
   function buildUrl(path: string, extra?: string) {
@@ -437,9 +431,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     if (extra) {
       const extraQuery = new URLSearchParams(extra);
-      extraQuery.forEach((value, key) => {
-        query.set(key, value);
-      });
+      extraQuery.forEach((value, key) => query.set(key, value));
     }
 
     return `${path}?${query.toString()}`;
@@ -450,15 +442,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   function goBack() {
-    go("/dashboard");
+    window.location.href = buildUrl("/dashboard");
   }
 
   function goRecords(view: "balance" | "income" | "expense") {
-    go("/dashboard/records", `view=${view}`);
+    window.location.href = buildUrl("/dashboard/records", `view=${view}`);
   }
 
-  function quickAdd(path: string) {
-    go(path, "quickAdd=1&action=new&openForm=1");
+  function goQuick(path: string) {
+    window.location.href = buildUrl(path, "quickAdd=1&action=new&openForm=1");
   }
 
   function switchLang(next: Lang) {
@@ -469,7 +461,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     q.set("lang", next);
     q.set("theme", themeKey);
     q.set("refresh", String(Date.now()));
-
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
@@ -594,27 +585,38 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
   const expectedProfit = monthIncome - monthExpense;
 
-  const debtCustomers = useMemo(() => {
+  const recordSummaryRows = [
+    { label: t.balance, value: balance, color: theme.accent, action: () => goRecords("balance") },
+    { label: t.monthIncome, value: monthIncome, color: "#16a34a", action: () => goRecords("income") },
+    { label: t.monthExpense, value: monthExpense, color: "#dc2626", action: () => goRecords("expense") },
+    {
+      label: t.expectedProfit,
+      value: expectedProfit,
+      color: expectedProfit >= 0 ? "#16a34a" : "#dc2626",
+      action: () => setShowRecordsPanel(!showRecordsPanel),
+    },
+  ];
+
+  const customerDebts = useMemo(() => {
     return customers
       .map((c) => {
-        const debt = Number(c.debt_amount || 0);
-        const paid = Number(c.paid_amount || 0);
-        const balanceDebt = Math.max(debt - paid, 0);
-
+        const debt = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
         return {
-          ...c,
-          balanceDebt,
+          id: c.id,
+          name: c.name || "-",
+          amount: debt,
+          date: c.last_payment_date || "",
         };
       })
-      .filter((c) => c.balanceDebt > 0)
+      .filter((c) => c.amount > 0)
       .sort((a, b) => {
-        const da = a.last_payment_date || "1900-01-01";
-        const db = b.last_payment_date || "1900-01-01";
-        return da.localeCompare(db);
+        const ad = a.date ? new Date(a.date).getTime() : Number.MAX_SAFE_INTEGER;
+        const bd = b.date ? new Date(b.date).getTime() : Number.MAX_SAFE_INTEGER;
+        return ad - bd;
       });
   }, [customers]);
 
-  const firstDebtCustomer = debtCustomers[0];
+  const nearDebt = customerDebts[0];
 
   const expiryText = isTrial
     ? t.trial
@@ -633,12 +635,21 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       className="smartacctg-page smartacctg-dashboard-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
-      <style>{`
-        @keyframes smartacctg-notice-marquee {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-      `}</style>
+      <style>
+        {`
+          @keyframes smartacctgMarquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+          }
+
+          .smartacctg-notice-track {
+            display: inline-block;
+            min-width: 100%;
+            white-space: nowrap;
+            animation: smartacctgMarquee 16s linear infinite;
+          }
+        `}
+      </style>
 
       <header className="sa-topbar" style={headerStyle}>
         <div className="sa-topbar-left" style={leftTopStyle}>
@@ -724,7 +735,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 >
                   中文
                 </button>
-
                 <button
                   onClick={() => switchLang("en")}
                   className="sa-lang-btn"
@@ -732,7 +742,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 >
                   EN
                 </button>
-
                 <button
                   onClick={() => switchLang("ms")}
                   className="sa-lang-btn"
@@ -743,141 +752,127 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               </div>
             </div>
 
+            {isTrial ? (
+              <div style={trialNoticeStyle}>免费试用模式：20 分钟后会自动失效</div>
+            ) : null}
+
             <div style={noticeBoxStyle}>
-              <div style={noticeMarqueeStyle}>
-                {isTrial ? "免费试用模式：20 分钟后会自动失效 ｜ " : ""}
-                {t.notification}
-              </div>
+              <span className="smartacctg-notice-track">{t.notice}</span>
             </div>
           </section>
 
-          <section style={dashboardTwoColStyle}>
+          <section style={overviewGridStyle}>
             <div
               className="sa-card"
               style={{
-                ...dropCardStyle,
+                ...compactPanelStyle,
                 background: theme.card,
                 borderColor: theme.border,
                 boxShadow: theme.glow,
+                color: theme.text,
               }}
             >
               <button
                 type="button"
-                onClick={() => setShowAllRecords(!showAllRecords)}
-                style={{ ...dropHeadStyle, color: theme.accent }}
+                onClick={() => setShowRecordsPanel(!showRecordsPanel)}
+                style={{ ...panelHeaderBtnStyle, color: theme.accent }}
               >
-                <span>{showAllRecords ? t.hideAllRecords : t.showAllRecords}</span>
-                <span>{showAllRecords ? "▲" : "▼"}</span>
+                <span>{showRecordsPanel ? t.hideAllRecords : t.viewAllRecords}</span>
+                <span>{showRecordsPanel ? "▲" : "▼"}</span>
               </button>
 
-              <div style={dropBodyStyle}>
-                {!showAllRecords ? (
-                  <button
-                    type="button"
-                    onClick={() => goRecords("income")}
-                    style={dropRowBtnStyle}
+              {!showRecordsPanel ? (
+                <button
+                  type="button"
+                  onClick={() => setShowRecordsPanel(true)}
+                  style={summaryLineBtnStyle}
+                >
+                  <span style={summaryLineLabelStyle}>{t.expectedProfit}</span>
+                  <strong
+                    style={{
+                      ...summaryLineValueStyle,
+                      color: expectedProfit >= 0 ? "#16a34a" : "#dc2626",
+                    }}
                   >
-                    <span>{t.expectedProfit}</span>
-                    <strong style={{ color: expectedProfit >= 0 ? "#16a34a" : "#dc2626" }}>
-                      RM {expectedProfit.toFixed(2)}
-                    </strong>
-                  </button>
-                ) : (
-                  <>
+                    RM {expectedProfit.toFixed(2)}
+                  </strong>
+                </button>
+              ) : (
+                <div style={compactListStyle}>
+                  {recordSummaryRows.map((row) => (
                     <button
+                      key={row.label}
                       type="button"
-                      onClick={() => goRecords("balance")}
-                      style={dropRowBtnStyle}
+                      onClick={row.action}
+                      style={summaryLineBtnStyle}
                     >
-                      <span>{t.balance}</span>
-                      <strong style={{ color: theme.accent }}>RM {balance.toFixed(2)}</strong>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => goRecords("income")}
-                      style={dropRowBtnStyle}
-                    >
-                      <span>{t.monthIncome}</span>
-                      <strong style={{ color: "#16a34a" }}>RM {monthIncome.toFixed(2)}</strong>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => goRecords("expense")}
-                      style={dropRowBtnStyle}
-                    >
-                      <span>{t.monthExpense}</span>
-                      <strong style={{ color: "#dc2626" }}>RM {monthExpense.toFixed(2)}</strong>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => goRecords("income")}
-                      style={dropRowBtnStyle}
-                    >
-                      <span>{t.expectedProfit}</span>
-                      <strong style={{ color: expectedProfit >= 0 ? "#16a34a" : "#dc2626" }}>
-                        RM {expectedProfit.toFixed(2)}
+                      <span style={summaryLineLabelStyle}>{row.label}</span>
+                      <strong style={{ ...summaryLineValueStyle, color: row.color }}>
+                        RM {row.value.toFixed(2)}
                       </strong>
                     </button>
-                  </>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div
               className="sa-card"
               style={{
-                ...dropCardStyle,
+                ...compactPanelStyle,
                 background: theme.card,
                 borderColor: theme.border,
                 boxShadow: theme.glow,
+                color: theme.text,
               }}
             >
               <button
                 type="button"
-                onClick={() => setShowAllDebt(!showAllDebt)}
-                style={{ ...dropHeadStyle, color: theme.accent }}
+                onClick={() => setShowDebtPanel(!showDebtPanel)}
+                style={{ ...panelHeaderBtnStyle, color: theme.accent }}
               >
-                <span>{t.customerDebt}</span>
-                <span>{showAllDebt ? "▲" : "▼"}</span>
+                <span>{showDebtPanel ? t.hideCustomerDebt : t.customerDebt}</span>
+                <span>{showDebtPanel ? "▲" : "▼"}</span>
               </button>
 
-              <div style={dropBodyStyle}>
-                {debtCustomers.length === 0 ? (
-                  <div style={emptyTextStyle}>{t.noDebt}</div>
-                ) : !showAllDebt ? (
+              {!showDebtPanel ? (
+                nearDebt ? (
                   <button
                     type="button"
-                    onClick={() => go("/dashboard/customers")}
-                    style={dropRowBtnStyle}
+                    onClick={() => setShowDebtPanel(true)}
+                    style={summaryLineBtnStyle}
                   >
-                    <span>{firstDebtCustomer?.name || "-"}</span>
-                    <strong style={{ color: "#dc2626" }}>
-                      RM {Number(firstDebtCustomer?.balanceDebt || 0).toFixed(2)}
+                    <span style={summaryLineLabelStyle}>{nearDebt.name}</span>
+                    <strong style={{ ...summaryLineValueStyle, color: "#dc2626" }}>
+                      RM {nearDebt.amount.toFixed(2)}
                     </strong>
                   </button>
                 ) : (
-                  debtCustomers.map((c) => (
+                  <div style={emptyLineStyle}>{t.noDebt}</div>
+                )
+              ) : customerDebts.length === 0 ? (
+                <div style={emptyLineStyle}>{t.noDebt}</div>
+              ) : (
+                <div style={compactListStyle}>
+                  {customerDebts.map((debt) => (
                     <button
-                      key={c.id}
+                      key={debt.id}
                       type="button"
                       onClick={() => go("/dashboard/customers")}
-                      style={dropRowBtnStyle}
+                      style={summaryLineBtnStyle}
                     >
-                      <span>{c.name || "-"}</span>
-                      <strong style={{ color: "#dc2626" }}>
-                        RM {Number(c.balanceDebt || 0).toFixed(2)}
+                      <span style={summaryLineLabelStyle}>{debt.name}</span>
+                      <strong style={{ ...summaryLineValueStyle, color: "#dc2626" }}>
+                        RM {debt.amount.toFixed(2)}
                       </strong>
                     </button>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 
-          <section className="dashboard-menu-grid" style={menuGridStyle}>
+          <section style={menuGridStyle}>
             <button
               onClick={() => go("/dashboard/records")}
               className="sa-card"
@@ -931,105 +926,58 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             </button>
           </section>
 
-          <div style={bottomBarStyle}>
-            <div style={bottomMenuWrapStyle}>
-              {showBottomMenu ? (
-                <div
-                  className="sa-card"
-                  style={{
-                    ...bottomPopStyle,
-                    left: 0,
-                    background: theme.card,
-                    borderColor: theme.border,
-                    boxShadow: theme.glow,
-                  }}
-                >
-                  <button onClick={() => go("/dashboard/records")} style={bottomPopBtnStyle}>
-                    {t.accounting}
-                  </button>
-                  <button onClick={() => go("/dashboard/customers")} style={bottomPopBtnStyle}>
-                    {t.customers}
-                  </button>
-                  <button onClick={() => go("/dashboard/products")} style={bottomPopBtnStyle}>
-                    {t.products}
-                  </button>
-                  <button onClick={() => go("/dashboard/invoices")} style={bottomPopBtnStyle}>
-                    {t.invoices}
-                  </button>
-                </div>
-              ) : null}
+          <section style={bottomQuickWrapStyle}>
+            <button
+              type="button"
+              onClick={() => setShowQuickPanel(!showQuickPanel)}
+              style={{
+                ...quickMainBtnStyle,
+                background: theme.accent,
+              }}
+            >
+              {t.quickAction} {showQuickPanel ? "▲" : "▼"}
+            </button>
 
-              {showQuickMenu ? (
-                <div
-                  className="sa-card"
-                  style={{
-                    ...bottomPopStyle,
-                    right: 0,
-                    background: theme.card,
-                    borderColor: theme.border,
-                    boxShadow: theme.glow,
-                  }}
-                >
-                  <button
-                    onClick={() => quickAdd("/dashboard/records")}
-                    style={bottomPopBtnStyle}
-                  >
-                    {t.quickRecord}
-                  </button>
-                  <button
-                    onClick={() => quickAdd("/dashboard/invoices")}
-                    style={bottomPopBtnStyle}
-                  >
-                    {t.quickInvoice}
-                  </button>
-                  <button
-                    onClick={() => quickAdd("/dashboard/customers")}
-                    style={bottomPopBtnStyle}
-                  >
-                    {t.quickCustomer}
-                  </button>
-                  <button
-                    onClick={() => quickAdd("/dashboard/products")}
-                    style={bottomPopBtnStyle}
-                  >
-                    {t.quickProduct}
-                  </button>
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowBottomMenu(!showBottomMenu);
-                  setShowQuickMenu(false);
-                }}
+            {showQuickPanel ? (
+              <div
+                className="sa-card"
                 style={{
-                  ...bottomMainBtnStyle,
+                  ...quickPanelStyle,
                   background: theme.card,
-                  color: theme.accent,
                   borderColor: theme.border,
+                  boxShadow: theme.glow,
                 }}
               >
-                {t.pageMenu}
-              </button>
+                <button
+                  onClick={() => goQuick("/dashboard/records")}
+                  style={{ ...quickItemBtnStyle, borderColor: theme.border, color: theme.accent }}
+                >
+                  {t.accountingShort}
+                </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickMenu(!showQuickMenu);
-                  setShowBottomMenu(false);
-                }}
-                style={{
-                  ...bottomMainBtnStyle,
-                  background: theme.accent,
-                  color: "#fff",
-                  borderColor: theme.accent,
-                }}
-              >
-                {t.quickRecordInvoice}
-              </button>
-            </div>
-          </div>
+                <button
+                  onClick={() => goQuick("/dashboard/invoices")}
+                  style={{ ...quickItemBtnStyle, borderColor: theme.border, color: theme.accent }}
+                >
+                  {t.invoiceShort}
+                </button>
+
+                <button
+                  onClick={() => goQuick("/dashboard/customers")}
+                  style={{ ...quickItemBtnStyle, borderColor: theme.border, color: theme.accent }}
+                >
+                  {t.customerShort}
+                </button>
+
+                <button
+                  onClick={() => goQuick("/dashboard/products")}
+                  style={{ ...quickItemBtnStyle, borderColor: theme.border, color: theme.accent }}
+                >
+                  {t.productShort}
+                </button>
+              </div>
+            ) : null}
+          </section>
         </>
       ) : null}
 
@@ -1239,7 +1187,7 @@ const pageStyle: CSSProperties = {
   maxWidth: "100vw",
   overflowX: "hidden",
   padding: "clamp(10px, 3vw, 22px)",
-  paddingBottom: 110,
+  paddingBottom: 40,
   fontFamily: "var(--sa-font-family)",
   fontSize: "var(--sa-fs-base)",
 };
@@ -1339,66 +1287,89 @@ const titleStyle: CSSProperties = {
   fontWeight: 900,
 };
 
+const trialNoticeStyle: CSSProperties = {
+  marginTop: 12,
+  color: "#dc2626",
+  fontWeight: 900,
+};
+
 const noticeBoxStyle: CSSProperties = {
-  marginTop: 18,
+  marginTop: 14,
   width: "100%",
   overflow: "hidden",
   color: "#dc2626",
   fontWeight: 900,
-  whiteSpace: "nowrap",
+  borderTop: "1px solid rgba(220,38,38,0.18)",
+  paddingTop: 10,
 };
 
-const noticeMarqueeStyle: CSSProperties = {
-  display: "inline-block",
-  minWidth: "100%",
-  animation: "smartacctg-notice-marquee 18s linear infinite",
-};
-
-const dashboardTwoColStyle: CSSProperties = {
+const overviewGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
   marginBottom: 18,
+  alignItems: "start",
 };
 
-const dropCardStyle: CSSProperties = {
-  padding: "var(--sa-card-pad)",
-  minWidth: 0,
+const compactPanelStyle: CSSProperties = {
+  padding: "clamp(12px, 2.5vw, 16px)",
+  minHeight: "auto",
 };
 
-const dropHeadStyle: CSSProperties = {
+const panelHeaderBtnStyle: CSSProperties = {
   width: "100%",
-  border: "none",
   background: "transparent",
+  border: "none",
+  padding: 0,
+  minHeight: 0,
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+  fontWeight: 900,
+  fontSize: "var(--sa-fs-base)",
+  cursor: "pointer",
+};
+
+const compactListStyle: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  marginTop: 10,
+};
+
+const summaryLineBtnStyle: CSSProperties = {
+  width: "100%",
+  background: "#fff",
+  border: "1px solid #e5e7eb",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "10px 12px",
+  minHeight: 46,
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: 8,
-  padding: 0,
+  gap: 10,
+  cursor: "pointer",
+  color: "#111827",
+};
+
+const summaryLineLabelStyle: CSSProperties = {
   fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-};
-
-const dropBodyStyle: CSSProperties = {
-  display: "grid",
-  gap: 10,
-  marginTop: 12,
-};
-
-const dropRowBtnStyle: CSSProperties = {
-  width: "100%",
-  border: "none",
-  background: "transparent",
-  padding: "8px 0",
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 10,
-  alignItems: "center",
   textAlign: "left",
-  fontWeight: 900,
+  minWidth: 0,
+  overflowWrap: "anywhere",
 };
 
-const emptyTextStyle: CSSProperties = {
+const summaryLineValueStyle: CSSProperties = {
+  fontWeight: 900,
+  textAlign: "right",
+  whiteSpace: "nowrap",
+};
+
+const emptyLineStyle: CSSProperties = {
+  marginTop: 10,
+  background: "#f8fafc",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "10px 12px",
   color: "#64748b",
   fontWeight: 900,
 };
@@ -1420,52 +1391,36 @@ const navBtnStyle: CSSProperties = {
   textAlign: "center",
 };
 
-const bottomBarStyle: CSSProperties = {
-  position: "fixed",
-  left: 0,
-  right: 0,
-  bottom: 0,
-  zIndex: 200,
-  padding: "10px 14px calc(10px + env(safe-area-inset-bottom))",
-  background: "rgba(255,255,255,0.88)",
-  backdropFilter: "blur(12px)",
-  borderTop: "1px solid rgba(148,163,184,0.35)",
-};
-
-const bottomMenuWrapStyle: CSSProperties = {
-  position: "relative",
+const bottomQuickWrapStyle: CSSProperties = {
+  marginTop: 18,
   display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 10,
-  maxWidth: 720,
-  margin: "0 auto",
 };
 
-const bottomMainBtnStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-control)",
+const quickMainBtnStyle: CSSProperties = {
+  width: "100%",
+  border: "none",
+  color: "#fff",
+  borderRadius: "var(--sa-radius-card)",
   minHeight: "var(--sa-control-h)",
-  padding: "0 10px",
+  padding: "0 18px",
   fontWeight: 900,
   fontSize: "var(--sa-fs-base)",
 };
 
-const bottomPopStyle: CSSProperties = {
-  position: "absolute",
-  bottom: "calc(100% + 10px)",
-  width: "min(230px, 48vw)",
+const quickPanelStyle: CSSProperties = {
   display: "grid",
-  gap: 8,
-  zIndex: 220,
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  padding: "clamp(12px, 2.5vw, 16px)",
 };
 
-const bottomPopBtnStyle: CSSProperties = {
-  width: "100%",
-  minHeight: 44,
+const quickItemBtnStyle: CSSProperties = {
+  background: "#fff",
+  border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-control)",
-  border: "1px solid #e5e7eb",
-  background: "#ffffff",
-  color: "#111827",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 12px",
   fontWeight: 900,
 };
 
