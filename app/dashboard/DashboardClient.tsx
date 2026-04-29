@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, ChangeEvent, useEffect, useMemo, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
@@ -34,8 +34,6 @@ type Txn = {
 type Customer = {
   id: string;
   name?: string | null;
-  phone?: string | null;
-  company_name?: string | null;
   debt_amount?: number | null;
   paid_amount?: number | null;
   last_payment_date?: string | null;
@@ -44,41 +42,35 @@ type Customer = {
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_TX_KEY = "smartacctg_trial_transactions";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
-
 const LANG_KEY = "smartacctg_lang";
 const THEME_KEY = "smartacctg_theme";
 
 const TXT = {
   zh: {
     dashboard: "控制台",
-    records: "记录明细",
+    notice: "通知：这里显示系统通知……",
+    recordsOverview: "记录总览",
+    customerDebt: "客户欠款",
+    estimatedProfit: "预计利润",
     balance: "当前余额",
     monthIncome: "本月收入",
     monthExpense: "本月支出",
-    expectedProfit: "预计利润",
-    viewAllRecords: "看全部记录",
-    hideAllRecords: "收起记录",
-    customerDebt: "客户欠款",
-    hideCustomerDebt: "收起欠款",
-    nearDebt: "快到期欠款",
-    noDebt: "暂无客户欠款",
-    quickAction: "快速记录 / 开发票",
     accounting: "记账系统",
     customers: "客户管理",
     products: "产品管理",
     invoices: "发票系统",
-    accountingShort: "记账",
-    invoiceShort: "发票",
-    customerShort: "客户",
-    productShort: "产品",
-    back: "返回",
-    changeAvatar: "更换头像",
-    settings: "设置",
-    theme: "主题切换",
-    logout: "退出登录",
+    quick: "快速记录 / 开发票",
+    quickAccounting: "记账",
+    quickInvoice: "发票",
+    quickCustomer: "客户",
+    quickProduct: "产品",
     expiry: "订阅期限",
     noSub: "未订阅",
     trial: "免费试用",
+    logout: "退出登录",
+    changeAvatar: "更换头像",
+    settings: "设置",
+    theme: "主题切换",
     personal: "个人资料",
     name: "名称",
     phone: "电话号码",
@@ -92,42 +84,34 @@ const TXT = {
     save: "保存资料",
     updatePassword: "更新密码",
     saved: "保存成功",
-    income: "收入",
-    expense: "支出",
-    noRecord: "还没有记录",
-    notice:
-      "通知：之后系统通知、订阅提醒、客户欠款提醒、发票提醒都会显示在这里。",
+    noRecord: "暂无记录",
+    noDebt: "暂无欠款",
   },
   en: {
     dashboard: "Dashboard",
-    records: "Records",
+    notice: "Notice: system notifications will appear here...",
+    recordsOverview: "Records Overview",
+    customerDebt: "Customer Debt",
+    estimatedProfit: "Estimated Profit",
     balance: "Balance",
     monthIncome: "Monthly Income",
     monthExpense: "Monthly Expense",
-    expectedProfit: "Estimated Profit",
-    viewAllRecords: "View All Records",
-    hideAllRecords: "Hide Records",
-    customerDebt: "Customer Debt",
-    hideCustomerDebt: "Hide Debt",
-    nearDebt: "Upcoming Debt",
-    noDebt: "No customer debt",
-    quickAction: "Quick Record / Invoice",
     accounting: "Accounting",
     customers: "Customers",
     products: "Products",
     invoices: "Invoices",
-    accountingShort: "Record",
-    invoiceShort: "Invoice",
-    customerShort: "Customer",
-    productShort: "Product",
-    back: "Back",
-    changeAvatar: "Change Avatar",
-    settings: "Settings",
-    theme: "Theme",
-    logout: "Logout",
+    quick: "Quick Record / Invoice",
+    quickAccounting: "Record",
+    quickInvoice: "Invoice",
+    quickCustomer: "Customer",
+    quickProduct: "Product",
     expiry: "Expiry",
     noSub: "Not Subscribed",
     trial: "Free Trial",
+    logout: "Logout",
+    changeAvatar: "Change Avatar",
+    settings: "Settings",
+    theme: "Theme",
     personal: "Personal Info",
     name: "Name",
     phone: "Phone",
@@ -141,42 +125,34 @@ const TXT = {
     save: "Save",
     updatePassword: "Update Password",
     saved: "Saved",
-    income: "Income",
-    expense: "Expense",
-    noRecord: "No records yet",
-    notice:
-      "Notice: system notifications, subscription reminders, customer debt reminders and invoice reminders will appear here.",
+    noRecord: "No records",
+    noDebt: "No debt",
   },
   ms: {
     dashboard: "Papan Pemuka",
-    records: "Rekod",
+    notice: "Notis: pemberitahuan sistem akan dipaparkan di sini...",
+    recordsOverview: "Ringkasan Rekod",
+    customerDebt: "Hutang Pelanggan",
+    estimatedProfit: "Anggaran Untung",
     balance: "Baki",
     monthIncome: "Pendapatan Bulan Ini",
     monthExpense: "Perbelanjaan Bulan Ini",
-    expectedProfit: "Anggaran Untung",
-    viewAllRecords: "Lihat Semua Rekod",
-    hideAllRecords: "Tutup Rekod",
-    customerDebt: "Hutang Pelanggan",
-    hideCustomerDebt: "Tutup Hutang",
-    nearDebt: "Hutang Hampir Tamat",
-    noDebt: "Tiada hutang pelanggan",
-    quickAction: "Rekod Pantas / Invois",
     accounting: "Sistem Akaun",
     customers: "Pelanggan",
     products: "Produk",
     invoices: "Invois",
-    accountingShort: "Rekod",
-    invoiceShort: "Invois",
-    customerShort: "Pelanggan",
-    productShort: "Produk",
-    back: "Kembali",
-    changeAvatar: "Tukar Avatar",
-    settings: "Tetapan",
-    theme: "Tema",
-    logout: "Log Keluar",
+    quick: "Rekod Pantas / Invois",
+    quickAccounting: "Rekod",
+    quickInvoice: "Invois",
+    quickCustomer: "Pelanggan",
+    quickProduct: "Produk",
     expiry: "Tarikh Tamat",
     noSub: "Belum Langgan",
     trial: "Percubaan Percuma",
+    logout: "Log Keluar",
+    changeAvatar: "Tukar Avatar",
+    settings: "Tetapan",
+    theme: "Tema",
     personal: "Maklumat Peribadi",
     name: "Nama",
     phone: "Telefon",
@@ -190,11 +166,8 @@ const TXT = {
     save: "Simpan",
     updatePassword: "Kemas Kini Kata Laluan",
     saved: "Disimpan",
-    income: "Pendapatan",
-    expense: "Perbelanjaan",
     noRecord: "Tiada rekod",
-    notice:
-      "Notis: peringatan sistem, langganan, hutang pelanggan dan invois akan dipaparkan di sini.",
+    noDebt: "Tiada hutang",
   },
 };
 
@@ -209,9 +182,10 @@ const THEMES: Record<ThemeKey, any> = {
       "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
     accent: "#0f766e",
     text: "#064e3b",
+    muted: "#64748b",
   },
   pink: {
-    name: "可愛粉色",
+    name: "可爱粉色",
     pageBg: "#fff7fb",
     banner: "linear-gradient(135deg,#ffd6e7,#fff1f2)",
     card: "#ffffff",
@@ -220,9 +194,10 @@ const THEMES: Record<ThemeKey, any> = {
       "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
     accent: "#db2777",
     text: "#4a044e",
+    muted: "#64748b",
   },
   blackGold: {
-    name: "黑金商務",
+    name: "黑金商务",
     pageBg: "#111111",
     banner: "linear-gradient(135deg,#111111,#3b2f16)",
     card: "#1f1f1f",
@@ -231,9 +206,10 @@ const THEMES: Record<ThemeKey, any> = {
       "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
     accent: "#d4af37",
     text: "#fff7ed",
+    muted: "#fef3c7",
   },
   lightRed: {
-    name: "可愛淺紅",
+    name: "可爱浅红",
     pageBg: "#fff1f2",
     banner: "linear-gradient(135deg,#fecdd3,#ffe4e6)",
     card: "#ffffff",
@@ -242,9 +218,10 @@ const THEMES: Record<ThemeKey, any> = {
       "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
     accent: "#e11d48",
     text: "#881337",
+    muted: "#64748b",
   },
   nature: {
-    name: "風景自然系",
+    name: "风景自然系",
     pageBg: "#f0fdf4",
     banner: "linear-gradient(135deg,#d9f99d,#bae6fd)",
     card: "#ffffff",
@@ -253,9 +230,10 @@ const THEMES: Record<ThemeKey, any> = {
       "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
     accent: "#0f766e",
     text: "#14532d",
+    muted: "#64748b",
   },
   sky: {
-    name: "天空藍",
+    name: "天空蓝",
     pageBg: "#eff6ff",
     banner: "linear-gradient(135deg,#bfdbfe,#e0f2fe)",
     card: "#ffffff",
@@ -264,6 +242,7 @@ const THEMES: Record<ThemeKey, any> = {
       "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
     accent: "#0284c7",
     text: "#0f172a",
+    muted: "#64748b",
   },
 };
 
@@ -286,18 +265,18 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
+  const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Txn[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
 
-  const [showMenu, setShowMenu] = useState(false);
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showThemes, setShowThemes] = useState(false);
-  const [showRecordsPanel, setShowRecordsPanel] = useState(false);
-  const [showDebtPanel, setShowDebtPanel] = useState(false);
-  const [showQuickPanel, setShowQuickPanel] = useState(false);
-
-  const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
+  const [showRecordSummary, setShowRecordSummary] = useState(false);
+  const [showDebtSummary, setShowDebtSummary] = useState(false);
+  const [showQuickMenu, setShowQuickMenu] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -308,8 +287,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [newPassword, setNewPassword] = useState("");
   const [msg, setMsg] = useState("");
 
-  const [recordView, setRecordView] = useState<"balance" | "income" | "expense">("balance");
-
   const t = TXT[lang];
   const theme = THEMES[themeKey];
 
@@ -318,6 +295,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     const urlLang = q.get("lang") as Lang | null;
     const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
+    const urlTheme = q.get("theme") as ThemeKey | null;
+    const savedTheme = safeLocalGet(THEME_KEY) as ThemeKey | null;
 
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
       setLang(urlLang);
@@ -326,18 +305,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       setLang(savedLang);
     }
 
-    const urlTheme = q.get("theme") as ThemeKey | null;
-    const savedTheme = safeLocalGet(THEME_KEY) as ThemeKey | null;
-
     if (urlTheme && THEMES[urlTheme]) {
       setThemeKey(urlTheme);
       safeLocalSet(THEME_KEY, urlTheme);
     } else if (savedTheme && THEMES[savedTheme]) {
       setThemeKey(savedTheme);
     }
-
-    const view = q.get("view") as "balance" | "income" | "expense" | null;
-    if (view === "balance" || view === "income" || view === "expense") setRecordView(view);
 
     init();
   }, []);
@@ -347,7 +320,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const mode = q.get("mode");
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
-    if ((mode === "trial" || trialRaw) && trialRaw) {
+    if (mode === "trial" && trialRaw) {
       const trial = JSON.parse(trialRaw);
 
       if (Date.now() < Number(trial.expiresAt)) {
@@ -390,17 +363,19 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .single();
 
     if (profileData) {
-      setProfile(profileData as Profile);
-      setFullName(profileData.full_name || "");
-      setPhone(profileData.phone || "");
-      setCompanyName(profileData.company_name || "");
-      setCompanyRegNo(profileData.company_reg_no || "");
-      setCompanyPhone(profileData.company_phone || "");
-      setCompanyAddress(profileData.company_address || "");
+      const p = profileData as Profile;
 
-      if (profileData.theme && THEMES[profileData.theme as ThemeKey]) {
-        setThemeKey(profileData.theme as ThemeKey);
-        safeLocalSet(THEME_KEY, profileData.theme);
+      setProfile(p);
+      setFullName(p.full_name || "");
+      setPhone(p.phone || "");
+      setCompanyName(p.company_name || "");
+      setCompanyRegNo(p.company_reg_no || "");
+      setCompanyPhone(p.company_phone || "");
+      setCompanyAddress(p.company_address || "");
+
+      if (p.theme && THEMES[p.theme as ThemeKey]) {
+        setThemeKey(p.theme as ThemeKey);
+        safeLocalSet(THEME_KEY, p.theme);
       }
     }
 
@@ -412,45 +387,31 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     const { data: customerData } = await supabase
       .from("customers")
-      .select("id,name,phone,company_name,debt_amount,paid_amount,last_payment_date")
+      .select("id,name,debt_amount,paid_amount,last_payment_date")
       .eq("user_id", userId)
-      .order("last_payment_date", { ascending: true });
+      .order("created_at", { ascending: false });
 
     setTransactions((txData || []) as Txn[]);
     setCustomers((customerData || []) as Customer[]);
   }
 
   function buildUrl(path: string, extra?: string) {
-    const query = new URLSearchParams();
+    const q = new URLSearchParams();
 
-    if (isTrial) query.set("mode", "trial");
-
-    query.set("lang", lang);
-    query.set("theme", themeKey);
-    query.set("refresh", String(Date.now()));
+    if (isTrial) q.set("mode", "trial");
+    q.set("lang", lang);
+    q.set("theme", themeKey);
 
     if (extra) {
       const extraQuery = new URLSearchParams(extra);
-      extraQuery.forEach((value, key) => query.set(key, value));
+      extraQuery.forEach((value, key) => q.set(key, value));
     }
 
-    return `${path}?${query.toString()}`;
+    return `${path}?${q.toString()}`;
   }
 
   function go(path: string, extra?: string) {
     window.location.href = buildUrl(path, extra);
-  }
-
-  function goBack() {
-    window.location.href = buildUrl("/dashboard");
-  }
-
-  function goRecords(view: "balance" | "income" | "expense") {
-    window.location.href = buildUrl("/dashboard/records", `view=${view}`);
-  }
-
-  function goQuick(path: string) {
-    window.location.href = buildUrl(path, "quickAdd=1&action=new&openForm=1");
   }
 
   function switchLang(next: Lang) {
@@ -460,7 +421,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
     q.set("theme", themeKey);
-    q.set("refresh", String(Date.now()));
+
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
@@ -472,7 +433,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     window.location.href = "/zh";
   }
 
-  async function uploadAvatar(e: ChangeEvent<HTMLInputElement>) {
+  async function uploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     if (isTrial) {
       setMsg("免费试用不能上传头像");
       return;
@@ -579,44 +540,27 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
   const balance = useMemo(() => {
     return transactions.reduce((s, x) => {
-      return x.txn_type === "income" ? s + Number(x.amount || 0) : s - Number(x.amount || 0);
+      return x.txn_type === "income"
+        ? s + Number(x.amount || 0)
+        : s - Number(x.amount || 0);
     }, 0);
   }, [transactions]);
 
-  const expectedProfit = monthIncome - monthExpense;
+  const estimatedProfit = useMemo(() => {
+    return monthIncome - monthExpense;
+  }, [monthIncome, monthExpense]);
 
-  const recordSummaryRows = [
-    { label: t.balance, value: balance, color: theme.accent, action: () => goRecords("balance") },
-    { label: t.monthIncome, value: monthIncome, color: "#16a34a", action: () => goRecords("income") },
-    { label: t.monthExpense, value: monthExpense, color: "#dc2626", action: () => goRecords("expense") },
-    {
-      label: t.expectedProfit,
-      value: expectedProfit,
-      color: expectedProfit >= 0 ? "#16a34a" : "#dc2626",
-      action: () => setShowRecordsPanel(!showRecordsPanel),
-    },
-  ];
-
-  const customerDebts = useMemo(() => {
+  const debtCustomers = useMemo(() => {
     return customers
-      .map((c) => {
-        const debt = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
-        return {
-          id: c.id,
-          name: c.name || "-",
-          amount: debt,
-          date: c.last_payment_date || "",
-        };
-      })
-      .filter((c) => c.amount > 0)
-      .sort((a, b) => {
-        const ad = a.date ? new Date(a.date).getTime() : Number.MAX_SAFE_INTEGER;
-        const bd = b.date ? new Date(b.date).getTime() : Number.MAX_SAFE_INTEGER;
-        return ad - bd;
-      });
+      .map((c) => ({
+        ...c,
+        balance: Number(c.debt_amount || 0) - Number(c.paid_amount || 0),
+      }))
+      .filter((c) => c.balance > 0)
+      .sort((a, b) => b.balance - a.balance);
   }, [customers]);
 
-  const nearDebt = customerDebts[0];
+  const topDebtCustomer = debtCustomers[0] || null;
 
   const expiryText = isTrial
     ? t.trial
@@ -624,45 +568,36 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       ? new Date(profile.plan_expiry).toLocaleDateString()
       : t.noSub;
 
-  const filteredRecords = transactions.filter((x) => {
-    if (recordView === "income") return x.txn_type === "income";
-    if (recordView === "expense") return x.txn_type === "expense";
-    return true;
-  });
-
   return (
     <main
       className="smartacctg-page smartacctg-dashboard-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
-      <style>
-        {`
-          @keyframes smartacctgMarquee {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
-          }
-
-          .smartacctg-notice-track {
-            display: inline-block;
-            min-width: 100%;
-            white-space: nowrap;
-            animation: smartacctgMarquee 16s linear infinite;
-          }
-        `}
-      </style>
-
-      <header className="sa-topbar" style={headerStyle}>
-        <div className="sa-topbar-left" style={leftTopStyle}>
+      <header
+        className="sa-card"
+        style={{
+          ...topCardStyle,
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+          color: theme.text,
+        }}
+      >
+        <div style={leftTopStyle}>
           <div style={{ position: "relative" }}>
-            <button onClick={() => setShowMenu(!showMenu)} style={avatarBtnStyle}>
+            <button
+              type="button"
+              onClick={() => setShowAvatarMenu(!showAvatarMenu)}
+              style={avatarBtnStyle}
+            >
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" style={avatarImgStyle} />
+                <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} />
               ) : (
                 "👤"
               )}
             </button>
 
-            {showMenu ? (
+            {showAvatarMenu ? (
               <div style={avatarMenuStyle}>
                 <label style={menuItemStyle}>
                   {t.changeAvatar}
@@ -675,28 +610,30 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 </label>
 
                 <button
+                  type="button"
                   style={menuItemStyle}
                   onClick={() => {
                     setShowSettings(true);
                     setShowThemes(false);
-                    setShowMenu(false);
+                    setShowAvatarMenu(false);
                   }}
                 >
                   {t.settings}
                 </button>
 
                 <button
+                  type="button"
                   style={menuItemStyle}
                   onClick={() => {
                     setShowThemes(true);
                     setShowSettings(false);
-                    setShowMenu(false);
+                    setShowAvatarMenu(false);
                   }}
                 >
                   {t.theme}
                 </button>
 
-                <button style={menuItemStyle} onClick={logout}>
+                <button type="button" style={menuItemStyle} onClick={logout}>
                   {t.logout}
                 </button>
               </div>
@@ -708,7 +645,11 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </div>
         </div>
 
-        <button onClick={logout} style={{ ...logoutBtnStyle, background: theme.accent }}>
+        <button
+          type="button"
+          onClick={logout}
+          style={{ ...logoutBtnStyle, background: theme.accent }}
+        >
           {t.logout}
         </button>
       </header>
@@ -729,43 +670,42 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
               <div className="sa-lang-row" style={langRowStyle}>
                 <button
+                  type="button"
                   onClick={() => switchLang("zh")}
                   className="sa-lang-btn"
-                  style={langBtn(lang === "zh", theme)}
+                  style={langBtnStyle(lang === "zh", theme)}
                 >
                   中文
                 </button>
                 <button
+                  type="button"
                   onClick={() => switchLang("en")}
                   className="sa-lang-btn"
-                  style={langBtn(lang === "en", theme)}
+                  style={langBtnStyle(lang === "en", theme)}
                 >
                   EN
                 </button>
                 <button
+                  type="button"
                   onClick={() => switchLang("ms")}
                   className="sa-lang-btn"
-                  style={langBtn(lang === "ms", theme)}
+                  style={langBtnStyle(lang === "ms", theme)}
                 >
                   BM
                 </button>
               </div>
             </div>
 
-            {isTrial ? (
-              <div style={trialNoticeStyle}>免费试用模式：20 分钟后会自动失效</div>
-            ) : null}
-
-            <div style={noticeBoxStyle}>
-              <span className="smartacctg-notice-track">{t.notice}</span>
+            <div style={noticeWrapStyle}>
+              <div style={noticeMarqueeStyle}>{t.notice}</div>
             </div>
           </section>
 
-          <section style={overviewGridStyle}>
+          <section style={summaryGridStyle}>
             <div
               className="sa-card"
               style={{
-                ...compactPanelStyle,
+                ...summaryBoxStyle,
                 background: theme.card,
                 borderColor: theme.border,
                 boxShadow: theme.glow,
@@ -774,206 +714,208 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             >
               <button
                 type="button"
-                onClick={() => setShowRecordsPanel(!showRecordsPanel)}
-                style={{ ...panelHeaderBtnStyle, color: theme.accent }}
+                onClick={() => setShowRecordSummary(!showRecordSummary)}
+                style={summaryHeaderBtnStyle}
               >
-                <span>{showRecordsPanel ? t.hideAllRecords : t.viewAllRecords}</span>
-                <span>{showRecordsPanel ? "▲" : "▼"}</span>
+                <span>{t.recordsOverview}</span>
+                <strong>{showRecordSummary ? "▲" : "▼"}</strong>
               </button>
 
-              {!showRecordsPanel ? (
-                <button
-                  type="button"
-                  onClick={() => setShowRecordsPanel(true)}
-                  style={summaryLineBtnStyle}
-                >
-                  <span style={summaryLineLabelStyle}>{t.expectedProfit}</span>
-                  <strong
-                    style={{
-                      ...summaryLineValueStyle,
-                      color: expectedProfit >= 0 ? "#16a34a" : "#dc2626",
-                    }}
-                  >
-                    RM {expectedProfit.toFixed(2)}
-                  </strong>
-                </button>
-              ) : (
-                <div style={compactListStyle}>
-                  {recordSummaryRows.map((row) => (
-                    <button
-                      key={row.label}
-                      type="button"
-                      onClick={row.action}
-                      style={summaryLineBtnStyle}
-                    >
-                      <span style={summaryLineLabelStyle}>{row.label}</span>
-                      <strong style={{ ...summaryLineValueStyle, color: row.color }}>
-                        RM {row.value.toFixed(2)}
-                      </strong>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div
-              className="sa-card"
-              style={{
-                ...compactPanelStyle,
-                background: theme.card,
-                borderColor: theme.border,
-                boxShadow: theme.glow,
-                color: theme.text,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setShowDebtPanel(!showDebtPanel)}
-                style={{ ...panelHeaderBtnStyle, color: theme.accent }}
-              >
-                <span>{showDebtPanel ? t.hideCustomerDebt : t.customerDebt}</span>
-                <span>{showDebtPanel ? "▲" : "▼"}</span>
-              </button>
-
-              {!showDebtPanel ? (
-                nearDebt ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowDebtPanel(true)}
-                    style={summaryLineBtnStyle}
-                  >
-                    <span style={summaryLineLabelStyle}>{nearDebt.name}</span>
-                    <strong style={{ ...summaryLineValueStyle, color: "#dc2626" }}>
-                      RM {nearDebt.amount.toFixed(2)}
+              {showRecordSummary ? (
+                <div style={summaryDetailListStyle}>
+                  <div style={summaryRowStyle}>
+                    <span>{t.balance}</span>
+                    <strong>RM {balance.toFixed(2)}</strong>
+                  </div>
+                  <div style={summaryRowStyle}>
+                    <span>{t.monthIncome}</span>
+                    <strong style={{ color: "#16a34a" }}>
+                      RM {monthIncome.toFixed(2)}
                     </strong>
-                  </button>
-                ) : (
-                  <div style={emptyLineStyle}>{t.noDebt}</div>
-                )
-              ) : customerDebts.length === 0 ? (
-                <div style={emptyLineStyle}>{t.noDebt}</div>
+                  </div>
+                  <div style={summaryRowStyle}>
+                    <span>{t.monthExpense}</span>
+                    <strong style={{ color: "#dc2626" }}>
+                      RM {monthExpense.toFixed(2)}
+                    </strong>
+                  </div>
+                  <div style={summaryRowStyle}>
+                    <span>{t.estimatedProfit}</span>
+                    <strong style={{ color: theme.accent }}>
+                      RM {estimatedProfit.toFixed(2)}
+                    </strong>
+                  </div>
+                </div>
               ) : (
-                <div style={compactListStyle}>
-                  {customerDebts.map((debt) => (
-                    <button
-                      key={debt.id}
-                      type="button"
-                      onClick={() => go("/dashboard/customers")}
-                      style={summaryLineBtnStyle}
-                    >
-                      <span style={summaryLineLabelStyle}>{debt.name}</span>
-                      <strong style={{ ...summaryLineValueStyle, color: "#dc2626" }}>
-                        RM {debt.amount.toFixed(2)}
-                      </strong>
-                    </button>
-                  ))}
+                <div style={singleSummaryStyle}>
+                  <span>{t.estimatedProfit}</span>
+                  <strong style={{ color: theme.accent }}>
+                    RM {estimatedProfit.toFixed(2)}
+                  </strong>
+                </div>
+              )}
+            </div>
+
+            <div
+              className="sa-card"
+              style={{
+                ...summaryBoxStyle,
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+                color: theme.text,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowDebtSummary(!showDebtSummary)}
+                style={summaryHeaderBtnStyle}
+              >
+                <span>{t.customerDebt}</span>
+                <strong>{showDebtSummary ? "▲" : "▼"}</strong>
+              </button>
+
+              {showDebtSummary ? (
+                <div style={summaryDetailListStyle}>
+                  {debtCustomers.length === 0 ? (
+                    <div style={summaryRowStyle}>
+                      <span>{t.noDebt}</span>
+                      <strong>RM 0.00</strong>
+                    </div>
+                  ) : (
+                    debtCustomers.map((c) => (
+                      <div key={c.id} style={summaryRowStyle}>
+                        <span>{c.name || "-"}</span>
+                        <strong style={{ color: "#dc2626" }}>
+                          RM {Number(c.balance || 0).toFixed(2)}
+                        </strong>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div style={singleSummaryStyle}>
+                  <span>{topDebtCustomer?.name || t.noDebt}</span>
+                  <strong style={{ color: topDebtCustomer ? "#dc2626" : theme.accent }}>
+                    RM {Number(topDebtCustomer?.balance || 0).toFixed(2)}
+                  </strong>
                 </div>
               )}
             </div>
           </section>
 
-          <section style={menuGridStyle}>
+          <section style={featureGridStyle}>
             <button
+              type="button"
               onClick={() => go("/dashboard/records")}
               className="sa-card"
               style={{
-                ...navBtnStyle,
+                ...featureBtnStyle,
+                background: theme.card,
                 borderColor: theme.border,
                 boxShadow: theme.glow,
-                color: theme.accent,
+                color: theme.text,
               }}
             >
               {t.accounting}
             </button>
 
             <button
+              type="button"
               onClick={() => go("/dashboard/customers")}
               className="sa-card"
               style={{
-                ...navBtnStyle,
+                ...featureBtnStyle,
+                background: theme.card,
                 borderColor: theme.border,
                 boxShadow: theme.glow,
-                color: theme.accent,
+                color: theme.text,
               }}
             >
               {t.customers}
             </button>
 
             <button
+              type="button"
               onClick={() => go("/dashboard/products")}
               className="sa-card"
               style={{
-                ...navBtnStyle,
+                ...featureBtnStyle,
+                background: theme.card,
                 borderColor: theme.border,
                 boxShadow: theme.glow,
-                color: theme.accent,
+                color: theme.text,
               }}
             >
               {t.products}
             </button>
 
             <button
+              type="button"
               onClick={() => go("/dashboard/invoices")}
               className="sa-card"
               style={{
-                ...navBtnStyle,
+                ...featureBtnStyle,
+                background: theme.card,
                 borderColor: theme.border,
                 boxShadow: theme.glow,
-                color: theme.accent,
+                color: theme.text,
               }}
             >
               {t.invoices}
             </button>
           </section>
 
-          <section style={bottomQuickWrapStyle}>
+          <section
+            className="sa-card"
+            style={{
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
             <button
               type="button"
-              onClick={() => setShowQuickPanel(!showQuickPanel)}
-              style={{
-                ...quickMainBtnStyle,
-                background: theme.accent,
-              }}
+              onClick={() => setShowQuickMenu(!showQuickMenu)}
+              style={quickHeaderBtnStyle}
             >
-              {t.quickAction} {showQuickPanel ? "▲" : "▼"}
+              <span>{t.quick}</span>
+              <strong>{showQuickMenu ? "▲" : "▼"}</strong>
             </button>
 
-            {showQuickPanel ? (
-              <div
-                className="sa-card"
-                style={{
-                  ...quickPanelStyle,
-                  background: theme.card,
-                  borderColor: theme.border,
-                  boxShadow: theme.glow,
-                }}
-              >
+            {showQuickMenu ? (
+              <div style={quickGridStyle}>
                 <button
-                  onClick={() => goQuick("/dashboard/records")}
-                  style={{ ...quickItemBtnStyle, borderColor: theme.border, color: theme.accent }}
+                  type="button"
+                  onClick={() => go("/dashboard/records")}
+                  style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
                 >
-                  {t.accountingShort}
+                  {t.quickAccounting}
                 </button>
 
                 <button
-                  onClick={() => goQuick("/dashboard/invoices")}
-                  style={{ ...quickItemBtnStyle, borderColor: theme.border, color: theme.accent }}
+                  type="button"
+                  onClick={() => go("/dashboard/invoices")}
+                  style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
                 >
-                  {t.invoiceShort}
+                  {t.quickInvoice}
                 </button>
 
                 <button
-                  onClick={() => goQuick("/dashboard/customers")}
-                  style={{ ...quickItemBtnStyle, borderColor: theme.border, color: theme.accent }}
+                  type="button"
+                  onClick={() => go("/dashboard/customers")}
+                  style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
                 >
-                  {t.customerShort}
+                  {t.quickCustomer}
                 </button>
 
                 <button
-                  onClick={() => goQuick("/dashboard/products")}
-                  style={{ ...quickItemBtnStyle, borderColor: theme.border, color: theme.accent }}
+                  type="button"
+                  onClick={() => go("/dashboard/products")}
+                  style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
                 >
-                  {t.productShort}
+                  {t.quickProduct}
                 </button>
               </div>
             ) : null}
@@ -981,7 +923,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         </>
       ) : null}
 
-      {page === "records" ? (
+      {page !== "home" ? (
         <section
           className="sa-card"
           style={{
@@ -992,84 +934,20 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           }}
         >
           <button
-            onClick={goBack}
-            className="sa-back-btn"
+            type="button"
+            onClick={() => go("/dashboard")}
             style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}
           >
-            ← {t.back}
+            ← 返回
           </button>
 
-          <h1>{t.records}</h1>
-
-          <div style={recordFilterRowStyle}>
-            <button
-              onClick={() => setRecordView("balance")}
-              style={filterBtn(recordView === "balance", theme)}
-            >
-              {t.balance}
-            </button>
-            <button
-              onClick={() => setRecordView("income")}
-              style={filterBtn(recordView === "income", theme)}
-            >
-              {t.income}
-            </button>
-            <button
-              onClick={() => setRecordView("expense")}
-              style={filterBtn(recordView === "expense", theme)}
-            >
-              {t.expense}
-            </button>
-          </div>
-
-          {filteredRecords.length === 0 ? (
-            <p>{t.noRecord}</p>
-          ) : (
-            filteredRecords.map((x) => (
-              <div key={x.id} style={recordItemStyle}>
-                <div>
-                  <strong>{x.txn_type === "income" ? t.income : t.expense}</strong>
-                  <div>{x.txn_date}</div>
-                  <div>
-                    {x.category_name || ""} {x.note || ""}
-                  </div>
-                </div>
-
-                <strong style={{ color: x.txn_type === "income" ? "#16a34a" : "#dc2626" }}>
-                  RM {Number(x.amount || 0).toFixed(2)}
-                </strong>
-              </div>
-            ))
-          )}
-        </section>
-      ) : null}
-
-      {page !== "home" && page !== "records" ? (
-        <section
-          className="sa-card"
-          style={{
-            background: theme.card,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-            color: theme.text,
-          }}
-        >
-          <button
-            onClick={goBack}
-            className="sa-back-btn"
-            style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}
-          >
-            ← {t.back}
-          </button>
-
-          <h1>
+          <h1 style={titleStyle}>
+            {page === "records" && t.accounting}
             {page === "accounting" && t.accounting}
             {page === "customers" && t.customers}
             {page === "products" && t.products}
             {page === "invoices" && t.invoices}
           </h1>
-
-          <p>这里是独立页面内容。</p>
         </section>
       ) : null}
 
@@ -1090,13 +968,13 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             placeholder={t.name}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            style={inputStyle}
+            style={{ ...inputStyle, borderColor: theme.border }}
           />
           <input
             placeholder={t.phone}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            style={inputStyle}
+            style={{ ...inputStyle, borderColor: theme.border }}
           />
 
           <h3>{t.company}</h3>
@@ -1104,28 +982,32 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             placeholder={t.companyName}
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            style={inputStyle}
+            style={{ ...inputStyle, borderColor: theme.border }}
           />
           <input
             placeholder={t.ssm}
             value={companyRegNo}
             onChange={(e) => setCompanyRegNo(e.target.value)}
-            style={inputStyle}
+            style={{ ...inputStyle, borderColor: theme.border }}
           />
           <input
             placeholder={t.companyPhone}
             value={companyPhone}
             onChange={(e) => setCompanyPhone(e.target.value)}
-            style={inputStyle}
+            style={{ ...inputStyle, borderColor: theme.border }}
           />
           <input
             placeholder={t.companyAddress}
             value={companyAddress}
             onChange={(e) => setCompanyAddress(e.target.value)}
-            style={inputStyle}
+            style={{ ...inputStyle, borderColor: theme.border }}
           />
 
-          <button onClick={saveSettings} style={{ ...primaryBtnStyle, background: theme.accent }}>
+          <button
+            type="button"
+            onClick={saveSettings}
+            style={{ ...primaryBtnStyle, background: theme.accent }}
+          >
             {t.save}
           </button>
 
@@ -1135,10 +1017,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             placeholder={t.newPassword}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            style={inputStyle}
+            style={{ ...inputStyle, borderColor: theme.border }}
           />
 
-          <button onClick={changePassword} style={{ ...primaryBtnStyle, background: theme.accent }}>
+          <button
+            type="button"
+            onClick={changePassword}
+            style={{ ...primaryBtnStyle, background: theme.accent }}
+          >
             {t.updatePassword}
           </button>
 
@@ -1161,6 +1047,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           <div style={themeGridStyle}>
             {(Object.keys(THEMES) as ThemeKey[]).map((key) => (
               <button
+                type="button"
                 key={key}
                 onClick={() => changeTheme(key)}
                 style={{
@@ -1187,13 +1074,16 @@ const pageStyle: CSSProperties = {
   maxWidth: "100vw",
   overflowX: "hidden",
   padding: "clamp(10px, 3vw, 22px)",
-  paddingBottom: 40,
-  fontFamily: "var(--sa-font-family)",
-  fontSize: "var(--sa-fs-base)",
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
 };
 
-const headerStyle: CSSProperties = {
-  marginBottom: 16,
+const topCardStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  marginBottom: 14,
 };
 
 const leftTopStyle: CSSProperties = {
@@ -1214,6 +1104,7 @@ const avatarBtnStyle: CSSProperties = {
   fontSize: 24,
   overflow: "hidden",
   boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
+  padding: 0,
 };
 
 const avatarImgStyle: CSSProperties = {
@@ -1229,7 +1120,7 @@ const avatarMenuStyle: CSSProperties = {
   width: 190,
   background: "#fff",
   color: "#111827",
-  borderRadius: "var(--sa-radius-card)",
+  borderRadius: 16,
   padding: 10,
   zIndex: 99,
   boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
@@ -1243,11 +1134,13 @@ const menuItemStyle: CSSProperties = {
   background: "transparent",
   textAlign: "left",
   fontWeight: 900,
-  borderRadius: "var(--sa-radius-control)",
+  borderRadius: 10,
+  color: "#111827",
 };
 
 const planTextStyle: CSSProperties = {
   fontWeight: 900,
+  lineHeight: 1.25,
   overflowWrap: "anywhere",
 };
 
@@ -1255,7 +1148,7 @@ const logoutBtnStyle: CSSProperties = {
   color: "#fff",
   border: "none",
   borderRadius: "var(--sa-radius-control)",
-  padding: "0 16px",
+  padding: "0 14px",
   minHeight: "var(--sa-control-h)",
   fontWeight: 900,
   whiteSpace: "nowrap",
@@ -1264,162 +1157,131 @@ const logoutBtnStyle: CSSProperties = {
 const bannerTopRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
-  alignItems: "start",
+  alignItems: "center",
   gap: 12,
+};
+
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-2xl)",
+  fontWeight: 900,
+  lineHeight: 1.15,
 };
 
 const langRowStyle: CSSProperties = {
   display: "flex",
-  gap: 8,
+  gap: 6,
   flexWrap: "nowrap",
 };
 
-const langBtn = (active: boolean, theme: any): CSSProperties => ({
+const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
   borderColor: theme.accent,
   background: active ? theme.accent : "#fff",
   color: active ? "#fff" : theme.accent,
 });
 
-const titleStyle: CSSProperties = {
-  fontSize: "var(--sa-fs-2xl)",
-  lineHeight: 1.15,
-  margin: 0,
-  fontWeight: 900,
-};
-
-const trialNoticeStyle: CSSProperties = {
+const noticeWrapStyle: CSSProperties = {
   marginTop: 12,
-  color: "#dc2626",
-  fontWeight: 900,
-};
-
-const noticeBoxStyle: CSSProperties = {
-  marginTop: 14,
-  width: "100%",
   overflow: "hidden",
   color: "#dc2626",
   fontWeight: 900,
-  borderTop: "1px solid rgba(220,38,38,0.18)",
-  paddingTop: 10,
+  whiteSpace: "nowrap",
 };
 
-const overviewGridStyle: CSSProperties = {
+const noticeMarqueeStyle: CSSProperties = {
+  display: "inline-block",
+  paddingLeft: "100%",
+  animation: "saNoticeMarquee 12s linear infinite",
+};
+
+const summaryGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
-  marginBottom: 18,
-  alignItems: "start",
+  marginTop: 14,
+  marginBottom: 14,
 };
 
-const compactPanelStyle: CSSProperties = {
-  padding: "clamp(12px, 2.5vw, 16px)",
-  minHeight: "auto",
-};
-
-const panelHeaderBtnStyle: CSSProperties = {
-  width: "100%",
-  background: "transparent",
-  border: "none",
-  padding: 0,
+const summaryBoxStyle: CSSProperties = {
   minHeight: 0,
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 8,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-  cursor: "pointer",
 };
 
-const compactListStyle: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  marginTop: 10,
-};
-
-const summaryLineBtnStyle: CSSProperties = {
+const summaryHeaderBtnStyle: CSSProperties = {
   width: "100%",
-  background: "#fff",
-  border: "1px solid #e5e7eb",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "10px 12px",
-  minHeight: 46,
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: 10,
-  cursor: "pointer",
-  color: "#111827",
+  border: "none",
+  background: "transparent",
+  color: "inherit",
+  padding: 0,
+  minHeight: 0,
+  fontWeight: 900,
 };
 
-const summaryLineLabelStyle: CSSProperties = {
-  fontWeight: 900,
+const singleSummaryStyle: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  marginTop: 12,
   textAlign: "left",
-  minWidth: 0,
-  overflowWrap: "anywhere",
 };
 
-const summaryLineValueStyle: CSSProperties = {
-  fontWeight: 900,
-  textAlign: "right",
-  whiteSpace: "nowrap",
+const summaryDetailListStyle: CSSProperties = {
+  display: "grid",
+  gap: 8,
+  marginTop: 12,
 };
 
-const emptyLineStyle: CSSProperties = {
-  marginTop: 10,
-  background: "#f8fafc",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "10px 12px",
-  color: "#64748b",
+const summaryRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 10,
+  alignItems: "center",
   fontWeight: 900,
 };
 
-const menuGridStyle: CSSProperties = {
+const featureGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
+  marginBottom: 14,
 };
 
-const navBtnStyle: CSSProperties = {
-  background: "#fff",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  minHeight: 64,
-  padding: "0 12px",
+const featureBtnStyle: CSSProperties = {
+  minHeight: 72,
   fontWeight: 900,
   fontSize: "var(--sa-fs-lg)",
   textAlign: "center",
 };
 
-const bottomQuickWrapStyle: CSSProperties = {
-  marginTop: 18,
-  display: "grid",
-  gap: 10,
-};
-
-const quickMainBtnStyle: CSSProperties = {
+const quickHeaderBtnStyle: CSSProperties = {
   width: "100%",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
   border: "none",
-  color: "#fff",
-  borderRadius: "var(--sa-radius-card)",
-  minHeight: "var(--sa-control-h)",
-  padding: "0 18px",
+  background: "transparent",
+  color: "inherit",
+  padding: 0,
+  minHeight: 0,
   fontWeight: 900,
   fontSize: "var(--sa-fs-base)",
 };
 
-const quickPanelStyle: CSSProperties = {
+const quickGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 10,
-  padding: "clamp(12px, 2.5vw, 16px)",
+  marginTop: 14,
 };
 
-const quickItemBtnStyle: CSSProperties = {
+const quickBtnStyle: CSSProperties = {
   background: "#fff",
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: "var(--sa-control-h)",
+  minHeight: 56,
   padding: "0 12px",
   fontWeight: 900,
 };
@@ -1438,20 +1300,22 @@ const inputStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   padding: "0 var(--sa-control-x)",
-  minHeight: "var(--sa-control-h)",
   borderRadius: "var(--sa-radius-control)",
-  border: "var(--sa-border-w) solid #14b8a6",
+  border: "var(--sa-border-w) solid",
+  minHeight: "var(--sa-control-h)",
   marginBottom: 12,
-  fontSize: "16px",
+  fontSize: 16,
+  background: "#fff",
+  color: "#111827",
 };
 
 const primaryBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
   padding: "0 18px",
-  minHeight: "var(--sa-control-h)",
   borderRadius: "var(--sa-radius-control)",
   fontWeight: 900,
+  minHeight: "var(--sa-control-h)",
   marginBottom: 16,
 };
 
@@ -1463,30 +1327,6 @@ const themeGridStyle: CSSProperties = {
 const themeBtnStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
-  padding: 18,
+  padding: "var(--sa-card-pad)",
   fontWeight: 900,
-};
-
-const recordFilterRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: 10,
-  marginBottom: 16,
-};
-
-const filterBtn = (active: boolean, theme: any): CSSProperties => ({
-  padding: "12px",
-  borderRadius: "var(--sa-radius-control)",
-  border: `var(--sa-border-w) solid ${theme.border}`,
-  background: active ? theme.accent : "#fff",
-  color: active ? "#fff" : theme.accent,
-  fontWeight: 900,
-});
-
-const recordItemStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  padding: "14px 0",
-  borderBottom: "1px solid #e5e7eb",
 };
