@@ -161,6 +161,9 @@ const TXT = {
     add: "新增",
     save: "保存资料",
     update: "保存修改",
+    saving: "保存中...",
+    saveFailed: "保存失败：",
+    nameRequired: "请填写客户名称",
     cancelEdit: "取消编辑",
     cancel: "取消",
     close: "关闭",
@@ -223,6 +226,9 @@ const TXT = {
     add: "Add",
     save: "Save",
     update: "Save Changes",
+    saving: "Saving...",
+    saveFailed: "Save failed: ",
+    nameRequired: "Please enter customer name",
     cancelEdit: "Cancel Edit",
     cancel: "Cancel",
     close: "Close",
@@ -285,6 +291,9 @@ const TXT = {
     add: "Tambah",
     save: "Simpan",
     update: "Simpan Perubahan",
+    saving: "Sedang simpan...",
+    saveFailed: "Gagal simpan: ",
+    nameRequired: "Sila isi nama pelanggan",
     cancelEdit: "Batal Edit",
     cancel: "Batal",
     close: "Tutup",
@@ -417,28 +426,30 @@ const CUSTOMERS_PAGE_FIX_CSS = `
     text-align: center !important;
   }
 
-  .smartacctg-customers-page input[type="date"] {
+  .smartacctg-customers-page .sa-center-date-input {
     text-align: center !important;
+    text-align-last: center !important;
     display: block !important;
     width: 100% !important;
     -webkit-appearance: none !important;
     appearance: none !important;
   }
 
-  .smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value {
+  .smartacctg-customers-page .sa-center-date-input::-webkit-date-and-time-value {
     text-align: center !important;
     width: 100% !important;
     margin: 0 auto !important;
     min-height: 1.6em !important;
   }
 
-  .smartacctg-customers-page input[type="date"]::-webkit-datetime-edit {
+  .smartacctg-customers-page .sa-center-date-input::-webkit-datetime-edit {
     width: 100% !important;
     text-align: center !important;
   }
 
-  .smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  .smartacctg-customers-page .sa-center-date-input::-webkit-datetime-edit-fields-wrapper {
     justify-content: center !important;
+    text-align: center !important;
   }
 
   .smartacctg-customers-page .sa-modal {
@@ -586,6 +597,105 @@ function isSchemaColumnError(error: any) {
   );
 }
 
+function getMissingColumnName(error: any) {
+  const message = String(error?.message || "");
+  const match1 = message.match(/Could not find the '([^']+)' column/i);
+  const match2 = message.match(/column "([^"]+)" does not exist/i);
+  const match3 = message.match(/column '([^']+)' does not exist/i);
+
+  return match1?.[1] || match2?.[1] || match3?.[1] || "";
+}
+
+const CUSTOMER_OPTIONAL_KEYS = [
+  "email",
+  "company_name",
+  "company_reg_no",
+  "company_phone",
+  "address",
+  "status",
+  "debt_amount",
+  "paid_amount",
+  "last_payment_date",
+  "note",
+];
+
+async function insertAdaptive(table: string, inputPayload: Record<string, any>) {
+  let payload: Record<string, any> = { ...inputPayload };
+  let lastError: any = null;
+
+  for (let i = 0; i < 30; i++) {
+    const { data, error } = await supabase.from(table).insert(payload).select("*").single();
+
+    if (!error) return data;
+
+    lastError = error;
+
+    if (!isSchemaColumnError(error)) throw error;
+
+    const missing = getMissingColumnName(error);
+
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const removable = CUSTOMER_OPTIONAL_KEYS.find((key) =>
+      Object.prototype.hasOwnProperty.call(payload, key)
+    );
+
+    if (!removable) throw error;
+
+    const next = { ...payload };
+    delete next[removable];
+    payload = next;
+  }
+
+  throw lastError || new Error("Insert failed");
+}
+
+async function updateAdaptive(
+  table: string,
+  id: string,
+  userId: string,
+  inputPayload: Record<string, any>
+) {
+  let payload: Record<string, any> = { ...inputPayload };
+  let lastError: any = null;
+
+  for (let i = 0; i < 30; i++) {
+    const { error } = await supabase.from(table).update(payload).eq("id", id).eq("user_id", userId);
+
+    if (!error) return;
+
+    lastError = error;
+
+    if (!isSchemaColumnError(error)) throw error;
+
+    const missing = getMissingColumnName(error);
+
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const removable = CUSTOMER_OPTIONAL_KEYS.find((key) =>
+      Object.prototype.hasOwnProperty.call(payload, key)
+    );
+
+    if (!removable) throw error;
+
+    const next = { ...payload };
+    delete next[removable];
+    payload = next;
+  }
+
+  throw lastError || new Error("Update failed");
+}
+
 function statusText(status: CustomerStatus, t: any) {
   if (status === "vip") return t.vip;
   if (status === "debt") return t.debt;
@@ -610,6 +720,7 @@ export default function CustomersPage() {
   const [fullscreenForm, setFullscreenForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [savingCustomer, setSavingCustomer] = useState(false);
 
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [priceCustomerId, setPriceCustomerId] = useState("");
@@ -857,6 +968,7 @@ export default function CustomersPage() {
   }
 
   function openNewCustomerForm(fullscreen = true) {
+    setMsg("");
     resetForm();
     setFullscreenForm(fullscreen);
     setShowForm(true);
@@ -952,108 +1064,105 @@ export default function CustomersPage() {
   async function saveCustomer() {
     setMsg("");
 
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) {
+      setMsg(t.nameRequired);
+      return;
+    }
 
-    const customerId = editingId || makeId();
+    setSavingCustomer(true);
 
-    const payload: Customer = {
-      id: customerId,
-      user_id: session?.user.id || "trial",
-      name: form.name.trim(),
-      phone: form.phone || null,
-      email: form.email || null,
-      company_name: form.company_name || null,
-      company_reg_no: form.company_reg_no || null,
-      company_phone: form.company_phone || null,
-      address: form.address || null,
-      status: form.status,
-      debt_amount: Number(form.debt_amount || 0),
-      paid_amount: Number(form.paid_amount || 0),
-      last_payment_date: form.last_payment_date || today(),
-      note: form.note || null,
-    };
+    try {
+      const customerId = editingId || makeId();
 
-    if (isTrial) {
-      const next = editingId
-        ? customers.map((c) => (c.id === editingId ? payload : c))
-        : [payload, ...customers];
+      const payload: Customer = {
+        id: customerId,
+        user_id: session?.user.id || "trial",
+        name: form.name.trim(),
+        phone: form.phone || null,
+        email: form.email || null,
+        company_name: form.company_name || null,
+        company_reg_no: form.company_reg_no || null,
+        company_phone: form.company_phone || null,
+        address: form.address || null,
+        status: form.status,
+        debt_amount: Number(form.debt_amount || 0),
+        paid_amount: Number(form.paid_amount || 0),
+        last_payment_date: form.last_payment_date || today(),
+        note: form.note || null,
+      };
 
-      saveTrialCustomers(next);
+      if (isTrial) {
+        const next = editingId
+          ? customers.map((c) => (c.id === editingId ? payload : c))
+          : [payload, ...customers];
+
+        saveTrialCustomers(next);
+
+        if (formPriceProductId && formCustomPrice) {
+          upsertTrialPrice(customerId, formPriceProductId, Number(formCustomPrice));
+        }
+
+        setMsg(t.saved);
+        closeForm();
+        return;
+      }
+
+      if (!session) {
+        setMsg("No session");
+        return;
+      }
+
+      const dbPayload = {
+        user_id: session.user.id,
+        name: payload.name,
+        phone: payload.phone,
+        email: payload.email,
+        company_name: payload.company_name,
+        company_reg_no: payload.company_reg_no,
+        company_phone: payload.company_phone,
+        address: payload.address,
+        status: payload.status,
+        debt_amount: payload.debt_amount,
+        paid_amount: payload.paid_amount,
+        last_payment_date: payload.last_payment_date,
+        note: payload.note,
+      };
+
+      let savedCustomerId = editingId || "";
+
+      if (editingId) {
+        await updateAdaptive("customers", editingId, session.user.id, dbPayload);
+        savedCustomerId = editingId;
+      } else {
+        const data = await insertAdaptive("customers", dbPayload);
+        savedCustomerId = String(data?.id || "");
+      }
 
       if (formPriceProductId && formCustomPrice) {
-        upsertTrialPrice(customerId, formPriceProductId, Number(formCustomPrice));
+        const priceError = await upsertDbPrice(
+          savedCustomerId,
+          formPriceProductId,
+          Number(formCustomPrice)
+        );
+
+        if (priceError) {
+          setMsg(priceError);
+          return;
+        }
       }
 
       setMsg(t.saved);
       closeForm();
-      return;
+      await loadAll(session.user.id);
+    } catch (error: any) {
+      setMsg(t.saveFailed + (error?.message || String(error)));
+    } finally {
+      setSavingCustomer(false);
     }
-
-    if (!session) return;
-
-    const dbPayload = {
-      user_id: session.user.id,
-      name: payload.name,
-      phone: payload.phone,
-      email: payload.email,
-      company_name: payload.company_name,
-      company_reg_no: payload.company_reg_no,
-      company_phone: payload.company_phone,
-      address: payload.address,
-      status: payload.status,
-      debt_amount: payload.debt_amount,
-      paid_amount: payload.paid_amount,
-      last_payment_date: payload.last_payment_date,
-      note: payload.note,
-    };
-
-    let savedCustomerId = editingId || "";
-
-    if (editingId) {
-      const { error } = await supabase
-        .from("customers")
-        .update(dbPayload)
-        .eq("id", editingId)
-        .eq("user_id", session.user.id);
-
-      if (error) {
-        setMsg(error.message);
-        return;
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("customers")
-        .insert(dbPayload)
-        .select("id")
-        .single();
-
-      if (error) {
-        setMsg(error.message);
-        return;
-      }
-
-      savedCustomerId = data.id;
-    }
-
-    if (formPriceProductId && formCustomPrice) {
-      const priceError = await upsertDbPrice(
-        savedCustomerId,
-        formPriceProductId,
-        Number(formCustomPrice)
-      );
-
-      if (priceError) {
-        setMsg(priceError);
-        return;
-      }
-    }
-
-    setMsg(t.saved);
-    closeForm();
-    await loadAll(session.user.id);
   }
 
   function editCustomer(c: Customer) {
+    setMsg("");
     setEditingId(c.id);
     setFullscreenForm(true);
 
@@ -1209,6 +1318,7 @@ export default function CustomersPage() {
       <div className="sa-topbar">
         <div className="sa-topbar-left">
           <button
+            type="button"
             onClick={backToDashboard}
             className="sa-back-btn"
             style={{
@@ -1226,6 +1336,7 @@ export default function CustomersPage() {
         <div className="sa-topbar-right">
           <div className="sa-lang-row">
             <button
+              type="button"
               onClick={() => switchLang("zh")}
               className="sa-lang-btn"
               style={langBtnStyle(lang === "zh", theme)}
@@ -1234,6 +1345,7 @@ export default function CustomersPage() {
             </button>
 
             <button
+              type="button"
               onClick={() => switchLang("en")}
               className="sa-lang-btn"
               style={langBtnStyle(lang === "en", theme)}
@@ -1242,6 +1354,7 @@ export default function CustomersPage() {
             </button>
 
             <button
+              type="button"
               onClick={() => switchLang("ms")}
               className="sa-lang-btn"
               style={langBtnStyle(lang === "ms", theme)}
@@ -1273,6 +1386,7 @@ export default function CustomersPage() {
           <h1 style={titleStyle}>{t.pageTitle}</h1>
 
           <button
+            type="button"
             onClick={() => openNewCustomerForm(true)}
             aria-label={t.add}
             style={{
@@ -1381,11 +1495,12 @@ export default function CustomersPage() {
                     </div>
 
                     <div className="customers-action-row" style={actionRowStyle}>
-                      <button onClick={() => openInvoiceRecords(c)} style={invoiceBtnStyle}>
+                      <button type="button" onClick={() => openInvoiceRecords(c)} style={invoiceBtnStyle}>
                         {t.invoice}
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => openPriceModal(c)}
                         style={{
                           ...priceBtnStyle,
@@ -1396,6 +1511,7 @@ export default function CustomersPage() {
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => openCustomerWhatsApp(c.phone)}
                         disabled={!c.phone}
                         title={t.whatsapp}
@@ -1408,6 +1524,7 @@ export default function CustomersPage() {
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => editCustomer(c)}
                         style={{
                           ...editBtnStyle,
@@ -1417,7 +1534,7 @@ export default function CustomersPage() {
                         {t.edit}
                       </button>
 
-                      <button onClick={() => deleteCustomer(c.id)} style={deleteBtnStyle}>
+                      <button type="button" onClick={() => deleteCustomer(c.id)} style={deleteBtnStyle}>
                         {t.delete}
                       </button>
                     </div>
@@ -1455,6 +1572,7 @@ export default function CustomersPage() {
           </select>
 
           <button
+            type="button"
             onClick={goRelatedFeature}
             style={{
               ...primaryBtnStyle,
@@ -1494,6 +1612,12 @@ export default function CustomersPage() {
                 {t.close}
               </button>
             </div>
+
+            {msg ? (
+              <div style={{ ...modalMsgStyle, background: theme.softBg, color: theme.text }}>
+                {msg}
+              </div>
+            ) : null}
 
             <h3>{t.personal}</h3>
 
@@ -1586,6 +1710,7 @@ export default function CustomersPage() {
                 </label>
 
                 <input
+                  className="sa-center-date-input"
                   type="date"
                   value={form.last_payment_date}
                   onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })}
@@ -1633,24 +1758,30 @@ export default function CustomersPage() {
 
             <div style={modalActionRowStyle}>
               <button
+                type="button"
                 onClick={saveCustomer}
+                disabled={savingCustomer}
                 style={{
                   ...primaryBtnStyle,
                   background: theme.accent,
                   marginTop: 0,
+                  opacity: savingCustomer ? 0.65 : 1,
                 }}
               >
-                {editingId ? t.update : t.save}
+                {savingCustomer ? t.saving : editingId ? t.update : t.save}
               </button>
 
               <button
-                onClick={editingId ? resetForm : closeForm}
+                type="button"
+                onClick={closeForm}
+                disabled={savingCustomer}
                 style={{
                   ...secondaryBtnStyle,
                   borderColor: theme.border,
                   color: theme.accent,
                   marginTop: 0,
                   marginLeft: 0,
+                  opacity: savingCustomer ? 0.65 : 1,
                 }}
               >
                 {editingId ? t.cancelEdit : t.cancel}
@@ -1726,6 +1857,7 @@ export default function CustomersPage() {
             ) : null}
 
             <button
+              type="button"
               onClick={saveCustomerPrice}
               style={{
                 ...primaryBtnStyle,
@@ -1797,6 +1929,7 @@ export default function CustomersPage() {
             </div>
 
             <button
+              type="button"
               onClick={goCreateInvoiceForCustomer}
               style={{
                 ...primaryBtnStyle,
@@ -2085,6 +2218,13 @@ const msgStyle: CSSProperties = {
   fontWeight: 900,
 };
 
+const modalMsgStyle: CSSProperties = {
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+  fontWeight: 900,
+};
+
 const trialMsgStyle: CSSProperties = {
   background: "#fef3c7",
   color: "#92400e",
@@ -2185,8 +2325,11 @@ const dateInputStyle: CSSProperties = {
   appearance: "none",
   WebkitAppearance: "none",
   textAlign: "center",
+  textAlignLast: "center" as any,
   display: "block",
   lineHeight: "normal",
+  paddingLeft: 12,
+  paddingRight: 12,
 };
 
 const priceItemStyle: CSSProperties = {
