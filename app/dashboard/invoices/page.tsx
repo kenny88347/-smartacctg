@@ -268,14 +268,16 @@ const TXT = {
     handlingFee: "手续费",
     chargeDiscount: "折扣",
     yourSignature: "6. 你的签名",
-    signatureName: "签名名称，例如：NK DIGITAL HUB",
     signatureText: "签名文字，例如：NK DIGITAL HUB",
     signatureImageUrl: "签名图片 URL",
     uploadSignature: "上传签名图",
+    handwriteSignature: "手写签名",
     saveSignature: "保存签名",
+    deleteSignature: "删除已保存签名",
     chooseSignature: "选择已保存签名",
     noSignature: "不选择签名",
     customerSignature: "客户签名",
+    issuerSignNotice: "这里是你的签名，确认后会放进「签名图片 URL」，可以再按保存签名。",
     customerSignNotice: "你签名是不会保存的，只在发票右下侧会显示",
     confirmSignature: "确认",
     clearSignature: "清除",
@@ -380,14 +382,16 @@ const TXT = {
     handlingFee: "Handling Fee",
     chargeDiscount: "Discount",
     yourSignature: "6. Your Signature",
-    signatureName: "Signature name",
     signatureText: "Signature text",
     signatureImageUrl: "Signature image URL",
     uploadSignature: "Upload Signature",
+    handwriteSignature: "Handwrite Signature",
     saveSignature: "Save Signature",
+    deleteSignature: "Delete Saved Signature",
     chooseSignature: "Choose saved signature",
     noSignature: "No signature",
     customerSignature: "Customer Signature",
+    issuerSignNotice: "This is your signature. After confirm, it will be placed into Signature Image URL.",
     customerSignNotice: "This signature will not be saved. It only appears on this invoice.",
     confirmSignature: "Confirm",
     clearSignature: "Clear",
@@ -492,14 +496,16 @@ const TXT = {
     handlingFee: "Caj Pengendalian",
     chargeDiscount: "Diskaun",
     yourSignature: "6. Tandatangan Anda",
-    signatureName: "Nama tandatangan",
     signatureText: "Teks tandatangan",
     signatureImageUrl: "URL gambar tandatangan",
     uploadSignature: "Muat Naik Tandatangan",
+    handwriteSignature: "Tulis Tandatangan",
     saveSignature: "Simpan Tandatangan",
+    deleteSignature: "Padam Tandatangan Disimpan",
     chooseSignature: "Pilih tandatangan",
     noSignature: "Tiada tandatangan",
     customerSignature: "Tandatangan Pelanggan",
+    issuerSignNotice: "Ini tandatangan anda. Selepas sahkan, ia akan masuk ke URL gambar tandatangan.",
     customerSignNotice: "Tandatangan ini tidak akan disimpan.",
     confirmSignature: "Sahkan",
     clearSignature: "Kosongkan",
@@ -636,6 +642,12 @@ function calcCharge(value: string, mode: ChargeMode, base: number) {
   const num = Number(value || 0);
   if (mode === "%") return roundMoney((Math.max(base, 0) * num) / 100);
   return roundMoney(num);
+}
+
+function calcDiscountCharge(value: string, mode: ChargeMode, base: number) {
+  const raw = calcCharge(value, mode, base);
+  if (raw === 0) return 0;
+  return -Math.abs(raw);
 }
 
 function formatSignedRM(value: number) {
@@ -921,6 +933,7 @@ function formatDateTime(value?: string | null, fallbackDate?: string | null) {
     return value || fallbackDate || "-";
   }
 }
+
 export default function InvoicePage() {
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
@@ -970,11 +983,12 @@ export default function InvoicePage() {
 
   const [signatureOptions, setSignatureOptions] = useState<SignatureOption[]>([]);
   const [selectedSignatureId, setSelectedSignatureId] = useState("");
-  const [signatureName, setSignatureName] = useState("");
   const [signatureText, setSignatureText] = useState("");
   const [signatureImageUrl, setSignatureImageUrl] = useState("");
 
-  const [showCustomerSignature, setShowCustomerSignature] = useState(false);
+  const [signaturePadTarget, setSignaturePadTarget] = useState<"issuer" | "customer" | null>(
+    null
+  );
   const [customerSignatureUrl, setCustomerSignatureUrl] = useState("");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
@@ -1258,7 +1272,7 @@ export default function InvoicePage() {
     const itemDiscount = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.discount, 0));
     const taxableBase = roundMoney(subtotal - itemDiscount);
 
-    const chargeDiscountAmount = calcCharge(
+    const chargeDiscountAmount = calcDiscountCharge(
       chargeDiscount.value,
       chargeDiscount.mode,
       taxableBase
@@ -1367,7 +1381,7 @@ export default function InvoicePage() {
   function saveSignatureOption() {
     const nextSig: SignatureOption = {
       id: makeId("sig"),
-      name: signatureName.trim() || signatureText.trim() || "Signature",
+      name: signatureText.trim() || "Signature",
       signatureText: signatureText.trim(),
       signatureImageUrl: signatureImageUrl.trim(),
     };
@@ -1375,6 +1389,7 @@ export default function InvoicePage() {
     if (!nextSig.signatureText && !nextSig.signatureImageUrl) return;
 
     const next = [nextSig, ...signatureOptions];
+
     setSignatureOptions(next);
     safeLocalSet(SIGNATURE_OPTIONS_KEY, JSON.stringify(next));
     setSelectedSignatureId(nextSig.id);
@@ -1385,16 +1400,29 @@ export default function InvoicePage() {
     setSelectedSignatureId(id);
 
     const sig = signatureOptions.find((x) => x.id === id);
+
     if (!sig) {
-      setSignatureName("");
       setSignatureText("");
       setSignatureImageUrl("");
       return;
     }
 
-    setSignatureName(sig.name);
     setSignatureText(sig.signatureText);
     setSignatureImageUrl(sig.signatureImageUrl);
+  }
+
+  function deleteSignatureOption() {
+    if (!selectedSignatureId) return;
+
+    const next = signatureOptions.filter((sig) => sig.id !== selectedSignatureId);
+
+    setSignatureOptions(next);
+    safeLocalSet(SIGNATURE_OPTIONS_KEY, JSON.stringify(next));
+
+    setSelectedSignatureId("");
+    setSignatureText("");
+    setSignatureImageUrl("");
+    setMsg(t.saved);
   }
 
   function updateItem(id: string, patch: Partial<InvoiceItem>) {
@@ -1531,7 +1559,7 @@ export default function InvoicePage() {
       status,
       payment_method: paymentMethodText,
       subtotal: preview.subtotal,
-      discount: preview.itemDiscount + Math.abs(Math.min(preview.chargeDiscountAmount, 0)),
+      discount: preview.itemDiscount,
       total: preview.total,
       total_cost: preview.totalCost,
       total_profit: preview.profit,
@@ -1709,7 +1737,7 @@ export default function InvoicePage() {
         customer_company: finalCustomer.company_name || "",
         customer_address: finalCustomer.address || "",
         subtotal: preview.subtotal,
-        discount: preview.itemDiscount + Math.abs(Math.min(preview.chargeDiscountAmount, 0)),
+        discount: preview.itemDiscount,
         total: preview.total,
         total_cost: preview.totalCost,
         total_profit: preview.profit,
@@ -1770,6 +1798,7 @@ export default function InvoicePage() {
         customer_address: invoiceData.customer_address || finalCustomer.address || "",
         payment_method: invoiceData.payment_method || paymentMethodText,
         subtotal: invoiceData.subtotal ?? preview.subtotal,
+        discount: invoiceData.discount ?? preview.itemDiscount,
         total: invoiceData.total ?? preview.total,
         total_cost: invoiceData.total_cost ?? preview.totalCost,
         total_profit: invoiceData.total_profit ?? preview.profit,
@@ -1808,7 +1837,7 @@ export default function InvoicePage() {
       customer_company: newCustomerCompany,
       customer_address: newCustomerAddress,
       subtotal: preview.subtotal,
-      discount: preview.itemDiscount + Math.abs(Math.min(preview.chargeDiscountAmount, 0)),
+      discount: preview.itemDiscount,
       total: preview.total,
       total_cost: preview.totalCost,
       total_profit: preview.profit,
@@ -2034,10 +2063,10 @@ export default function InvoicePage() {
     setServiceFee({ mode: "%", value: "0" });
     setHandlingFee({ mode: "%", value: "0" });
 
-    setSignatureName("");
     setSignatureText("");
     setSignatureImageUrl("");
     setSelectedSignatureId("");
+    setSignaturePadTarget(null);
     setCustomerSignatureUrl("");
 
     setNote("");
@@ -2076,7 +2105,11 @@ export default function InvoicePage() {
             value={charge.value}
             onChange={(e) => setCharge({ ...charge, value: e.target.value })}
             placeholder={t.chargeValue}
-            style={{ ...themedInputStyle, marginBottom: 0 }}
+            style={{
+              ...themedInputStyle,
+              marginBottom: 0,
+              color: Number(charge.value || 0) < 0 ? "#dc2626" : theme.inputText,
+            }}
           />
 
           <select
@@ -2166,7 +2199,7 @@ export default function InvoicePage() {
     drawingRef.current = false;
   }
 
-  function clearCustomerSignature() {
+  function clearSignaturePad() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -2174,15 +2207,31 @@ export default function InvoicePage() {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setCustomerSignatureUrl("");
+
+    if (signaturePadTarget === "issuer") {
+      setSignatureImageUrl("");
+    }
+
+    if (signaturePadTarget === "customer") {
+      setCustomerSignatureUrl("");
+    }
   }
 
-  function confirmCustomerSignature() {
+  function confirmSignaturePad() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    setCustomerSignatureUrl(canvas.toDataURL("image/png"));
-    setShowCustomerSignature(false);
+    const dataUrl = canvas.toDataURL("image/png");
+
+    if (signaturePadTarget === "issuer") {
+      setSignatureImageUrl(dataUrl);
+    }
+
+    if (signaturePadTarget === "customer") {
+      setCustomerSignatureUrl(dataUrl);
+    }
+
+    setSignaturePadTarget(null);
   }
 
   const currentPreviewInvoice: InvoiceRecord = {
@@ -2196,7 +2245,7 @@ export default function InvoicePage() {
     customer_company: activeCustomerForPreview.company_name,
     customer_address: activeCustomerForPreview.address,
     subtotal: preview.subtotal,
-    discount: preview.itemDiscount + Math.abs(Math.min(preview.chargeDiscountAmount, 0)),
+    discount: preview.itemDiscount,
     total: preview.total,
     total_cost: preview.totalCost,
     total_profit: preview.profit,
@@ -2419,7 +2468,8 @@ export default function InvoicePage() {
       </div>
     );
   }
-    return (
+
+  return (
     <main
       className="smartacctg-page smartacctg-invoice-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
@@ -3049,13 +3099,6 @@ export default function InvoicePage() {
             </select>
 
             <input
-              placeholder={t.signatureName}
-              value={signatureName}
-              onChange={(e) => setSignatureName(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
               placeholder={t.signatureText}
               value={signatureText}
               onChange={(e) => setSignatureText(e.target.value)}
@@ -3068,6 +3111,19 @@ export default function InvoicePage() {
               onChange={(e) => setSignatureImageUrl(e.target.value)}
               style={themedInputStyle}
             />
+
+            <button
+              type="button"
+              onClick={() => setSignaturePadTarget("issuer")}
+              style={{
+                ...paymentToggleBtnStyle,
+                borderColor: theme.border,
+                color: theme.accent,
+                background: theme.inputBg,
+              }}
+            >
+              {t.handwriteSignature}
+            </button>
 
             <div style={twoButtonRowStyle}>
               <label
@@ -3096,9 +3152,13 @@ export default function InvoicePage() {
               </button>
             </div>
 
+            <button type="button" onClick={deleteSignatureOption} style={dangerOutlineBtnStyle}>
+              {t.deleteSignature}
+            </button>
+
             <button
               type="button"
-              onClick={() => setShowCustomerSignature(true)}
+              onClick={() => setSignaturePadTarget("customer")}
               style={{
                 ...paymentToggleBtnStyle,
                 borderColor: theme.border,
@@ -3171,7 +3231,7 @@ export default function InvoicePage() {
         </section>
       )}
 
-      {showCustomerSignature ? (
+      {signaturePadTarget ? (
         <div style={overlayStyle}>
           <section
             className="sa-card"
@@ -3184,13 +3244,18 @@ export default function InvoicePage() {
             }}
           >
             <div style={titleBarStyle}>
-              <h2 style={{ margin: 0 }}>{t.customerSignature}</h2>
-              <button className="sa-close-x" onClick={() => setShowCustomerSignature(false)}>
+              <h2 style={{ margin: 0 }}>
+                {signaturePadTarget === "issuer" ? t.handwriteSignature : t.customerSignature}
+              </h2>
+
+              <button className="sa-close-x" onClick={() => setSignaturePadTarget(null)}>
                 {t.close}
               </button>
             </div>
 
-            <p style={{ color: "#dc2626", fontWeight: 900 }}>{t.customerSignNotice}</p>
+            <p style={{ color: "#dc2626", fontWeight: 900 }}>
+              {signaturePadTarget === "issuer" ? t.issuerSignNotice : t.customerSignNotice}
+            </p>
 
             <canvas
               ref={canvasRef}
@@ -3207,13 +3272,13 @@ export default function InvoicePage() {
             />
 
             <div style={twoButtonRowStyle}>
-              <button type="button" onClick={clearCustomerSignature} style={dangerOutlineBtnStyle}>
+              <button type="button" onClick={clearSignaturePad} style={dangerOutlineBtnStyle}>
                 {t.clearSignature}
               </button>
 
               <button
                 type="button"
-                onClick={confirmCustomerSignature}
+                onClick={confirmSignaturePad}
                 style={{ ...addBtnStyle, background: theme.accent }}
               >
                 {t.confirmSignature}
