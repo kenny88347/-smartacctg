@@ -2270,6 +2270,7 @@ export default function InvoicePage() {
 
     const showIssuerSignature = Boolean(signatureText?.trim()) || Boolean(signatureImageUrl?.trim());
     const showCustomerSignatureImage = Boolean(customerSignatureUrl);
+    const showSignatureArea = showIssuerSignature || showCustomerSignatureImage;
 
     return (
       <div style={officialInvoiceStyle}>
@@ -2430,10 +2431,18 @@ export default function InvoicePage() {
 
         {inv.note ? <div style={officialNoteStyle}>Note：{inv.note}</div> : null}
 
-        <div style={officialSignatureWrapStyle}>
-          <div style={officialSignatureBoxStyle}>
+        {showSignatureArea ? (
+          <div
+            style={{
+              ...officialSignatureWrapStyle,
+              gridTemplateColumns:
+                showIssuerSignature && showCustomerSignatureImage ? "1fr 1fr" : "1fr",
+              width: showIssuerSignature && showCustomerSignatureImage ? "100%" : "58%",
+              marginLeft: "auto",
+            }}
+          >
             {showIssuerSignature ? (
-              <>
+              <div style={officialSignatureBoxStyle}>
                 {signatureImageUrl ? (
                   <img
                     src={signatureImageUrl}
@@ -2445,26 +2454,26 @@ export default function InvoicePage() {
                 {signatureText ? (
                   <div style={officialSignatureTextStyle}>{signatureText}</div>
                 ) : null}
-              </>
+
+                <div style={officialSignatureLineStyle} />
+                <div style={officialSignatureLabelStyle}>{t.issuerSignature}</div>
+              </div>
             ) : null}
 
-            <div style={officialSignatureLineStyle} />
-            <div style={officialSignatureLabelStyle}>{t.issuerSignature}</div>
-          </div>
-
-          <div style={officialSignatureBoxStyle}>
             {showCustomerSignatureImage ? (
-              <img
-                src={customerSignatureUrl}
-                style={officialSignatureImageStyle}
-                alt="Customer Signature"
-              />
-            ) : null}
+              <div style={officialSignatureBoxStyle}>
+                <img
+                  src={customerSignatureUrl}
+                  style={officialSignatureImageStyle}
+                  alt="Customer Signature"
+                />
 
-            <div style={officialSignatureLineStyle} />
-            <div style={officialSignatureLabelStyle}>{t.customerSignatureLabel}</div>
+                <div style={officialSignatureLineStyle} />
+                <div style={officialSignatureLabelStyle}>{t.customerSignatureLabel}</div>
+              </div>
+            ) : null}
           </div>
-        </div>
+        ) : null}
       </div>
     );
   }
