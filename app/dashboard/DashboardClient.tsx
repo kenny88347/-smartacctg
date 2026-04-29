@@ -86,6 +86,7 @@ const TXT = {
     saved: "保存成功",
     noRecord: "暂无记录",
     noDebt: "暂无欠款",
+    back: "返回",
   },
   en: {
     dashboard: "Dashboard",
@@ -127,6 +128,7 @@ const TXT = {
     saved: "Saved",
     noRecord: "No records",
     noDebt: "No debt",
+    back: "Back",
   },
   ms: {
     dashboard: "Papan Pemuka",
@@ -168,6 +170,7 @@ const TXT = {
     saved: "Disimpan",
     noRecord: "Tiada rekod",
     noDebt: "Tiada hutang",
+    back: "Kembali",
   },
 };
 
@@ -333,7 +336,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
         setTransactions(savedTx ? JSON.parse(savedTx) : []);
         setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
-
         return;
       }
 
@@ -412,6 +414,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
   function go(path: string, extra?: string) {
     window.location.href = buildUrl(path, extra);
+  }
+
+  function goQuick(path: string) {
+    go(path, "open=new&fullscreen=1");
   }
 
   function switchLang(next: Lang) {
@@ -677,6 +683,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 >
                   中文
                 </button>
+
                 <button
                   type="button"
                   onClick={() => switchLang("en")}
@@ -685,6 +692,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 >
                   EN
                 </button>
+
                 <button
                   type="button"
                   onClick={() => switchLang("ms")}
@@ -727,18 +735,21 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                     <span>{t.balance}</span>
                     <strong>RM {balance.toFixed(2)}</strong>
                   </div>
+
                   <div style={summaryRowStyle}>
                     <span>{t.monthIncome}</span>
                     <strong style={{ color: "#16a34a" }}>
                       RM {monthIncome.toFixed(2)}
                     </strong>
                   </div>
+
                   <div style={summaryRowStyle}>
                     <span>{t.monthExpense}</span>
                     <strong style={{ color: "#dc2626" }}>
                       RM {monthExpense.toFixed(2)}
                     </strong>
                   </div>
+
                   <div style={summaryRowStyle}>
                     <span>{t.estimatedProfit}</span>
                     <strong style={{ color: theme.accent }}>
@@ -747,7 +758,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   </div>
                 </div>
               ) : (
-                <div style={singleSummaryStyle}>
+                <div style={summaryRowStyle}>
                   <span>{t.estimatedProfit}</span>
                   <strong style={{ color: theme.accent }}>
                     RM {estimatedProfit.toFixed(2)}
@@ -794,7 +805,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   )}
                 </div>
               ) : (
-                <div style={singleSummaryStyle}>
+                <div style={summaryRowStyle}>
                   <span>{topDebtCustomer?.name || t.noDebt}</span>
                   <strong style={{ color: topDebtCustomer ? "#dc2626" : theme.accent }}>
                     RM {Number(topDebtCustomer?.balance || 0).toFixed(2)}
@@ -888,7 +899,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               <div style={quickGridStyle}>
                 <button
                   type="button"
-                  onClick={() => go("/dashboard/records")}
+                  onClick={() => goQuick("/dashboard/records")}
                   style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
                 >
                   {t.quickAccounting}
@@ -896,7 +907,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
                 <button
                   type="button"
-                  onClick={() => go("/dashboard/invoices")}
+                  onClick={() => goQuick("/dashboard/invoices")}
                   style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
                 >
                   {t.quickInvoice}
@@ -904,7 +915,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
                 <button
                   type="button"
-                  onClick={() => go("/dashboard/customers")}
+                  onClick={() => goQuick("/dashboard/customers")}
                   style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
                 >
                   {t.quickCustomer}
@@ -912,7 +923,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
                 <button
                   type="button"
-                  onClick={() => go("/dashboard/products")}
+                  onClick={() => goQuick("/dashboard/products")}
                   style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
                 >
                   {t.quickProduct}
@@ -938,7 +949,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             onClick={() => go("/dashboard")}
             style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}
           >
-            ← 返回
+            ← {t.back}
           </button>
 
           <h1 style={titleStyle}>
@@ -964,12 +975,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           <h2>{t.settings}</h2>
 
           <h3>{t.personal}</h3>
+
           <input
             placeholder={t.name}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             style={{ ...inputStyle, borderColor: theme.border }}
           />
+
           <input
             placeholder={t.phone}
             value={phone}
@@ -978,24 +991,28 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           />
 
           <h3>{t.company}</h3>
+
           <input
             placeholder={t.companyName}
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             style={{ ...inputStyle, borderColor: theme.border }}
           />
+
           <input
             placeholder={t.ssm}
             value={companyRegNo}
             onChange={(e) => setCompanyRegNo(e.target.value)}
             style={{ ...inputStyle, borderColor: theme.border }}
           />
+
           <input
             placeholder={t.companyPhone}
             value={companyPhone}
             onChange={(e) => setCompanyPhone(e.target.value)}
             style={{ ...inputStyle, borderColor: theme.border }}
           />
+
           <input
             placeholder={t.companyAddress}
             value={companyAddress}
@@ -1012,6 +1029,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </button>
 
           <h3>{t.password}</h3>
+
           <input
             type="password"
             placeholder={t.newPassword}
@@ -1204,6 +1222,7 @@ const summaryGridStyle: CSSProperties = {
 
 const summaryBoxStyle: CSSProperties = {
   minHeight: 0,
+  padding: "clamp(14px, 3vw, 22px)",
 };
 
 const summaryHeaderBtnStyle: CSSProperties = {
@@ -1220,17 +1239,10 @@ const summaryHeaderBtnStyle: CSSProperties = {
   fontWeight: 900,
 };
 
-const singleSummaryStyle: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  marginTop: 12,
-  textAlign: "left",
-};
-
 const summaryDetailListStyle: CSSProperties = {
   display: "grid",
-  gap: 8,
-  marginTop: 12,
+  gap: 12,
+  marginTop: 14,
 };
 
 const summaryRowStyle: CSSProperties = {
@@ -1239,6 +1251,7 @@ const summaryRowStyle: CSSProperties = {
   gap: 10,
   alignItems: "center",
   fontWeight: 900,
+  lineHeight: 1.25,
 };
 
 const featureGridStyle: CSSProperties = {
