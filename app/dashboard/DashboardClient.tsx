@@ -31,12 +31,13 @@ type Txn = {
   note?: string | null;
 };
 
-type Customer = {
+type CustomerDebt = {
   id: string;
   name: string | null;
   debt_amount?: number | null;
   paid_amount?: number | null;
   last_payment_date?: string | null;
+  status?: string | null;
 };
 
 const TRIAL_KEY = "smartacctg_trial";
@@ -54,12 +55,24 @@ const TXT = {
     monthIncome: "本月收入",
     monthExpense: "本月支出",
     expectedProfit: "预计利润",
-    showAllRecords: "展示全部记录",
-    hideRecords: "收起记录",
+    showAllRecords: "看全部记录",
+    hideAllRecords: "收起记录",
+    customerDebt: "客户欠款",
+    showAllDebt: "查看欠款",
+    hideAllDebt: "收起欠款",
+    noDebt: "暂无客户欠款",
+    noRecord: "还没有记录",
     accounting: "记账系统",
     customers: "客户管理",
     products: "产品管理",
     invoices: "发票系统",
+    pageMenu: "页面菜单",
+    quickRecordInvoice: "快速纪录/开发票",
+    quickRecord: "记账",
+    quickInvoice: "发票",
+    quickCustomer: "客户",
+    quickProduct: "产品",
+    notification: "通知：之后你有什么系统通知，这里会显示；如果文字太长，会自动慢跑显示。",
     back: "返回",
     changeAvatar: "更换头像",
     settings: "设置",
@@ -83,18 +96,6 @@ const TXT = {
     saved: "保存成功",
     income: "收入",
     expense: "支出",
-    noRecord: "还没有记录",
-    quickRecordInvoice: "快速记录 / 开发票",
-    quickAccounting: "记账",
-    quickInvoice: "发票",
-    quickCustomer: "客户",
-    quickProduct: "产品",
-    customerDebt: "客户欠款",
-    dueDebt: "快到期欠款",
-    allDebt: "所有欠款记录",
-    noDebt: "暂无客户欠款",
-    notice: "通知：这里会显示系统通知、订阅提醒、到期提醒和重要更新；如果文字很长会自动慢跑显示。",
-    trialNotice: "通知：免费试用模式正在使用中，资料只会暂存在本机，试用结束后会自动失效。",
   },
   en: {
     dashboard: "Dashboard",
@@ -104,11 +105,24 @@ const TXT = {
     monthExpense: "Monthly Expense",
     expectedProfit: "Estimated Profit",
     showAllRecords: "Show All Records",
-    hideRecords: "Hide Records",
+    hideAllRecords: "Hide Records",
+    customerDebt: "Customer Debt",
+    showAllDebt: "View Debt",
+    hideAllDebt: "Hide Debt",
+    noDebt: "No customer debt",
+    noRecord: "No records yet",
     accounting: "Accounting",
     customers: "Customers",
     products: "Products",
     invoices: "Invoices",
+    pageMenu: "Page Menu",
+    quickRecordInvoice: "Quick Record/Invoice",
+    quickRecord: "Record",
+    quickInvoice: "Invoice",
+    quickCustomer: "Customer",
+    quickProduct: "Product",
+    notification:
+      "Notice: Future system notifications will appear here. Long messages will scroll automatically.",
     back: "Back",
     changeAvatar: "Change Avatar",
     settings: "Settings",
@@ -132,18 +146,6 @@ const TXT = {
     saved: "Saved",
     income: "Income",
     expense: "Expense",
-    noRecord: "No records yet",
-    quickRecordInvoice: "Quick Record / Invoice",
-    quickAccounting: "Record",
-    quickInvoice: "Invoice",
-    quickCustomer: "Customer",
-    quickProduct: "Product",
-    customerDebt: "Customer Debt",
-    dueDebt: "Due Debt",
-    allDebt: "All Debt Records",
-    noDebt: "No customer debt",
-    notice: "Notice: system notices, subscription reminders, due reminders and important updates will appear here. Long text will scroll automatically.",
-    trialNotice: "Notice: free trial mode is active. Data is stored locally and will expire after the trial ends.",
   },
   ms: {
     dashboard: "Papan Pemuka",
@@ -153,11 +155,24 @@ const TXT = {
     monthExpense: "Perbelanjaan Bulan Ini",
     expectedProfit: "Anggaran Untung",
     showAllRecords: "Papar Semua Rekod",
-    hideRecords: "Tutup Rekod",
+    hideAllRecords: "Tutup Rekod",
+    customerDebt: "Hutang Pelanggan",
+    showAllDebt: "Lihat Hutang",
+    hideAllDebt: "Tutup Hutang",
+    noDebt: "Tiada hutang pelanggan",
+    noRecord: "Tiada rekod",
     accounting: "Sistem Akaun",
     customers: "Pelanggan",
     products: "Produk",
     invoices: "Invois",
+    pageMenu: "Menu Halaman",
+    quickRecordInvoice: "Rekod/Invois Pantas",
+    quickRecord: "Rekod",
+    quickInvoice: "Invois",
+    quickCustomer: "Pelanggan",
+    quickProduct: "Produk",
+    notification:
+      "Notis: Notifikasi sistem akan dipaparkan di sini. Mesej panjang akan bergerak automatik.",
     back: "Kembali",
     changeAvatar: "Tukar Avatar",
     settings: "Tetapan",
@@ -181,18 +196,6 @@ const TXT = {
     saved: "Disimpan",
     income: "Pendapatan",
     expense: "Perbelanjaan",
-    noRecord: "Tiada rekod",
-    quickRecordInvoice: "Rekod / Invois Pantas",
-    quickAccounting: "Rekod",
-    quickInvoice: "Invois",
-    quickCustomer: "Pelanggan",
-    quickProduct: "Produk",
-    customerDebt: "Hutang Pelanggan",
-    dueDebt: "Hutang Hampir Tamat",
-    allDebt: "Semua Rekod Hutang",
-    noDebt: "Tiada hutang pelanggan",
-    notice: "Notis: peringatan langganan, hutang hampir tamat dan kemas kini penting akan dipaparkan di sini. Teks panjang akan bergerak automatik.",
-    trialNotice: "Notis: mod percubaan sedang digunakan. Data hanya disimpan dalam telefon ini dan akan tamat selepas percubaan.",
   },
 };
 
@@ -280,25 +283,22 @@ function safeLocalRemove(key: string) {
   localStorage.removeItem(key);
 }
 
-function getDebtBalance(customer: Customer) {
-  return Number(customer.debt_amount || 0) - Number(customer.paid_amount || 0);
-}
-
 export default function DashboardClient({ page }: { page: PageKey }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Txn[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<CustomerDebt[]>([]);
 
   const [showMenu, setShowMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showThemes, setShowThemes] = useState(false);
 
-  const [showRecordMenu, setShowRecordMenu] = useState(false);
+  const [showAllRecords, setShowAllRecords] = useState(false);
+  const [showAllDebt, setShowAllDebt] = useState(false);
+  const [showBottomMenu, setShowBottomMenu] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
-  const [showDebtMenu, setShowDebtMenu] = useState(false);
 
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
@@ -415,14 +415,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .eq("user_id", userId)
       .order("txn_date", { ascending: false });
 
+    setTransactions((txData || []) as Txn[]);
+
     const { data: customerData } = await supabase
       .from("customers")
-      .select("id,name,debt_amount,paid_amount,last_payment_date")
+      .select("id,name,debt_amount,paid_amount,last_payment_date,status")
       .eq("user_id", userId)
       .order("last_payment_date", { ascending: true });
 
-    setTransactions((txData || []) as Txn[]);
-    setCustomers((customerData || []) as Customer[]);
+    setCustomers((customerData || []) as CustomerDebt[]);
   }
 
   function buildUrl(path: string, extra?: string) {
@@ -449,15 +450,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   function goBack() {
-    window.location.href = buildUrl("/dashboard");
+    go("/dashboard");
   }
 
   function goRecords(view: "balance" | "income" | "expense") {
-    window.location.href = buildUrl("/dashboard/records", `view=${view}`);
+    go("/dashboard/records", `view=${view}`);
   }
 
   function quickAdd(path: string) {
-    window.location.href = buildUrl(path, "quickAdd=1&action=new&openForm=1");
+    go(path, "quickAdd=1&action=new&openForm=1");
   }
 
   function switchLang(next: Lang) {
@@ -472,13 +473,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
-  function openWhatsApp() {
-    window.location.href = "https://wa.me/60108039149";
-  }
-
   async function logout() {
     safeLocalRemove(TRIAL_KEY);
     safeLocalRemove(TRIAL_TX_KEY);
+    safeLocalRemove(TRIAL_CUSTOMERS_KEY);
     await supabase.auth.signOut();
     window.location.href = "/zh";
   }
@@ -598,22 +596,25 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
   const debtCustomers = useMemo(() => {
     return customers
-      .map((customer) => ({
-        id: customer.id,
-        name: customer.name || "-",
-        amount: getDebtBalance(customer),
-        date: customer.last_payment_date || "",
-      }))
-      .filter((customer) => customer.amount > 0)
+      .map((c) => {
+        const debt = Number(c.debt_amount || 0);
+        const paid = Number(c.paid_amount || 0);
+        const balanceDebt = Math.max(debt - paid, 0);
+
+        return {
+          ...c,
+          balanceDebt,
+        };
+      })
+      .filter((c) => c.balanceDebt > 0)
       .sort((a, b) => {
-        if (!a.date && !b.date) return 0;
-        if (!a.date) return 1;
-        if (!b.date) return -1;
-        return a.date.localeCompare(b.date);
+        const da = a.last_payment_date || "1900-01-01";
+        const db = b.last_payment_date || "1900-01-01";
+        return da.localeCompare(db);
       });
   }, [customers]);
 
-  const nearestDebt = debtCustomers[0] || null;
+  const firstDebtCustomer = debtCustomers[0];
 
   const expiryText = isTrial
     ? t.trial
@@ -627,27 +628,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     return true;
   });
 
-  const noticeText = isTrial ? t.trialNotice : t.notice;
-
   return (
     <main
       className="smartacctg-page smartacctg-dashboard-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
-      <style jsx global>{`
-        @keyframes smartacctgNoticeMarquee {
-          0% {
-            transform: translateX(100%);
-          }
-          100% {
-            transform: translateX(-100%);
-          }
-        }
-
-        .sa-notice-marquee {
-          display: inline-block;
-          min-width: max-content;
-          animation: smartacctgNoticeMarquee 18s linear infinite;
+      <style>{`
+        @keyframes smartacctg-notice-marquee {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
         }
       `}</style>
 
@@ -755,74 +744,140 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             </div>
 
             <div style={noticeBoxStyle}>
-              <span className="sa-notice-marquee">{noticeText}</span>
+              <div style={noticeMarqueeStyle}>
+                {isTrial ? "免费试用模式：20 分钟后会自动失效 ｜ " : ""}
+                {t.notification}
+              </div>
             </div>
           </section>
 
-          <section style={recordMenuSectionStyle}>
-            <button
-              type="button"
-              onClick={() => setShowRecordMenu(!showRecordMenu)}
-              className="sa-card sa-stat-card"
+          <section style={dashboardTwoColStyle}>
+            <div
+              className="sa-card"
               style={{
-                ...mainProfitCardStyle,
+                ...dropCardStyle,
+                background: theme.card,
                 borderColor: theme.border,
                 boxShadow: theme.glow,
               }}
             >
-              <span style={statLabelStyle}>{t.expectedProfit}</span>
-
-              <strong
-                style={{
-                  ...statAmountStyle,
-                  color: expectedProfit >= 0 ? "#16a34a" : "#dc2626",
-                }}
+              <button
+                type="button"
+                onClick={() => setShowAllRecords(!showAllRecords)}
+                style={{ ...dropHeadStyle, color: theme.accent }}
               >
-                RM {expectedProfit.toFixed(2)}
-              </strong>
+                <span>{showAllRecords ? t.hideAllRecords : t.showAllRecords}</span>
+                <span>{showAllRecords ? "▲" : "▼"}</span>
+              </button>
 
-              <small style={{ ...dropdownHintStyle, color: theme.accent }}>
-                {showRecordMenu ? `▲ ${t.hideRecords}` : `▼ ${t.showAllRecords}`}
-              </small>
-            </button>
+              <div style={dropBodyStyle}>
+                {!showAllRecords ? (
+                  <button
+                    type="button"
+                    onClick={() => goRecords("income")}
+                    style={dropRowBtnStyle}
+                  >
+                    <span>{t.expectedProfit}</span>
+                    <strong style={{ color: expectedProfit >= 0 ? "#16a34a" : "#dc2626" }}>
+                      RM {expectedProfit.toFixed(2)}
+                    </strong>
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => goRecords("balance")}
+                      style={dropRowBtnStyle}
+                    >
+                      <span>{t.balance}</span>
+                      <strong style={{ color: theme.accent }}>RM {balance.toFixed(2)}</strong>
+                    </button>
 
-            {showRecordMenu ? (
-              <div
-                className="sa-card"
-                style={{
-                  ...recordDropdownStyle,
-                  borderColor: theme.border,
-                  boxShadow: theme.glow,
-                }}
-              >
-                <button
-                  onClick={() => goRecords("balance")}
-                  style={recordRowBtnStyle}
-                >
-                  <span>{t.balance}</span>
-                  <strong style={{ color: theme.accent }}>RM {balance.toFixed(2)}</strong>
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => goRecords("income")}
+                      style={dropRowBtnStyle}
+                    >
+                      <span>{t.monthIncome}</span>
+                      <strong style={{ color: "#16a34a" }}>RM {monthIncome.toFixed(2)}</strong>
+                    </button>
 
-                <button
-                  onClick={() => goRecords("income")}
-                  style={recordRowBtnStyle}
-                >
-                  <span>{t.monthIncome}</span>
-                  <strong style={{ color: "#16a34a" }}>RM {monthIncome.toFixed(2)}</strong>
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => goRecords("expense")}
+                      style={dropRowBtnStyle}
+                    >
+                      <span>{t.monthExpense}</span>
+                      <strong style={{ color: "#dc2626" }}>RM {monthExpense.toFixed(2)}</strong>
+                    </button>
 
-                <button
-                  onClick={() => goRecords("expense")}
-                  style={recordRowBtnStyle}
-                >
-                  <span>{t.monthExpense}</span>
-                  <strong style={{ color: "#dc2626" }}>RM {monthExpense.toFixed(2)}</strong>
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => goRecords("income")}
+                      style={dropRowBtnStyle}
+                    >
+                      <span>{t.expectedProfit}</span>
+                      <strong style={{ color: expectedProfit >= 0 ? "#16a34a" : "#dc2626" }}>
+                        RM {expectedProfit.toFixed(2)}
+                      </strong>
+                    </button>
+                  </>
+                )}
               </div>
-            ) : null}
+            </div>
+
+            <div
+              className="sa-card"
+              style={{
+                ...dropCardStyle,
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowAllDebt(!showAllDebt)}
+                style={{ ...dropHeadStyle, color: theme.accent }}
+              >
+                <span>{t.customerDebt}</span>
+                <span>{showAllDebt ? "▲" : "▼"}</span>
+              </button>
+
+              <div style={dropBodyStyle}>
+                {debtCustomers.length === 0 ? (
+                  <div style={emptyTextStyle}>{t.noDebt}</div>
+                ) : !showAllDebt ? (
+                  <button
+                    type="button"
+                    onClick={() => go("/dashboard/customers")}
+                    style={dropRowBtnStyle}
+                  >
+                    <span>{firstDebtCustomer?.name || "-"}</span>
+                    <strong style={{ color: "#dc2626" }}>
+                      RM {Number(firstDebtCustomer?.balanceDebt || 0).toFixed(2)}
+                    </strong>
+                  </button>
+                ) : (
+                  debtCustomers.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => go("/dashboard/customers")}
+                      style={dropRowBtnStyle}
+                    >
+                      <span>{c.name || "-"}</span>
+                      <strong style={{ color: "#dc2626" }}>
+                        RM {Number(c.balanceDebt || 0).toFixed(2)}
+                      </strong>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
           </section>
 
-          <section style={menuGridStyle}>
+          <section className="dashboard-menu-grid" style={menuGridStyle}>
             <button
               onClick={() => go("/dashboard/records")}
               className="sa-card"
@@ -875,6 +930,106 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               {t.invoices}
             </button>
           </section>
+
+          <div style={bottomBarStyle}>
+            <div style={bottomMenuWrapStyle}>
+              {showBottomMenu ? (
+                <div
+                  className="sa-card"
+                  style={{
+                    ...bottomPopStyle,
+                    left: 0,
+                    background: theme.card,
+                    borderColor: theme.border,
+                    boxShadow: theme.glow,
+                  }}
+                >
+                  <button onClick={() => go("/dashboard/records")} style={bottomPopBtnStyle}>
+                    {t.accounting}
+                  </button>
+                  <button onClick={() => go("/dashboard/customers")} style={bottomPopBtnStyle}>
+                    {t.customers}
+                  </button>
+                  <button onClick={() => go("/dashboard/products")} style={bottomPopBtnStyle}>
+                    {t.products}
+                  </button>
+                  <button onClick={() => go("/dashboard/invoices")} style={bottomPopBtnStyle}>
+                    {t.invoices}
+                  </button>
+                </div>
+              ) : null}
+
+              {showQuickMenu ? (
+                <div
+                  className="sa-card"
+                  style={{
+                    ...bottomPopStyle,
+                    right: 0,
+                    background: theme.card,
+                    borderColor: theme.border,
+                    boxShadow: theme.glow,
+                  }}
+                >
+                  <button
+                    onClick={() => quickAdd("/dashboard/records")}
+                    style={bottomPopBtnStyle}
+                  >
+                    {t.quickRecord}
+                  </button>
+                  <button
+                    onClick={() => quickAdd("/dashboard/invoices")}
+                    style={bottomPopBtnStyle}
+                  >
+                    {t.quickInvoice}
+                  </button>
+                  <button
+                    onClick={() => quickAdd("/dashboard/customers")}
+                    style={bottomPopBtnStyle}
+                  >
+                    {t.quickCustomer}
+                  </button>
+                  <button
+                    onClick={() => quickAdd("/dashboard/products")}
+                    style={bottomPopBtnStyle}
+                  >
+                    {t.quickProduct}
+                  </button>
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBottomMenu(!showBottomMenu);
+                  setShowQuickMenu(false);
+                }}
+                style={{
+                  ...bottomMainBtnStyle,
+                  background: theme.card,
+                  color: theme.accent,
+                  borderColor: theme.border,
+                }}
+              >
+                {t.pageMenu}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickMenu(!showQuickMenu);
+                  setShowBottomMenu(false);
+                }}
+                style={{
+                  ...bottomMainBtnStyle,
+                  background: theme.accent,
+                  color: "#fff",
+                  borderColor: theme.accent,
+                }}
+              >
+                {t.quickRecordInvoice}
+              </button>
+            </div>
+          </div>
         </>
       ) : null}
 
@@ -905,14 +1060,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             >
               {t.balance}
             </button>
-
             <button
               onClick={() => setRecordView("income")}
               style={filterBtn(recordView === "income", theme)}
             >
               {t.income}
             </button>
-
             <button
               onClick={() => setRecordView("expense")}
               style={filterBtn(recordView === "expense", theme)}
@@ -985,14 +1138,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           <h2>{t.settings}</h2>
 
           <h3>{t.personal}</h3>
-
           <input
             placeholder={t.name}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             style={inputStyle}
           />
-
           <input
             placeholder={t.phone}
             value={phone}
@@ -1001,28 +1152,24 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           />
 
           <h3>{t.company}</h3>
-
           <input
             placeholder={t.companyName}
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             style={inputStyle}
           />
-
           <input
             placeholder={t.ssm}
             value={companyRegNo}
             onChange={(e) => setCompanyRegNo(e.target.value)}
             style={inputStyle}
           />
-
           <input
             placeholder={t.companyPhone}
             value={companyPhone}
             onChange={(e) => setCompanyPhone(e.target.value)}
             style={inputStyle}
           />
-
           <input
             placeholder={t.companyAddress}
             value={companyAddress}
@@ -1035,7 +1182,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </button>
 
           <h3>{t.password}</h3>
-
           <input
             type="password"
             placeholder={t.newPassword}
@@ -1083,117 +1229,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </div>
         </section>
       ) : null}
-
-      <div style={bottomDockStyle}>
-        {showQuickMenu ? (
-          <div
-            className="sa-card"
-            style={{
-              ...bottomPanelStyle,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-            }}
-          >
-            <strong style={bottomPanelTitleStyle}>{t.quickRecordInvoice}</strong>
-
-            <div style={bottomPanelGridStyle}>
-              <button
-                onClick={() => quickAdd("/dashboard/records")}
-                style={{ ...bottomPanelBtnStyle, background: theme.accent }}
-              >
-                {t.quickAccounting}
-              </button>
-
-              <button
-                onClick={() => quickAdd("/dashboard/invoices")}
-                style={{ ...bottomPanelBtnStyle, background: theme.accent }}
-              >
-                {t.quickInvoice}
-              </button>
-
-              <button
-                onClick={() => quickAdd("/dashboard/customers")}
-                style={{ ...bottomPanelBtnStyle, background: theme.accent }}
-              >
-                {t.quickCustomer}
-              </button>
-
-              <button
-                onClick={() => quickAdd("/dashboard/products")}
-                style={{ ...bottomPanelBtnStyle, background: theme.accent }}
-              >
-                {t.quickProduct}
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {showDebtMenu ? (
-          <div
-            className="sa-card"
-            style={{
-              ...bottomPanelStyle,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-            }}
-          >
-            <strong style={bottomPanelTitleStyle}>{t.allDebt}</strong>
-
-            {debtCustomers.length === 0 ? (
-              <p style={noDebtStyle}>{t.noDebt}</p>
-            ) : (
-              <div style={debtListStyle}>
-                {debtCustomers.map((customer) => (
-                  <button
-                    key={customer.id}
-                    onClick={() => go("/dashboard/customers")}
-                    style={debtRowStyle}
-                  >
-                    <span>{customer.name}</span>
-                    <strong style={{ color: "#dc2626" }}>
-                      RM {customer.amount.toFixed(2)}
-                    </strong>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        <div style={bottomBtnGridStyle}>
-          <button
-            type="button"
-            onClick={() => {
-              setShowQuickMenu(!showQuickMenu);
-              setShowDebtMenu(false);
-            }}
-            style={{ ...bottomMainBtnStyle, background: theme.accent }}
-          >
-            <span>{t.quickRecordInvoice}</span>
-            <small>{showQuickMenu ? "▲" : "▼"}</small>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowDebtMenu(!showDebtMenu);
-              setShowQuickMenu(false);
-            }}
-            style={{ ...bottomMainBtnStyle, background: "#dc2626" }}
-          >
-            <span>{t.customerDebt}</span>
-            <small>
-              {nearestDebt
-                ? `${nearestDebt.name} RM ${nearestDebt.amount.toFixed(2)}`
-                : t.noDebt}
-            </small>
-          </button>
-        </div>
-      </div>
-
-      <button onClick={openWhatsApp} style={whatsAppBtnStyle}>
-        👩‍💼
-      </button>
     </main>
   );
 }
@@ -1204,7 +1239,7 @@ const pageStyle: CSSProperties = {
   maxWidth: "100vw",
   overflowX: "hidden",
   padding: "clamp(10px, 3vw, 22px)",
-  paddingBottom: 170,
+  paddingBottom: 110,
   fontFamily: "var(--sa-font-family)",
   fontSize: "var(--sa-fs-base)",
 };
@@ -1313,62 +1348,58 @@ const noticeBoxStyle: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const recordMenuSectionStyle: CSSProperties = {
+const noticeMarqueeStyle: CSSProperties = {
+  display: "inline-block",
+  minWidth: "100%",
+  animation: "smartacctg-notice-marquee 18s linear infinite",
+};
+
+const dashboardTwoColStyle: CSSProperties = {
   display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
   marginBottom: 18,
 };
 
-const mainProfitCardStyle: CSSProperties = {
-  background: "#fff",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  minHeight: 118,
+const dropCardStyle: CSSProperties = {
   padding: "var(--sa-card-pad)",
-  display: "grid",
-  gap: 8,
-  textAlign: "center",
-  cursor: "pointer",
-  color: "#111827",
+  minWidth: 0,
 };
 
-const dropdownHintStyle: CSSProperties = {
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-sm)",
-};
-
-const recordDropdownStyle: CSSProperties = {
-  background: "#fff",
-  display: "grid",
-  gap: 8,
-  padding: 12,
-};
-
-const recordRowBtnStyle: CSSProperties = {
+const dropHeadStyle: CSSProperties = {
   width: "100%",
-  minHeight: 52,
-  background: "#fff",
-  border: "1px solid #e5e7eb",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 14px",
+  border: "none",
+  background: "transparent",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: 12,
+  gap: 8,
+  padding: 0,
   fontWeight: 900,
-  color: "#111827",
+  fontSize: "var(--sa-fs-base)",
 };
 
-const statLabelStyle: CSSProperties = {
-  color: "#111827",
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-sm)",
+const dropBodyStyle: CSSProperties = {
+  display: "grid",
+  gap: 10,
+  marginTop: 12,
 };
 
-const statAmountStyle: CSSProperties = {
-  display: "block",
-  fontSize: "var(--sa-fs-xl)",
-  lineHeight: 1.15,
+const dropRowBtnStyle: CSSProperties = {
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  padding: "8px 0",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 10,
+  alignItems: "center",
+  textAlign: "left",
+  fontWeight: 900,
+};
+
+const emptyTextStyle: CSSProperties = {
+  color: "#64748b",
   fontWeight: 900,
 };
 
@@ -1387,6 +1418,55 @@ const navBtnStyle: CSSProperties = {
   fontWeight: 900,
   fontSize: "var(--sa-fs-lg)",
   textAlign: "center",
+};
+
+const bottomBarStyle: CSSProperties = {
+  position: "fixed",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  zIndex: 200,
+  padding: "10px 14px calc(10px + env(safe-area-inset-bottom))",
+  background: "rgba(255,255,255,0.88)",
+  backdropFilter: "blur(12px)",
+  borderTop: "1px solid rgba(148,163,184,0.35)",
+};
+
+const bottomMenuWrapStyle: CSSProperties = {
+  position: "relative",
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  maxWidth: 720,
+  margin: "0 auto",
+};
+
+const bottomMainBtnStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 10px",
+  fontWeight: 900,
+  fontSize: "var(--sa-fs-base)",
+};
+
+const bottomPopStyle: CSSProperties = {
+  position: "absolute",
+  bottom: "calc(100% + 10px)",
+  width: "min(230px, 48vw)",
+  display: "grid",
+  gap: 8,
+  zIndex: 220,
+};
+
+const bottomPopBtnStyle: CSSProperties = {
+  width: "100%",
+  minHeight: 44,
+  borderRadius: "var(--sa-radius-control)",
+  border: "1px solid #e5e7eb",
+  background: "#ffffff",
+  color: "#111827",
+  fontWeight: 900,
 };
 
 const backBtnStyle: CSSProperties = {
@@ -1454,105 +1534,4 @@ const recordItemStyle: CSSProperties = {
   gap: 12,
   padding: "14px 0",
   borderBottom: "1px solid #e5e7eb",
-};
-
-const bottomDockStyle: CSSProperties = {
-  position: "fixed",
-  right: 14,
-  bottom: 82,
-  width: "min(390px, calc(100vw - 28px))",
-  zIndex: 220,
-};
-
-const bottomBtnGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 10,
-};
-
-const bottomMainBtnStyle: CSSProperties = {
-  color: "#fff",
-  border: "none",
-  borderRadius: "var(--sa-radius-card)",
-  minHeight: 58,
-  padding: "8px 10px",
-  fontWeight: 900,
-  display: "grid",
-  gap: 2,
-  lineHeight: 1.15,
-  boxShadow: "0 12px 28px rgba(15,23,42,0.18)",
-};
-
-const bottomPanelStyle: CSSProperties = {
-  position: "absolute",
-  right: 0,
-  bottom: 72,
-  width: "100%",
-  background: "#fff",
-  color: "#111827",
-  display: "grid",
-  gap: 10,
-  padding: 12,
-};
-
-const bottomPanelTitleStyle: CSSProperties = {
-  fontSize: "var(--sa-fs-base)",
-};
-
-const bottomPanelGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 8,
-};
-
-const bottomPanelBtnStyle: CSSProperties = {
-  color: "#fff",
-  border: "none",
-  borderRadius: "var(--sa-radius-control)",
-  minHeight: 48,
-  padding: "0 12px",
-  fontWeight: 900,
-};
-
-const debtListStyle: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  maxHeight: 260,
-  overflowY: "auto",
-};
-
-const debtRowStyle: CSSProperties = {
-  width: "100%",
-  minHeight: 48,
-  background: "#fff",
-  border: "1px solid #e5e7eb",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 12px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 10,
-  fontWeight: 900,
-  color: "#111827",
-};
-
-const noDebtStyle: CSSProperties = {
-  margin: 0,
-  color: "#64748b",
-  fontWeight: 900,
-};
-
-const whatsAppBtnStyle: CSSProperties = {
-  position: "fixed",
-  left: 18,
-  bottom: 86,
-  width: 54,
-  height: 54,
-  borderRadius: "999px",
-  border: "none",
-  background: "#25D366",
-  color: "#fff",
-  fontSize: 26,
-  boxShadow: "0 12px 30px rgba(37,211,102,0.45)",
-  zIndex: 210,
 };
