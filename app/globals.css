@@ -6,8 +6,9 @@
    2. 所有卡片自动跟随内容高度，不再框大字小
    3. 统计卡片默认左右 2 列
    4. 统计卡片标题在上，金额在下
-   5. 产品统计卡片固定：成本左｜售价右，预计利润左｜库存数量右
-   6. 关闭按钮强制显示「关闭」，不要 X 框
+   5. 自动模式：没有 class 的统计卡片也自动识别
+   6. 产品统计卡片固定：成本左｜售价右，预计利润左｜库存数量右
+   7. 关闭按钮强制显示「关闭」，不要 X 框
    ========================================================= */
 
 :root {
@@ -204,7 +205,8 @@ body {
 .smartacctg-records-page strong,
 .smartacctg-customers-page strong,
 .smartacctg-accounting-page strong,
-.smartacctg-settings-page strong {
+.smartacctg-settings-page strong,
+.smartacctg-app-page strong {
   font-size: inherit !important;
   font-weight: 900 !important;
 }
@@ -388,7 +390,7 @@ body {
 }
 
 /* =========================================================
-   全系统卡片
+   全系统普通卡片
    ========================================================= */
 
 .sa-card,
@@ -692,9 +694,10 @@ span.sa-close-x:hover::before,
 }
 
 /* =========================================================
-   统计卡片 Grid：全部页面默认 2 列
+   统计卡片 Grid：手动 class + 自动模式
    ========================================================= */
 
+/* 手动模式：页面用了这些 class 会自动 2 列 */
 .sa-stats-grid,
 .products-summary-grid,
 .records-summary-grid,
@@ -716,17 +719,31 @@ span.sa-close-x:hover::before,
   align-items: stretch !important;
 }
 
-/* 没有 class 的统计 grid 也强制识别：例如账目记录顶部统计卡片 */
+/* 自动模式 A：
+   自动识别 sa-card 里面：直接子 div/button 有 strong 的统计区 */
 .smartacctg-page .sa-card > div:has(> div strong),
+.smartacctg-page .sa-card > div:has(> button strong),
 .smartacctg-dashboard-page .sa-card > div:has(> div strong),
+.smartacctg-dashboard-page .sa-card > div:has(> button strong),
 .smartacctg-records-page .sa-card > div:has(> div strong),
+.smartacctg-records-page .sa-card > div:has(> button strong),
 .smartacctg-accounting-page .sa-card > div:has(> div strong),
-.smartacctg-products-page .sa-card > div:has(> div strong) {
+.smartacctg-accounting-page .sa-card > div:has(> button strong),
+.smartacctg-products-page .sa-card > div:has(> div strong),
+.smartacctg-products-page .sa-card > div:has(> button strong) {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   gap: clamp(10px, 2vw, 16px) !important;
   width: 100% !important;
   align-items: stretch !important;
+}
+
+/* 自动模式 B：
+   账目记录顶部统计卡片常见结构：标题 + strong 金额 */
+.smartacctg-records-page section > div:has(strong),
+.smartacctg-accounting-page section > div:has(strong),
+.smartacctg-dashboard-page section > div:has(strong) {
+  max-width: 100% !important;
 }
 
 /* 产品统计卡片固定顺序：
@@ -748,7 +765,8 @@ span.sa-close-x:hover::before,
   order: 4 !important;
 }
 
-/* 如果产品统计没有加 class，就按当前 button 顺序显示 */
+/* 如果产品统计没有加 class，就按当前 button 顺序显示。
+   你 TSX 里已经改成：成本、售价、预计利润、库存数量，所以这里保持 1-4 */
 .smartacctg-products-page .products-summary-grid > button:nth-child(1) {
   order: 1 !important;
 }
@@ -766,7 +784,7 @@ span.sa-close-x:hover::before,
 }
 
 /* =========================================================
-   统计卡片本体：高度自动，标题上，金额下
+   统计卡片本体：标题上，金额下
    ========================================================= */
 
 .sa-stat-card,
@@ -782,10 +800,15 @@ span.sa-close-x:hover::before,
 .smartacctg-accounting-page .sa-stats-grid > *,
 .smartacctg-dashboard-page .sa-stats-grid > *,
 .smartacctg-page .sa-card > div:has(> div strong) > div,
+.smartacctg-page .sa-card > div:has(> button strong) > button,
 .smartacctg-dashboard-page .sa-card > div:has(> div strong) > div,
+.smartacctg-dashboard-page .sa-card > div:has(> button strong) > button,
 .smartacctg-records-page .sa-card > div:has(> div strong) > div,
+.smartacctg-records-page .sa-card > div:has(> button strong) > button,
 .smartacctg-accounting-page .sa-card > div:has(> div strong) > div,
-.smartacctg-products-page .sa-card > div:has(> div strong) > div {
+.smartacctg-accounting-page .sa-card > div:has(> button strong) > button,
+.smartacctg-products-page .sa-card > div:has(> div strong) > div,
+.smartacctg-products-page .sa-card > div:has(> button strong) > button {
   width: 100% !important;
   min-width: 0 !important;
   height: auto !important;
@@ -806,28 +829,49 @@ span.sa-close-x:hover::before,
   overflow-wrap: anywhere !important;
 }
 
-/* 统计卡片内部如果还有一层 div，也强制上下 */
-.sa-stat-card > div,
-.records-stat-card > div,
-.records-summary-card > div,
-.accounting-stat-card > div,
-.dashboard-stat-card > div,
-.products-summary-grid > button > div,
-.smartacctg-products-page .products-summary-grid > button > div,
-.smartacctg-records-page .sa-stats-grid > * > div,
-.smartacctg-records-page .records-summary-grid > * > div,
-.smartacctg-records-page .records-stats-grid > * > div,
-.smartacctg-accounting-page .sa-stats-grid > * > div,
-.smartacctg-dashboard-page .sa-stats-grid > * > div,
-.smartacctg-page .sa-card > div:has(> div strong) > div > div,
-.smartacctg-records-page .sa-card > div:has(> div strong) > div > div {
+/* 统计卡片内部所有直接层级也强制上下排 */
+.sa-stat-card > *,
+.records-stat-card > *,
+.records-summary-card > *,
+.accounting-stat-card > *,
+.dashboard-stat-card > *,
+.products-summary-grid > button > *,
+.smartacctg-products-page .products-summary-grid > button > *,
+.smartacctg-records-page .sa-stats-grid > * > *,
+.smartacctg-records-page .records-summary-grid > * > *,
+.smartacctg-records-page .records-stats-grid > * > *,
+.smartacctg-accounting-page .sa-stats-grid > * > *,
+.smartacctg-dashboard-page .sa-stats-grid > * > *,
+.smartacctg-page .sa-card > div:has(> div strong) > div > *,
+.smartacctg-page .sa-card > div:has(> button strong) > button > *,
+.smartacctg-records-page .sa-card > div:has(> div strong) > div > *,
+.smartacctg-records-page .sa-card > div:has(> button strong) > button > * {
+  display: block !important;
   width: 100% !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 8px !important;
   text-align: center !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* 如果统计卡片内部有 flex row，强制 column */
+.sa-stat-card div,
+.records-stat-card div,
+.records-summary-card div,
+.accounting-stat-card div,
+.dashboard-stat-card div,
+.products-summary-grid > button div,
+.smartacctg-products-page .products-summary-grid > button div,
+.smartacctg-records-page .sa-stats-grid > * div,
+.smartacctg-records-page .records-summary-grid > * div,
+.smartacctg-records-page .records-stats-grid > * div,
+.smartacctg-accounting-page .sa-stats-grid > * div,
+.smartacctg-dashboard-page .sa-stats-grid > * div,
+.smartacctg-page .sa-card > div:has(> div strong) > div div,
+.smartacctg-records-page .sa-card > div:has(> div strong) > div div {
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 8px !important;
 }
 
 /* 统计标题：当前余额 / 本月收入 / 本月支出 */
@@ -842,12 +886,19 @@ span.sa-close-x:hover::before,
 .dashboard-stat-card span,
 .dashboard-stat-card p,
 .products-summary-grid > button span,
+.products-summary-grid > button p,
 .smartacctg-products-page .products-summary-grid > button span,
+.smartacctg-products-page .products-summary-grid > button p,
 .smartacctg-records-page .sa-stats-grid span,
+.smartacctg-records-page .sa-stats-grid p,
 .smartacctg-records-page .records-summary-grid span,
+.smartacctg-records-page .records-summary-grid p,
 .smartacctg-records-page .records-stats-grid span,
+.smartacctg-records-page .records-stats-grid p,
 .smartacctg-accounting-page .sa-stats-grid span,
+.smartacctg-accounting-page .sa-stats-grid p,
 .smartacctg-dashboard-page .sa-stats-grid span,
+.smartacctg-dashboard-page .sa-stats-grid p,
 .smartacctg-page .sa-card > div:has(> div strong) > div span,
 .smartacctg-page .sa-card > div:has(> div strong) > div p,
 .smartacctg-records-page .sa-card > div:has(> div strong) > div span,
@@ -889,10 +940,18 @@ span.sa-close-x:hover::before,
   word-break: keep-all !important;
 }
 
-/* 解决 inline div 导致标题和金额左右排 */
-.smartacctg-records-page .sa-card > div:has(> div strong) > div *,
-.smartacctg-accounting-page .sa-card > div:has(> div strong) > div *,
-.smartacctg-dashboard-page .sa-card > div:has(> div strong) > div * {
+/* 账目记录特别修复：压掉 inline 横排 */
+.smartacctg-records-page .sa-card > div:has(strong) > div,
+.smartacctg-records-page .sa-card > div:has(strong) > button,
+.smartacctg-accounting-page .sa-card > div:has(strong) > div,
+.smartacctg-accounting-page .sa-card > div:has(strong) > button {
+  flex-direction: column !important;
+}
+
+.smartacctg-records-page .sa-card > div:has(strong) > div *,
+.smartacctg-records-page .sa-card > div:has(strong) > button *,
+.smartacctg-accounting-page .sa-card > div:has(strong) > div *,
+.smartacctg-accounting-page .sa-card > div:has(strong) > button * {
   float: none !important;
 }
 
@@ -999,9 +1058,13 @@ span.sa-close-x:hover::before,
   .dashboard-summary-grid,
   .dashboard-stats-grid,
   .smartacctg-page .sa-card > div:has(> div strong),
+  .smartacctg-page .sa-card > div:has(> button strong),
   .smartacctg-records-page .sa-card > div:has(> div strong),
+  .smartacctg-records-page .sa-card > div:has(> button strong),
   .smartacctg-accounting-page .sa-card > div:has(> div strong),
-  .smartacctg-dashboard-page .sa-card > div:has(> div strong) {
+  .smartacctg-accounting-page .sa-card > div:has(> button strong),
+  .smartacctg-dashboard-page .sa-card > div:has(> div strong),
+  .smartacctg-dashboard-page .sa-card > div:has(> button strong) {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
@@ -1078,9 +1141,13 @@ span.sa-close-x:hover::before,
   .dashboard-summary-grid,
   .dashboard-stats-grid,
   .smartacctg-page .sa-card > div:has(> div strong),
+  .smartacctg-page .sa-card > div:has(> button strong),
   .smartacctg-records-page .sa-card > div:has(> div strong),
+  .smartacctg-records-page .sa-card > div:has(> button strong),
   .smartacctg-accounting-page .sa-card > div:has(> div strong),
-  .smartacctg-dashboard-page .sa-card > div:has(> div strong) {
+  .smartacctg-accounting-page .sa-card > div:has(> button strong),
+  .smartacctg-dashboard-page .sa-card > div:has(> div strong),
+  .smartacctg-dashboard-page .sa-card > div:has(> button strong) {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
   }
@@ -1098,9 +1165,13 @@ span.sa-close-x:hover::before,
   .smartacctg-accounting-page .sa-stats-grid > *,
   .smartacctg-dashboard-page .sa-stats-grid > *,
   .smartacctg-page .sa-card > div:has(> div strong) > div,
+  .smartacctg-page .sa-card > div:has(> button strong) > button,
   .smartacctg-records-page .sa-card > div:has(> div strong) > div,
+  .smartacctg-records-page .sa-card > div:has(> button strong) > button,
   .smartacctg-accounting-page .sa-card > div:has(> div strong) > div,
-  .smartacctg-dashboard-page .sa-card > div:has(> div strong) > div {
+  .smartacctg-accounting-page .sa-card > div:has(> button strong) > button,
+  .smartacctg-dashboard-page .sa-card > div:has(> div strong) > div,
+  .smartacctg-dashboard-page .sa-card > div:has(> button strong) > button {
     min-height: 105px !important;
     padding: 12px 8px !important;
   }
@@ -1116,6 +1187,7 @@ span.sa-close-x:hover::before,
   .dashboard-stat-card span,
   .dashboard-stat-card p,
   .products-summary-grid > button span,
+  .products-summary-grid > button p,
   .smartacctg-records-page .sa-card > div:has(> div strong) > div span,
   .smartacctg-records-page .sa-card > div:has(> div strong) > div p {
     font-size: 17px !important;
