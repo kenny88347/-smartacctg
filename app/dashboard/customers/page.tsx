@@ -342,6 +342,181 @@ const TXT = {
   },
 };
 
+const CUSTOMERS_PAGE_FIX_CSS = `
+  .smartacctg-customers-page .customers-list {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    width: 100% !important;
+  }
+
+  .smartacctg-customers-page .customer-card {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    text-align: left !important;
+    overflow-wrap: anywhere !important;
+    border-width: var(--sa-border-w) !important;
+    border-style: solid !important;
+    border-radius: var(--sa-radius-card) !important;
+    padding: var(--sa-card-pad) !important;
+  }
+
+  .smartacctg-customers-page .customer-card * {
+    text-align: left !important;
+  }
+
+  .smartacctg-customers-page .customer-card h3 {
+    margin: 0 0 10px 0 !important;
+    font-size: var(--sa-fs-xl) !important;
+    line-height: 1.25 !important;
+    font-weight: 900 !important;
+  }
+
+  .smartacctg-customers-page .customer-card p {
+    margin: 8px 0 0 !important;
+    line-height: 1.55 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .smartacctg-customers-page .customer-status-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 4px 12px !important;
+    border-radius: 999px !important;
+    font-size: clamp(14px, 3vw, 17px) !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    margin-left: 6px !important;
+  }
+
+  .smartacctg-customers-page .customers-action-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    margin-top: 8px !important;
+  }
+
+  .smartacctg-customers-page .customers-action-row button {
+    flex: 0 1 calc(33.333% - 8px) !important;
+    min-width: 108px !important;
+    max-width: 190px !important;
+    width: auto !important;
+    white-space: normal !important;
+    text-align: center !important;
+  }
+
+  .smartacctg-customers-page input[type="date"] {
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+
+  .smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value {
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    min-height: 1.6em !important;
+  }
+
+  .smartacctg-customers-page input[type="date"]::-webkit-datetime-edit {
+    width: 100% !important;
+    text-align: center !important;
+  }
+
+  .smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    justify-content: center !important;
+  }
+
+  .smartacctg-customers-page .sa-modal {
+    width: 100% !important;
+    max-width: 900px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    border-radius: var(--sa-radius-card) !important;
+    padding: var(--sa-card-pad) !important;
+  }
+
+  .smartacctg-customers-page .sa-modal-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .smartacctg-customers-page .customers-close-btn {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 4px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #dc2626 !important;
+    font-size: var(--sa-fs-base) !important;
+    font-weight: 900 !important;
+    line-height: 1.2 !important;
+  }
+
+  @media (max-width: 768px) {
+    .smartacctg-customers-page .customers-search-row {
+      grid-template-columns: 1fr !important;
+    }
+
+    .smartacctg-customers-page .customers-search-row select {
+      width: 100% !important;
+    }
+
+    .smartacctg-customers-page .customers-list {
+      gap: 16px !important;
+    }
+
+    .smartacctg-customers-page .customer-card {
+      gap: 12px !important;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .smartacctg-customers-page .customers-action-row {
+      gap: 8px !important;
+      justify-content: flex-start !important;
+    }
+
+    .smartacctg-customers-page .customers-action-row button {
+      flex: 0 1 calc(33.333% - 6px) !important;
+      min-width: 96px !important;
+      max-width: none !important;
+      padding-left: 8px !important;
+      padding-right: 8px !important;
+      font-size: 15px !important;
+    }
+
+    .smartacctg-customers-page .customer-card h3 {
+      font-size: var(--sa-fs-lg) !important;
+    }
+
+    .smartacctg-customers-page .customer-status-badge {
+      font-size: 14px !important;
+      padding: 4px 10px !important;
+    }
+  }
+`;
+
 function makeId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -961,6 +1136,8 @@ export default function CustomersPage() {
       className="smartacctg-page smartacctg-customers-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
+      <style jsx global>{CUSTOMERS_PAGE_FIX_CSS}</style>
+
       <div className="sa-topbar">
         <div className="sa-topbar-left">
           <button
@@ -1070,7 +1247,7 @@ export default function CustomersPage() {
           {filteredCustomers.length === 0 ? (
             <p style={{ color: theme.subText, fontWeight: 800 }}>{t.noCustomers}</p>
           ) : (
-            <div style={customerGridStyle}>
+            <div className="customers-list" style={customerGridStyle}>
               {filteredCustomers.map((c) => {
                 const debtLeft = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
                 const prices = customerPrices.filter((p) => p.customer_id === c.id);
@@ -1078,17 +1255,20 @@ export default function CustomersPage() {
                 return (
                   <div
                     key={c.id}
-                    className="sa-item-card"
+                    className="customer-card"
                     style={{
+                      ...customerCardStyle,
                       borderColor: theme.border,
                       background: theme.card,
                       color: theme.text,
+                      boxShadow: theme.glow,
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
                       <h3 style={customerNameStyle}>
                         {c.name}{" "}
                         <span
+                          className="customer-status-badge"
                           style={{
                             ...badgeStyle,
                             background: theme.softBg,
@@ -1234,7 +1414,12 @@ export default function CustomersPage() {
             <div className="sa-modal-header" style={modalHeaderStyle}>
               <h2 style={modalTitleStyle}>{t.formTitle}</h2>
 
-              <button type="button" onClick={closeForm} style={closeTextBtnStyle}>
+              <button
+                type="button"
+                onClick={closeForm}
+                className="customers-close-btn"
+                style={closeTextBtnStyle}
+              >
                 {t.close}
               </button>
             </div>
@@ -1425,7 +1610,12 @@ export default function CustomersPage() {
                 </p>
               </div>
 
-              <button type="button" onClick={closePriceModal} style={closeTextBtnStyle}>
+              <button
+                type="button"
+                onClick={closePriceModal}
+                className="customers-close-btn"
+                style={closeTextBtnStyle}
+              >
                 {t.close}
               </button>
             </div>
@@ -1525,7 +1715,12 @@ export default function CustomersPage() {
                 </p>
               </div>
 
-              <button type="button" onClick={closeInvoiceModal} style={closeTextBtnStyle}>
+              <button
+                type="button"
+                onClick={closeInvoiceModal}
+                className="customers-close-btn"
+                style={closeTextBtnStyle}
+              >
                 {t.close}
               </button>
             </div>
@@ -1606,7 +1801,7 @@ const pageStyle: CSSProperties = {
 const backBtnStyle: CSSProperties = {
   background: "#fff",
   border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-control)",
+  borderRadius: "999px",
   minHeight: "var(--sa-control-h)",
   padding: "0 var(--sa-control-x)",
   fontWeight: 900,
@@ -1696,18 +1891,34 @@ const customerListStyle: CSSProperties = {
 
 const customerGridStyle: CSSProperties = {
   display: "grid",
+  gridTemplateColumns: "1fr",
+  gap: 18,
+  width: "100%",
+};
+
+const customerCardStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+  display: "grid",
+  gridTemplateColumns: "1fr",
   gap: 14,
+  width: "100%",
+  minWidth: 0,
+  height: "auto",
+  minHeight: "auto",
+  overflowWrap: "anywhere",
 };
 
 const customerNameStyle: CSSProperties = {
   margin: 0,
-  fontSize: "var(--sa-fs-lg)",
+  fontSize: "var(--sa-fs-xl)",
   lineHeight: 1.25,
   overflowWrap: "anywhere",
 };
 
 const mutedStyle: CSSProperties = {
-  fontSize: "var(--sa-fs-sm)",
+  fontSize: "var(--sa-fs-base)",
   lineHeight: 1.55,
   overflowWrap: "anywhere",
 };
@@ -1716,23 +1927,23 @@ const badgeStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: "3px 9px",
+  padding: "4px 12px",
   borderRadius: 999,
-  fontSize: "var(--sa-fs-xs)",
+  fontSize: "var(--sa-fs-sm)",
   fontWeight: 900,
   whiteSpace: "nowrap",
 };
 
 const actionRowStyle: CSSProperties = {
   display: "flex",
-  gap: 8,
+  gap: 10,
   alignItems: "center",
-  justifyContent: "flex-end",
+  justifyContent: "flex-start",
   flexWrap: "wrap",
 };
 
 const actionBtnBaseStyle: CSSProperties = {
-  width: "clamp(112px, 24vw, 150px)",
+  minWidth: 108,
   minHeight: 44,
   border: "none",
   borderRadius: "var(--sa-radius-control)",
@@ -1839,14 +2050,16 @@ const modalTitleStyle: CSSProperties = {
 };
 
 const closeTextBtnStyle: CSSProperties = {
-  background: "#fee2e2",
+  background: "transparent",
   color: "#dc2626",
-  border: "2px solid #fecaca",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 14px",
-  minHeight: 44,
+  border: "none",
+  boxShadow: "none",
+  borderRadius: 0,
+  padding: "0 4px",
+  minHeight: 0,
   width: "auto",
   height: "auto",
+  minWidth: 0,
   fontWeight: 900,
   fontSize: "var(--sa-fs-base)",
   lineHeight: 1.2,
@@ -1875,6 +2088,9 @@ const dateInputStyle: CSSProperties = {
   ...inputStyle,
   appearance: "none",
   WebkitAppearance: "none",
+  textAlign: "center",
+  display: "block",
+  lineHeight: "normal",
 };
 
 const priceItemStyle: CSSProperties = {
