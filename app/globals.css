@@ -1,29 +1,28 @@
 /* =========================================================
-   SmartAcctg Auto Stats Fix - Final
+   SmartAcctg Auto Stats Fix
    放在 app/globals.css 最下面
    功能：
    1. 修复产品明细 / 客户资料被误变成统计卡片
-   2. 产品明细、客户资料恢复资料卡样式
+   2. 资料卡恢复一张一张纵向显示，像客户资料卡那样
    3. 统计卡片仍然保持 2 列
-   4. 统计卡片标题在上、金额在下
-   5. 产品统计顺序：成本左｜售价右，预计利润左｜库存数量右
-   6. 客户资料按钮恢复像发票记录那样排列，不要全部直排
+   4. 帐目记录统计卡：标题在上，金额在下
+   5. 日期输入框：文字水平 + 垂直居中
+   6. 客户资料按钮：保持像发票记录那样横向排列
    ========================================================= */
 
 /* =========================================================
-   1. 产品明细总览：恢复正常资料卡列表
+   1. 产品明细总览：恢复正常资料卡列表，不要 2 列统计模式
    ========================================================= */
 
-/* 产品明细列表容器：只要里面直接是 sa-item-card，就强制一列 */
-.smartacctg-products-page #productDetails div:has(> .sa-item-card) {
+.smartacctg-products-page #productDetails > div:not(.products-search-row),
+.smartacctg-products-page #productDetails .productList {
   display: grid !important;
   grid-template-columns: 1fr !important;
   gap: 14px !important;
   width: 100% !important;
-  align-items: stretch !important;
 }
 
-/* 产品资料卡不要被当成统计卡 */
+/* 产品明细里面的 sa-item-card 不要被当成统计卡片 */
 .smartacctg-products-page #productDetails .sa-item-card,
 .smartacctg-products-page .sa-item-card {
   width: 100% !important;
@@ -49,14 +48,14 @@
   text-align: left !important;
 }
 
-/* 产品资料卡第一层内容恢复正常 block */
+/* 产品名称行恢复正常 */
 .smartacctg-products-page .sa-item-card > div:first-child,
 .smartacctg-customers-page .sa-item-card > div:first-child {
   width: 100% !important;
   display: block !important;
 }
 
-/* 产品标题 + 状态保持正常一行，可换行 */
+/* 产品标题 + 状态保持一行可换行 */
 .smartacctg-products-page .sa-item-card div[style*="justify-content: space-between"],
 .smartacctg-customers-page .sa-item-card div[style*="justify-content: space-between"] {
   display: flex !important;
@@ -67,18 +66,18 @@
   flex-wrap: wrap !important;
 }
 
-/* 产品资料 grid：资料展示，不要变成统计卡 */
+/* 产品资料 grid 保持资料展示，不要变统计卡片 */
+.smartacctg-products-page #productDetails .products-product-info-grid,
 .smartacctg-products-page .products-product-info-grid {
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
   gap: 10px !important;
   width: 100% !important;
-  margin-top: 12px !important;
 }
 
+.smartacctg-products-page #productDetails .products-product-info-grid > div,
 .smartacctg-products-page .products-product-info-grid > div {
   display: block !important;
-  width: auto !important;
   min-height: auto !important;
   height: auto !important;
   padding: 0 !important;
@@ -97,7 +96,7 @@
   text-align: left !important;
 }
 
-/* 产品明细里的价格 / 利润等保持正常资料排列 */
+/* 产品明细里的价格/利润等保持正常资料排列 */
 .smartacctg-products-page .sa-item-card .products-product-info-grid strong {
   display: inline !important;
   width: auto !important;
@@ -110,22 +109,6 @@
 .smartacctg-products-page .sa-item-card div[style*="background:#f8fafc"] {
   text-align: left !important;
   align-items: stretch !important;
-}
-
-/* 产品页操作按钮：保持正常横排，可换行 */
-.smartacctg-products-page .products-action-row {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 8px !important;
-  flex-wrap: wrap !important;
-}
-
-.smartacctg-products-page .products-action-row button {
-  width: auto !important;
-  min-width: 110px !important;
-  flex: 0 1 auto !important;
 }
 
 /* =========================================================
@@ -145,7 +128,6 @@
   text-align: left !important;
   align-items: stretch !important;
   justify-content: stretch !important;
-  padding: var(--sa-card-pad) !important;
 }
 
 /* 客户列表容器保持一列 */
@@ -154,65 +136,58 @@
   display: grid !important;
   grid-template-columns: 1fr !important;
   gap: 14px !important;
-  width: 100% !important;
+}
+
+/* 客户资料内部 strong 不要被统计卡样式影响 */
+.smartacctg-customers-page .sa-item-card strong {
+  display: inline !important;
+  width: auto !important;
+  font-size: inherit !important;
+  text-align: left !important;
 }
 
 /* =========================================================
-   3. 客户资料按钮：像发票记录那样排列
-   第一行：开发票｜产品专属价格｜WhatsApp
-   第二行：编辑｜删除
+   3. 客户资料按钮：像发票记录那样横向排列
    ========================================================= */
 
-.smartacctg-customers-page .customers-action-row {
-  display: grid !important;
-  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
-  gap: 12px !important;
+.smartacctg-customers-page .customers-action-row,
+.smartacctg-customers-page .customer-action-row,
+.smartacctg-customers-page .sa-action-row,
+.smartacctg-customers-page .sa-actions-row,
+.smartacctg-products-page .products-action-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
   width: 100% !important;
-  align-items: stretch !important;
-  justify-content: stretch !important;
 }
 
-.smartacctg-customers-page .customers-action-row > button,
-.smartacctg-customers-page .customers-action-row > a {
-  width: 100% !important;
-  min-width: 0 !important;
+.smartacctg-customers-page .customers-action-row button,
+.smartacctg-customers-page .customer-action-row button,
+.smartacctg-customers-page .sa-action-row button,
+.smartacctg-customers-page .sa-actions-row button {
+  width: auto !important;
+  min-width: 96px !important;
   max-width: none !important;
-  min-height: 50px !important;
-  height: 50px !important;
-  border-radius: var(--sa-radius-control) !important;
-
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  text-align: center !important;
-  font-size: clamp(15px, 3.5vw, 18px) !important;
-  font-weight: 900 !important;
-  line-height: 1.15 !important;
-  padding: 0 8px !important;
+  flex: 1 1 calc(33.333% - 10px) !important;
   white-space: normal !important;
 }
 
-/* 第一行 3 个按钮 */
-.smartacctg-customers-page .customers-action-row > *:nth-child(1) {
-  grid-column: span 2 !important;
+/* 最下面两个按钮：编辑 / 删除，自动变两格 */
+.smartacctg-customers-page .customers-action-row button:nth-last-child(-n + 2),
+.smartacctg-customers-page .customer-action-row button:nth-last-child(-n + 2),
+.smartacctg-customers-page .sa-action-row button:nth-last-child(-n + 2),
+.smartacctg-customers-page .sa-actions-row button:nth-last-child(-n + 2) {
+  flex: 1 1 calc(50% - 10px) !important;
 }
 
-.smartacctg-customers-page .customers-action-row > *:nth-child(2) {
-  grid-column: span 2 !important;
-}
-
-.smartacctg-customers-page .customers-action-row > *:nth-child(3) {
-  grid-column: span 2 !important;
-}
-
-/* 第二行 2 个按钮 */
-.smartacctg-customers-page .customers-action-row > *:nth-child(4) {
-  grid-column: span 3 !important;
-}
-
-.smartacctg-customers-page .customers-action-row > *:nth-child(5) {
-  grid-column: span 3 !important;
+/* 产品卡编辑 / 删除按钮保持正常 */
+.smartacctg-products-page .products-action-row button {
+  width: auto !important;
+  min-width: 110px !important;
+  flex: 0 1 auto !important;
 }
 
 /* =========================================================
@@ -234,7 +209,7 @@
   align-items: stretch !important;
 }
 
-/* 统计卡片本体 */
+/* 统计卡片标题上、金额下，只作用在真正统计卡 */
 .sa-stat-card,
 .records-stat-card,
 .records-summary-card,
@@ -278,7 +253,7 @@
   text-align: center !important;
 }
 
-/* 统计金额 / 数字 */
+/* 统计金额 */
 .sa-stat-card strong,
 .records-stat-card strong,
 .records-summary-card strong,
@@ -295,7 +270,91 @@
 }
 
 /* =========================================================
-   5. 产品统计卡片顺序
+   5. 帐目记录顶部统计卡特别修复
+   标题和金额不要左右排，要上下排
+   ========================================================= */
+
+.smartacctg-records-page .sa-stats-grid,
+.smartacctg-records-page .records-summary-grid,
+.smartacctg-records-page .records-stats-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: clamp(10px, 2vw, 16px) !important;
+  width: 100% !important;
+  align-items: stretch !important;
+}
+
+.smartacctg-records-page .sa-stats-grid > *,
+.smartacctg-records-page .records-summary-grid > *,
+.smartacctg-records-page .records-stats-grid > * {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: clamp(96px, 18vw, 125px) !important;
+  height: auto !important;
+  padding: clamp(12px, 2.5vw, 18px) !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 8px !important;
+  text-align: center !important;
+}
+
+/* 卡片内如果还有一层 div，也强制上下排 */
+.smartacctg-records-page .sa-stats-grid > * > div,
+.smartacctg-records-page .records-summary-grid > * > div,
+.smartacctg-records-page .records-stats-grid > * > div {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  text-align: center !important;
+}
+
+/* 帐目统计标题 */
+.smartacctg-records-page .sa-stats-grid > * span,
+.smartacctg-records-page .sa-stats-grid > * p,
+.smartacctg-records-page .records-summary-grid > * span,
+.smartacctg-records-page .records-summary-grid > * p,
+.smartacctg-records-page .records-stats-grid > * span,
+.smartacctg-records-page .records-stats-grid > * p {
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  text-align: center !important;
+  font-size: clamp(16px, 3.5vw, 22px) !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+}
+
+/* 帐目统计金额 */
+.smartacctg-records-page .sa-stats-grid > * strong,
+.smartacctg-records-page .records-summary-grid > * strong,
+.smartacctg-records-page .records-stats-grid > * strong {
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  text-align: center !important;
+  font-size: clamp(20px, 4.5vw, 30px) !important;
+  font-weight: 900 !important;
+  line-height: 1.15 !important;
+  white-space: normal !important;
+}
+
+/* 防止内部原本 flex row / float 导致左右排 */
+.smartacctg-records-page .sa-stats-grid > * *,
+.smartacctg-records-page .records-summary-grid > * *,
+.smartacctg-records-page .records-stats-grid > * * {
+  float: none !important;
+}
+
+/* =========================================================
+   6. 产品统计卡片顺序
    成本左｜售价右
    预计利润左｜库存数量右
    ========================================================= */
@@ -334,14 +393,115 @@
 }
 
 /* =========================================================
-   6. 手机适配
-   资料卡仍然一列
-   统计卡仍然两列
-   客户按钮仍然像发票记录那样，不要全部直排
+   7. 日期输入框：文字水平 + 垂直居中
+   ========================================================= */
+
+.smartacctg-page input[type="date"],
+.smartacctg-dashboard-page input[type="date"],
+.smartacctg-products-page input[type="date"],
+.smartacctg-invoice-page input[type="date"],
+.smartacctg-records-page input[type="date"],
+.smartacctg-customers-page input[type="date"],
+.smartacctg-accounting-page input[type="date"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  text-align: center !important;
+  text-align-last: center !important;
+
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: normal !important;
+
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Safari / iPhone 日期内容置中 */
+.smartacctg-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value {
+  text-align: center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100% !important;
+  height: 100% !important;
+  line-height: normal !important;
+}
+
+/* Safari / iPhone 日期编辑区置中 */
+.smartacctg-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit {
+  width: 100% !important;
+  padding: 0 !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  text-align: center !important;
+}
+
+/* 年 / 月 / 日整体置中 */
+.smartacctg-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+}
+
+.smartacctg-page input[type="date"]::-webkit-datetime-edit-year-field,
+.smartacctg-page input[type="date"]::-webkit-datetime-edit-month-field,
+.smartacctg-page input[type="date"]::-webkit-datetime-edit-day-field,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-year-field,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-month-field,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-day-field,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit-year-field,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit-month-field,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit-day-field,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-year-field,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-month-field,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-day-field,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit-year-field,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit-month-field,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit-day-field,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-year-field,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-month-field,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-day-field,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-year-field,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-month-field,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-day-field {
+  text-align: center !important;
+}
+
+/* =========================================================
+   8. 手机适配：资料卡仍然一列，统计卡仍然两列
    ========================================================= */
 
 @media (max-width: 520px) {
-  .smartacctg-products-page #productDetails div:has(> .sa-item-card),
+  .smartacctg-products-page #productDetails > div:not(.products-search-row),
+  .smartacctg-products-page #productDetails .productList,
   .smartacctg-customers-page .sa-card > div:has(.sa-item-card),
   .smartacctg-customers-page .sa-card div:has(> .sa-item-card) {
     grid-template-columns: 1fr !important;
@@ -353,47 +513,49 @@
     padding: var(--sa-card-pad) !important;
   }
 
+  .smartacctg-products-page #productDetails .products-product-info-grid,
   .smartacctg-products-page .products-product-info-grid {
     grid-template-columns: 1fr !important;
   }
 
-  /* 产品按钮在小手机可以直排，避免挤压 */
+  /* 手机：客户按钮继续保持横向自动换行，不要整排竖着 */
+  .smartacctg-customers-page .customers-action-row,
+  .smartacctg-customers-page .customer-action-row,
+  .smartacctg-customers-page .sa-action-row,
+  .smartacctg-customers-page .sa-actions-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .smartacctg-customers-page .customers-action-row button,
+  .smartacctg-customers-page .customer-action-row button,
+  .smartacctg-customers-page .sa-action-row button,
+  .smartacctg-customers-page .sa-actions-row button {
+    min-width: 92px !important;
+    flex: 1 1 calc(33.333% - 10px) !important;
+  }
+
+  .smartacctg-customers-page .customers-action-row button:nth-last-child(-n + 2),
+  .smartacctg-customers-page .customer-action-row button:nth-last-child(-n + 2),
+  .smartacctg-customers-page .sa-action-row button:nth-last-child(-n + 2),
+  .smartacctg-customers-page .sa-actions-row button:nth-last-child(-n + 2) {
+    flex: 1 1 calc(50% - 10px) !important;
+  }
+
   .smartacctg-products-page .products-action-row {
-    flex-direction: column !important;
-    align-items: stretch !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
   }
 
   .smartacctg-products-page .products-action-row button {
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  /* 客户按钮不要直排，保持 3 + 2 */
-  .smartacctg-customers-page .customers-action-row {
-    display: grid !important;
-    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
-    gap: 10px !important;
-  }
-
-  .smartacctg-customers-page .customers-action-row > button,
-  .smartacctg-customers-page .customers-action-row > a {
-    width: 100% !important;
-    min-width: 0 !important;
-    height: 48px !important;
-    min-height: 48px !important;
-    font-size: 15px !important;
-    padding: 0 6px !important;
-  }
-
-  .smartacctg-customers-page .customers-action-row > *:nth-child(1),
-  .smartacctg-customers-page .customers-action-row > *:nth-child(2),
-  .smartacctg-customers-page .customers-action-row > *:nth-child(3) {
-    grid-column: span 2 !important;
-  }
-
-  .smartacctg-customers-page .customers-action-row > *:nth-child(4),
-  .smartacctg-customers-page .customers-action-row > *:nth-child(5) {
-    grid-column: span 3 !important;
+    width: auto !important;
+    min-width: 110px !important;
+    flex: 0 1 auto !important;
   }
 
   .sa-stats-grid,
@@ -403,7 +565,57 @@
   .accounting-summary-grid,
   .accounting-stats-grid,
   .dashboard-summary-grid,
-  .dashboard-stats-grid {
+  .dashboard-stats-grid,
+  .smartacctg-records-page .sa-stats-grid,
+  .smartacctg-records-page .records-summary-grid,
+  .smartacctg-records-page .records-stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .sa-stat-card,
+  .records-stat-card,
+  .records-summary-card,
+  .accounting-stat-card,
+  .dashboard-stat-card,
+  .products-summary-grid > button,
+  .smartacctg-records-page .sa-stats-grid > *,
+  .smartacctg-records-page .records-summary-grid > *,
+  .smartacctg-records-page .records-stats-grid > * {
+    min-height: 105px !important;
+    padding: 12px 8px !important;
+  }
+
+  .sa-stat-card span,
+  .sa-stat-card p,
+  .records-stat-card span,
+  .records-stat-card p,
+  .records-summary-card span,
+  .records-summary-card p,
+  .accounting-stat-card span,
+  .accounting-stat-card p,
+  .dashboard-stat-card span,
+  .dashboard-stat-card p,
+  .products-summary-grid > button span,
+  .products-summary-grid > button p,
+  .smartacctg-records-page .sa-stats-grid > * span,
+  .smartacctg-records-page .sa-stats-grid > * p,
+  .smartacctg-records-page .records-summary-grid > * span,
+  .smartacctg-records-page .records-summary-grid > * p,
+  .smartacctg-records-page .records-stats-grid > * span,
+  .smartacctg-records-page .records-stats-grid > * p {
+    font-size: 17px !important;
+  }
+
+  .sa-stat-card strong,
+  .records-stat-card strong,
+  .records-summary-card strong,
+  .accounting-stat-card strong,
+  .dashboard-stat-card strong,
+  .products-summary-grid > button strong,
+  .smartacctg-records-page .sa-stats-grid > * strong,
+  .smartacctg-records-page .records-summary-grid > * strong,
+  .smartacctg-records-page .records-stats-grid > * strong {
+    font-size: 21px !important;
   }
 }
