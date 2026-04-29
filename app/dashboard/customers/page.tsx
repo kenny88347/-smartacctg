@@ -473,6 +473,45 @@ const CUSTOMERS_PAGE_FIX_CSS = `
     line-height: 1.2 !important;
   }
 
+  .smartacctg-customers-page .customers-fullscreen-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    background: rgba(15, 23, 42, 0.58) !important;
+  }
+
+  .smartacctg-customers-page .customers-fullscreen-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .smartacctg-customers-page .customers-fullscreen-modal .sa-modal-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+    background: inherit !important;
+    padding-bottom: 12px !important;
+  }
+
   @media (max-width: 768px) {
     .smartacctg-customers-page .customers-search-row {
       grid-template-columns: 1fr !important;
@@ -568,6 +607,7 @@ export default function CustomersPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | CustomerStatus>("all");
   const [showForm, setShowForm] = useState(false);
+  const [fullscreenForm, setFullscreenForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
 
@@ -624,6 +664,16 @@ export default function CustomersPage() {
       safeLocalSet(THEME_KEY, urlTheme);
     } else if (savedTheme && THEMES[savedTheme]) {
       setThemeKey(savedTheme);
+    }
+
+    const shouldOpenNew = q.get("open") === "new";
+    const shouldFullscreen = q.get("fullscreen") === "1";
+
+    if (shouldOpenNew) {
+      setFullscreenForm(shouldFullscreen);
+      setTimeout(() => {
+        openNewCustomerForm(shouldFullscreen);
+      }, 0);
     }
 
     init();
@@ -752,6 +802,19 @@ export default function CustomersPage() {
     window.location.href = buildUrl(path, extra);
   }
 
+  function cleanOpenQuery() {
+    if (typeof window === "undefined") return;
+
+    const q = new URLSearchParams(window.location.search);
+    q.delete("open");
+    q.delete("fullscreen");
+
+    const nextQuery = q.toString();
+    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
+
+    window.history.replaceState({}, "", nextUrl);
+  }
+
   function backToDashboard() {
     go("/dashboard");
   }
@@ -777,7 +840,7 @@ export default function CustomersPage() {
       "/dashboard/invoices",
       `customerId=${encodeURIComponent(invoiceCustomer.id)}&customerName=${encodeURIComponent(
         invoiceCustomer.name
-      )}&from=customers`
+      )}&from=customers&open=new&fullscreen=1`
     );
   }
 
@@ -793,14 +856,17 @@ export default function CustomersPage() {
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
-  function openNewCustomerForm() {
+  function openNewCustomerForm(fullscreen = true) {
     resetForm();
+    setFullscreenForm(fullscreen);
     setShowForm(true);
   }
 
   function closeForm() {
     resetForm();
     setShowForm(false);
+    setFullscreenForm(false);
+    cleanOpenQuery();
   }
 
   function resetForm() {
@@ -989,6 +1055,8 @@ export default function CustomersPage() {
 
   function editCustomer(c: Customer) {
     setEditingId(c.id);
+    setFullscreenForm(true);
+
     setForm({
       name: c.name || "",
       phone: c.phone || "",
@@ -1205,7 +1273,7 @@ export default function CustomersPage() {
           <h1 style={titleStyle}>{t.pageTitle}</h1>
 
           <button
-            onClick={openNewCustomerForm}
+            onClick={() => openNewCustomerForm(true)}
             aria-label={t.add}
             style={{
               ...plusBtnStyle,
@@ -1400,19 +1468,22 @@ export default function CustomersPage() {
       </section>
 
       {showForm ? (
-        <div style={overlayStyle}>
+        <div
+          className={fullscreenForm ? "customers-fullscreen-overlay" : ""}
+          style={fullscreenForm ? fullscreenOverlayStyle : overlayStyle}
+        >
           <section
-            className="sa-modal"
+            className={fullscreenForm ? "sa-modal customers-fullscreen-modal" : "sa-modal"}
             style={{
-              ...modalStyle,
+              ...(fullscreenForm ? fullscreenModalStyle : modalStyle),
               background: theme.card,
               borderColor: theme.border,
-              boxShadow: theme.glow,
+              boxShadow: fullscreenForm ? "none" : theme.glow,
               color: theme.text,
             }}
           >
             <div className="sa-modal-header" style={modalHeaderStyle}>
-              <h2 style={modalTitleStyle}>{t.formTitle}</h2>
+              <h2 style={modalTitleStyle}>{editingId ? t.update : t.formTitle}</h2>
 
               <button
                 type="button"
@@ -2032,11 +2103,36 @@ const overlayStyle: CSSProperties = {
   overflowY: "auto",
 };
 
+const fullscreenOverlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  width: "100vw",
+  height: "100dvh",
+  background: "rgba(15, 23, 42, 0.58)",
+  padding: 0,
+  zIndex: 9999,
+  overflow: "hidden",
+};
+
 const modalStyle: CSSProperties = {
   width: "100%",
   maxWidth: 900,
   margin: "0 auto",
   border: "var(--sa-border-w) solid",
+};
+
+const fullscreenModalStyle: CSSProperties = {
+  width: "100vw",
+  maxWidth: "100vw",
+  height: "100dvh",
+  maxHeight: "100dvh",
+  minHeight: "100dvh",
+  margin: 0,
+  border: "none",
+  borderRadius: 0,
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+  padding: "max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom))",
 };
 
 const modalHeaderStyle: CSSProperties = {
