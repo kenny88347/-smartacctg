@@ -303,6 +303,162 @@ const TXT = {
   },
 };
 
+const RECORDS_PAGE_FIX_CSS = `
+  .smartacctg-records-page .sa-back-btn {
+    border-radius: 999px !important;
+  }
+
+  .smartacctg-records-page .records-summary-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    width: 100% !important;
+    align-items: stretch !important;
+  }
+
+  .smartacctg-records-page .records-stat-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: clamp(105px, 18vw, 128px) !important;
+    padding: clamp(12px, 2.5vw, 18px) !important;
+  }
+
+  .smartacctg-records-page .records-stat-card span,
+  .smartacctg-records-page .records-stat-card strong {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+  }
+
+  .smartacctg-records-page .records-stat-card span {
+    font-size: clamp(16px, 3.5vw, 22px) !important;
+    font-weight: 900 !important;
+  }
+
+  .smartacctg-records-page .records-stat-card strong {
+    font-size: clamp(20px, 4.5vw, 30px) !important;
+    font-weight: 900 !important;
+  }
+
+  .smartacctg-records-page .records-list {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    width: 100% !important;
+  }
+
+  .smartacctg-records-page .record-card {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    text-align: left !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .smartacctg-records-page .record-card * {
+    text-align: left !important;
+  }
+
+  .smartacctg-records-page .record-card h3 {
+    margin: 0 0 10px 0 !important;
+    font-size: var(--sa-fs-xl) !important;
+    line-height: 1.25 !important;
+    font-weight: 900 !important;
+  }
+
+  .smartacctg-records-page .record-card p {
+    margin: 8px 0 0 !important;
+    line-height: 1.55 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .smartacctg-records-page .records-action-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    margin-top: 6px !important;
+  }
+
+  .smartacctg-records-page .records-action-row button {
+    width: auto !important;
+    min-width: 110px !important;
+    flex: 0 1 auto !important;
+    white-space: nowrap !important;
+  }
+
+  .smartacctg-records-page input[type="date"] {
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+
+  .smartacctg-records-page input[type="date"]::-webkit-date-and-time-value {
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    min-height: 1.6em !important;
+  }
+
+  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit {
+    width: 100% !important;
+    text-align: center !important;
+  }
+
+  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    justify-content: center !important;
+  }
+
+  @media (max-width: 520px) {
+    .smartacctg-records-page .records-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 10px !important;
+    }
+
+    .smartacctg-records-page .records-stat-card {
+      min-height: 105px !important;
+      padding: 12px 8px !important;
+    }
+
+    .smartacctg-records-page .records-list {
+      gap: 16px !important;
+    }
+
+    .smartacctg-records-page .record-card {
+      gap: 12px !important;
+    }
+
+    .smartacctg-records-page .records-action-row {
+      flex-direction: row !important;
+      justify-content: flex-start !important;
+      gap: 8px !important;
+    }
+
+    .smartacctg-records-page .records-action-row button {
+      min-width: 105px !important;
+      flex: 0 1 auto !important;
+    }
+  }
+`;
+
 function makeId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -834,10 +990,13 @@ export default function RecordsPage() {
       className="smartacctg-page smartacctg-records-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
+      <style jsx global>{RECORDS_PAGE_FIX_CSS}</style>
+
       <div className="sa-topbar">
         <div className="sa-topbar-left">
           <button
             onClick={backToDashboard}
+            className="sa-back-btn"
             style={{
               ...backBtnStyle,
               color: theme.accent,
@@ -879,9 +1038,7 @@ export default function RecordsPage() {
         </div>
       </div>
 
-      {isTrial ? (
-        <div style={trialMsgStyle}>{t.trialMode}</div>
-      ) : null}
+      {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
 
       {msg ? (
         <div style={{ ...msgStyle, background: theme.softBg, color: theme.text }}>
@@ -913,9 +1070,10 @@ export default function RecordsPage() {
           </button>
         </div>
 
-        <div style={statsGridStyle}>
+        <div className="sa-stats-grid records-summary-grid" style={statsGridStyle}>
           <button
             type="button"
+            className="sa-stat-card records-stat-card"
             style={{
               ...statCardStyle,
               borderColor: theme.border,
@@ -930,6 +1088,7 @@ export default function RecordsPage() {
 
           <button
             type="button"
+            className="sa-stat-card records-stat-card"
             style={{
               ...statCardStyle,
               borderColor: theme.border,
@@ -944,6 +1103,7 @@ export default function RecordsPage() {
 
           <button
             type="button"
+            className="sa-stat-card records-stat-card"
             style={{
               ...statCardStyle,
               borderColor: theme.border,
@@ -1038,7 +1198,7 @@ export default function RecordsPage() {
         {filteredRecords.length === 0 ? (
           <p style={{ color: theme.subText, fontWeight: 800 }}>{t.noRecord}</p>
         ) : (
-          <div style={recordListStyle}>
+          <div className="records-list" style={recordListStyle}>
             {filteredRecords.map((tx) => {
               const invoice = getInvoice(tx);
               const isIncome = tx.txn_type === "income";
@@ -1046,11 +1206,13 @@ export default function RecordsPage() {
               return (
                 <div
                   key={tx.id}
-                  className="sa-item-card"
+                  className="record-card"
                   style={{
+                    ...recordCardStyle,
                     borderColor: theme.border,
                     background: theme.card,
                     color: theme.text,
+                    boxShadow: theme.glow,
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
@@ -1317,7 +1479,7 @@ const pageStyle: CSSProperties = {
 const backBtnStyle: CSSProperties = {
   background: "#fff",
   border: "2px solid",
-  borderRadius: "var(--sa-radius-control)",
+  borderRadius: "999px",
   padding: "0 var(--sa-control-x)",
   minHeight: "var(--sa-control-h)",
   fontWeight: 900,
@@ -1370,9 +1532,10 @@ const plusBtnStyle: CSSProperties = {
 
 const statsGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
   marginTop: 14,
+  width: "100%",
 };
 
 const statCardStyle: CSSProperties = {
@@ -1382,23 +1545,33 @@ const statCardStyle: CSSProperties = {
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
   minHeight: 120,
-  textAlign: "left",
+  textAlign: "center",
   cursor: "pointer",
-  display: "grid",
-  alignContent: "center",
-  gap: 12,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  width: "100%",
+  minWidth: 0,
 };
 
 const statLabelStyle: CSSProperties = {
+  display: "block",
+  width: "100%",
   color: "#111827",
   fontWeight: 900,
+  textAlign: "center",
+  lineHeight: 1.2,
 };
 
 const statAmountStyle: CSSProperties = {
   display: "block",
+  width: "100%",
   fontWeight: 900,
   fontSize: "var(--sa-fs-xl)",
   lineHeight: 1.15,
+  textAlign: "center",
 };
 
 const inputStyle: CSSProperties = {
@@ -1420,6 +1593,8 @@ const dateInputStyle: CSSProperties = {
   appearance: "none",
   WebkitAppearance: "none",
   textAlign: "center",
+  display: "block",
+  lineHeight: "normal",
 };
 
 const responsiveGridStyle: CSSProperties = {
@@ -1437,7 +1612,23 @@ const relatedMenuRowStyle: CSSProperties = {
 
 const recordListStyle: CSSProperties = {
   display: "grid",
+  gridTemplateColumns: "1fr",
+  gap: 18,
+  width: "100%",
+};
+
+const recordCardStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+  display: "grid",
+  gridTemplateColumns: "1fr",
   gap: 14,
+  width: "100%",
+  minWidth: 0,
+  height: "auto",
+  minHeight: "auto",
+  overflowWrap: "anywhere",
 };
 
 const recordTitleStyle: CSSProperties = {
@@ -1454,9 +1645,9 @@ const mutedStyle: CSSProperties = {
 
 const actionRowStyle: CSSProperties = {
   display: "flex",
-  gap: 8,
+  gap: 10,
   alignItems: "center",
-  justifyContent: "flex-end",
+  justifyContent: "flex-start",
   flexWrap: "wrap",
 };
 
