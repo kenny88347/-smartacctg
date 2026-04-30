@@ -308,6 +308,79 @@ const THEMES: Record<ThemeKey, any> = {
   },
 };
 
+const PRODUCTS_PAGE_CSS = `
+  .smartacctg-products-page .products-form-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    background: rgba(15,23,42,0.45) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 18px !important;
+    box-sizing: border-box !important;
+  }
+
+  .smartacctg-products-page .products-form-modal {
+    border-radius: var(--sa-radius-card) !important;
+    padding: var(--sa-card-pad) !important;
+  }
+
+  .smartacctg-products-page .products-form-modal .sa-modal-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 12px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+    background: #ffffff !important;
+    padding-bottom: 12px !important;
+  }
+
+  @media (max-width: 768px) {
+    .smartacctg-products-page .products-form-overlay {
+      width: 100vw !important;
+      height: 100dvh !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      align-items: stretch !important;
+      justify-content: stretch !important;
+      overflow: hidden !important;
+    }
+
+    .smartacctg-products-page .products-form-modal {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      height: 100dvh !important;
+      min-height: 100dvh !important;
+      max-height: 100dvh !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      border-left: none !important;
+      border-right: none !important;
+      border-top: none !important;
+      border-bottom: none !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
+      box-sizing: border-box !important;
+    }
+
+    .smartacctg-products-page .products-form-modal input,
+    .smartacctg-products-page .products-form-modal textarea {
+      font-size: 16px !important;
+    }
+
+    .smartacctg-products-page .products-modal-actions {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 10px !important;
+      padding-bottom: 20px !important;
+    }
+  }
+`;
+
 function safeLocalGet(key: string) {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(key);
@@ -417,6 +490,7 @@ export default function ProductsPage() {
       setThemeKey(savedTheme);
     }
 
+    openAddForm();
     init();
   }, []);
 
@@ -658,7 +732,13 @@ export default function ProductsPage() {
   }
 
   function openAddForm() {
-    resetForm();
+    setEditingId(null);
+    setProductName("");
+    setProductPrice("");
+    setProductCost("");
+    setProductDiscount("");
+    setProductStock("");
+    setProductNote("");
     setShowForm(true);
   }
 
@@ -1044,9 +1124,7 @@ export default function ProductsPage() {
           color: theme.itemText,
           borderColor: theme.border,
           boxShadow:
-            themeKey === "blackGold"
-              ? theme.glow
-              : "0 8px 24px rgba(15,23,42,0.08)",
+            themeKey === "blackGold" ? theme.glow : "0 8px 24px rgba(15,23,42,0.08)",
         }}
       >
         <div>
@@ -1238,6 +1316,8 @@ export default function ProductsPage() {
       className="smartacctg-page smartacctg-products-page"
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
+      <style jsx global>{PRODUCTS_PAGE_CSS}</style>
+
       <div className="sa-topbar">
         <div className="sa-topbar-left">
           <button
@@ -1542,9 +1622,9 @@ export default function ProductsPage() {
       ) : null}
 
       {showForm ? (
-        <div style={overlayStyle}>
+        <div className="products-form-overlay" style={overlayStyle}>
           <div
-            className="sa-modal"
+            className="sa-modal products-form-modal"
             style={{
               ...modalStyle,
               borderColor: theme.border,
@@ -1939,6 +2019,8 @@ const modalStyle: CSSProperties = {
   background: "#fff",
   color: "#111827",
   border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
 };
 
 const detailModalStyle: CSSProperties = {
@@ -1949,6 +2031,8 @@ const detailModalStyle: CSSProperties = {
   background: "#fff",
   color: "#111827",
   border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
 };
 
 const modalHeaderStyle: CSSProperties = {
