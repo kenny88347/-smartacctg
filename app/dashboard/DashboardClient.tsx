@@ -1,3 +1,45 @@
+"use client";
+
+import { ChangeEvent, CSSProperties, useEffect, useMemo, useState } from "react";
+import { Session } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+
+type PageKey = "home" | "accounting" | "customers" | "products" | "invoices" | "records";
+type Lang = "zh" | "en" | "ms";
+
+type ThemeKey =
+  | "pink"
+  | "blackGold"
+  | "lightRed"
+  | "nature"
+  | "sky"
+  | "deepTeal"
+  | "futureForest"
+  | "futureWorld";
+
+type Profile = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  company_name: string | null;
+  company_reg_no: string | null;
+  company_phone: string | null;
+  company_address: string | null;
+  theme: string | null;
+  plan_type: string | null;
+  plan_expiry: string | null;
+};
+
+type Txn = {
+  id: string;
+  txn_date: string;
+  txn_type: "income" | "expense";
+  amount: number;
+  category_name?: string | null;
+  note?: string | null;
+};
+
 type Customer = {
   id: string;
   name?: string | null;
@@ -141,6 +183,23 @@ const TXT = {
   },
 };
 
+const futureWorldTheme = {
+  name: "未来世界",
+  pageBg:
+    "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
+  banner:
+    "linear-gradient(135deg, rgba(1,28,26,0.98), rgba(6,78,59,0.96)), radial-gradient(circle at top right, rgba(45,212,191,0.32), transparent 34%)",
+  card: "rgba(6,47,42,0.94)",
+  border: "#2dd4bf",
+  glow:
+    "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
+  accent: "#2dd4bf",
+  text: "#ecfeff",
+  muted: "#99f6e4",
+  inputBg: "#ffffff",
+  inputText: "#111827",
+};
+
 const THEMES: Record<ThemeKey, any> = {
   deepTeal: {
     name: "深青色",
@@ -226,26 +285,19 @@ const THEMES: Record<ThemeKey, any> = {
     inputBg: "#ffffff",
     inputText: "#111827",
   },
-  futureForest: {
-    name: "未来世界｜深林青色",
-    pageBg:
-      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
-    banner:
-      "linear-gradient(135deg, rgba(1,28,26,0.98), rgba(6,78,59,0.96)), radial-gradient(circle at top right, rgba(45,212,191,0.32), transparent 34%)",
-    card: "rgba(6,47,42,0.94)",
-    border: "#2dd4bf",
-    glow:
-      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
-    accent: "#2dd4bf",
-    text: "#ecfeff",
-    muted: "#99f6e4",
-    inputBg: "#ffffff",
-    inputText: "#111827",
-  },
+  futureForest: futureWorldTheme,
+  futureWorld: futureWorldTheme,
 };
 
 function isThemeKey(value: unknown): value is ThemeKey {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(THEMES, value);
+}
+
+function normalizeThemeKey(value: unknown): ThemeKey {
+  if (value === "futureForest") return "futureForest";
+  if (value === "futureWorld") return "futureWorld";
+  if (isThemeKey(value)) return value;
+  return "deepTeal";
 }
 
 function safeLocalGet(key: string) {
@@ -277,6 +329,8 @@ function applyThemeToDocument(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-theme-text", theme.text);
   document.documentElement.style.setProperty("--sa-theme-muted", theme.muted);
   document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
+  document.documentElement.style.setProperty("--sa-theme-input-bg", theme.inputBg || "#ffffff");
+  document.documentElement.style.setProperty("--sa-theme-input-text", theme.inputText || "#111827");
 }
 
 export default function DashboardClient({ page }: { page: PageKey }) {
@@ -337,6 +391,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     }
 
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function init() {
@@ -396,10 +451,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       setCompanyPhone(p.company_phone || "");
       setCompanyAddress(p.company_address || "");
 
-      if (isThemeKey(p.theme)) {
-        setThemeKey(p.theme);
-        safeLocalSet(THEME_KEY, p.theme);
-        applyThemeToDocument(p.theme);
+      const fixedTheme = normalizeThemeKey(p.theme);
+
+      if (p.theme && isThemeKey(fixedTheme)) {
+        setThemeKey(fixedTheme);
+        safeLocalSet(THEME_KEY, fixedTheme);
+        applyThemeToDocument(fixedTheme);
       }
     }
 
