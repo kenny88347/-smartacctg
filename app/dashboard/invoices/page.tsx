@@ -2,19 +2,17 @@
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  THEMES,
+  type ThemeKey,
+  applyThemeToDocument,
+  getThemeKeyFromUrlOrLocalStorage,
+  normalizeThemeKey,
+  saveThemeKey,
+} from "@/lib/smartacctgTheme";
 
 type Lang = "zh" | "en" | "ms";
 type Mode = "list" | "new";
-type ThemeKey =
-  | "pink"
-  | "blackGold"
-  | "lightRed"
-  | "nature"
-  | "sky"
-  | "deepTeal"
-  | "futureForest"
-  | "futureWorld";
-
 type ChargeMode = "%" | "RM";
 
 type Customer = {
@@ -101,150 +99,9 @@ const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 const PAYMENT_OPTIONS_KEY = "smartacctg_payment_options";
 const SIGNATURE_OPTIONS_KEY = "smartacctg_signature_options";
 const LANG_KEY = "smartacctg_lang";
-const THEME_KEY = "smartacctg_theme";
 const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 
 const today = () => new Date().toISOString().slice(0, 10);
-
-const THEMES: Record<ThemeKey, any> = {
-  deepTeal: {
-    name: "深青色",
-    pageBg: "#ecfdf5",
-    card: "#ffffff",
-    panelBg: "#f8fafc",
-    itemBg: "#f8fafc",
-    inputBg: "#ffffff",
-    border: "#14b8a6",
-    glow:
-      "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
-    accent: "#0f766e",
-    text: "#064e3b",
-    panelText: "#111827",
-    inputText: "#111827",
-    muted: "#64748b",
-  },
-
-  pink: {
-    name: "可爱粉色",
-    pageBg: "#fff7fb",
-    card: "#ffffff",
-    panelBg: "#fdf2f8",
-    itemBg: "#fdf2f8",
-    inputBg: "#ffffff",
-    border: "#f472b6",
-    glow:
-      "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
-    accent: "#db2777",
-    text: "#4a044e",
-    panelText: "#111827",
-    inputText: "#111827",
-    muted: "#64748b",
-  },
-
-  blackGold: {
-    name: "黑金商务",
-    pageBg: "#111111",
-    card: "#1f1f1f",
-    panelBg: "#2a2a2a",
-    itemBg: "#2a2a2a",
-    inputBg: "#ffffff",
-    border: "#facc15",
-    glow:
-      "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
-    accent: "#facc15",
-    text: "#fff7ed",
-    panelText: "#fff7ed",
-    inputText: "#111827",
-    muted: "#fde68a",
-  },
-
-  lightRed: {
-    name: "可爱浅红",
-    pageBg: "#fff1f2",
-    card: "#ffffff",
-    panelBg: "#fff1f2",
-    itemBg: "#fff1f2",
-    inputBg: "#ffffff",
-    border: "#fb7185",
-    glow:
-      "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
-    accent: "#e11d48",
-    text: "#881337",
-    panelText: "#111827",
-    inputText: "#111827",
-    muted: "#64748b",
-  },
-
-  nature: {
-    name: "风景自然系",
-    pageBg: "#f0fdf4",
-    card: "#ffffff",
-    panelBg: "#f8fafc",
-    itemBg: "#f8fafc",
-    inputBg: "#ffffff",
-    border: "#22d3ee",
-    glow:
-      "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
-    accent: "#0f766e",
-    text: "#14532d",
-    panelText: "#111827",
-    inputText: "#111827",
-    muted: "#64748b",
-  },
-
-  sky: {
-    name: "天空蓝",
-    pageBg: "#eff6ff",
-    card: "#ffffff",
-    panelBg: "#f8fafc",
-    itemBg: "#f8fafc",
-    inputBg: "#ffffff",
-    border: "#38bdf8",
-    glow:
-      "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
-    accent: "#0284c7",
-    text: "#0f172a",
-    panelText: "#111827",
-    inputText: "#111827",
-    muted: "#64748b",
-  },
-
-  futureForest: {
-    name: "未来世界",
-    pageBg:
-      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
-    card: "linear-gradient(145deg,#062d28,#021917)",
-    panelBg: "rgba(6, 78, 59, 0.35)",
-    itemBg: "rgba(15, 118, 110, 0.22)",
-    inputBg: "#ecfeff",
-    border: "#2dd4bf",
-    glow:
-      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
-    accent: "#2dd4bf",
-    text: "#ecfeff",
-    panelText: "#ecfeff",
-    inputText: "#042f2e",
-    muted: "#99f6e4",
-  },
-
-  futureWorld: {
-    name: "未来世界",
-    pageBg:
-      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
-    card: "linear-gradient(145deg,#062d28,#021917)",
-    panelBg: "rgba(6, 78, 59, 0.35)",
-    itemBg: "rgba(15, 118, 110, 0.22)",
-    inputBg: "#ecfeff",
-    border: "#2dd4bf",
-    glow:
-      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
-    accent: "#2dd4bf",
-    text: "#ecfeff",
-    panelText: "#ecfeff",
-    inputText: "#042f2e",
-    muted: "#99f6e4",
-  },
-};
 
 const TXT = {
   zh: {
@@ -600,7 +457,6 @@ const DEFAULT_PAYMENT_OPTIONS: PaymentOption[] = [
   { id: "tng-ewallet", name: "TNG eWallet", link: "" },
   { id: "credit-term", name: "Credit Term" },
 ];
-
 const INVOICE_PAGE_CSS = `
   .smartacctg-invoice-page input[type="date"] {
     text-align: center !important;
@@ -660,7 +516,7 @@ const INVOICE_PAGE_CSS = `
     width: 100%;
     height: 220px;
     background: #fff;
-    border: 3px solid #14b8a6;
+    border: 3px solid var(--sa-border, #14b8a6);
     border-radius: 18px;
     touch-action: none;
   }
@@ -717,21 +573,6 @@ const INVOICE_PAGE_CSS = `
     }
   }
 `;
-
-function normalizeThemeKey(value: any): ThemeKey {
-  const key = String(value || "").trim();
-
-  if (key === "futureWorld") return "futureWorld";
-  if (key === "futureForest") return "futureForest";
-  if (key === "deepTeal") return "deepTeal";
-  if (key === "pink") return "pink";
-  if (key === "blackGold") return "blackGold";
-  if (key === "lightRed") return "lightRed";
-  if (key === "nature") return "nature";
-  if (key === "sky") return "sky";
-
-  return "deepTeal";
-}
 
 function makeInvoiceNo() {
   return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
@@ -794,6 +635,17 @@ function safeLocalSet(key: string, value: string) {
 function safeLocalRemove(key: string) {
   if (typeof window === "undefined") return;
   localStorage.removeItem(key);
+}
+
+function safeParseArray<T>(raw: string | null): T[] {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function isSchemaColumnError(error: any) {
@@ -1062,7 +914,6 @@ function formatDateTime(value?: string | null, fallbackDate?: string | null) {
     return value || fallbackDate || "-";
   }
 }
-
 export default function InvoicePage() {
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
@@ -1160,6 +1011,10 @@ export default function InvoicePage() {
   };
 
   useEffect(() => {
+    applyThemeToDocument(themeKey);
+  }, [themeKey]);
+
+  useEffect(() => {
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1176,21 +1031,12 @@ export default function InvoicePage() {
   }
 
   function getCurrentTheme(): ThemeKey {
-    const q = new URLSearchParams(window.location.search);
-    const urlTheme = q.get("theme");
-    const saved = safeLocalGet(THEME_KEY);
-
-    const normalizedUrlTheme = normalizeThemeKey(urlTheme);
-    const normalizedSavedTheme = normalizeThemeKey(saved);
-
-    if (urlTheme && THEMES[normalizedUrlTheme]) return normalizedUrlTheme;
-    if (saved && THEMES[normalizedSavedTheme]) return normalizedSavedTheme;
-
-    return "deepTeal";
+    return getThemeKeyFromUrlOrLocalStorage("deepTeal");
   }
 
   function syncThemeToUrlAndLocalStorage(nextTheme: ThemeKey, nextLang = lang) {
-    safeLocalSet(THEME_KEY, nextTheme);
+    saveThemeKey(nextTheme);
+    applyThemeToDocument(nextTheme);
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", nextLang);
@@ -1218,7 +1064,8 @@ export default function InvoicePage() {
 
     setLang(currentLang);
     setThemeKey(currentTheme);
-    safeLocalSet(THEME_KEY, currentTheme);
+    saveThemeKey(currentTheme);
+    applyThemeToDocument(currentTheme);
 
     const q = new URLSearchParams(window.location.search);
     const openParam = q.get("open");
@@ -1256,31 +1103,35 @@ export default function InvoicePage() {
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((modeParam === "trial" || trialRaw) && trialRaw) {
-      const trial = JSON.parse(trialRaw);
+      try {
+        const trial = JSON.parse(trialRaw);
 
-      if (Date.now() < Number(trial.expiresAt)) {
-        setIsTrial(true);
+        if (Date.now() < Number(trial.expiresAt)) {
+          setIsTrial(true);
 
-        const savedCustomers = safeLocalGet(TRIAL_CUSTOMERS_KEY);
-        const savedProducts = safeLocalGet(TRIAL_PRODUCTS_KEY);
-        const savedInvoices = safeLocalGet(TRIAL_INVOICES_KEY);
+          const trialProducts = safeParseArray<any>(safeLocalGet(TRIAL_PRODUCTS_KEY));
 
-        const trialProducts = savedProducts ? JSON.parse(savedProducts) : [];
+          setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
+          setProducts(trialProducts.map((p: any) => normalizeProduct(p)));
+          setInvoices(safeParseArray<InvoiceRecord>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
-        setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
-        setProducts(trialProducts.map((p: any) => normalizeProduct(p)));
-        setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
+          if (shouldOpenNew) {
+            setTimeout(() => {
+              openNewInvoice(true);
+            }, 120);
+          }
 
-        if (shouldOpenNew) {
-          setTimeout(() => {
-            openNewInvoice(true);
-          }, 120);
+          return;
         }
-
-        return;
+      } catch {
+        // Bad trial data, clear below.
       }
 
       safeLocalRemove(TRIAL_KEY);
+      safeLocalRemove(TRIAL_TX_KEY);
+      safeLocalRemove(TRIAL_CUSTOMERS_KEY);
+      safeLocalRemove(TRIAL_PRODUCTS_KEY);
+      safeLocalRemove(TRIAL_INVOICES_KEY);
       window.location.href = "/zh";
       return;
     }
@@ -1308,10 +1159,12 @@ export default function InvoicePage() {
       setCompanyAddress(profile.company_address || "");
       setCompanyLogoUrl(profile.company_logo_url || "");
 
-      const profileTheme = normalizeThemeKey(profile.theme);
+      const profileTheme = normalizeThemeKey(profile.theme || currentTheme, currentTheme);
 
       if (profile.theme && THEMES[profileTheme]) {
         setThemeKey(profileTheme);
+        saveThemeKey(profileTheme);
+        applyThemeToDocument(profileTheme);
         syncThemeToUrlAndLocalStorage(profileTheme, currentLang);
       }
     }
@@ -1472,8 +1325,7 @@ export default function InvoicePage() {
       .toLowerCase()
       .includes(q);
   });
-
-  function savePaymentOptions(next: PaymentOption[]) {
+    function savePaymentOptions(next: PaymentOption[]) {
     setPaymentOptions(next);
     safeLocalSet(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
   }
@@ -1607,8 +1459,7 @@ export default function InvoicePage() {
   }
 
   function addTrialTransaction(total: number, customer: Customer, invNo: string) {
-    const oldRaw = safeLocalGet(TRIAL_TX_KEY);
-    const oldTx = oldRaw ? JSON.parse(oldRaw) : [];
+    const oldTx = safeParseArray<any>(safeLocalGet(TRIAL_TX_KEY));
 
     const nextTx = [
       {
@@ -1639,16 +1490,20 @@ export default function InvoicePage() {
 
     if (!userId) return;
 
-    await updateAdaptive("profiles", userId, {
-      company_name: companyName,
-      company_reg_no: companyRegNo,
-      company_phone: companyPhone,
-      company_address: companyAddress,
-      company_logo_url: companyLogoUrl,
-    });
+    try {
+      await updateAdaptive("profiles", userId, {
+        company_name: companyName,
+        company_reg_no: companyRegNo,
+        company_phone: companyPhone,
+        company_address: companyAddress,
+        company_logo_url: companyLogoUrl,
+      });
 
-    setMsg(t.saved);
-    setShowCompanyEdit(false);
+      setMsg(t.saved);
+      setShowCompanyEdit(false);
+    } catch (error: any) {
+      setMsg(t.fail + (error?.message || String(error)));
+    }
   }
 
   async function insertProductWithStock(item: InvoiceItem) {
@@ -1776,7 +1631,7 @@ export default function InvoicePage() {
       return;
     }
 
-    if (customerMode === "new" && !newCustomerName) {
+    if (customerMode === "new" && !newCustomerName.trim()) {
       setMsg(t.needNewCustomer);
       return;
     }
@@ -1792,7 +1647,7 @@ export default function InvoicePage() {
         return;
       }
 
-      if (item.productMode === "new" && !item.newProductName) {
+      if (item.productMode === "new" && !item.newProductName.trim()) {
         setMsg(t.needProduct);
         return;
       }
@@ -1817,7 +1672,7 @@ export default function InvoicePage() {
 
       if (customerMode === "new") {
         finalCustomer = {
-          id: String(Date.now()),
+          id: makeId("customer"),
           name: newCustomerName,
           phone: newCustomerPhone,
           company_name: newCustomerCompany,
@@ -1886,7 +1741,7 @@ export default function InvoicePage() {
       }
 
       const printableRecord: InvoiceRecord = {
-        id: String(Date.now()),
+        id: makeId("invoice"),
         invoice_no: invoiceNo,
         invoice_date: invoiceDate,
         due_date: dueDate,
@@ -2036,8 +1891,7 @@ export default function InvoicePage() {
 
     setLoading(false);
   }
-
-  function startEditInvoice(inv: InvoiceRecord) {
+    function startEditInvoice(inv: InvoiceRecord) {
     setEditInvoiceId(inv.id);
     setInvoiceNo(inv.invoice_no || makeInvoiceNo());
     setInvoiceDate(inv.invoice_date || today());
@@ -2637,8 +2491,7 @@ export default function InvoicePage() {
       </div>
     );
   }
-
-  return (
+    return (
     <main
       className="smartacctg-page smartacctg-invoice-page"
       data-sa-theme={themeKey}
@@ -2651,7 +2504,11 @@ export default function InvoicePage() {
           type="button"
           onClick={goBack}
           className="sa-back-btn"
-          style={{ borderColor: theme.border, color: theme.accent }}
+          style={{
+            borderColor: theme.border,
+            color: theme.accent,
+            background: theme.inputBg,
+          }}
         >
           ← {t.dashboardBack}
         </button>
@@ -2663,7 +2520,7 @@ export default function InvoicePage() {
             className="sa-lang-btn"
             style={{
               borderColor: theme.accent,
-              background: lang === "zh" ? theme.accent : "#fff",
+              background: lang === "zh" ? theme.accent : theme.inputBg,
               color: lang === "zh" ? "#fff" : theme.accent,
             }}
           >
@@ -2676,7 +2533,7 @@ export default function InvoicePage() {
             className="sa-lang-btn"
             style={{
               borderColor: theme.accent,
-              background: lang === "en" ? theme.accent : "#fff",
+              background: lang === "en" ? theme.accent : theme.inputBg,
               color: lang === "en" ? "#fff" : theme.accent,
             }}
           >
@@ -2689,7 +2546,7 @@ export default function InvoicePage() {
             className="sa-lang-btn"
             style={{
               borderColor: theme.accent,
-              background: lang === "ms" ? theme.accent : "#fff",
+              background: lang === "ms" ? theme.accent : theme.inputBg,
               color: lang === "ms" ? "#fff" : theme.accent,
             }}
           >
@@ -2798,6 +2655,7 @@ export default function InvoicePage() {
                           ...recordShareBtnStyle,
                           borderColor: theme.accent,
                           color: theme.accent,
+                          background: theme.inputBg,
                         }}
                       >
                         {t.share}
@@ -3011,7 +2869,15 @@ export default function InvoicePage() {
             {companyLogoUrl ? (
               <img src={companyLogoUrl} style={logoStyle} alt="Company Logo" />
             ) : (
-              <div style={logoPlaceholder}>LOGO</div>
+              <div
+                style={{
+                  ...logoPlaceholder,
+                  background: theme.softBg || "#ccfbf1",
+                  color: theme.accent,
+                }}
+              >
+                LOGO
+              </div>
             )}
 
             <div style={{ flex: 1, color: theme.panelText }}>
@@ -3024,7 +2890,12 @@ export default function InvoicePage() {
             <button
               type="button"
               onClick={() => setShowCompanyEdit((v) => !v)}
-              style={{ ...editBtnStyle, borderColor: theme.border, color: theme.accent }}
+              style={{
+                ...editBtnStyle,
+                borderColor: theme.border,
+                color: theme.accent,
+                background: theme.inputBg,
+              }}
             >
               {t.editCompany}
             </button>
@@ -3452,7 +3323,12 @@ export default function InvoicePage() {
             <button
               type="button"
               onClick={() => printInvoice()}
-              style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}
+              style={{
+                ...secondaryBtn,
+                borderColor: theme.border,
+                color: theme.accent,
+                background: theme.inputBg,
+              }}
             >
               {t.print}
             </button>
@@ -3460,7 +3336,12 @@ export default function InvoicePage() {
             <button
               type="button"
               onClick={() => downloadPdf()}
-              style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}
+              style={{
+                ...secondaryBtn,
+                borderColor: theme.border,
+                color: theme.accent,
+                background: theme.inputBg,
+              }}
             >
               {t.pdf}
             </button>
@@ -3541,7 +3422,6 @@ export default function InvoicePage() {
     </main>
   );
 }
-
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
   width: "100%",
@@ -3761,7 +3641,7 @@ const inputStyle: CSSProperties = {
   padding: "0 var(--sa-control-x)",
   borderRadius: "var(--sa-radius-control)",
   border: "var(--sa-border-w) solid",
-  fontSize: "var(--sa-input-fs)",
+  fontSize: "16px",
   marginBottom: 8,
   display: "block",
   outline: "none",
