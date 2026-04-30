@@ -1,10 +1,11 @@
 /* =========================================================
-   SmartAcctg SAFE Global UI Fix
+   SmartAcctg SAFE Global UI Fix + Global Theme System
    放在 app/globals.css 最下面
    重要：
    1. 删除旧的 SmartAcctg Global UI Fix / Auto Stats Fix 后再放这一份
    2. 不再使用危险的 :has(strong) 自动识别
    3. 统计卡片只认明确 class，不会误伤发票 / 客户 / 产品资料卡
+   4. 已加入全局主题变量 + 未来世界「深林青色」
    ========================================================= */
 
 :root {
@@ -32,10 +33,165 @@
   --sa-green: #16a34a;
   --sa-red: #dc2626;
   --sa-red-dark: #991b1b;
-  --sa-text: #111827;
-  --sa-muted: #64748b;
-  --sa-border: #cbd5e1;
   --sa-white: #ffffff;
+
+  /* 默认主题：深青色 */
+  --sa-page-bg: #ecfdf5;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #f8fafc;
+  --sa-item-bg: #ffffff;
+  --sa-input-bg: #ffffff;
+  --sa-border: #14b8a6;
+  --sa-accent: #0f766e;
+  --sa-text: #064e3b;
+  --sa-panel-text: #111827;
+  --sa-input-text: #111827;
+  --sa-muted: #64748b;
+  --sa-soft-bg: #ccfbf1;
+  --sa-banner-bg: #ffffff;
+  --sa-glow: 0 0 0 1px rgba(20, 184, 166, 0.42),
+    0 0 18px rgba(45, 212, 191, 0.55),
+    0 18px 42px rgba(15, 118, 110, 0.25);
+}
+
+/* =========================================================
+   全局主题变量
+   DashboardClient 需要写入：
+   document.documentElement.setAttribute("data-sa-theme", key)
+   ========================================================= */
+
+html[data-sa-theme="deepTeal"] {
+  --sa-page-bg: #ecfdf5;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #f8fafc;
+  --sa-item-bg: #ffffff;
+  --sa-input-bg: #ffffff;
+  --sa-border: #14b8a6;
+  --sa-accent: #0f766e;
+  --sa-text: #064e3b;
+  --sa-panel-text: #111827;
+  --sa-input-text: #111827;
+  --sa-muted: #64748b;
+  --sa-soft-bg: #ccfbf1;
+  --sa-banner-bg: #ffffff;
+  --sa-glow: 0 0 0 1px rgba(20, 184, 166, 0.42),
+    0 0 18px rgba(45, 212, 191, 0.55),
+    0 18px 42px rgba(15, 118, 110, 0.25);
+}
+
+html[data-sa-theme="pink"] {
+  --sa-page-bg: #fff7fb;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #fdf2f8;
+  --sa-item-bg: #ffffff;
+  --sa-input-bg: #ffffff;
+  --sa-border: #f472b6;
+  --sa-accent: #db2777;
+  --sa-text: #4a044e;
+  --sa-panel-text: #111827;
+  --sa-input-text: #111827;
+  --sa-muted: #64748b;
+  --sa-soft-bg: #fce7f3;
+  --sa-banner-bg: linear-gradient(135deg, #ffd6e7, #fff1f2);
+  --sa-glow: 0 0 0 1px rgba(244, 114, 182, 0.36),
+    0 0 18px rgba(244, 114, 182, 0.45),
+    0 18px 38px rgba(244, 114, 182, 0.22);
+}
+
+html[data-sa-theme="blackGold"] {
+  --sa-page-bg: #111111;
+  --sa-card-bg: #1f1f1f;
+  --sa-panel-bg: #2a2a2a;
+  --sa-item-bg: #1f1f1f;
+  --sa-input-bg: #ffffff;
+  --sa-border: #facc15;
+  --sa-accent: #d4af37;
+  --sa-text: #fff7ed;
+  --sa-panel-text: #fff7ed;
+  --sa-input-text: #111827;
+  --sa-muted: #fef3c7;
+  --sa-soft-bg: #2a2112;
+  --sa-banner-bg: linear-gradient(135deg, #111111, #3b2f16);
+  --sa-glow: 0 0 0 1px rgba(250, 204, 21, 0.5),
+    0 0 20px rgba(250, 204, 21, 0.45),
+    0 18px 42px rgba(250, 204, 21, 0.22);
+}
+
+html[data-sa-theme="lightRed"] {
+  --sa-page-bg: #fff1f2;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #fff1f2;
+  --sa-item-bg: #ffffff;
+  --sa-input-bg: #ffffff;
+  --sa-border: #fb7185;
+  --sa-accent: #e11d48;
+  --sa-text: #881337;
+  --sa-panel-text: #111827;
+  --sa-input-text: #111827;
+  --sa-muted: #64748b;
+  --sa-soft-bg: #ffe4e6;
+  --sa-banner-bg: linear-gradient(135deg, #fecdd3, #ffe4e6);
+  --sa-glow: 0 0 0 1px rgba(251, 113, 133, 0.45),
+    0 0 20px rgba(251, 113, 133, 0.5),
+    0 18px 38px rgba(251, 113, 133, 0.26);
+}
+
+html[data-sa-theme="nature"] {
+  --sa-page-bg: #f0fdf4;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #f8fafc;
+  --sa-item-bg: #ffffff;
+  --sa-input-bg: #ffffff;
+  --sa-border: #22d3ee;
+  --sa-accent: #0f766e;
+  --sa-text: #14532d;
+  --sa-panel-text: #111827;
+  --sa-input-text: #111827;
+  --sa-muted: #64748b;
+  --sa-soft-bg: #dcfce7;
+  --sa-banner-bg: linear-gradient(135deg, #d9f99d, #bae6fd);
+  --sa-glow: 0 0 0 1px rgba(34, 211, 238, 0.42),
+    0 0 18px rgba(34, 211, 238, 0.42),
+    0 18px 38px rgba(34, 211, 238, 0.22);
+}
+
+html[data-sa-theme="sky"] {
+  --sa-page-bg: #eff6ff;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #f8fafc;
+  --sa-item-bg: #ffffff;
+  --sa-input-bg: #ffffff;
+  --sa-border: #38bdf8;
+  --sa-accent: #0284c7;
+  --sa-text: #0f172a;
+  --sa-panel-text: #111827;
+  --sa-input-text: #111827;
+  --sa-muted: #64748b;
+  --sa-soft-bg: #dbeafe;
+  --sa-banner-bg: linear-gradient(135deg, #bfdbfe, #e0f2fe);
+  --sa-glow: 0 0 0 1px rgba(56, 189, 248, 0.42),
+    0 0 18px rgba(56, 189, 248, 0.48),
+    0 18px 38px rgba(56, 189, 248, 0.24);
+}
+
+/* 新主题：未来世界｜深林青色 */
+html[data-sa-theme="futureWorld"] {
+  --sa-page-bg: radial-gradient(circle at top left, #064e3b 0%, #022c22 42%, #020617 100%);
+  --sa-card-bg: rgba(2, 44, 34, 0.94);
+  --sa-panel-bg: rgba(6, 78, 59, 0.78);
+  --sa-item-bg: rgba(6, 78, 59, 0.86);
+  --sa-input-bg: rgba(236, 254, 255, 0.96);
+  --sa-border: #2dd4bf;
+  --sa-accent: #14b8a6;
+  --sa-text: #ecfeff;
+  --sa-panel-text: #ecfeff;
+  --sa-input-text: #022c22;
+  --sa-muted: #99f6e4;
+  --sa-soft-bg: rgba(20, 184, 166, 0.18);
+  --sa-banner-bg: linear-gradient(135deg, #022c22, #064e3b, #0f766e);
+  --sa-glow: 0 0 0 1px rgba(45, 212, 191, 0.65),
+    0 0 22px rgba(20, 184, 166, 0.65),
+    0 20px 48px rgba(2, 44, 34, 0.55);
 }
 
 /* =========================================================
@@ -85,6 +241,8 @@ body {
   font-size: var(--sa-fs-base) !important;
   line-height: 1.5 !important;
   padding: clamp(10px, 3vw, 22px) !important;
+  background: var(--sa-page-bg) !important;
+  color: var(--sa-text) !important;
 }
 
 .smartacctg-page *,
@@ -272,6 +430,9 @@ body {
   padding-left: var(--sa-control-x) !important;
   padding-right: var(--sa-control-x) !important;
   border-radius: var(--sa-radius-control) !important;
+  border-color: var(--sa-border) !important;
+  background: var(--sa-input-bg) !important;
+  color: var(--sa-input-text) !important;
   outline: none !important;
 }
 
@@ -378,7 +539,9 @@ body {
   border-radius: 999px !important;
   border-width: 2px !important;
   border-style: solid !important;
+  border-color: var(--sa-border) !important;
   background: #ffffff !important;
+  color: var(--sa-accent) !important;
   font-size: 14px !important;
   font-weight: 900 !important;
   line-height: 1.15 !important;
@@ -407,6 +570,7 @@ body {
   border-radius: 999px !important;
   border-width: 2px !important;
   border-style: solid !important;
+  border-color: var(--sa-accent) !important;
   font-size: 14px !important;
   font-weight: 900 !important;
   line-height: 1.15 !important;
@@ -424,10 +588,20 @@ body {
 .sa-content-card {
   border-width: var(--sa-border-w) !important;
   border-style: solid !important;
+  border-color: var(--sa-border) !important;
   border-radius: var(--sa-radius-card) !important;
   padding: var(--sa-card-pad) !important;
   max-width: 100% !important;
   overflow-wrap: anywhere !important;
+  background: var(--sa-card-bg) !important;
+  color: var(--sa-text) !important;
+  box-shadow: var(--sa-glow) !important;
+}
+
+.sa-panel,
+.sa-box {
+  background: var(--sa-panel-bg) !important;
+  color: var(--sa-panel-text) !important;
 }
 
 /* 资料卡：发票 / 客户 / 产品明细，全部保持正常列表样式 */
@@ -444,6 +618,10 @@ body {
   text-align: left !important;
   padding: var(--sa-card-pad) !important;
   border-radius: var(--sa-radius-card) !important;
+  border-color: var(--sa-border) !important;
+  background: var(--sa-item-bg) !important;
+  color: var(--sa-panel-text) !important;
+  box-shadow: var(--sa-glow) !important;
   overflow-wrap: anywhere !important;
 }
 
@@ -549,6 +727,11 @@ body {
   gap: 8px !important;
   text-align: center !important;
   line-height: 1.25 !important;
+
+  background: var(--sa-card-bg) !important;
+  color: var(--sa-text) !important;
+  border-color: var(--sa-border) !important;
+  box-shadow: var(--sa-glow) !important;
 }
 
 /* 统计标题 */
@@ -608,6 +791,7 @@ body {
   line-height: 1.15 !important;
   margin: 0 !important;
   text-align: center !important;
+  color: var(--sa-green) !important;
 }
 
 /* =========================================================
@@ -790,6 +974,10 @@ span.sa-close-x::before,
   overflow-y: auto !important;
   border-radius: var(--sa-radius-card) !important;
   padding: var(--sa-card-pad) !important;
+  background: var(--sa-card-bg) !important;
+  color: var(--sa-text) !important;
+  border-color: var(--sa-border) !important;
+  box-shadow: var(--sa-glow) !important;
 }
 
 /* =========================================================
