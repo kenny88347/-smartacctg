@@ -5,7 +5,6 @@ import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import {
   THEMES,
-  THEME_KEY as SMARTACCTG_THEME_KEY,
   type ThemeKey,
   applyThemeToDocument,
   getThemeKeyFromUrlOrLocalStorage,
@@ -61,6 +60,8 @@ const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
 
 const TEAL_VALUE = "#16a34a";
 const BLACK_LABEL = "#111827";
+const DARK_LABEL = "#ecfeff";
+const DARK_AMOUNT = "#4ade80";
 
 const TXT = {
   zh: {
@@ -270,6 +271,27 @@ const PRODUCTS_PAGE_CSS = `
     color: inherit !important;
   }
 
+  .smartacctg-products-page[data-sa-theme="futureForest"] .products-summary-grid .sa-stat-card,
+  .smartacctg-products-page[data-sa-theme="futureWorld"] .products-summary-grid .sa-stat-card,
+  .smartacctg-products-page[data-sa-theme="blackGold"] .products-summary-grid .sa-stat-card {
+    background: var(--sa-card-bg) !important;
+    color: #ecfeff !important;
+  }
+
+  .smartacctg-products-page[data-sa-theme="futureForest"] .products-summary-grid .sa-stat-card span,
+  .smartacctg-products-page[data-sa-theme="futureWorld"] .products-summary-grid .sa-stat-card span,
+  .smartacctg-products-page[data-sa-theme="blackGold"] .products-summary-grid .sa-stat-card span {
+    color: #ecfeff !important;
+    text-shadow: 0 1px 10px rgba(236,254,255,0.35) !important;
+  }
+
+  .smartacctg-products-page[data-sa-theme="futureForest"] .products-summary-grid .sa-stat-card strong,
+  .smartacctg-products-page[data-sa-theme="futureWorld"] .products-summary-grid .sa-stat-card strong,
+  .smartacctg-products-page[data-sa-theme="blackGold"] .products-summary-grid .sa-stat-card strong {
+    color: #4ade80 !important;
+    text-shadow: 0 1px 14px rgba(74,222,128,0.38) !important;
+  }
+
   @media (max-width: 768px) {
     .smartacctg-products-page .products-form-overlay {
       width: 100vw !important;
@@ -401,14 +423,20 @@ function applyThemeEverywhere(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
   document.documentElement.style.setProperty("--sa-card-bg", theme.card);
   document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
-  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.itemCard || theme.card);
+  document.documentElement.style.setProperty(
+    "--sa-item-bg",
+    theme.itemBg || theme.itemCard || theme.card
+  );
   document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
   document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
   document.documentElement.style.setProperty("--sa-border", theme.border);
   document.documentElement.style.setProperty("--sa-accent", theme.accent);
   document.documentElement.style.setProperty("--sa-text", theme.text);
   document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
-  document.documentElement.style.setProperty("--sa-muted", theme.muted || theme.subText || "#64748b");
+  document.documentElement.style.setProperty(
+    "--sa-muted",
+    theme.muted || theme.subText || "#64748b"
+  );
   document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.card);
   document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card);
   document.documentElement.style.setProperty("--sa-glow", theme.glow);
@@ -462,10 +490,22 @@ export default function ProductsPage() {
   const t = TXT[lang];
   const theme = THEMES[themeKey] || THEMES.deepTeal;
 
+  const isDarkStatsTheme =
+    String(themeKey) === "blackGold" ||
+    String(themeKey) === "futureForest" ||
+    String(themeKey) === "futureWorld";
+
   const themeMuted = theme.muted || theme.subText || "#64748b";
   const themeSoft = theme.softBg || theme.soft || "#f8fafc";
   const themeItemCard = theme.itemCard || theme.itemBg || theme.card;
   const themeItemText = theme.itemText || theme.panelText || theme.text;
+
+  const summaryCardBg = isDarkStatsTheme ? theme.card : "#ffffff";
+  const summaryCardText = isDarkStatsTheme ? DARK_LABEL : BLACK_LABEL;
+  const summaryLabelColor = isDarkStatsTheme ? DARK_LABEL : BLACK_LABEL;
+  const summaryValueColor = isDarkStatsTheme ? DARK_AMOUNT : TEAL_VALUE;
+  const summaryTextShadow = isDarkStatsTheme ? "0 1px 12px rgba(236,254,255,0.35)" : "none";
+  const summaryAmountShadow = isDarkStatsTheme ? "0 1px 14px rgba(74,222,128,0.38)" : "none";
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
@@ -1275,9 +1315,7 @@ export default function ProductsPage() {
           <div style={deleteHeaderStyle}>
             <div>
               <h2 style={deleteTitleStyle}>{t.deleteTitle}</h2>
-              <p style={{ ...deleteWarningTextStyle, color: themeMuted }}>
-                {t.deleteWarning}
-              </p>
+              <p style={{ ...deleteWarningTextStyle, color: themeMuted }}>{t.deleteWarning}</p>
             </div>
 
             <button type="button" onClick={closeDeleteModal} style={deleteCloseBtnStyle}>
@@ -1458,12 +1496,30 @@ export default function ProductsPage() {
           style={{
             ...summaryCardStyle,
             order: 1,
+            background: summaryCardBg,
+            color: summaryCardText,
             borderColor: theme.border,
             boxShadow: theme.glow,
           }}
         >
-          <span style={summaryLabelStyle}>{t.summaryCost}</span>
-          <strong style={summaryValueStyle}>RM {productSummary.totalCost.toFixed(2)}</strong>
+          <span
+            style={{
+              ...summaryLabelStyle,
+              color: summaryLabelColor,
+              textShadow: summaryTextShadow,
+            }}
+          >
+            {t.summaryCost}
+          </span>
+          <strong
+            style={{
+              ...summaryValueStyle,
+              color: summaryValueColor,
+              textShadow: summaryAmountShadow,
+            }}
+          >
+            RM {productSummary.totalCost.toFixed(2)}
+          </strong>
         </button>
 
         <button
@@ -1473,12 +1529,30 @@ export default function ProductsPage() {
           style={{
             ...summaryCardStyle,
             order: 2,
+            background: summaryCardBg,
+            color: summaryCardText,
             borderColor: theme.border,
             boxShadow: theme.glow,
           }}
         >
-          <span style={summaryLabelStyle}>{t.summaryPrice}</span>
-          <strong style={summaryValueStyle}>RM {productSummary.totalValue.toFixed(2)}</strong>
+          <span
+            style={{
+              ...summaryLabelStyle,
+              color: summaryLabelColor,
+              textShadow: summaryTextShadow,
+            }}
+          >
+            {t.summaryPrice}
+          </span>
+          <strong
+            style={{
+              ...summaryValueStyle,
+              color: summaryValueColor,
+              textShadow: summaryAmountShadow,
+            }}
+          >
+            RM {productSummary.totalValue.toFixed(2)}
+          </strong>
         </button>
 
         <button
@@ -1488,12 +1562,30 @@ export default function ProductsPage() {
           style={{
             ...summaryCardStyle,
             order: 3,
+            background: summaryCardBg,
+            color: summaryCardText,
             borderColor: theme.border,
             boxShadow: theme.glow,
           }}
         >
-          <span style={summaryLabelStyle}>{t.profit}</span>
-          <strong style={summaryValueStyle}>RM {productSummary.totalProfit.toFixed(2)}</strong>
+          <span
+            style={{
+              ...summaryLabelStyle,
+              color: summaryLabelColor,
+              textShadow: summaryTextShadow,
+            }}
+          >
+            {t.profit}
+          </span>
+          <strong
+            style={{
+              ...summaryValueStyle,
+              color: summaryValueColor,
+              textShadow: summaryAmountShadow,
+            }}
+          >
+            RM {productSummary.totalProfit.toFixed(2)}
+          </strong>
         </button>
 
         <button
@@ -1503,12 +1595,30 @@ export default function ProductsPage() {
           style={{
             ...summaryCardStyle,
             order: 4,
+            background: summaryCardBg,
+            color: summaryCardText,
             borderColor: theme.border,
             boxShadow: theme.glow,
           }}
         >
-          <span style={summaryLabelStyle}>{t.stock}</span>
-          <strong style={summaryValueStyle}>{productSummary.totalStock}</strong>
+          <span
+            style={{
+              ...summaryLabelStyle,
+              color: summaryLabelColor,
+              textShadow: summaryTextShadow,
+            }}
+          >
+            {t.stock}
+          </span>
+          <strong
+            style={{
+              ...summaryValueStyle,
+              color: summaryValueColor,
+              textShadow: summaryAmountShadow,
+            }}
+          >
+            {productSummary.totalStock}
+          </strong>
         </button>
       </section>
 
@@ -1538,7 +1648,9 @@ export default function ProductsPage() {
         {filteredProducts.length === 0 ? (
           <p>{t.noProduct}</p>
         ) : (
-          <div style={productListStyle}>{filteredProducts.map((p) => renderProductDetailCard(p))}</div>
+          <div style={productListStyle}>
+            {filteredProducts.map((p) => renderProductDetailCard(p))}
+          </div>
         )}
       </section>
 
@@ -1767,7 +1879,11 @@ export default function ProductsPage() {
             />
 
             <div className="products-modal-actions" style={modalActionRowStyle}>
-              <button type="button" onClick={saveProduct} style={{ ...addBtnStyle, background: theme.accent }}>
+              <button
+                type="button"
+                onClick={saveProduct}
+                style={{ ...addBtnStyle, background: theme.accent }}
+              >
                 {t.save}
               </button>
 
