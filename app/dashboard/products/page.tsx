@@ -148,7 +148,8 @@ const TXT = {
     noCustomer: "No customers yet. Please add customers first.",
     confirmDelete: "Delete this product?",
     deleteTitle: "Confirm Product Deletion",
-    deleteWarning: "Please check this product info. After deletion, it will be removed from Product Management.",
+    deleteWarning:
+      "Please check this product info. After deletion, it will be removed from Product Management.",
     confirmDeleteBtn: "Delete Product",
     deleteSuccess: "Product deleted",
     deleteFail: "Delete failed: this product may already be used by invoices.",
@@ -654,6 +655,11 @@ export default function ProductsPage() {
     setProductStock("");
     setProductNote("");
     setShowForm(false);
+  }
+
+  function openAddForm() {
+    resetForm();
+    setShowForm(true);
   }
 
   function openEditForm(p: Product) {
@@ -1287,6 +1293,15 @@ export default function ProductsPage() {
             <p style={{ ...subTitleStyle, color: theme.muted }}>{t.subtitle}</p>
             {isTrial ? <div style={trialBadgeStyle}>{t.trial}</div> : null}
           </div>
+
+          <button
+            onClick={openAddForm}
+            aria-label={t.add}
+            title={t.add}
+            style={{ ...plusBtnStyle, background: theme.accent }}
+          >
+            ➕
+          </button>
         </div>
       </section>
 
@@ -1644,7 +1659,7 @@ const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
 
 const titleRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr)",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "start",
   gap: 12,
   width: "100%",
@@ -1655,6 +1670,25 @@ const titleStyle: CSSProperties = {
   fontSize: "var(--sa-fs-2xl)",
   fontWeight: 900,
   lineHeight: 1.12,
+};
+
+const plusBtnStyle: CSSProperties = {
+  width: 58,
+  height: 58,
+  minWidth: 58,
+  minHeight: 58,
+  maxWidth: 58,
+  borderRadius: 999,
+  border: "none",
+  color: "#fff",
+  fontSize: "24px",
+  fontWeight: 900,
+  padding: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  flexShrink: 0,
 };
 
 const sectionTitleStyle: CSSProperties = {
