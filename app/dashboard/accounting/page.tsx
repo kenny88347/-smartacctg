@@ -6,7 +6,14 @@ import { supabase } from "@/lib/supabase";
 
 type Lang = "zh" | "en" | "ms";
 type TxnType = "income" | "expense";
-type ThemeKey = "deepTeal" | "pink" | "blackGold" | "lightRed" | "nature" | "sky";
+type ThemeKey =
+  | "deepTeal"
+  | "pink"
+  | "blackGold"
+  | "lightRed"
+  | "nature"
+  | "sky"
+  | "futureForest";
 
 type Txn = {
   id: string;
@@ -147,6 +154,19 @@ const THEMES: Record<
     subText: "#0369a1",
     softBg: "#dbeafe",
     glow: "0 0 0 1px rgba(56,189,248,0.35), 0 16px 36px rgba(56,189,248,0.20)",
+  },
+  futureForest: {
+    name: "未来世界｜深林青色",
+    pageBg:
+      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
+    card: "rgba(6,47,42,0.94)",
+    border: "#2dd4bf",
+    accent: "#2dd4bf",
+    text: "#ecfeff",
+    subText: "#99f6e4",
+    softBg: "rgba(20,184,166,0.18)",
+    glow:
+      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
   },
 };
 
@@ -479,6 +499,26 @@ function safeLocalRemove(key: string) {
   localStorage.removeItem(key);
 }
 
+function isThemeKey(value: unknown): value is ThemeKey {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(THEMES, value);
+}
+
+function applyThemeToDocument(key: ThemeKey) {
+  if (typeof document === "undefined") return;
+
+  const theme = THEMES[key] || THEMES.deepTeal;
+
+  document.documentElement.setAttribute("data-smartacctg-theme", key);
+  document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-theme-card", theme.card);
+  document.documentElement.style.setProperty("--sa-theme-border", theme.border);
+  document.documentElement.style.setProperty("--sa-theme-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-theme-text", theme.text);
+  document.documentElement.style.setProperty("--sa-theme-muted", theme.subText);
+  document.documentElement.style.setProperty("--sa-theme-soft-bg", theme.softBg);
+  document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
+}
+
 function isSchemaCacheMissingSource(message: string) {
   const lower = String(message || "").toLowerCase();
 
@@ -530,13 +570,11 @@ export default function RecordsPage() {
   const theme = THEMES[themeKey];
 
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
+    applyThemeToDocument(themeKey);
+  }, [themeKey]);
 
-    if (!q.get("refresh")) {
-      q.set("refresh", String(Date.now()));
-      window.location.replace(`${window.location.pathname}?${q.toString()}`);
-      return;
-    }
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
 
     const urlLang = q.get("lang") as Lang | null;
     const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
@@ -548,14 +586,16 @@ export default function RecordsPage() {
       setLang(savedLang);
     }
 
-    const urlTheme = q.get("theme") as ThemeKey | null;
-    const savedTheme = safeLocalGet(THEME_KEY) as ThemeKey | null;
+    const urlTheme = q.get("theme");
+    const savedTheme = safeLocalGet(THEME_KEY);
 
-    if (urlTheme && THEMES[urlTheme]) {
+    if (isThemeKey(urlTheme)) {
       setThemeKey(urlTheme);
       safeLocalSet(THEME_KEY, urlTheme);
-    } else if (savedTheme && THEMES[savedTheme]) {
+      applyThemeToDocument(urlTheme);
+    } else if (isThemeKey(savedTheme)) {
       setThemeKey(savedTheme);
+      applyThemeToDocument(savedTheme);
     }
 
     const view = q.get("view");
@@ -617,9 +657,10 @@ export default function RecordsPage() {
 
     const profile = profileData as Profile | null;
 
-    if (profile?.theme && THEMES[profile.theme as ThemeKey]) {
-      setThemeKey(profile.theme as ThemeKey);
+    if (isThemeKey(profile?.theme)) {
+      setThemeKey(profile.theme);
       safeLocalSet(THEME_KEY, profile.theme);
+      applyThemeToDocument(profile.theme);
     }
 
     await loadAll(data.session.user.id);
@@ -988,6 +1029,7 @@ export default function RecordsPage() {
   return (
     <main
       className="smartacctg-page smartacctg-records-page"
+      data-sa-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
       <style jsx global>{RECORDS_PAGE_FIX_CSS}</style>
