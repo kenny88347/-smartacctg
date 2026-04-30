@@ -490,7 +490,15 @@ export default function ProductsPage() {
       setThemeKey(savedTheme);
     }
 
-    openAddForm();
+    const shouldOpenNew = query.get("open") === "new";
+    const shouldFullscreen = query.get("fullscreen") === "1";
+
+    if (shouldOpenNew || shouldFullscreen) {
+      setTimeout(() => {
+        openAddForm();
+      }, 80);
+    }
+
     init();
   }, []);
 
@@ -729,6 +737,13 @@ export default function ProductsPage() {
     setProductStock("");
     setProductNote("");
     setShowForm(false);
+
+    const q = new URLSearchParams(window.location.search);
+    q.delete("open");
+    q.delete("fullscreen");
+    const nextQuery = q.toString();
+    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
+    window.history.replaceState({}, "", nextUrl);
   }
 
   function openAddForm() {
@@ -1123,8 +1138,7 @@ export default function ProductsPage() {
           background: theme.itemCard,
           color: theme.itemText,
           borderColor: theme.border,
-          boxShadow:
-            themeKey === "blackGold" ? theme.glow : "0 8px 24px rgba(15,23,42,0.08)",
+          boxShadow: themeKey === "blackGold" ? theme.glow : "0 8px 24px rgba(15,23,42,0.08)",
         }}
       >
         <div>
