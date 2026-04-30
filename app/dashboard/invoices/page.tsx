@@ -5,7 +5,14 @@ import { supabase } from "@/lib/supabase";
 
 type Lang = "zh" | "en" | "ms";
 type Mode = "list" | "new";
-type ThemeKey = "pink" | "blackGold" | "lightRed" | "nature" | "sky" | "deepTeal";
+type ThemeKey =
+  | "pink"
+  | "blackGold"
+  | "lightRed"
+  | "nature"
+  | "sky"
+  | "deepTeal"
+  | "futureWorld";
 type ChargeMode = "%" | "RM";
 
 type Customer = {
@@ -193,6 +200,22 @@ const THEMES: Record<ThemeKey, any> = {
     panelText: "#111827",
     inputText: "#111827",
     muted: "#64748b",
+  },
+  futureWorld: {
+    name: "未来世界",
+    pageBg: "linear-gradient(135deg,#011814,#042f2e,#064e3b)",
+    card: "linear-gradient(145deg,#062d28,#021917)",
+    panelBg: "rgba(6, 78, 59, 0.35)",
+    itemBg: "rgba(15, 118, 110, 0.22)",
+    inputBg: "#ecfeff",
+    border: "#2dd4bf",
+    glow:
+      "0 0 0 1px rgba(45,212,191,0.55), 0 0 22px rgba(20,184,166,0.65), 0 20px 46px rgba(5,150,105,0.32)",
+    accent: "#2dd4bf",
+    text: "#ecfeff",
+    panelText: "#ecfeff",
+    inputText: "#042f2e",
+    muted: "#99f6e4",
   },
 };
 
@@ -550,19 +573,58 @@ const DEFAULT_PAYMENT_OPTIONS: PaymentOption[] = [
 ];
 
 const INVOICE_PAGE_CSS = `
+  .smartacctg-invoice-page input[type="date"] {
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+
+  .smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value {
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    min-height: 1.6em !important;
+  }
+
+  .smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit {
+    width: 100% !important;
+    text-align: center !important;
+  }
+
+  .smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    justify-content: center !important;
+  }
+
   .smartacctg-invoice-page .fullscreen-invoice-modal {
     position: fixed !important;
     inset: 0 !important;
-    width: 100vw !important;
-    height: 100dvh !important;
-    max-width: 100vw !important;
-    max-height: 100dvh !important;
-    overflow-y: auto !important;
     z-index: 9999 !important;
-    border-radius: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
     margin: 0 !important;
-    padding: clamp(12px, 3vw, 22px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
     box-sizing: border-box !important;
+  }
+
+  .smartacctg-invoice-page .fullscreen-invoice-modal .sa-titlebar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    background: inherit !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 12px !important;
   }
 
   .smartacctg-invoice-page .signature-canvas {
@@ -576,6 +638,21 @@ const INVOICE_PAGE_CSS = `
 
   .smartacctg-invoice-page .negative-amount {
     color: #dc2626 !important;
+  }
+
+  @media (max-width: 768px) {
+    .smartacctg-invoice-page .responsive-actions,
+    .smartacctg-invoice-page .invoice-action-row {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+
+    .smartacctg-invoice-page .fullscreen-invoice-modal input,
+    .smartacctg-invoice-page .fullscreen-invoice-modal select,
+    .smartacctg-invoice-page .fullscreen-invoice-modal textarea {
+      font-size: 16px !important;
+    }
   }
 
   @media print {
@@ -1078,24 +1155,38 @@ export default function InvoicePage() {
     const openParam = q.get("open");
     const fullscreenParam = q.get("fullscreen");
 
-    if (fullscreenParam === "1") setFullscreen(true);
+    const shouldOpenNew = openParam === "new";
+    const shouldFullscreen = fullscreenParam === "1" || shouldOpenNew;
+
+    if (shouldFullscreen) {
+      setFullscreen(true);
+    }
 
     const savedPayment = safeLocalGet(PAYMENT_OPTIONS_KEY);
     if (savedPayment) {
-      const parsed = normalizePaymentOptions(JSON.parse(savedPayment));
-      setPaymentOptions(parsed);
-      setPaymentMethod(parsed[0]?.id || DEFAULT_PAYMENT_OPTIONS[0].id);
+      try {
+        const parsed = normalizePaymentOptions(JSON.parse(savedPayment));
+        setPaymentOptions(parsed);
+        setPaymentMethod(parsed[0]?.id || DEFAULT_PAYMENT_OPTIONS[0].id);
+      } catch {
+        setPaymentOptions(DEFAULT_PAYMENT_OPTIONS);
+        setPaymentMethod(DEFAULT_PAYMENT_OPTIONS[0].id);
+      }
     }
 
     const savedSignature = safeLocalGet(SIGNATURE_OPTIONS_KEY);
     if (savedSignature) {
-      setSignatureOptions(normalizeSignatureOptions(JSON.parse(savedSignature)));
+      try {
+        setSignatureOptions(normalizeSignatureOptions(JSON.parse(savedSignature)));
+      } catch {
+        setSignatureOptions([]);
+      }
     }
 
     const modeParam = q.get("mode");
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
-    if (modeParam === "trial" && trialRaw) {
+    if ((modeParam === "trial" || trialRaw) && trialRaw) {
       const trial = JSON.parse(trialRaw);
 
       if (Date.now() < Number(trial.expiresAt)) {
@@ -1111,10 +1202,10 @@ export default function InvoicePage() {
         setProducts(trialProducts.map((p: any) => normalizeProduct(p)));
         setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
 
-        if (openParam === "new") {
+        if (shouldOpenNew) {
           setTimeout(() => {
-            openNewInvoice(fullscreenParam === "1");
-          }, 100);
+            openNewInvoice(true);
+          }, 120);
         }
 
         return;
@@ -1158,10 +1249,10 @@ export default function InvoicePage() {
     await loadProducts(uid);
     await loadInvoices(uid);
 
-    if (openParam === "new") {
+    if (shouldOpenNew) {
       setTimeout(() => {
-        openNewInvoice(fullscreenParam === "1");
-      }, 100);
+        openNewInvoice(true);
+      }, 120);
     }
   }
 
@@ -1222,9 +1313,7 @@ export default function InvoicePage() {
     const selectedProduct = getProductForItem(item);
 
     const name =
-      item.productMode === "new"
-        ? item.newProductName || "-"
-        : selectedProduct?.name || "-";
+      item.productMode === "new" ? item.newProductName || "-" : selectedProduct?.name || "-";
 
     const price =
       item.productMode === "new"
@@ -1987,9 +2076,7 @@ export default function InvoicePage() {
       pay?.bankAccount ? `${t.paymentBankAccount}：${pay.bankAccount}` : "",
       pay?.receiverName ? `${t.paymentReceiverName}：${pay.receiverName}` : "",
       pay?.link ? `Payment Link：${pay.link}` : "",
-      pay?.qrCodeUrl && !pay.qrCodeUrl.startsWith("data:")
-        ? `QR Code：${pay.qrCodeUrl}`
-        : "",
+      pay?.qrCodeUrl && !pay.qrCodeUrl.startsWith("data:") ? `QR Code：${pay.qrCodeUrl}` : "",
     ]
       .filter(Boolean)
       .join("%0A");
@@ -2080,12 +2167,16 @@ export default function InvoicePage() {
   function closeInvoiceForm() {
     setMode("list");
     setFullscreen(false);
+    setEditInvoiceId(null);
 
     const q = new URLSearchParams(window.location.search);
     q.delete("open");
     q.delete("fullscreen");
 
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    const nextQuery = q.toString();
+    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
+
+    window.history.replaceState({}, "", nextUrl);
   }
 
   function renderChargeInput(
@@ -3773,6 +3864,7 @@ const signatureMiniPreviewStyle: CSSProperties = {
   border: "1px solid #cbd5e1",
   borderRadius: 12,
   padding: 10,
+  color: "#111827",
 };
 
 const signatureMiniImageStyle: CSSProperties = {
