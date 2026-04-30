@@ -6,10 +6,8 @@ import { supabase } from "@/lib/supabase";
 import {
   THEMES,
   type ThemeKey,
-  applyThemeToDocument,
   getThemeKeyFromUrlOrLocalStorage,
   isThemeKey,
-  normalizeThemeKey,
   saveThemeKey,
 } from "@/lib/smartacctgTheme";
 
@@ -207,6 +205,52 @@ function safeParseArray<T>(raw: string | null): T[] {
   }
 }
 
+function normalizeThemeKey(value: unknown, fallback: ThemeKey = "deepTeal"): ThemeKey {
+  if (isThemeKey(value)) return value;
+
+  if (value === "futureWorld" && isThemeKey("futureForest")) {
+    return "futureForest";
+  }
+
+  return fallback;
+}
+
+function applyThemeToDocument(key: ThemeKey) {
+  if (typeof document === "undefined") return;
+
+  const fixedKey = normalizeThemeKey(key);
+  const theme = THEMES[fixedKey] || THEMES.deepTeal;
+
+  document.documentElement.setAttribute("data-sa-theme", fixedKey);
+  document.documentElement.setAttribute("data-smartacctg-theme", fixedKey);
+
+  document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-banner-bg", theme.banner);
+  document.documentElement.style.setProperty("--sa-card-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
+  document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
+  document.documentElement.style.setProperty("--sa-border", theme.border);
+  document.documentElement.style.setProperty("--sa-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-text", theme.text);
+  document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
+  document.documentElement.style.setProperty("--sa-muted", theme.muted);
+  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.panelBg || theme.card);
+  document.documentElement.style.setProperty("--sa-glow", theme.glow);
+
+  document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-theme-banner", theme.banner);
+  document.documentElement.style.setProperty("--sa-theme-card", theme.card);
+  document.documentElement.style.setProperty("--sa-theme-border", theme.border);
+  document.documentElement.style.setProperty("--sa-theme-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-theme-text", theme.text);
+  document.documentElement.style.setProperty("--sa-theme-muted", theme.muted);
+  document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
+  document.documentElement.style.setProperty("--sa-theme-input-bg", theme.inputBg || "#ffffff");
+  document.documentElement.style.setProperty("--sa-theme-input-text", theme.inputText || "#111827");
+}
+
 function getInitialLang(): Lang {
   if (typeof window === "undefined") return "zh";
 
@@ -305,6 +349,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           setTransactions(safeParseArray<Txn>(safeLocalGet(TRIAL_TX_KEY)));
           setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
 
+          replaceUrlLangTheme(currentLang, currentTheme);
           return;
         }
       } catch {
@@ -337,6 +382,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .single();
 
     let finalTheme = currentTheme;
+    const urlTheme = q.get("theme");
+    const hasValidUrlTheme = isThemeKey(urlTheme);
 
     if (profileData) {
       const p = profileData as Profile;
@@ -351,7 +398,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
       const profileTheme = normalizeThemeKey(p.theme, currentTheme);
 
-      if (p.theme && isThemeKey(profileTheme)) {
+      if (!hasValidUrlTheme && p.theme) {
         finalTheme = profileTheme;
         setThemeKey(profileTheme);
         saveThemeKey(profileTheme);
@@ -517,6 +564,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         setMsg(error.message);
         return;
       }
+
+      setProfile((p) => (p ? { ...p, theme: fixedTheme } : p));
     }
 
     setMsg(t.saved);
@@ -570,6 +619,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     <main
       className="smartacctg-page smartacctg-dashboard-page"
       data-sa-theme={themeKey}
+      data-smartacctg-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
       <header
