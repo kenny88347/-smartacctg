@@ -3,9 +3,18 @@
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import {
+  THEMES,
+  THEME_KEY as SMARTACCTG_THEME_KEY,
+  type ThemeKey,
+  applyThemeToDocument,
+  getThemeKeyFromUrlOrLocalStorage,
+  isThemeKey,
+  normalizeThemeKey,
+  saveThemeKey,
+} from "@/lib/smartacctgTheme";
 
 type Lang = "zh" | "en" | "ms";
-type ThemeKey = "deepTeal" | "pink" | "blackGold" | "lightRed" | "nature" | "sky";
 type DetailMetric = "stock" | "cost" | "price" | "profit" | null;
 
 type Product = {
@@ -42,7 +51,6 @@ type Profile = {
 };
 
 const LANG_KEY = "smartacctg_lang";
-const THEME_KEY = "smartacctg_theme";
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
@@ -221,93 +229,6 @@ const TXT = {
   },
 };
 
-const THEMES: Record<ThemeKey, any> = {
-  deepTeal: {
-    name: "深青色",
-    pageBg: "#ecfdf5",
-    card: "#ffffff",
-    itemCard: "#ffffff",
-    itemText: "#064e3b",
-    border: "#14b8a6",
-    glow:
-      "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
-    accent: "#0f766e",
-    text: "#064e3b",
-    muted: "#64748b",
-    soft: "#ccfbf1",
-  },
-  pink: {
-    name: "可爱粉色",
-    pageBg: "#fff7fb",
-    card: "#ffffff",
-    itemCard: "#ffffff",
-    itemText: "#4a044e",
-    border: "#f472b6",
-    glow:
-      "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
-    accent: "#db2777",
-    text: "#4a044e",
-    muted: "#64748b",
-    soft: "#fce7f3",
-  },
-  blackGold: {
-    name: "黑金商务",
-    pageBg: "#111111",
-    card: "#1f1f1f",
-    itemCard: "#ffffff",
-    itemText: "#111827",
-    border: "#facc15",
-    glow:
-      "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
-    accent: "#d4af37",
-    text: "#fff7ed",
-    muted: "#fef3c7",
-    soft: "#2a2112",
-  },
-  lightRed: {
-    name: "可爱浅红",
-    pageBg: "#fff1f2",
-    card: "#ffffff",
-    itemCard: "#ffffff",
-    itemText: "#881337",
-    border: "#fb7185",
-    glow:
-      "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
-    accent: "#e11d48",
-    text: "#881337",
-    muted: "#64748b",
-    soft: "#ffe4e6",
-  },
-  nature: {
-    name: "风景自然系",
-    pageBg: "#f0fdf4",
-    card: "#ffffff",
-    itemCard: "#ffffff",
-    itemText: "#14532d",
-    border: "#22d3ee",
-    glow:
-      "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
-    accent: "#0f766e",
-    text: "#14532d",
-    muted: "#64748b",
-    soft: "#dcfce7",
-  },
-  sky: {
-    name: "天空蓝",
-    pageBg: "#eff6ff",
-    card: "#ffffff",
-    itemCard: "#ffffff",
-    itemText: "#0f172a",
-    border: "#38bdf8",
-    glow:
-      "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
-    accent: "#0284c7",
-    text: "#0f172a",
-    muted: "#64748b",
-    soft: "#dbeafe",
-  },
-};
-
 const PRODUCTS_PAGE_CSS = `
   .smartacctg-products-page .products-form-overlay {
     position: fixed !important;
@@ -324,6 +245,8 @@ const PRODUCTS_PAGE_CSS = `
   .smartacctg-products-page .products-form-modal {
     border-radius: var(--sa-radius-card) !important;
     padding: var(--sa-card-pad) !important;
+    background: var(--sa-card-bg) !important;
+    color: var(--sa-text) !important;
   }
 
   .smartacctg-products-page .products-form-modal .sa-modal-header {
@@ -334,8 +257,17 @@ const PRODUCTS_PAGE_CSS = `
     position: sticky !important;
     top: 0 !important;
     z-index: 5 !important;
-    background: #ffffff !important;
+    background: var(--sa-card-bg) !important;
+    color: var(--sa-text) !important;
     padding-bottom: 12px !important;
+  }
+
+  .smartacctg-products-page .products-product-info-grid > div {
+    color: inherit !important;
+  }
+
+  .smartacctg-products-page .products-product-info-grid strong {
+    color: inherit !important;
   }
 
   @media (max-width: 768px) {
@@ -396,6 +328,17 @@ function safeLocalRemove(key: string) {
   localStorage.removeItem(key);
 }
 
+function safeParseArray<T>(raw: string | null): T[] {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function readStockMapByKey(key: string): Record<string, number> {
   try {
     const raw = safeLocalGet(key);
@@ -429,6 +372,58 @@ function removeStockValue(productId: string) {
   const map = getStockMap();
   delete map[productId];
   writeStockMap(map);
+}
+
+function getInitialLang(): Lang {
+  if (typeof window === "undefined") return "zh";
+
+  const query = new URLSearchParams(window.location.search);
+  const urlLang = query.get("lang") as Lang | null;
+  const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
+
+  if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
+  if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
+
+  return "zh";
+}
+
+function applyThemeEverywhere(key: ThemeKey) {
+  if (typeof document === "undefined") return;
+
+  const fixedKey = normalizeThemeKey(key);
+  const theme = THEMES[fixedKey] || THEMES.deepTeal;
+
+  applyThemeToDocument(fixedKey);
+
+  document.documentElement.setAttribute("data-sa-theme", fixedKey);
+  document.documentElement.setAttribute("data-smartacctg-theme", fixedKey);
+
+  document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-card-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.itemCard || theme.card);
+  document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
+  document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
+  document.documentElement.style.setProperty("--sa-border", theme.border);
+  document.documentElement.style.setProperty("--sa-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-text", theme.text);
+  document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
+  document.documentElement.style.setProperty("--sa-muted", theme.muted || theme.subText || "#64748b");
+  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.card);
+  document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card);
+  document.documentElement.style.setProperty("--sa-glow", theme.glow);
+}
+
+function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
+  if (typeof window === "undefined") return;
+
+  const query = new URLSearchParams(window.location.search);
+
+  query.set("lang", nextLang);
+  query.set("theme", nextTheme);
+  query.set("refresh", String(Date.now()));
+
+  window.history.replaceState({}, "", `${window.location.pathname}?${query.toString()}`);
 }
 
 export default function ProductsPage() {
@@ -465,31 +460,43 @@ export default function ProductsPage() {
   const [msg, setMsg] = useState("");
 
   const t = TXT[lang];
-  const theme = THEMES[themeKey];
+  const theme = THEMES[themeKey] || THEMES.deepTeal;
+
+  const themeMuted = theme.muted || theme.subText || "#64748b";
+  const themeSoft = theme.softBg || theme.soft || "#f8fafc";
+  const themeItemCard = theme.itemCard || theme.itemBg || theme.card;
+  const themeItemText = theme.itemText || theme.panelText || theme.text;
+
+  const themedInputStyle: CSSProperties = {
+    ...inputStyle,
+    borderColor: theme.border,
+    background: theme.inputBg || "#ffffff",
+    color: theme.inputText || "#111827",
+  };
+
+  const themedTextareaStyle: CSSProperties = {
+    ...textareaStyle,
+    borderColor: theme.border,
+    background: theme.inputBg || "#ffffff",
+    color: theme.inputText || "#111827",
+  };
 
   useEffect(() => {
+    applyThemeEverywhere(themeKey);
+  }, [themeKey]);
+
+  useEffect(() => {
+    const initialLang = getInitialLang();
+    const initialTheme = getThemeKeyFromUrlOrLocalStorage("deepTeal");
+
+    setLang(initialLang);
+    safeLocalSet(LANG_KEY, initialLang);
+
+    setThemeKey(initialTheme);
+    saveThemeKey(initialTheme);
+    applyThemeEverywhere(initialTheme);
+
     const query = new URLSearchParams(window.location.search);
-
-    const urlLang = query.get("lang") as Lang | null;
-    const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
-
-    if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
-      setLang(urlLang);
-      safeLocalSet(LANG_KEY, urlLang);
-    } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
-      setLang(savedLang);
-    }
-
-    const urlTheme = query.get("theme") as ThemeKey | null;
-    const savedTheme = safeLocalGet(THEME_KEY) as ThemeKey | null;
-
-    if (urlTheme && THEMES[urlTheme]) {
-      setThemeKey(urlTheme);
-      safeLocalSet(THEME_KEY, urlTheme);
-    } else if (savedTheme && THEMES[savedTheme]) {
-      setThemeKey(savedTheme);
-    }
-
     const shouldOpenNew = query.get("open") === "new";
     const shouldFullscreen = query.get("fullscreen") === "1";
 
@@ -499,7 +506,9 @@ export default function ProductsPage() {
       }, 80);
     }
 
-    init();
+    init(initialLang, initialTheme);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -592,27 +601,31 @@ export default function ProductsPage() {
     } as Product;
   }
 
-  async function init() {
+  async function init(currentLang: Lang, currentTheme: ThemeKey) {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
-      const trial = JSON.parse(trialRaw);
+      try {
+        const trial = JSON.parse(trialRaw);
 
-      if (Date.now() < Number(trial.expiresAt)) {
-        setIsTrial(true);
+        if (Date.now() < Number(trial.expiresAt)) {
+          setIsTrial(true);
 
-        const savedProducts = safeLocalGet(TRIAL_PRODUCTS_KEY);
-        const savedCustomers = safeLocalGet(TRIAL_CUSTOMERS_KEY);
-        const savedCustomerPrices = safeLocalGet(TRIAL_CUSTOMER_PRICES_KEY);
+          const productRows = safeParseArray<any>(safeLocalGet(TRIAL_PRODUCTS_KEY));
 
-        const productRows = savedProducts ? JSON.parse(savedProducts) : [];
+          setProducts(productRows.map((p: any) => normalizeProduct(p)));
+          setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
+          setCustomerPrices(
+            safeParseArray<CustomerPrice>(safeLocalGet(TRIAL_CUSTOMER_PRICES_KEY))
+          );
 
-        setProducts(productRows.map((p: any) => normalizeProduct(p)));
-        setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
-        setCustomerPrices(savedCustomerPrices ? JSON.parse(savedCustomerPrices) : []);
-        return;
+          replaceUrlLangTheme(currentLang, currentTheme);
+          return;
+        }
+      } catch {
+        // Bad trial data, clear below.
       }
 
       safeLocalRemove(TRIAL_KEY);
@@ -642,11 +655,20 @@ export default function ProductsPage() {
       .single();
 
     const profile = profileData as Profile | null;
+    let finalTheme = currentTheme;
 
-    if (profile?.theme && THEMES[profile.theme as ThemeKey]) {
-      setThemeKey(profile.theme as ThemeKey);
-      safeLocalSet(THEME_KEY, profile.theme);
+    if (profile?.theme) {
+      const profileTheme = normalizeThemeKey(profile.theme);
+
+      if (isThemeKey(profileTheme)) {
+        finalTheme = profileTheme;
+        setThemeKey(profileTheme);
+        saveThemeKey(profileTheme);
+        applyThemeEverywhere(profileTheme);
+      }
     }
+
+    replaceUrlLangTheme(currentLang, finalTheme);
 
     await loadProducts(userId);
     await loadCustomers(userId);
@@ -679,10 +701,7 @@ export default function ProductsPage() {
   }
 
   async function loadCustomerPrices(userId: string) {
-    const { data } = await supabase
-      .from("customer_prices")
-      .select("*")
-      .eq("user_id", userId);
+    const { data } = await supabase.from("customer_prices").select("*").eq("user_id", userId);
 
     setCustomerPrices((data || []) as CustomerPrice[]);
   }
@@ -700,19 +719,13 @@ export default function ProductsPage() {
   function switchLang(next: Lang) {
     setLang(next);
     safeLocalSet(LANG_KEY, next);
-
-    const q = new URLSearchParams(window.location.search);
-    q.set("lang", next);
-    q.set("theme", themeKey);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    replaceUrlLangTheme(next, themeKey);
   }
 
   function goBack() {
     window.location.href = isTrial
-      ? `/dashboard?mode=trial&lang=${lang}&theme=${themeKey}`
-      : `/dashboard?lang=${lang}&theme=${themeKey}`;
+      ? `/dashboard?mode=trial&lang=${lang}&theme=${themeKey}&refresh=${Date.now()}`
+      : `/dashboard?lang=${lang}&theme=${themeKey}&refresh=${Date.now()}`;
   }
 
   function productCode(p: Product) {
@@ -739,11 +752,14 @@ export default function ProductsPage() {
     setShowForm(false);
 
     const q = new URLSearchParams(window.location.search);
+
     q.delete("open");
     q.delete("fullscreen");
-    const nextQuery = q.toString();
-    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
-    window.history.replaceState({}, "", nextUrl);
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
   function openAddForm() {
@@ -1135,10 +1151,10 @@ export default function ProductsPage() {
         key={p.id}
         className="sa-item-card"
         style={{
-          background: theme.itemCard,
-          color: theme.itemText,
+          background: themeItemCard,
+          color: themeItemText,
           borderColor: theme.border,
-          boxShadow: themeKey === "blackGold" ? theme.glow : "0 8px 24px rgba(15,23,42,0.08)",
+          boxShadow: theme.glow,
         }}
       >
         <div>
@@ -1149,7 +1165,7 @@ export default function ProductsPage() {
             </span>
           </div>
 
-          <div style={mutedStyle}>
+          <div style={{ ...mutedStyle, color: themeMuted }}>
             {t.productNo}: {productCode(p)}
           </div>
 
@@ -1177,11 +1193,18 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <div style={customerPurchaseBoxStyle}>
+          <div
+            style={{
+              ...customerPurchaseBoxStyle,
+              background: theme.panelBg || themeSoft,
+              color: theme.panelText || theme.text,
+              borderColor: theme.border,
+            }}
+          >
             <strong>{t.customerPurchase}</strong>
 
             {purchaseList.length === 0 ? (
-              <div style={mutedStyle}>{t.noCustomerPurchase}</div>
+              <div style={{ ...mutedStyle, color: themeMuted }}>{t.noCustomerPurchase}</div>
             ) : (
               <div style={purchaseListStyle}>
                 {purchaseList.map((cp) => (
@@ -1194,22 +1217,35 @@ export default function ProductsPage() {
             )}
           </div>
 
-          {p.note ? <div style={noteStyle}>{p.note}</div> : null}
+          {p.note ? (
+            <div
+              style={{
+                ...noteStyle,
+                background: theme.panelBg || themeSoft,
+                color: theme.panelText || theme.text,
+                borderColor: theme.border,
+              }}
+            >
+              {p.note}
+            </div>
+          ) : null}
         </div>
 
         <div className="products-action-row" style={actionRowStyle}>
           <button
+            type="button"
             onClick={() => openEditForm(p)}
             style={{
               ...editBtnStyle,
               borderColor: theme.border,
               color: theme.accent,
+              background: theme.inputBg || "#fff",
             }}
           >
             {t.edit}
           </button>
 
-          <button onClick={() => requestDeleteProduct(p)} style={deleteBtnStyle}>
+          <button type="button" onClick={() => requestDeleteProduct(p)} style={deleteBtnStyle}>
             {t.delete}
           </button>
         </div>
@@ -1230,6 +1266,8 @@ export default function ProductsPage() {
           className="sa-modal"
           style={{
             ...deleteModalStyle,
+            background: theme.card,
+            color: theme.text,
             borderColor: theme.border,
             boxShadow: theme.glow,
           }}
@@ -1237,7 +1275,9 @@ export default function ProductsPage() {
           <div style={deleteHeaderStyle}>
             <div>
               <h2 style={deleteTitleStyle}>{t.deleteTitle}</h2>
-              <p style={deleteWarningTextStyle}>{t.deleteWarning}</p>
+              <p style={{ ...deleteWarningTextStyle, color: themeMuted }}>
+                {t.deleteWarning}
+              </p>
             </div>
 
             <button type="button" onClick={closeDeleteModal} style={deleteCloseBtnStyle}>
@@ -1328,6 +1368,7 @@ export default function ProductsPage() {
   return (
     <main
       className="smartacctg-page smartacctg-products-page"
+      data-sa-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
       <style jsx global>{PRODUCTS_PAGE_CSS}</style>
@@ -1335,9 +1376,15 @@ export default function ProductsPage() {
       <div className="sa-topbar">
         <div className="sa-topbar-left">
           <button
+            type="button"
             onClick={goBack}
             className="sa-back-btn"
-            style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}
+            style={{
+              ...backBtnStyle,
+              borderColor: theme.border,
+              color: theme.accent,
+              background: theme.inputBg || "#fff",
+            }}
           >
             ← {t.back}
           </button>
@@ -1348,6 +1395,7 @@ export default function ProductsPage() {
         <div className="sa-topbar-right">
           <div className="sa-lang-row">
             <button
+              type="button"
               onClick={() => switchLang("zh")}
               className="sa-lang-btn"
               style={langBtnStyle(lang === "zh", theme)}
@@ -1355,6 +1403,7 @@ export default function ProductsPage() {
               中文
             </button>
             <button
+              type="button"
               onClick={() => switchLang("en")}
               className="sa-lang-btn"
               style={langBtnStyle(lang === "en", theme)}
@@ -1362,6 +1411,7 @@ export default function ProductsPage() {
               EN
             </button>
             <button
+              type="button"
               onClick={() => switchLang("ms")}
               className="sa-lang-btn"
               style={langBtnStyle(lang === "ms", theme)}
@@ -1384,11 +1434,12 @@ export default function ProductsPage() {
         <div style={titleRowStyle}>
           <div>
             <h1 style={titleStyle}>{t.title}</h1>
-            <p style={{ ...subTitleStyle, color: theme.muted }}>{t.subtitle}</p>
+            <p style={{ ...subTitleStyle, color: themeMuted }}>{t.subtitle}</p>
             {isTrial ? <div style={trialBadgeStyle}>{t.trial}</div> : null}
           </div>
 
           <button
+            type="button"
             onClick={openAddForm}
             aria-label={t.add}
             title={t.add}
@@ -1401,6 +1452,7 @@ export default function ProductsPage() {
 
       <section className="sa-stats-grid products-summary-grid" style={summaryGridStyle}>
         <button
+          type="button"
           className="sa-stat-card sa-stat-cost"
           onClick={() => openDetailModal("cost")}
           style={{
@@ -1415,6 +1467,7 @@ export default function ProductsPage() {
         </button>
 
         <button
+          type="button"
           className="sa-stat-card sa-stat-price"
           onClick={() => openDetailModal("price")}
           style={{
@@ -1429,6 +1482,7 @@ export default function ProductsPage() {
         </button>
 
         <button
+          type="button"
           className="sa-stat-card sa-stat-profit"
           onClick={() => openDetailModal("profit")}
           style={{
@@ -1443,6 +1497,7 @@ export default function ProductsPage() {
         </button>
 
         <button
+          type="button"
           className="sa-stat-card sa-stat-stock"
           onClick={() => openDetailModal("stock")}
           style={{
@@ -1472,7 +1527,7 @@ export default function ProductsPage() {
             placeholder={t.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={inputStyle}
+            style={themedInputStyle}
           />
         </div>
 
@@ -1483,9 +1538,7 @@ export default function ProductsPage() {
         {filteredProducts.length === 0 ? (
           <p>{t.noProduct}</p>
         ) : (
-          <div style={productListStyle}>
-            {filteredProducts.map((p) => renderProductDetailCard(p))}
-          </div>
+          <div style={productListStyle}>{filteredProducts.map((p) => renderProductDetailCard(p))}</div>
         )}
       </section>
 
@@ -1508,7 +1561,7 @@ export default function ProductsPage() {
               <select
                 value={priceCustomerId}
                 onChange={(e) => setPriceCustomerId(e.target.value)}
-                style={inputStyle}
+                style={themedInputStyle}
               >
                 <option value="">{t.chooseCustomer}</option>
                 {customers.map((c) => (
@@ -1521,7 +1574,7 @@ export default function ProductsPage() {
               <select
                 value={priceProductId}
                 onChange={(e) => setPriceProductId(e.target.value)}
-                style={inputStyle}
+                style={themedInputStyle}
               >
                 <option value="">{t.chooseProduct}</option>
                 {products.map((p) => (
@@ -1535,11 +1588,12 @@ export default function ProductsPage() {
                 placeholder={t.customPrice}
                 value={customPrice}
                 onChange={(e) => setCustomPrice(e.target.value)}
-                style={inputStyle}
+                style={themedInputStyle}
               />
             </div>
 
             <button
+              type="button"
               onClick={saveCustomerPrice}
               style={{ ...addBtnStyle, background: theme.accent, marginTop: 12 }}
             >
@@ -1555,7 +1609,7 @@ export default function ProductsPage() {
                 <div key={cp.id} style={customerPriceItemStyle}>
                   <div>
                     <strong>{getCustomerName(cp.customer_id)}</strong>
-                    <div style={{ ...mutedStyle, color: theme.muted }}>
+                    <div style={{ ...mutedStyle, color: themeMuted }}>
                       {getProductName(cp.product_id)}
                     </div>
                   </div>
@@ -1588,6 +1642,8 @@ export default function ProductsPage() {
             className="sa-modal"
             style={{
               ...detailModalStyle,
+              background: theme.card,
+              color: theme.text,
               borderColor: theme.border,
               boxShadow: theme.glow,
             }}
@@ -1614,7 +1670,7 @@ export default function ProductsPage() {
               placeholder={t.search}
               value={detailSearch}
               onChange={(e) => setDetailSearch(e.target.value)}
-              style={{ ...inputStyle, marginBottom: 14 }}
+              style={{ ...themedInputStyle, marginBottom: 14 }}
             />
 
             {detailFilteredProducts.length === 0 ? (
@@ -1626,6 +1682,7 @@ export default function ProductsPage() {
             )}
 
             <button
+              type="button"
               onClick={() => setDetailMetric(null)}
               style={{ ...addBtnStyle, background: theme.accent, marginTop: 14 }}
             >
@@ -1641,6 +1698,8 @@ export default function ProductsPage() {
             className="sa-modal products-form-modal"
             style={{
               ...modalStyle,
+              background: theme.card,
+              color: theme.text,
               borderColor: theme.border,
               boxShadow: theme.glow,
             }}
@@ -1665,14 +1724,14 @@ export default function ProductsPage() {
             <input
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
-              style={inputStyle}
+              style={themedInputStyle}
             />
 
             <label style={labelStyle}>{t.price}</label>
             <input
               value={productPrice}
               onChange={(e) => setProductPrice(e.target.value)}
-              style={inputStyle}
+              style={themedInputStyle}
               inputMode="decimal"
             />
 
@@ -1680,7 +1739,7 @@ export default function ProductsPage() {
             <input
               value={productCost}
               onChange={(e) => setProductCost(e.target.value)}
-              style={inputStyle}
+              style={themedInputStyle}
               inputMode="decimal"
             />
 
@@ -1688,7 +1747,7 @@ export default function ProductsPage() {
             <input
               value={productDiscount}
               onChange={(e) => setProductDiscount(e.target.value)}
-              style={inputStyle}
+              style={themedInputStyle}
               inputMode="decimal"
             />
 
@@ -1696,7 +1755,7 @@ export default function ProductsPage() {
             <input
               value={productStock}
               onChange={(e) => setProductStock(e.target.value)}
-              style={inputStyle}
+              style={themedInputStyle}
               inputMode="numeric"
             />
 
@@ -1704,15 +1763,15 @@ export default function ProductsPage() {
             <textarea
               value={productNote}
               onChange={(e) => setProductNote(e.target.value)}
-              style={textareaStyle}
+              style={themedTextareaStyle}
             />
 
             <div className="products-modal-actions" style={modalActionRowStyle}>
-              <button onClick={saveProduct} style={{ ...addBtnStyle, background: theme.accent }}>
+              <button type="button" onClick={saveProduct} style={{ ...addBtnStyle, background: theme.accent }}>
                 {t.save}
               </button>
 
-              <button onClick={resetForm} style={cancelBtnStyle}>
+              <button type="button" onClick={resetForm} style={cancelBtnStyle}>
                 {t.cancel}
               </button>
             </div>
@@ -1745,9 +1804,9 @@ const backBtnStyle: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
+const langBtnStyle = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
   borderColor: theme.accent,
-  background: active ? theme.accent : "#fff",
+  background: active ? theme.accent : theme.inputBg || "#fff",
   color: active ? "#fff" : theme.accent,
 });
 
@@ -1948,6 +2007,7 @@ const customerPurchaseBoxStyle: CSSProperties = {
   borderRadius: "var(--sa-radius-control)",
   background: "#f8fafc",
   color: "#111827",
+  border: "1px solid #e2e8f0",
 };
 
 const purchaseListStyle: CSSProperties = {
@@ -1971,6 +2031,7 @@ const noteStyle: CSSProperties = {
   background: "#f8fafc",
   color: "#475569",
   lineHeight: 1.55,
+  border: "1px solid #e2e8f0",
 };
 
 const actionRowStyle: CSSProperties = {
@@ -2189,6 +2250,7 @@ const deleteInfoItemStyle: CSSProperties = {
   padding: 14,
   borderRadius: "var(--sa-radius-control)",
   background: "#f8fafc",
+  color: "#111827",
   border: "1px solid #e2e8f0",
 };
 
@@ -2196,6 +2258,7 @@ const deleteNoteStyle: CSSProperties = {
   padding: 14,
   borderRadius: "var(--sa-radius-control)",
   background: "#f8fafc",
+  color: "#111827",
   border: "1px solid #e2e8f0",
   marginBottom: 14,
   lineHeight: 1.55,
