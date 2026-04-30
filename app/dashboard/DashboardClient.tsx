@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
@@ -187,72 +187,96 @@ const THEMES: Record<ThemeKey, any> = {
     pageBg: "#ecfdf5",
     banner: "#ffffff",
     card: "#ffffff",
+    panel: "#f8fafc",
+    itemCard: "#ffffff",
+    inputBg: "#ffffff",
     border: "#14b8a6",
     glow:
       "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
     accent: "#0f766e",
     text: "#064e3b",
     muted: "#64748b",
+    inputText: "#111827",
   },
   pink: {
     name: "可爱粉色",
     pageBg: "#fff7fb",
     banner: "linear-gradient(135deg,#ffd6e7,#fff1f2)",
     card: "#ffffff",
+    panel: "#fdf2f8",
+    itemCard: "#ffffff",
+    inputBg: "#ffffff",
     border: "#f472b6",
     glow:
       "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
     accent: "#db2777",
     text: "#4a044e",
     muted: "#64748b",
+    inputText: "#111827",
   },
   blackGold: {
     name: "黑金商务",
     pageBg: "#111111",
     banner: "linear-gradient(135deg,#111111,#3b2f16)",
     card: "#1f1f1f",
+    panel: "#2a2a2a",
+    itemCard: "#1f1f1f",
+    inputBg: "#ffffff",
     border: "#facc15",
     glow:
       "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
     accent: "#d4af37",
     text: "#fff7ed",
     muted: "#fef3c7",
+    inputText: "#111827",
   },
   lightRed: {
     name: "可爱浅红",
     pageBg: "#fff1f2",
     banner: "linear-gradient(135deg,#fecdd3,#ffe4e6)",
     card: "#ffffff",
+    panel: "#fff1f2",
+    itemCard: "#ffffff",
+    inputBg: "#ffffff",
     border: "#fb7185",
     glow:
       "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
     accent: "#e11d48",
     text: "#881337",
     muted: "#64748b",
+    inputText: "#111827",
   },
   nature: {
     name: "风景自然系",
     pageBg: "#f0fdf4",
     banner: "linear-gradient(135deg,#d9f99d,#bae6fd)",
     card: "#ffffff",
+    panel: "#f8fafc",
+    itemCard: "#ffffff",
+    inputBg: "#ffffff",
     border: "#22d3ee",
     glow:
       "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
     accent: "#0f766e",
     text: "#14532d",
     muted: "#64748b",
+    inputText: "#111827",
   },
   sky: {
     name: "天空蓝",
     pageBg: "#eff6ff",
     banner: "linear-gradient(135deg,#bfdbfe,#e0f2fe)",
     card: "#ffffff",
+    panel: "#f8fafc",
+    itemCard: "#ffffff",
+    inputBg: "#ffffff",
     border: "#38bdf8",
     glow:
       "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
     accent: "#0284c7",
     text: "#0f172a",
     muted: "#64748b",
+    inputText: "#111827",
   },
   futureForest: {
     name: "未来世界｜深林青色",
@@ -261,12 +285,16 @@ const THEMES: Record<ThemeKey, any> = {
     banner:
       "linear-gradient(135deg, rgba(1,28,26,0.98), rgba(6,78,59,0.96)), radial-gradient(circle at top right, rgba(45,212,191,0.32), transparent 34%)",
     card: "rgba(6,47,42,0.94)",
+    panel: "rgba(5,64,55,0.82)",
+    itemCard: "rgba(4,55,48,0.92)",
+    inputBg: "rgba(236,254,255,0.96)",
     border: "#2dd4bf",
     glow:
       "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
     accent: "#2dd4bf",
     text: "#ecfeff",
     muted: "#99f6e4",
+    inputText: "#042f2e",
   },
 };
 
@@ -283,6 +311,48 @@ function safeLocalSet(key: string, value: string) {
 function safeLocalRemove(key: string) {
   if (typeof window === "undefined") return;
   localStorage.removeItem(key);
+}
+
+function normalizeThemeKey(value?: string | null): ThemeKey {
+  if (value === "futureWorld") return "futureForest";
+  if (value && Object.prototype.hasOwnProperty.call(THEMES, value)) {
+    return value as ThemeKey;
+  }
+
+  return "deepTeal";
+}
+
+function applyGlobalTheme(key: ThemeKey) {
+  if (typeof document === "undefined") return;
+
+  const fixedKey = normalizeThemeKey(key);
+  const theme = THEMES[fixedKey] || THEMES.deepTeal;
+  const root = document.documentElement;
+
+  root.setAttribute("data-sa-theme", fixedKey);
+  root.setAttribute("data-theme", fixedKey);
+
+  root.style.setProperty("--sa-page-bg", theme.pageBg);
+  root.style.setProperty("--sa-banner-bg", theme.banner);
+  root.style.setProperty("--sa-card-bg", theme.card);
+  root.style.setProperty("--sa-panel-bg", theme.panel || theme.card);
+  root.style.setProperty("--sa-item-bg", theme.itemCard || theme.card);
+  root.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
+
+  root.style.setProperty("--sa-accent", theme.accent);
+  root.style.setProperty("--sa-theme-accent", theme.accent);
+  root.style.setProperty("--sa-border", theme.border);
+  root.style.setProperty("--sa-theme-border", theme.border);
+
+  root.style.setProperty("--sa-text", theme.text);
+  root.style.setProperty("--sa-theme-text", theme.text);
+  root.style.setProperty("--sa-muted", theme.muted);
+  root.style.setProperty("--sa-theme-muted", theme.muted);
+
+  root.style.setProperty("--sa-glow", theme.glow);
+  root.style.setProperty("--sa-theme-glow", theme.glow);
+
+  safeLocalSet(THEME_KEY, fixedKey);
 }
 
 export default function DashboardClient({ page }: { page: PageKey }) {
@@ -312,15 +382,20 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [msg, setMsg] = useState("");
 
   const t = TXT[lang];
-  const theme = THEMES[themeKey];
+  const theme = THEMES[themeKey] || THEMES.deepTeal;
+
+  useEffect(() => {
+    applyGlobalTheme(themeKey);
+  }, [themeKey]);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
 
     const urlLang = q.get("lang") as Lang | null;
     const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
-    const urlTheme = q.get("theme") as ThemeKey | null;
-    const savedTheme = safeLocalGet(THEME_KEY) as ThemeKey | null;
+
+    const urlTheme = q.get("theme");
+    const savedTheme = safeLocalGet(THEME_KEY);
 
     if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
       setLang(urlLang);
@@ -329,12 +404,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       setLang(savedLang);
     }
 
-    if (urlTheme && THEMES[urlTheme]) {
-      setThemeKey(urlTheme);
-      safeLocalSet(THEME_KEY, urlTheme);
-    } else if (savedTheme && THEMES[savedTheme as ThemeKey]) {
-      setThemeKey(savedTheme as ThemeKey);
-    }
+    const fixedTheme = urlTheme ? normalizeThemeKey(urlTheme) : normalizeThemeKey(savedTheme);
+
+    setThemeKey(fixedTheme);
+    applyGlobalTheme(fixedTheme);
 
     init();
   }, []);
@@ -396,9 +469,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       setCompanyPhone(p.company_phone || "");
       setCompanyAddress(p.company_address || "");
 
-      if (p.theme && THEMES[p.theme as ThemeKey]) {
-        setThemeKey(p.theme as ThemeKey);
-        safeLocalSet(THEME_KEY, p.theme);
+      if (p.theme) {
+        const fixedTheme = normalizeThemeKey(p.theme);
+        setThemeKey(fixedTheme);
+        applyGlobalTheme(fixedTheme);
       }
     }
 
@@ -460,7 +534,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     window.location.href = "/zh";
   }
 
-  async function uploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+  async function uploadAvatar(e: ChangeEvent<HTMLInputElement>) {
     if (isTrial) {
       setMsg("免费试用不能上传头像");
       return;
@@ -543,18 +617,22 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function changeTheme(key: ThemeKey) {
-    setThemeKey(key);
-    safeLocalSet(THEME_KEY, key);
+    const fixedKey = normalizeThemeKey(key);
+
+    setThemeKey(fixedKey);
+    applyGlobalTheme(fixedKey);
+    safeLocalSet(THEME_KEY, fixedKey);
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", lang);
-    q.set("theme", key);
+    q.set("theme", fixedKey);
+    q.set("refresh", String(Date.now()));
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
 
     if (!isTrial && session) {
       const { error } = await supabase
         .from("profiles")
-        .update({ theme: key })
+        .update({ theme: fixedKey })
         .eq("id", session.user.id);
 
       if (error) {
