@@ -3,10 +3,10 @@
    放在 app/globals.css 最下面
    重要：
    1. 删除旧的 SmartAcctg Global UI Fix / Auto Stats Fix 后再放这一份
-   2. 不再使用危险的 :has(strong) 自动识别
-   3. 统计卡片只认明确 class，不会误伤发票 / 客户 / 产品资料卡
-   4. 已加入全局主题变量 + 未来世界「深林青色」
-   ========================================================= */
+   2. 已兼容 data-sa-theme 和 data-smartacctg-theme
+   3. 已兼容 futureForest / futureWorld
+   4. 已兼容 --sa-* 和 --sa-theme-* 双变量
+========================================================= */
 
 :root {
   --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
@@ -35,18 +35,68 @@
   --sa-red-dark: #991b1b;
   --sa-white: #ffffff;
 
-  /* 默认主题：深青色 */
   --sa-page-bg: #ecfdf5;
   --sa-card-bg: #ffffff;
   --sa-panel-bg: #f8fafc;
   --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #064e3b;
   --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
   --sa-border: #14b8a6;
   --sa-accent: #0f766e;
   --sa-text: #064e3b;
   --sa-panel-text: #111827;
-  --sa-input-text: #111827;
   --sa-muted: #64748b;
+  --sa-sub-text: #64748b;
+  --sa-soft: #ccfbf1;
+  --sa-soft-bg: #ccfbf1;
+  --sa-banner-bg: #ffffff;
+  --sa-glow: 0 0 0 1px rgba(20, 184, 166, 0.42),
+    0 0 18px rgba(45, 212, 191, 0.55),
+    0 18px 42px rgba(15, 118, 110, 0.25);
+
+  --sa-theme-page-bg: var(--sa-page-bg);
+  --sa-theme-banner: var(--sa-banner-bg);
+  --sa-theme-card: var(--sa-card-bg);
+  --sa-theme-panel-bg: var(--sa-panel-bg);
+  --sa-theme-item-bg: var(--sa-item-bg);
+  --sa-theme-item-card: var(--sa-item-card);
+  --sa-theme-item-text: var(--sa-item-text);
+  --sa-theme-input-bg: var(--sa-input-bg);
+  --sa-theme-input-text: var(--sa-input-text);
+  --sa-theme-border: var(--sa-border);
+  --sa-theme-accent: var(--sa-accent);
+  --sa-theme-text: var(--sa-text);
+  --sa-theme-panel-text: var(--sa-panel-text);
+  --sa-theme-muted: var(--sa-muted);
+  --sa-theme-sub-text: var(--sa-sub-text);
+  --sa-theme-soft: var(--sa-soft);
+  --sa-theme-soft-bg: var(--sa-soft-bg);
+  --sa-theme-glow: var(--sa-glow);
+}
+
+/* =========================================================
+   Theme: 深青色
+========================================================= */
+
+html[data-sa-theme="deepTeal"],
+html[data-smartacctg-theme="deepTeal"] {
+  --sa-page-bg: #ecfdf5;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #f8fafc;
+  --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #064e3b;
+  --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
+  --sa-border: #14b8a6;
+  --sa-accent: #0f766e;
+  --sa-text: #064e3b;
+  --sa-panel-text: #111827;
+  --sa-muted: #64748b;
+  --sa-sub-text: #64748b;
+  --sa-soft: #ccfbf1;
   --sa-soft-bg: #ccfbf1;
   --sa-banner-bg: #ffffff;
   --sa-glow: 0 0 0 1px rgba(20, 184, 166, 0.42),
@@ -55,42 +105,26 @@
 }
 
 /* =========================================================
-   全局主题变量
-   DashboardClient 需要写入：
-   document.documentElement.setAttribute("data-sa-theme", key)
-   ========================================================= */
+   Theme: 可爱粉色
+========================================================= */
 
-html[data-sa-theme="deepTeal"] {
-  --sa-page-bg: #ecfdf5;
-  --sa-card-bg: #ffffff;
-  --sa-panel-bg: #f8fafc;
-  --sa-item-bg: #ffffff;
-  --sa-input-bg: #ffffff;
-  --sa-border: #14b8a6;
-  --sa-accent: #0f766e;
-  --sa-text: #064e3b;
-  --sa-panel-text: #111827;
-  --sa-input-text: #111827;
-  --sa-muted: #64748b;
-  --sa-soft-bg: #ccfbf1;
-  --sa-banner-bg: #ffffff;
-  --sa-glow: 0 0 0 1px rgba(20, 184, 166, 0.42),
-    0 0 18px rgba(45, 212, 191, 0.55),
-    0 18px 42px rgba(15, 118, 110, 0.25);
-}
-
-html[data-sa-theme="pink"] {
+html[data-sa-theme="pink"],
+html[data-smartacctg-theme="pink"] {
   --sa-page-bg: #fff7fb;
   --sa-card-bg: #ffffff;
   --sa-panel-bg: #fdf2f8;
   --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #4a044e;
   --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
   --sa-border: #f472b6;
   --sa-accent: #db2777;
   --sa-text: #4a044e;
   --sa-panel-text: #111827;
-  --sa-input-text: #111827;
   --sa-muted: #64748b;
+  --sa-sub-text: #831843;
+  --sa-soft: #fce7f3;
   --sa-soft-bg: #fce7f3;
   --sa-banner-bg: linear-gradient(135deg, #ffd6e7, #fff1f2);
   --sa-glow: 0 0 0 1px rgba(244, 114, 182, 0.36),
@@ -98,37 +132,55 @@ html[data-sa-theme="pink"] {
     0 18px 38px rgba(244, 114, 182, 0.22);
 }
 
-html[data-sa-theme="blackGold"] {
+/* =========================================================
+   Theme: 黑金商务
+========================================================= */
+
+html[data-sa-theme="blackGold"],
+html[data-smartacctg-theme="blackGold"] {
   --sa-page-bg: #111111;
   --sa-card-bg: #1f1f1f;
   --sa-panel-bg: #2a2a2a;
   --sa-item-bg: #1f1f1f;
+  --sa-item-card: #1f1f1f;
+  --sa-item-text: #fff7ed;
   --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
   --sa-border: #facc15;
   --sa-accent: #d4af37;
   --sa-text: #fff7ed;
   --sa-panel-text: #fff7ed;
-  --sa-input-text: #111827;
   --sa-muted: #fef3c7;
-  --sa-soft-bg: #2a2112;
+  --sa-sub-text: #d6c8a4;
+  --sa-soft: #2a2112;
+  --sa-soft-bg: #3b2f16;
   --sa-banner-bg: linear-gradient(135deg, #111111, #3b2f16);
   --sa-glow: 0 0 0 1px rgba(250, 204, 21, 0.5),
     0 0 20px rgba(250, 204, 21, 0.45),
     0 18px 42px rgba(250, 204, 21, 0.22);
 }
 
-html[data-sa-theme="lightRed"] {
+/* =========================================================
+   Theme: 可爱浅红
+========================================================= */
+
+html[data-sa-theme="lightRed"],
+html[data-smartacctg-theme="lightRed"] {
   --sa-page-bg: #fff1f2;
   --sa-card-bg: #ffffff;
   --sa-panel-bg: #fff1f2;
   --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #881337;
   --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
   --sa-border: #fb7185;
   --sa-accent: #e11d48;
   --sa-text: #881337;
   --sa-panel-text: #111827;
-  --sa-input-text: #111827;
   --sa-muted: #64748b;
+  --sa-sub-text: #9f1239;
+  --sa-soft: #ffe4e6;
   --sa-soft-bg: #ffe4e6;
   --sa-banner-bg: linear-gradient(135deg, #fecdd3, #ffe4e6);
   --sa-glow: 0 0 0 1px rgba(251, 113, 133, 0.45),
@@ -136,18 +188,27 @@ html[data-sa-theme="lightRed"] {
     0 18px 38px rgba(251, 113, 133, 0.26);
 }
 
-html[data-sa-theme="nature"] {
+/* =========================================================
+   Theme: 风景自然系
+========================================================= */
+
+html[data-sa-theme="nature"],
+html[data-smartacctg-theme="nature"] {
   --sa-page-bg: #f0fdf4;
   --sa-card-bg: #ffffff;
   --sa-panel-bg: #f8fafc;
   --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #14532d;
   --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
   --sa-border: #22d3ee;
   --sa-accent: #0f766e;
   --sa-text: #14532d;
   --sa-panel-text: #111827;
-  --sa-input-text: #111827;
   --sa-muted: #64748b;
+  --sa-sub-text: #166534;
+  --sa-soft: #dcfce7;
   --sa-soft-bg: #dcfce7;
   --sa-banner-bg: linear-gradient(135deg, #d9f99d, #bae6fd);
   --sa-glow: 0 0 0 1px rgba(34, 211, 238, 0.42),
@@ -155,18 +216,27 @@ html[data-sa-theme="nature"] {
     0 18px 38px rgba(34, 211, 238, 0.22);
 }
 
-html[data-sa-theme="sky"] {
+/* =========================================================
+   Theme: 天空蓝
+========================================================= */
+
+html[data-sa-theme="sky"],
+html[data-smartacctg-theme="sky"] {
   --sa-page-bg: #eff6ff;
   --sa-card-bg: #ffffff;
   --sa-panel-bg: #f8fafc;
   --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #0f172a;
   --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
   --sa-border: #38bdf8;
   --sa-accent: #0284c7;
   --sa-text: #0f172a;
   --sa-panel-text: #111827;
-  --sa-input-text: #111827;
   --sa-muted: #64748b;
+  --sa-sub-text: #0369a1;
+  --sa-soft: #dbeafe;
   --sa-soft-bg: #dbeafe;
   --sa-banner-bg: linear-gradient(135deg, #bfdbfe, #e0f2fe);
   --sa-glow: 0 0 0 1px rgba(56, 189, 248, 0.42),
@@ -174,29 +244,74 @@ html[data-sa-theme="sky"] {
     0 18px 38px rgba(56, 189, 248, 0.24);
 }
 
-/* 新主题：未来世界｜深林青色 */
-html[data-sa-theme="futureWorld"] {
-  --sa-page-bg: radial-gradient(circle at top left, #064e3b 0%, #022c22 42%, #020617 100%);
-  --sa-card-bg: rgba(2, 44, 34, 0.94);
-  --sa-panel-bg: rgba(6, 78, 59, 0.78);
-  --sa-item-bg: rgba(6, 78, 59, 0.86);
-  --sa-input-bg: rgba(236, 254, 255, 0.96);
+/* =========================================================
+   Theme: 未来世界｜深林青色
+   兼容 futureForest / futureWorld
+========================================================= */
+
+html[data-sa-theme="futureForest"],
+html[data-sa-theme="futureWorld"],
+html[data-smartacctg-theme="futureForest"],
+html[data-smartacctg-theme="futureWorld"] {
+  --sa-page-bg: radial-gradient(
+      circle at 8% 0%,
+      rgba(45, 212, 191, 0.32),
+      transparent 30%
+    ),
+    radial-gradient(circle at 92% 8%, rgba(20, 184, 166, 0.22), transparent 32%),
+    linear-gradient(135deg, #011c1a 0%, #032b29 38%, #064e3b 100%);
+  --sa-card-bg: rgba(6, 47, 42, 0.94);
+  --sa-panel-bg: rgba(8, 64, 57, 0.92);
+  --sa-item-bg: rgba(8, 64, 57, 0.92);
+  --sa-item-card: rgba(6, 47, 42, 0.94);
+  --sa-item-text: #ecfeff;
+  --sa-input-bg: #ecfeff;
+  --sa-input-text: #042f2e;
   --sa-border: #2dd4bf;
-  --sa-accent: #14b8a6;
+  --sa-accent: #2dd4bf;
   --sa-text: #ecfeff;
   --sa-panel-text: #ecfeff;
-  --sa-input-text: #022c22;
   --sa-muted: #99f6e4;
-  --sa-soft-bg: rgba(20, 184, 166, 0.18);
-  --sa-banner-bg: linear-gradient(135deg, #022c22, #064e3b, #0f766e);
-  --sa-glow: 0 0 0 1px rgba(45, 212, 191, 0.65),
-    0 0 22px rgba(20, 184, 166, 0.65),
-    0 20px 48px rgba(2, 44, 34, 0.55);
+  --sa-sub-text: #99f6e4;
+  --sa-soft: rgba(20, 184, 166, 0.22);
+  --sa-soft-bg: rgba(20, 184, 166, 0.22);
+  --sa-banner-bg: linear-gradient(
+      135deg,
+      rgba(1, 28, 26, 0.98),
+      rgba(6, 78, 59, 0.96)
+    ),
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.32), transparent 34%);
+  --sa-glow: 0 0 0 1px rgba(45, 212, 191, 0.55),
+    0 0 26px rgba(45, 212, 191, 0.42),
+    0 22px 58px rgba(6, 78, 59, 0.62);
+}
+
+/* 所有主题同步给 --sa-theme-* */
+html[data-sa-theme],
+html[data-smartacctg-theme] {
+  --sa-theme-page-bg: var(--sa-page-bg);
+  --sa-theme-banner: var(--sa-banner-bg);
+  --sa-theme-card: var(--sa-card-bg);
+  --sa-theme-panel-bg: var(--sa-panel-bg);
+  --sa-theme-item-bg: var(--sa-item-bg);
+  --sa-theme-item-card: var(--sa-item-card);
+  --sa-theme-item-text: var(--sa-item-text);
+  --sa-theme-input-bg: var(--sa-input-bg);
+  --sa-theme-input-text: var(--sa-input-text);
+  --sa-theme-border: var(--sa-border);
+  --sa-theme-accent: var(--sa-accent);
+  --sa-theme-text: var(--sa-text);
+  --sa-theme-panel-text: var(--sa-panel-text);
+  --sa-theme-muted: var(--sa-muted);
+  --sa-theme-sub-text: var(--sa-sub-text);
+  --sa-theme-soft: var(--sa-soft);
+  --sa-theme-soft-bg: var(--sa-soft-bg);
+  --sa-theme-glow: var(--sa-glow);
 }
 
 /* =========================================================
    全站基础
-   ========================================================= */
+========================================================= */
 
 html {
   -webkit-text-size-adjust: 100%;
@@ -222,7 +337,7 @@ body {
 
 /* =========================================================
    SmartAcctg 页面基础
-   ========================================================= */
+========================================================= */
 
 .smartacctg-page,
 .smartacctg-dashboard-page,
@@ -260,7 +375,7 @@ body {
 
 /* =========================================================
    标题
-   ========================================================= */
+========================================================= */
 
 .smartacctg-page h1,
 .smartacctg-dashboard-page h1,
@@ -307,7 +422,7 @@ body {
 
 /* =========================================================
    普通文字
-   ========================================================= */
+========================================================= */
 
 .smartacctg-page p,
 .smartacctg-page div,
@@ -368,7 +483,7 @@ body {
 
 /* =========================================================
    输入框 / 选择框 / 文字区 / 按钮
-   ========================================================= */
+========================================================= */
 
 .smartacctg-page input,
 .smartacctg-page select,
@@ -430,7 +545,7 @@ body {
   padding-left: var(--sa-control-x) !important;
   padding-right: var(--sa-control-x) !important;
   border-radius: var(--sa-radius-control) !important;
-  border-color: var(--sa-border) !important;
+  border: var(--sa-border-w) solid var(--sa-border) !important;
   background: var(--sa-input-bg) !important;
   color: var(--sa-input-text) !important;
   outline: none !important;
@@ -444,9 +559,8 @@ body {
 .smartacctg-records-page input[type="date"],
 .smartacctg-customers-page input[type="date"],
 .smartacctg-accounting-page input[type="date"] {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: block !important;
+  width: 100% !important;
   text-align: center !important;
   text-align-last: center !important;
   padding-top: 0 !important;
@@ -464,7 +578,9 @@ body {
 .smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value,
 .smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value {
   text-align: center !important;
-  min-height: 100% !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  min-height: 1.6em !important;
   line-height: normal !important;
 }
 
@@ -480,6 +596,16 @@ body {
   text-align: center !important;
 }
 
+.smartacctg-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  justify-content: center !important;
+}
+
 /* 按钮基础 */
 .smartacctg-page button,
 .smartacctg-dashboard-page button,
@@ -491,15 +617,27 @@ body {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  min-height: var(--sa-control-h);
+  min-height: var(--sa-control-h) !important;
   line-height: 1.2 !important;
   white-space: normal !important;
-  cursor: pointer;
+  cursor: pointer !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.smartacctg-page button:disabled,
+.smartacctg-dashboard-page button:disabled,
+.smartacctg-products-page button:disabled,
+.smartacctg-invoice-page button:disabled,
+.smartacctg-records-page button:disabled,
+.smartacctg-customers-page button:disabled,
+.smartacctg-accounting-page button:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
 }
 
 /* =========================================================
    顶部按钮列
-   ========================================================= */
+========================================================= */
 
 .sa-topbar,
 .sa-user-toolbar,
@@ -537,10 +675,8 @@ body {
   height: 44px !important;
   padding: 0 12px !important;
   border-radius: 999px !important;
-  border-width: 2px !important;
-  border-style: solid !important;
-  border-color: var(--sa-border) !important;
-  background: #ffffff !important;
+  border: var(--sa-border-w) solid var(--sa-border) !important;
+  background: var(--sa-input-bg) !important;
   color: var(--sa-accent) !important;
   font-size: 14px !important;
   font-weight: 900 !important;
@@ -568,9 +704,7 @@ body {
   min-height: 44px !important;
   padding: 0 10px !important;
   border-radius: 999px !important;
-  border-width: 2px !important;
-  border-style: solid !important;
-  border-color: var(--sa-accent) !important;
+  border: var(--sa-border-w) solid var(--sa-accent) !important;
   font-size: 14px !important;
   font-weight: 900 !important;
   line-height: 1.15 !important;
@@ -579,8 +713,8 @@ body {
 }
 
 /* =========================================================
-   普通卡片：只修 class，不再强制所有 section
-   ========================================================= */
+   普通卡片：只修 class，不强制所有 section
+========================================================= */
 
 .sa-card,
 .sa-panel,
@@ -604,7 +738,7 @@ body {
   color: var(--sa-panel-text) !important;
 }
 
-/* 资料卡：发票 / 客户 / 产品明细，全部保持正常列表样式 */
+/* 资料卡：发票 / 客户 / 产品明细 */
 .sa-item-card,
 .invoice-card,
 .record-card,
@@ -617,8 +751,8 @@ body {
   display: block !important;
   text-align: left !important;
   padding: var(--sa-card-pad) !important;
+  border: var(--sa-border-w) solid var(--sa-border) !important;
   border-radius: var(--sa-radius-card) !important;
-  border-color: var(--sa-border) !important;
   background: var(--sa-item-bg) !important;
   color: var(--sa-panel-text) !important;
   box-shadow: var(--sa-glow) !important;
@@ -635,7 +769,7 @@ body {
 
 /* =========================================================
    搜索行
-   ========================================================= */
+========================================================= */
 
 .products-search-row,
 .records-search-row,
@@ -648,8 +782,8 @@ body {
 }
 
 /* =========================================================
-   统计卡片：只认明确统计 class，不再自动乱抓资料卡
-   ========================================================= */
+   统计卡片：只认明确统计 class
+========================================================= */
 
 .sa-stats-grid,
 .products-summary-grid,
@@ -666,7 +800,6 @@ body {
   align-items: stretch !important;
 }
 
-/* 产品统计顺序：成本左｜售价右｜预计利润左｜库存数量右 */
 .sa-stat-cost {
   order: 1 !important;
 }
@@ -699,7 +832,6 @@ body {
   order: 4 !important;
 }
 
-/* 统计卡片本体 */
 .sa-stat-card,
 .records-stat-card,
 .records-summary-card,
@@ -718,23 +850,19 @@ body {
   min-height: clamp(100px, 19vw, 130px) !important;
   height: auto !important;
   padding: clamp(12px, 2.5vw, 18px) !important;
-
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-
   gap: 8px !important;
   text-align: center !important;
   line-height: 1.25 !important;
-
   background: var(--sa-card-bg) !important;
   color: var(--sa-text) !important;
   border-color: var(--sa-border) !important;
   box-shadow: var(--sa-glow) !important;
 }
 
-/* 统计标题 */
 .sa-stat-card span,
 .sa-stat-card p,
 .records-stat-card span,
@@ -770,7 +898,6 @@ body {
   text-align: center !important;
 }
 
-/* 统计金额 */
 .sa-stat-card strong,
 .records-stat-card strong,
 .records-summary-card strong,
@@ -791,12 +918,11 @@ body {
   line-height: 1.15 !important;
   margin: 0 !important;
   text-align: center !important;
-  color: var(--sa-green) !important;
 }
 
 /* =========================================================
    产品明细 / 客户资料列表恢复
-   ========================================================= */
+========================================================= */
 
 .smartacctg-products-page #productDetails > div:not(.products-search-row),
 .smartacctg-products-page #productDetails .productList {
@@ -844,7 +970,7 @@ body {
 
 /* =========================================================
    发票 / 客户 / 产品操作按钮
-   ========================================================= */
+========================================================= */
 
 .invoice-action-row,
 .records-action-row,
@@ -876,7 +1002,6 @@ body {
   white-space: nowrap !important;
 }
 
-/* 客户资料按钮像发票记录那样：前三个一行，后两个一行 */
 .smartacctg-customers-page .customers-action-row button,
 .smartacctg-customers-page .customer-action-row button,
 .smartacctg-customers-page .sa-action-row button,
@@ -893,7 +1018,7 @@ body {
 
 /* =========================================================
    关闭按钮：显示「关闭」，不要 X 框
-   ========================================================= */
+========================================================= */
 
 .sa-close-x,
 button.sa-close-x,
@@ -964,7 +1089,7 @@ span.sa-close-x::before,
 
 /* =========================================================
    Modal
-   ========================================================= */
+========================================================= */
 
 .sa-modal,
 .sa-detail-modal {
@@ -976,13 +1101,13 @@ span.sa-close-x::before,
   padding: var(--sa-card-pad) !important;
   background: var(--sa-card-bg) !important;
   color: var(--sa-text) !important;
-  border-color: var(--sa-border) !important;
+  border: var(--sa-border-w) solid var(--sa-border) !important;
   box-shadow: var(--sa-glow) !important;
 }
 
 /* =========================================================
    手机适配
-   ========================================================= */
+========================================================= */
 
 @media (max-width: 768px) {
   .products-search-row,
@@ -1105,7 +1230,7 @@ span.sa-close-x::before,
 
 /* =========================================================
    Print 保持发票干净
-   ========================================================= */
+========================================================= */
 
 @media print {
   body * {
