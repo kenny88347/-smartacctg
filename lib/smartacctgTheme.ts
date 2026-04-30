@@ -38,7 +38,7 @@ export type SmartAcctgTheme = {
   softBg: string;
 };
 
-const FUTURE_WORLD_THEME: SmartAcctgTheme = {
+const futureWorldTheme: SmartAcctgTheme = {
   name: "未来世界｜深林青色",
   pageBg:
     "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
@@ -133,8 +133,8 @@ export const THEMES: Record<ThemeKey, SmartAcctgTheme> = {
 
     panelBg: "#2a2a2a",
     itemBg: "#2a2a2a",
-    itemCard: "#ffffff",
-    itemText: "#111827",
+    itemCard: "#1f1f1f",
+    itemText: "#fff7ed",
 
     inputBg: "#ffffff",
     inputText: "#111827",
@@ -237,85 +237,97 @@ export const THEMES: Record<ThemeKey, SmartAcctgTheme> = {
     softBg: "#dbeafe",
   },
 
-  futureForest: FUTURE_WORLD_THEME,
-
-  futureWorld: FUTURE_WORLD_THEME,
+  futureForest: futureWorldTheme,
+  futureWorld: futureWorldTheme,
 };
 
 export function isThemeKey(value: unknown): value is ThemeKey {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(THEMES, value);
 }
 
-export function normalizeThemeKey(value: unknown, defaultTheme: ThemeKey = "deepTeal"): ThemeKey {
+export function normalizeThemeKey(
+  value: unknown,
+  fallback: ThemeKey = "deepTeal"
+): ThemeKey {
+  if (value === "futureWorld") return "futureWorld";
+  if (value === "futureForest") return "futureForest";
   if (isThemeKey(value)) return value;
-
-  const raw = String(value || "").trim();
-
-  if (raw === "future-world") return "futureWorld";
-  if (raw === "future_world") return "futureWorld";
-  if (raw === "future") return "futureWorld";
-  if (raw === "未来世界") return "futureWorld";
-
-  return defaultTheme;
+  return fallback;
 }
 
-export function getTheme(themeKey: unknown): SmartAcctgTheme {
-  const key = normalizeThemeKey(themeKey);
-  return THEMES[key] || THEMES.deepTeal;
-}
-
-export function getThemeKeyFromUrlOrLocalStorage(defaultTheme: ThemeKey = "deepTeal"): ThemeKey {
+/**
+ * 只建议给「免费试用 / 未登录」用。
+ * 已登录用户不要用这个当最终主题，应该用 profiles.theme。
+ */
+export function getThemeKeyFromUrlOrLocalStorage(
+  defaultTheme: ThemeKey = "deepTeal"
+): ThemeKey {
   if (typeof window === "undefined") return defaultTheme;
 
   const q = new URLSearchParams(window.location.search);
   const urlTheme = q.get("theme");
   const savedTheme = localStorage.getItem(THEME_KEY);
 
-  if (isThemeKey(urlTheme)) return urlTheme;
-  if (isThemeKey(savedTheme)) return savedTheme;
+  if (isThemeKey(urlTheme)) return normalizeThemeKey(urlTheme, defaultTheme);
+  if (isThemeKey(savedTheme)) return normalizeThemeKey(savedTheme, defaultTheme);
 
   return defaultTheme;
 }
 
+/**
+ * 只给免费试用 / 未登录暂存主题用。
+ * 已登录用户请保存到 Supabase profiles.theme。
+ */
 export function saveThemeKey(themeKey: ThemeKey) {
   if (typeof window === "undefined") return;
-
   localStorage.setItem(THEME_KEY, themeKey);
+}
+
+export function removeSavedThemeKey() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(THEME_KEY);
 }
 
 export function applyThemeToDocument(themeKey: ThemeKey) {
   if (typeof document === "undefined") return;
 
-  const theme = THEMES[themeKey] || THEMES.deepTeal;
+  const fixedKey = normalizeThemeKey(themeKey);
+  const theme = THEMES[fixedKey] || THEMES.deepTeal;
 
-  document.documentElement.setAttribute("data-smartacctg-theme", themeKey);
+  document.documentElement.setAttribute("data-sa-theme", fixedKey);
+  document.documentElement.setAttribute("data-smartacctg-theme", fixedKey);
+
+  document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-card-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg);
+  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg);
+  document.documentElement.style.setProperty("--sa-item-card", theme.itemCard);
+  document.documentElement.style.setProperty("--sa-item-text", theme.itemText);
+
+  document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg);
+  document.documentElement.style.setProperty("--sa-input-text", theme.inputText);
+
+  document.documentElement.style.setProperty("--sa-border", theme.border);
+  document.documentElement.style.setProperty("--sa-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-text", theme.text);
+  document.documentElement.style.setProperty("--sa-panel-text", theme.panelText);
+
+  document.documentElement.style.setProperty("--sa-muted", theme.muted);
+  document.documentElement.style.setProperty("--sa-sub-text", theme.subText);
+
+  document.documentElement.style.setProperty("--sa-soft", theme.soft);
+  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg);
+  document.documentElement.style.setProperty("--sa-banner-bg", theme.banner);
+  document.documentElement.style.setProperty("--sa-glow", theme.glow);
 
   document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
   document.documentElement.style.setProperty("--sa-theme-banner", theme.banner);
   document.documentElement.style.setProperty("--sa-theme-card", theme.card);
-
-  document.documentElement.style.setProperty("--sa-theme-panel-bg", theme.panelBg);
-  document.documentElement.style.setProperty("--sa-theme-item-bg", theme.itemBg);
-  document.documentElement.style.setProperty("--sa-theme-item-card", theme.itemCard);
-  document.documentElement.style.setProperty("--sa-theme-item-text", theme.itemText);
-
-  document.documentElement.style.setProperty("--sa-theme-input-bg", theme.inputBg);
-  document.documentElement.style.setProperty("--sa-theme-input-text", theme.inputText);
-
   document.documentElement.style.setProperty("--sa-theme-border", theme.border);
-  document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
   document.documentElement.style.setProperty("--sa-theme-accent", theme.accent);
   document.documentElement.style.setProperty("--sa-theme-text", theme.text);
-  document.documentElement.style.setProperty("--sa-theme-panel-text", theme.panelText);
-
   document.documentElement.style.setProperty("--sa-theme-muted", theme.muted);
-  document.documentElement.style.setProperty("--sa-theme-sub-text", theme.subText);
-
-  document.documentElement.style.setProperty("--sa-theme-soft", theme.soft);
-  document.documentElement.style.setProperty("--sa-theme-soft-bg", theme.softBg);
-}
-
-export function setSmartAcctgTheme(themeKey: ThemeKey) {
-  saveThemeKey(themeKey);
-  applyThemeToDocument(themeKey);
+  document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
+  document.documentElement.style.setProperty("--sa-theme-input-bg", theme.inputBg);
+  document.documentElement.style.setProperty("--sa-theme-input-text", theme.inputText);
 }
