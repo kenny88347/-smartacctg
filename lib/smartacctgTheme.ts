@@ -5,7 +5,8 @@ export type ThemeKey =
   | "lightRed"
   | "nature"
   | "sky"
-  | "futureForest";
+  | "futureForest"
+  | "futureWorld";
 
 export const THEME_KEY = "smartacctg_theme";
 
@@ -35,6 +36,36 @@ export type SmartAcctgTheme = {
 
   soft: string;
   softBg: string;
+};
+
+const FUTURE_WORLD_THEME: SmartAcctgTheme = {
+  name: "未来世界｜深林青色",
+  pageBg:
+    "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
+  banner:
+    "linear-gradient(135deg, rgba(1,28,26,0.98), rgba(6,78,59,0.96)), radial-gradient(circle at top right, rgba(45,212,191,0.32), transparent 34%)",
+  card: "rgba(6,47,42,0.94)",
+
+  panelBg: "rgba(8,64,57,0.92)",
+  itemBg: "rgba(8,64,57,0.92)",
+  itemCard: "rgba(6,47,42,0.94)",
+  itemText: "#ecfeff",
+
+  inputBg: "#ecfeff",
+  inputText: "#042f2e",
+
+  border: "#2dd4bf",
+  glow:
+    "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
+  accent: "#2dd4bf",
+  text: "#ecfeff",
+  panelText: "#ecfeff",
+
+  muted: "#99f6e4",
+  subText: "#99f6e4",
+
+  soft: "rgba(20,184,166,0.22)",
+  softBg: "rgba(20,184,166,0.22)",
 };
 
 export const THEMES: Record<ThemeKey, SmartAcctgTheme> = {
@@ -206,39 +237,31 @@ export const THEMES: Record<ThemeKey, SmartAcctgTheme> = {
     softBg: "#dbeafe",
   },
 
-  futureForest: {
-    name: "未来世界｜深林青色",
-    pageBg:
-      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
-    banner:
-      "linear-gradient(135deg, rgba(1,28,26,0.98), rgba(6,78,59,0.96)), radial-gradient(circle at top right, rgba(45,212,191,0.32), transparent 34%)",
-    card: "rgba(6,47,42,0.94)",
+  futureForest: FUTURE_WORLD_THEME,
 
-    panelBg: "rgba(8,64,57,0.92)",
-    itemBg: "rgba(8,64,57,0.92)",
-    itemCard: "rgba(6,47,42,0.94)",
-    itemText: "#ecfeff",
-
-    inputBg: "#ecfeff",
-    inputText: "#042f2e",
-
-    border: "#2dd4bf",
-    glow:
-      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
-    accent: "#2dd4bf",
-    text: "#ecfeff",
-    panelText: "#ecfeff",
-
-    muted: "#99f6e4",
-    subText: "#99f6e4",
-
-    soft: "rgba(20,184,166,0.22)",
-    softBg: "rgba(20,184,166,0.22)",
-  },
+  futureWorld: FUTURE_WORLD_THEME,
 };
 
 export function isThemeKey(value: unknown): value is ThemeKey {
-  return typeof value === "string" && value in THEMES;
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(THEMES, value);
+}
+
+export function normalizeThemeKey(value: unknown, defaultTheme: ThemeKey = "deepTeal"): ThemeKey {
+  if (isThemeKey(value)) return value;
+
+  const raw = String(value || "").trim();
+
+  if (raw === "future-world") return "futureWorld";
+  if (raw === "future_world") return "futureWorld";
+  if (raw === "future") return "futureWorld";
+  if (raw === "未来世界") return "futureWorld";
+
+  return defaultTheme;
+}
+
+export function getTheme(themeKey: unknown): SmartAcctgTheme {
+  const key = normalizeThemeKey(themeKey);
+  return THEMES[key] || THEMES.deepTeal;
 }
 
 export function getThemeKeyFromUrlOrLocalStorage(defaultTheme: ThemeKey = "deepTeal"): ThemeKey {
@@ -258,4 +281,41 @@ export function saveThemeKey(themeKey: ThemeKey) {
   if (typeof window === "undefined") return;
 
   localStorage.setItem(THEME_KEY, themeKey);
+}
+
+export function applyThemeToDocument(themeKey: ThemeKey) {
+  if (typeof document === "undefined") return;
+
+  const theme = THEMES[themeKey] || THEMES.deepTeal;
+
+  document.documentElement.setAttribute("data-smartacctg-theme", themeKey);
+
+  document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-theme-banner", theme.banner);
+  document.documentElement.style.setProperty("--sa-theme-card", theme.card);
+
+  document.documentElement.style.setProperty("--sa-theme-panel-bg", theme.panelBg);
+  document.documentElement.style.setProperty("--sa-theme-item-bg", theme.itemBg);
+  document.documentElement.style.setProperty("--sa-theme-item-card", theme.itemCard);
+  document.documentElement.style.setProperty("--sa-theme-item-text", theme.itemText);
+
+  document.documentElement.style.setProperty("--sa-theme-input-bg", theme.inputBg);
+  document.documentElement.style.setProperty("--sa-theme-input-text", theme.inputText);
+
+  document.documentElement.style.setProperty("--sa-theme-border", theme.border);
+  document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
+  document.documentElement.style.setProperty("--sa-theme-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-theme-text", theme.text);
+  document.documentElement.style.setProperty("--sa-theme-panel-text", theme.panelText);
+
+  document.documentElement.style.setProperty("--sa-theme-muted", theme.muted);
+  document.documentElement.style.setProperty("--sa-theme-sub-text", theme.subText);
+
+  document.documentElement.style.setProperty("--sa-theme-soft", theme.soft);
+  document.documentElement.style.setProperty("--sa-theme-soft-bg", theme.softBg);
+}
+
+export function setSmartAcctgTheme(themeKey: ThemeKey) {
+  saveThemeKey(themeKey);
+  applyThemeToDocument(themeKey);
 }
