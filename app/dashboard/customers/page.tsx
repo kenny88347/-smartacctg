@@ -19,6 +19,7 @@ type Customer = {
   company_phone: string | null;
   address: string | null;
   status: CustomerStatus | null;
+  customer_status?: CustomerStatus | null;
   debt_amount: number | null;
   paid_amount: number | null;
   last_payment_date: string | null;
@@ -190,6 +191,7 @@ const TXT = {
     edit: "编辑",
     delete: "删除",
     whatsapp: "WhatsApp",
+    whatsappNoPhone: "这个客户没有填写手机号码或公司电话，请先编辑客户资料。",
     invoice: "开发票",
     invoiceRecords: "发票记录",
     createNewInvoice: "新增发票",
@@ -255,6 +257,7 @@ const TXT = {
     edit: "Edit",
     delete: "Delete",
     whatsapp: "WhatsApp",
+    whatsappNoPhone: "This customer has no phone or company phone. Please edit customer info first.",
     invoice: "Invoice",
     invoiceRecords: "Invoice Records",
     createNewInvoice: "Create Invoice",
@@ -320,6 +323,7 @@ const TXT = {
     edit: "Edit",
     delete: "Padam",
     whatsapp: "WhatsApp",
+    whatsappNoPhone: "Pelanggan ini tiada nombor telefon. Sila edit maklumat pelanggan dahulu.",
     invoice: "Invois",
     invoiceRecords: "Rekod Invois",
     createNewInvoice: "Tambah Invois",
@@ -613,6 +617,7 @@ const CUSTOMER_OPTIONAL_KEYS = [
   "company_phone",
   "address",
   "status",
+  "customer_status",
   "debt_amount",
   "paid_amount",
   "last_payment_date",
@@ -696,11 +701,83 @@ async function updateAdaptive(
   throw lastError || new Error("Update failed");
 }
 
+function normalizeCustomerStatus(value: any): CustomerStatus {
+  if (value === "vip") return "vip";
+  if (value === "debt") return "debt";
+  if (value === "blocked") return "blocked";
+  return "normal";
+}
+
+function normalizeCustomer(row: any): Customer {
+  const fixedStatus = normalizeCustomerStatus(row?.status || row?.customer_status || "normal");
+
+  return {
+    id: String(row?.id || ""),
+    user_id: row?.user_id || "",
+    name: String(row?.name || ""),
+    phone: row?.phone || "",
+    email: row?.email || "",
+    company_name: row?.company_name || "",
+    company_reg_no: row?.company_reg_no || "",
+    company_phone: row?.company_phone || "",
+    address: row?.address || "",
+    status: fixedStatus,
+    customer_status: fixedStatus,
+    debt_amount: Number(row?.debt_amount || 0),
+    paid_amount: Number(row?.paid_amount || 0),
+    last_payment_date: row?.last_payment_date || "",
+    note: row?.note || "",
+  };
+}
+
 function statusText(status: CustomerStatus, t: any) {
   if (status === "vip") return t.vip;
   if (status === "debt") return t.debt;
   if (status === "blocked") return t.blocked;
   return t.normal;
+}
+
+function statusBadgeColors(status: CustomerStatus) {
+  if (status === "vip") {
+    return {
+      background: "#fef3c7",
+      color: "#92400e",
+      borderColor: "#fbbf24",
+    };
+  }
+
+  if (status === "debt") {
+    return {
+      background: "#fee2e2",
+      color: "#b91c1c",
+      borderColor: "#fca5a5",
+    };
+  }
+
+  if (status === "blocked") {
+    return {
+      background: "#e5e7eb",
+      color: "#374151",
+      borderColor: "#9ca3af",
+    };
+  }
+
+  return {
+    background: "#ccfbf1",
+    color: "#0f766e",
+    borderColor: "#5eead4",
+  };
+}
+
+function normalizeWhatsAppPhone(phone: string) {
+  const clean = String(phone || "").replace(/\D/g, "");
+
+  if (!clean) return "";
+
+  if (clean.startsWith("60")) return clean;
+  if (clean.startsWith("0")) return `6${clean}`;
+
+  return `60${clean}`;
 }
 
 export default function CustomersPage() {
@@ -734,7 +811,7 @@ export default function CustomersPage() {
   const [formPriceProductId, setFormPriceProductId] = useState("");
   const [formCustomPrice, setFormCustomPrice] = useState("");
 
-  const [relatedPath, setRelatedPath] = useState("/dashboard/accounting");
+  const [relatedPath, setRelatedPath] = useState("/dashboard/records");
 
   const [form, setForm] = useState({
     name: "",
@@ -807,7 +884,9 @@ export default function CustomersPage() {
         const savedProducts = safeLocalGet(TRIAL_PRODUCTS_KEY);
         const savedInvoices = safeLocalGet(TRIAL_INVOICES_KEY);
 
-        setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
+        const parsedCustomers = savedCustomers ? JSON.parse(savedCustomers) : [];
+
+        setCustomers(parsedCustomers.map((c: any) => normalizeCustomer(c)));
         setCustomerPrices(savedPrices ? JSON.parse(savedPrices) : []);
         setProducts(savedProducts ? JSON.parse(savedProducts) : []);
         setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
@@ -874,15 +953,16 @@ export default function CustomersPage() {
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
-    setCustomers((customerData || []) as Customer[]);
+    setCustomers((customerData || []).map((c: any) => normalizeCustomer(c)));
     setProducts((productData || []) as Product[]);
     setCustomerPrices((priceData || []) as CustomerPrice[]);
     setInvoices((invoiceData || []) as Invoice[]);
   }
 
   function saveTrialCustomers(nextCustomers: Customer[]) {
-    setCustomers(nextCustomers);
-    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
+    const fixed = nextCustomers.map((c) => normalizeCustomer(c));
+    setCustomers(fixed);
+    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(fixed));
   }
 
   function saveTrialPrices(nextPrices: CustomerPrice[]) {
@@ -1073,6 +1153,7 @@ export default function CustomersPage() {
 
     try {
       const customerId = editingId || makeId();
+      const fixedStatus = normalizeCustomerStatus(form.status);
 
       const payload: Customer = {
         id: customerId,
@@ -1084,7 +1165,8 @@ export default function CustomersPage() {
         company_reg_no: form.company_reg_no || null,
         company_phone: form.company_phone || null,
         address: form.address || null,
-        status: form.status,
+        status: fixedStatus,
+        customer_status: fixedStatus,
         debt_amount: Number(form.debt_amount || 0),
         paid_amount: Number(form.paid_amount || 0),
         last_payment_date: form.last_payment_date || today(),
@@ -1121,7 +1203,8 @@ export default function CustomersPage() {
         company_reg_no: payload.company_reg_no,
         company_phone: payload.company_phone,
         address: payload.address,
-        status: payload.status,
+        status: fixedStatus,
+        customer_status: fixedStatus,
         debt_amount: payload.debt_amount,
         paid_amount: payload.paid_amount,
         last_payment_date: payload.last_payment_date,
@@ -1162,23 +1245,25 @@ export default function CustomersPage() {
   }
 
   function editCustomer(c: Customer) {
+    const fixed = normalizeCustomer(c);
+
     setMsg("");
-    setEditingId(c.id);
+    setEditingId(fixed.id);
     setFullscreenForm(true);
 
     setForm({
-      name: c.name || "",
-      phone: c.phone || "",
-      email: c.email || "",
-      company_name: c.company_name || "",
-      company_reg_no: c.company_reg_no || "",
-      company_phone: c.company_phone || "",
-      address: c.address || "",
-      status: (c.status || "normal") as CustomerStatus,
-      debt_amount: String(c.debt_amount || 0),
-      paid_amount: String(c.paid_amount || 0),
-      last_payment_date: c.last_payment_date || today(),
-      note: c.note || "",
+      name: fixed.name || "",
+      phone: fixed.phone || "",
+      email: fixed.email || "",
+      company_name: fixed.company_name || "",
+      company_reg_no: fixed.company_reg_no || "",
+      company_phone: fixed.company_phone || "",
+      address: fixed.address || "",
+      status: fixed.status || "normal",
+      debt_amount: String(fixed.debt_amount || 0),
+      paid_amount: String(fixed.paid_amount || 0),
+      last_payment_date: fixed.last_payment_date || today(),
+      note: fixed.note || "",
     });
 
     setFormPriceProductId("");
@@ -1260,31 +1345,37 @@ export default function CustomersPage() {
     if (session) await loadAll(session.user.id);
   }
 
-  function openCustomerWhatsApp(phone: string | null) {
-    if (!phone) return;
+  function openCustomerWhatsApp(c: Customer) {
+    const phone = c.phone || c.company_phone || "";
+    const malaysiaPhone = normalizeWhatsAppPhone(phone);
 
-    const clean = phone.replace(/\D/g, "");
-    const malaysiaPhone = clean.startsWith("60")
-      ? clean
-      : clean.startsWith("0")
-        ? `6${clean}`
-        : `60${clean}`;
+    if (!malaysiaPhone) {
+      setMsg(t.whatsappNoPhone);
+      return;
+    }
 
-    window.location.href = `https://wa.me/${malaysiaPhone}`;
+    const message = encodeURIComponent(`Hi ${c.name || ""}`);
+    const url = `https://wa.me/${malaysiaPhone}?text=${message}`;
+
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   const filteredCustomers = useMemo(() => {
     const s = search.toLowerCase().trim();
 
-    return customers.filter((c) => {
+    return customers.filter((raw) => {
+      const c = normalizeCustomer(raw);
+      const customerStatus = normalizeCustomerStatus(c.status || c.customer_status || "normal");
+
       const matchSearch =
         !s ||
         c.name?.toLowerCase().includes(s) ||
         c.phone?.toLowerCase().includes(s) ||
+        c.company_phone?.toLowerCase().includes(s) ||
         c.company_name?.toLowerCase().includes(s) ||
         c.email?.toLowerCase().includes(s);
 
-      const matchStatus = filterStatus === "all" || c.status === filterStatus;
+      const matchStatus = filterStatus === "all" || customerStatus === filterStatus;
 
       return matchSearch && matchStatus;
     });
@@ -1430,9 +1521,13 @@ export default function CustomersPage() {
             <p style={{ color: theme.subText, fontWeight: 800 }}>{t.noCustomers}</p>
           ) : (
             <div className="customers-list" style={customerGridStyle}>
-              {filteredCustomers.map((c) => {
+              {filteredCustomers.map((raw) => {
+                const c = normalizeCustomer(raw);
+                const customerStatus = normalizeCustomerStatus(c.status || c.customer_status);
+                const statusColor = statusBadgeColors(customerStatus);
                 const debtLeft = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
                 const prices = customerPrices.filter((p) => p.customer_id === c.id);
+                const hasWhatsappPhone = Boolean(normalizeWhatsAppPhone(c.phone || c.company_phone || ""));
 
                 return (
                   <div
@@ -1453,11 +1548,12 @@ export default function CustomersPage() {
                           className="customer-status-badge"
                           style={{
                             ...badgeStyle,
-                            background: theme.softBg,
-                            color: theme.accent,
+                            background: statusColor.background,
+                            color: statusColor.color,
+                            border: `1px solid ${statusColor.borderColor}`,
                           }}
                         >
-                          {statusText(c.status || "normal", t)}
+                          {statusText(customerStatus, t)}
                         </span>
                       </h3>
 
@@ -1467,6 +1563,10 @@ export default function CustomersPage() {
 
                       <p style={{ ...mutedStyle, color: theme.subText }}>
                         {t.companyName}: {c.company_name || "-"}
+                      </p>
+
+                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                        {t.companyPhone}: {c.company_phone || "-"}
                       </p>
 
                       <p style={{ ...mutedStyle, color: theme.subText }}>
@@ -1512,12 +1612,11 @@ export default function CustomersPage() {
 
                       <button
                         type="button"
-                        onClick={() => openCustomerWhatsApp(c.phone)}
-                        disabled={!c.phone}
-                        title={t.whatsapp}
+                        onClick={() => openCustomerWhatsApp(c)}
+                        title={hasWhatsappPhone ? t.whatsapp : t.whatsappNoPhone}
                         style={{
                           ...whatsappBtnStyle,
-                          opacity: c.phone ? 1 : 0.45,
+                          opacity: hasWhatsappPhone ? 1 : 0.55,
                         }}
                       >
                         {t.whatsapp}
@@ -1566,7 +1665,7 @@ export default function CustomersPage() {
               borderColor: theme.border,
             }}
           >
-            <option value="/dashboard/accounting">{t.accounting}</option>
+            <option value="/dashboard/records">{t.accounting}</option>
             <option value="/dashboard/products">{t.products}</option>
             <option value="/dashboard/invoices">{t.invoices}</option>
           </select>
