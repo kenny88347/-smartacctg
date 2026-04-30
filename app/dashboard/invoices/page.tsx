@@ -12,7 +12,9 @@ type ThemeKey =
   | "nature"
   | "sky"
   | "deepTeal"
+  | "futureForest"
   | "futureWorld";
+
 type ChargeMode = "%" | "RM";
 
 type Customer = {
@@ -121,6 +123,7 @@ const THEMES: Record<ThemeKey, any> = {
     inputText: "#111827",
     muted: "#64748b",
   },
+
   pink: {
     name: "可爱粉色",
     pageBg: "#fff7fb",
@@ -137,6 +140,7 @@ const THEMES: Record<ThemeKey, any> = {
     inputText: "#111827",
     muted: "#64748b",
   },
+
   blackGold: {
     name: "黑金商务",
     pageBg: "#111111",
@@ -153,6 +157,7 @@ const THEMES: Record<ThemeKey, any> = {
     inputText: "#111827",
     muted: "#fde68a",
   },
+
   lightRed: {
     name: "可爱浅红",
     pageBg: "#fff1f2",
@@ -169,6 +174,7 @@ const THEMES: Record<ThemeKey, any> = {
     inputText: "#111827",
     muted: "#64748b",
   },
+
   nature: {
     name: "风景自然系",
     pageBg: "#f0fdf4",
@@ -185,6 +191,7 @@ const THEMES: Record<ThemeKey, any> = {
     inputText: "#111827",
     muted: "#64748b",
   },
+
   sky: {
     name: "天空蓝",
     pageBg: "#eff6ff",
@@ -201,16 +208,36 @@ const THEMES: Record<ThemeKey, any> = {
     inputText: "#111827",
     muted: "#64748b",
   },
-  futureWorld: {
+
+  futureForest: {
     name: "未来世界",
-    pageBg: "linear-gradient(135deg,#011814,#042f2e,#064e3b)",
+    pageBg:
+      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
     card: "linear-gradient(145deg,#062d28,#021917)",
     panelBg: "rgba(6, 78, 59, 0.35)",
     itemBg: "rgba(15, 118, 110, 0.22)",
     inputBg: "#ecfeff",
     border: "#2dd4bf",
     glow:
-      "0 0 0 1px rgba(45,212,191,0.55), 0 0 22px rgba(20,184,166,0.65), 0 20px 46px rgba(5,150,105,0.32)",
+      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
+    accent: "#2dd4bf",
+    text: "#ecfeff",
+    panelText: "#ecfeff",
+    inputText: "#042f2e",
+    muted: "#99f6e4",
+  },
+
+  futureWorld: {
+    name: "未来世界",
+    pageBg:
+      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
+    card: "linear-gradient(145deg,#062d28,#021917)",
+    panelBg: "rgba(6, 78, 59, 0.35)",
+    itemBg: "rgba(15, 118, 110, 0.22)",
+    inputBg: "#ecfeff",
+    border: "#2dd4bf",
+    glow:
+      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
     accent: "#2dd4bf",
     text: "#ecfeff",
     panelText: "#ecfeff",
@@ -218,7 +245,6 @@ const THEMES: Record<ThemeKey, any> = {
     muted: "#99f6e4",
   },
 };
-
 const TXT = {
   zh: {
     dashboardBack: "返回控制台",
@@ -334,6 +360,7 @@ const TXT = {
     previewDiscount: "折扣",
     previewTotal: "总额",
   },
+
   en: {
     dashboardBack: "Back Dashboard",
     close: "Close",
@@ -448,6 +475,7 @@ const TXT = {
     previewDiscount: "Discount",
     previewTotal: "Total",
   },
+
   ms: {
     dashboardBack: "Kembali Dashboard",
     close: "Tutup",
@@ -689,6 +717,21 @@ const INVOICE_PAGE_CSS = `
   }
 `;
 
+function normalizeThemeKey(value: any): ThemeKey {
+  const key = String(value || "").trim();
+
+  if (key === "futureWorld") return "futureWorld";
+  if (key === "futureForest") return "futureForest";
+  if (key === "deepTeal") return "deepTeal";
+  if (key === "pink") return "pink";
+  if (key === "blackGold") return "blackGold";
+  if (key === "lightRed") return "lightRed";
+  if (key === "nature") return "nature";
+  if (key === "sky") return "sky";
+
+  return "deepTeal";
+}
+
 function makeInvoiceNo() {
   return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 }
@@ -770,7 +813,6 @@ function getMissingColumnName(error: any) {
 
   return match1?.[1] || match2?.[1] || match3?.[1] || "";
 }
-
 async function insertAdaptive(table: string, inputPayload: Record<string, any>) {
   let payload: Record<string, any> = { ...inputPayload };
   let lastError: any = null;
@@ -828,6 +870,10 @@ async function insertAdaptive(table: string, inputPayload: Record<string, any>) 
       "unit_price",
       "invoice_id",
       "product_id",
+      "company_logo_url",
+      "company_reg_no",
+      "company_phone",
+      "company_address",
     ];
 
     const removable = optionalKeys.find((key) =>
@@ -879,6 +925,10 @@ async function updateAdaptive(table: string, id: string, inputPayload: Record<st
       "invoice_date",
       "note",
       "subtotal",
+      "company_logo_url",
+      "company_reg_no",
+      "company_phone",
+      "company_address",
     ];
 
     const removable = optionalKeys.find((key) =>
@@ -1109,6 +1159,7 @@ export default function InvoicePage() {
 
   useEffect(() => {
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function getCurrentLang(): Lang {
@@ -1124,13 +1175,27 @@ export default function InvoicePage() {
 
   function getCurrentTheme(): ThemeKey {
     const q = new URLSearchParams(window.location.search);
-    const urlTheme = q.get("theme") as ThemeKey | null;
-    const saved = safeLocalGet(THEME_KEY) as ThemeKey | null;
+    const urlTheme = q.get("theme");
+    const saved = safeLocalGet(THEME_KEY);
 
-    if (urlTheme && THEMES[urlTheme]) return urlTheme;
-    if (saved && THEMES[saved]) return saved;
+    const normalizedUrlTheme = normalizeThemeKey(urlTheme);
+    const normalizedSavedTheme = normalizeThemeKey(saved);
+
+    if (urlTheme && THEMES[normalizedUrlTheme]) return normalizedUrlTheme;
+    if (saved && THEMES[normalizedSavedTheme]) return normalizedSavedTheme;
 
     return "deepTeal";
+  }
+
+  function syncThemeToUrlAndLocalStorage(nextTheme: ThemeKey) {
+    safeLocalSet(THEME_KEY, nextTheme);
+
+    const q = new URLSearchParams(window.location.search);
+    q.set("lang", lang);
+    q.set("theme", nextTheme);
+    q.set("refresh", String(Date.now()));
+
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
   function switchLang(next: Lang) {
@@ -1140,6 +1205,7 @@ export default function InvoicePage() {
     const q = new URLSearchParams(window.location.search);
     q.set("lang", next);
     q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
 
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
@@ -1150,6 +1216,7 @@ export default function InvoicePage() {
 
     setLang(currentLang);
     setThemeKey(currentTheme);
+    safeLocalSet(THEME_KEY, currentTheme);
 
     const q = new URLSearchParams(window.location.search);
     const openParam = q.get("open");
@@ -1239,9 +1306,10 @@ export default function InvoicePage() {
       setCompanyAddress(profile.company_address || "");
       setCompanyLogoUrl(profile.company_logo_url || "");
 
-      if (profile.theme && THEMES[profile.theme as ThemeKey]) {
-        setThemeKey(profile.theme as ThemeKey);
-        safeLocalSet(THEME_KEY, profile.theme);
+      const profileTheme = normalizeThemeKey(profile.theme);
+      if (profile.theme && THEMES[profileTheme]) {
+        setThemeKey(profileTheme);
+        syncThemeToUrlAndLocalStorage(profileTheme);
       }
     }
 
@@ -1291,8 +1359,7 @@ export default function InvoicePage() {
 
     setInvoices((data || []) as InvoiceRecord[]);
   }
-
-  const selectedCustomer = customers.find((c) => c.id === customerId);
+    const selectedCustomer = customers.find((c) => c.id === customerId);
 
   const activeCustomerForPreview: Customer =
     customerMode === "select"
@@ -2125,8 +2192,8 @@ export default function InvoicePage() {
 
     window.location.href =
       modeParam === "trial"
-        ? `/dashboard?mode=trial&lang=${lang}&theme=${themeKey}`
-        : `/dashboard?lang=${lang}&theme=${themeKey}`;
+        ? `/dashboard?mode=trial&lang=${lang}&theme=${themeKey}&refresh=${Date.now()}`
+        : `/dashboard?lang=${lang}&theme=${themeKey}&refresh=${Date.now()}`;
   }
 
   function openNewInvoice(forceFullscreen = false) {
@@ -2178,8 +2245,7 @@ export default function InvoicePage() {
 
     window.history.replaceState({}, "", nextUrl);
   }
-
-  function renderChargeInput(
+    function renderChargeInput(
     label: string,
     charge: ChargeInput,
     setCharge: (v: ChargeInput) => void
@@ -2488,9 +2554,7 @@ export default function InvoicePage() {
 
           <div style={officialSummaryRowStyle}>
             <span>{t.discount}</span>
-            <strong style={{ color: discount < 0 ? "#dc2626" : "#111827" }}>
-              {formatSignedRM(-Math.abs(discount))}
-            </strong>
+            <strong style={{ color: "#dc2626" }}>{formatSignedRM(-Math.abs(discount))}</strong>
           </div>
 
           <div style={officialSummaryRowStyle}>
@@ -2568,16 +2632,17 @@ export default function InvoicePage() {
       </div>
     );
   }
-
-  return (
+    return (
     <main
       className="smartacctg-page smartacctg-invoice-page"
+      data-sa-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
       <style jsx global>{INVOICE_PAGE_CSS}</style>
 
       <div className="no-print sa-user-toolbar">
         <button
+          type="button"
           onClick={goBack}
           className="sa-back-btn"
           style={{ borderColor: theme.border, color: theme.accent }}
@@ -2587,6 +2652,7 @@ export default function InvoicePage() {
 
         <div className="sa-lang-row">
           <button
+            type="button"
             onClick={() => switchLang("zh")}
             className="sa-lang-btn"
             style={{
@@ -2599,6 +2665,7 @@ export default function InvoicePage() {
           </button>
 
           <button
+            type="button"
             onClick={() => switchLang("en")}
             className="sa-lang-btn"
             style={{
@@ -2611,6 +2678,7 @@ export default function InvoicePage() {
           </button>
 
           <button
+            type="button"
             onClick={() => switchLang("ms")}
             className="sa-lang-btn"
             style={{
@@ -2639,6 +2707,7 @@ export default function InvoicePage() {
             <h1 style={{ ...titleStyle, color: theme.accent }}>{t.title}</h1>
 
             <button
+              type="button"
               onClick={() => openNewInvoice(true)}
               aria-label={t.newInvoice}
               style={{ ...plusBtnStyle, background: theme.accent }}
@@ -2689,19 +2758,42 @@ export default function InvoicePage() {
                     </div>
 
                     <div className="invoice-action-row" style={recordActionRowStyle}>
-                      <button onClick={() => startEditInvoice(inv)} style={recordEditBtnStyle}>
+                      <button
+                        type="button"
+                        onClick={() => startEditInvoice(inv)}
+                        style={{
+                          ...recordEditBtnStyle,
+                          background: theme.accent,
+                        }}
+                      >
                         {t.edit}
                       </button>
 
-                      <button onClick={() => deleteInvoice(inv)} style={recordDeleteBtnStyle}>
+                      <button
+                        type="button"
+                        onClick={() => deleteInvoice(inv)}
+                        style={recordDeleteBtnStyle}
+                      >
                         {t.delete}
                       </button>
 
-                      <button onClick={() => sendWhatsAppPdf(inv)} style={recordWhatsappBtnStyle}>
+                      <button
+                        type="button"
+                        onClick={() => sendWhatsAppPdf(inv)}
+                        style={recordWhatsappBtnStyle}
+                      >
                         {t.whatsapp}
                       </button>
 
-                      <button onClick={() => shareInvoice(inv)} style={recordShareBtnStyle}>
+                      <button
+                        type="button"
+                        onClick={() => shareInvoice(inv)}
+                        style={{
+                          ...recordShareBtnStyle,
+                          borderColor: theme.accent,
+                          color: theme.accent,
+                        }}
+                      >
                         {t.share}
                       </button>
                     </div>
@@ -2737,7 +2829,12 @@ export default function InvoicePage() {
               {editInvoiceId ? t.edit : t.createTitle}
             </h1>
 
-            <button className="sa-close-x" onClick={closeInvoiceForm} aria-label={t.close}>
+            <button
+              type="button"
+              className="sa-close-x"
+              onClick={closeInvoiceForm}
+              aria-label={t.close}
+            >
               {t.close}
             </button>
           </div>
@@ -2884,6 +2981,7 @@ export default function InvoicePage() {
                 ) : null}
 
                 <button
+                  type="button"
                   onClick={addPaymentOption}
                   style={{ ...addBtnStyle, background: theme.accent }}
                 >
@@ -2918,6 +3016,7 @@ export default function InvoicePage() {
             </div>
 
             <button
+              type="button"
               onClick={() => setShowCompanyEdit((v) => !v)}
               style={{ ...editBtnStyle, borderColor: theme.border, color: theme.accent }}
             >
@@ -2941,31 +3040,37 @@ export default function InvoicePage() {
                 onChange={(e) => setCompanyLogoUrl(e.target.value)}
                 style={themedInputStyle}
               />
+
               <input
                 placeholder={t.companyName}
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 style={themedInputStyle}
               />
+
               <input
                 placeholder={t.companyRegNo}
                 value={companyRegNo}
                 onChange={(e) => setCompanyRegNo(e.target.value)}
                 style={themedInputStyle}
               />
+
               <input
                 placeholder={t.phone}
                 value={companyPhone}
                 onChange={(e) => setCompanyPhone(e.target.value)}
                 style={themedInputStyle}
               />
+
               <input
                 placeholder={t.address}
                 value={companyAddress}
                 onChange={(e) => setCompanyAddress(e.target.value)}
                 style={themedInputStyle}
               />
+
               <button
+                type="button"
                 onClick={saveCompanyInfo}
                 style={{ ...submitSmallBtnStyle, background: theme.accent }}
               >
@@ -2978,12 +3083,15 @@ export default function InvoicePage() {
 
           <div style={switchRow}>
             <button
+              type="button"
               onClick={() => setCustomerMode("select")}
               style={modeBtn(customerMode === "select", theme)}
             >
               {t.selectCustomer}
             </button>
+
             <button
+              type="button"
               onClick={() => setCustomerMode("new")}
               style={modeBtn(customerMode === "new", theme)}
             >
@@ -3012,18 +3120,21 @@ export default function InvoicePage() {
                 onChange={(e) => setNewCustomerName(e.target.value)}
                 style={themedInputStyle}
               />
+
               <input
                 placeholder={t.customerPhone}
                 value={newCustomerPhone}
                 onChange={(e) => setNewCustomerPhone(e.target.value)}
                 style={themedInputStyle}
               />
+
               <input
                 placeholder={t.customerCompany}
                 value={newCustomerCompany}
                 onChange={(e) => setNewCustomerCompany(e.target.value)}
                 style={themedInputStyle}
               />
+
               <input
                 placeholder={t.customerAddress}
                 value={newCustomerAddress}
@@ -3032,8 +3143,7 @@ export default function InvoicePage() {
               />
             </div>
           )}
-
-          <h3>{t.productInfo}</h3>
+                    <h3>{t.productInfo}</h3>
 
           <div style={formGrid}>
             {items.map((item, index) => {
@@ -3066,12 +3176,15 @@ export default function InvoicePage() {
 
                   <div style={switchRow}>
                     <button
+                      type="button"
                       onClick={() => updateItem(item.id, { productMode: "select" })}
                       style={modeBtn(item.productMode === "select", theme)}
                     >
                       {t.selectProduct}
                     </button>
+
                     <button
+                      type="button"
                       onClick={() => updateItem(item.id, { productMode: "new" })}
                       style={modeBtn(item.productMode === "new", theme)}
                     >
@@ -3086,6 +3199,7 @@ export default function InvoicePage() {
                       style={themedInputStyle}
                     >
                       <option value="">{t.chooseProduct}</option>
+
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name}｜{t.price} {Number(p.price).toFixed(2)}｜{t.cost}{" "}
@@ -3101,23 +3215,29 @@ export default function InvoicePage() {
                         onChange={(e) => updateItem(item.id, { newProductName: e.target.value })}
                         style={themedInputStyle}
                       />
+
                       <input
                         placeholder={t.price}
                         value={item.newProductPrice}
                         onChange={(e) => updateItem(item.id, { newProductPrice: e.target.value })}
                         style={themedInputStyle}
+                        inputMode="decimal"
                       />
+
                       <input
                         placeholder={t.cost}
                         value={item.newProductCost}
                         onChange={(e) => updateItem(item.id, { newProductCost: e.target.value })}
                         style={themedInputStyle}
+                        inputMode="decimal"
                       />
+
                       <input
                         placeholder={t.stock}
                         value={item.newProductStock}
                         onChange={(e) => updateItem(item.id, { newProductStock: e.target.value })}
                         style={themedInputStyle}
+                        inputMode="decimal"
                       />
                     </div>
                   )}
@@ -3125,10 +3245,12 @@ export default function InvoicePage() {
                   <div style={dateTwoColGridStyle}>
                     <div>
                       <label style={{ ...labelStyle, color: theme.accent }}>{t.qty}</label>
+
                       <input
                         value={item.qty}
                         onChange={(e) => updateItem(item.id, { qty: e.target.value })}
                         style={themedInputStyle}
+                        inputMode="decimal"
                       />
                     </div>
 
@@ -3136,6 +3258,7 @@ export default function InvoicePage() {
                       <label style={{ ...labelStyle, color: theme.accent }}>
                         {t.lineDiscount}
                       </label>
+
                       <input
                         value={item.discount}
                         onChange={(e) => updateItem(item.id, { discount: e.target.value })}
@@ -3143,6 +3266,7 @@ export default function InvoicePage() {
                           ...themedInputStyle,
                           color: Number(item.discount || 0) < 0 ? "#dc2626" : theme.inputText,
                         }}
+                        inputMode="decimal"
                       />
                     </div>
                   </div>
@@ -3191,6 +3315,7 @@ export default function InvoicePage() {
               style={themedInputStyle}
             >
               <option value="">{t.noSignature}</option>
+
               {signatureOptions.map((sig) => (
                 <option key={sig.id} value={sig.id}>
                   {sig.name}
@@ -3235,6 +3360,7 @@ export default function InvoicePage() {
                 }}
               >
                 {t.uploadSignature}
+
                 <input
                   type="file"
                   accept="image/*"
@@ -3278,6 +3404,7 @@ export default function InvoicePage() {
                     alt="Signature Preview"
                   />
                 ) : null}
+
                 {signatureText ? <strong>{signatureText}</strong> : null}
               </div>
             ) : null}
@@ -3302,27 +3429,36 @@ export default function InvoicePage() {
           </div>
 
           <button
+            type="button"
             onClick={createInvoice}
             disabled={loading}
-            style={{ ...submitBtn, background: theme.accent }}
+            style={{
+              ...submitBtn,
+              background: theme.accent,
+              opacity: loading ? 0.65 : 1,
+            }}
           >
             {loading ? t.generating : editInvoiceId ? t.saveEdit : t.generate}
           </button>
 
           <div className="responsive-actions invoice-action-row" style={actionRow}>
             <button
+              type="button"
               onClick={() => printInvoice()}
               style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}
             >
               {t.print}
             </button>
+
             <button
+              type="button"
               onClick={() => downloadPdf()}
               style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent }}
             >
               {t.pdf}
             </button>
-            <button onClick={() => sendWhatsAppPdf()} style={whatsappBtn}>
+
+            <button type="button" onClick={() => sendWhatsAppPdf()} style={whatsappBtn}>
               {t.whatsappPdf}
             </button>
           </div>
@@ -3348,7 +3484,11 @@ export default function InvoicePage() {
                 {signaturePadTarget === "issuer" ? t.handwriteSignature : t.customerSignature}
               </h2>
 
-              <button className="sa-close-x" onClick={() => setSignaturePadTarget(null)}>
+              <button
+                type="button"
+                className="sa-close-x"
+                onClick={() => setSignaturePadTarget(null)}
+              >
                 {t.close}
               </button>
             </div>
@@ -3394,7 +3534,6 @@ export default function InvoicePage() {
     </main>
   );
 }
-
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
   width: "100%",
@@ -3432,6 +3571,7 @@ const plusBtnStyle: CSSProperties = {
   width: 52,
   height: 52,
   minWidth: 52,
+  minHeight: 52,
   borderRadius: 999,
   border: "none",
   color: "#fff",
@@ -3447,6 +3587,7 @@ const titleStyle: CSSProperties = {
   margin: 0,
   fontSize: "var(--sa-fs-2xl)",
   lineHeight: 1.15,
+  fontWeight: 900,
 };
 
 const newTitleStyle: CSSProperties = {
@@ -3568,7 +3709,7 @@ const modeBtn = (active: boolean, theme: any): CSSProperties => ({
   padding: "0 14px",
   borderRadius: "var(--sa-radius-control)",
   border: `var(--sa-border-w) solid ${theme.accent}`,
-  background: active ? theme.accent : "#fff",
+  background: active ? theme.accent : theme.inputBg || "#fff",
   color: active ? "#fff" : theme.accent,
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
@@ -3627,6 +3768,7 @@ const dateInputStyle: CSSProperties = {
   WebkitAppearance: "none" as any,
   appearance: "none" as any,
   textAlign: "center",
+  textAlignLast: "center" as any,
   paddingLeft: 10,
   paddingRight: 10,
 };
