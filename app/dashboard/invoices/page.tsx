@@ -106,32 +106,6 @@ const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-const THEME_KEYS: ThemeKey[] = [
-  "deepTeal",
-  "pink",
-  "blackGold",
-  "lightRed",
-  "nature",
-  "sky",
-  "futureForest",
-  "futureWorld",
-];
-
-function isThemeKey(value: any): value is ThemeKey {
-  return THEME_KEYS.includes(value as ThemeKey);
-}
-
-function normalizeThemeKey(value: any): ThemeKey {
-  const key = String(value || "").trim();
-
-  if (key === "future_world") return "futureWorld";
-  if (key === "future_forest") return "futureForest";
-  if (key === "future") return "futureWorld";
-  if (isThemeKey(key)) return key;
-
-  return "deepTeal";
-}
-
 const THEMES: Record<ThemeKey, any> = {
   deepTeal: {
     name: "深青色",
@@ -744,6 +718,21 @@ const INVOICE_PAGE_CSS = `
   }
 `;
 
+function normalizeThemeKey(value: any): ThemeKey {
+  const key = String(value || "").trim();
+
+  if (key === "futureWorld") return "futureWorld";
+  if (key === "futureForest") return "futureForest";
+  if (key === "deepTeal") return "deepTeal";
+  if (key === "pink") return "pink";
+  if (key === "blackGold") return "blackGold";
+  if (key === "lightRed") return "lightRed";
+  if (key === "nature") return "nature";
+  if (key === "sky") return "sky";
+
+  return "deepTeal";
+}
+
 function makeInvoiceNo() {
   return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 }
@@ -1079,7 +1068,7 @@ export default function InvoicePage() {
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
   const t = TXT[lang];
-  const theme = THEMES[themeKey];
+  const theme = THEMES[themeKey] || THEMES.deepTeal;
 
   const [mode, setMode] = useState<Mode>("list");
   const [fullscreen, setFullscreen] = useState(false);
@@ -1175,13 +1164,6 @@ export default function InvoicePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-
-    document.documentElement.setAttribute("data-sa-theme", themeKey);
-    document.body.setAttribute("data-sa-theme", themeKey);
-  }, [themeKey]);
-
   function getCurrentLang(): Lang {
     const q = new URLSearchParams(window.location.search);
     const urlLang = q.get("lang") as Lang | null;
@@ -1198,8 +1180,11 @@ export default function InvoicePage() {
     const urlTheme = q.get("theme");
     const saved = safeLocalGet(THEME_KEY);
 
-    if (urlTheme && isThemeKey(urlTheme)) return normalizeThemeKey(urlTheme);
-    if (saved && isThemeKey(saved)) return normalizeThemeKey(saved);
+    const normalizedUrlTheme = normalizeThemeKey(urlTheme);
+    const normalizedSavedTheme = normalizeThemeKey(saved);
+
+    if (urlTheme && THEMES[normalizedUrlTheme]) return normalizedUrlTheme;
+    if (saved && THEMES[normalizedSavedTheme]) return normalizedSavedTheme;
 
     return "deepTeal";
   }
@@ -1233,7 +1218,6 @@ export default function InvoicePage() {
 
     setLang(currentLang);
     setThemeKey(currentTheme);
-    safeLocalSet(LANG_KEY, currentLang);
     safeLocalSet(THEME_KEY, currentTheme);
 
     const q = new URLSearchParams(window.location.search);
@@ -1324,13 +1308,11 @@ export default function InvoicePage() {
       setCompanyAddress(profile.company_address || "");
       setCompanyLogoUrl(profile.company_logo_url || "");
 
-      if (profile.theme) {
-        const profileTheme = normalizeThemeKey(profile.theme);
+      const profileTheme = normalizeThemeKey(profile.theme);
 
-        if (THEMES[profileTheme]) {
-          setThemeKey(profileTheme);
-          syncThemeToUrlAndLocalStorage(profileTheme, currentLang);
-        }
+      if (profile.theme && THEMES[profileTheme]) {
+        setThemeKey(profileTheme);
+        syncThemeToUrlAndLocalStorage(profileTheme, currentLang);
       }
     }
 
