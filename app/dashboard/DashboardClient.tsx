@@ -5,6 +5,7 @@ import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import {
   THEMES,
+  THEME_KEY as SMARTACCTG_THEME_KEY,
   type ThemeKey,
   getThemeKeyFromUrlOrLocalStorage,
   isThemeKey,
@@ -229,6 +230,8 @@ function applyThemeToDocument(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-card-bg", theme.card);
   document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
   document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-card", theme.itemCard || theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-text", theme.itemText || theme.panelText || theme.text);
   document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
   document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
   document.documentElement.style.setProperty("--sa-border", theme.border);
@@ -236,7 +239,11 @@ function applyThemeToDocument(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-text", theme.text);
   document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
   document.documentElement.style.setProperty("--sa-muted", theme.muted);
-  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.panelBg || theme.card);
+  document.documentElement.style.setProperty("--sa-sub-text", theme.subText || theme.muted);
+  document.documentElement.style.setProperty(
+    "--sa-soft-bg",
+    theme.softBg || theme.soft || theme.panelBg || theme.card
+  );
   document.documentElement.style.setProperty("--sa-glow", theme.glow);
 
   document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
@@ -324,7 +331,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     safeLocalSet(LANG_KEY, initialLang);
 
     setThemeKey(initialTheme);
-    saveThemeKey(initialTheme);
     applyThemeToDocument(initialTheme);
 
     init(initialLang, initialTheme);
@@ -342,14 +348,20 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         const trial = JSON.parse(trialRaw);
 
         if (Date.now() < Number(trial.expiresAt)) {
+          const trialTheme = normalizeThemeKey(currentTheme, "deepTeal");
+
           setIsTrial(true);
           setSession(null);
           setProfile(null);
+          setThemeKey(trialTheme);
+
+          saveThemeKey(trialTheme);
+          applyThemeToDocument(trialTheme);
 
           setTransactions(safeParseArray<Txn>(safeLocalGet(TRIAL_TX_KEY)));
           setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
 
-          replaceUrlLangTheme(currentLang, currentTheme);
+          replaceUrlLangTheme(currentLang, trialTheme);
           return;
         }
       } catch {
@@ -381,9 +393,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .eq("id", userId)
       .single();
 
-    let finalTheme = currentTheme;
-    const urlTheme = q.get("theme");
-    const hasValidUrlTheme = isThemeKey(urlTheme);
+    let finalTheme: ThemeKey = "deepTeal";
 
     if (profileData) {
       const p = profileData as Profile;
@@ -396,16 +406,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       setCompanyPhone(p.company_phone || "");
       setCompanyAddress(p.company_address || "");
 
-      const profileTheme = normalizeThemeKey(p.theme, currentTheme);
-
-      if (!hasValidUrlTheme && p.theme) {
-        finalTheme = profileTheme;
-        setThemeKey(profileTheme);
-        saveThemeKey(profileTheme);
-        applyThemeToDocument(profileTheme);
-      }
+      finalTheme = normalizeThemeKey(p.theme, "deepTeal");
     }
 
+    safeLocalRemove(SMARTACCTG_THEME_KEY);
+    setThemeKey(finalTheme);
+    applyThemeToDocument(finalTheme);
     replaceUrlLangTheme(currentLang, finalTheme);
 
     const { data: txData } = await supabase
@@ -426,7 +432,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
   function buildUrl(path: string, extra?: string) {
     const q = new URLSearchParams();
-    const currentTheme = getThemeKeyFromUrlOrLocalStorage(themeKey);
+    const currentTheme = normalizeThemeKey(themeKey, "deepTeal");
 
     if (isTrial) q.set("mode", "trial");
 
@@ -550,24 +556,33 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const fixedTheme = normalizeThemeKey(key, "deepTeal");
 
     setThemeKey(fixedTheme);
-    saveThemeKey(fixedTheme);
     applyThemeToDocument(fixedTheme);
     replaceUrlLangTheme(lang, fixedTheme);
 
-    if (!isTrial && session) {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ theme: fixedTheme })
-        .eq("id", session.user.id);
-
-      if (error) {
-        setMsg(error.message);
-        return;
-      }
-
-      setProfile((p) => (p ? { ...p, theme: fixedTheme } : p));
+    if (isTrial) {
+      saveThemeKey(fixedTheme);
+      setMsg(t.saved);
+      return;
     }
 
+    if (!session) {
+      setMsg("请先登录");
+      return;
+    }
+
+    safeLocalRemove(SMARTACCTG_THEME_KEY);
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ theme: fixedTheme })
+      .eq("id", session.user.id);
+
+    if (error) {
+      setMsg(error.message);
+      return;
+    }
+
+    setProfile((p) => (p ? { ...p, theme: fixedTheme } : p));
     setMsg(t.saved);
   }
 
