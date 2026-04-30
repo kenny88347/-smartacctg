@@ -3,19 +3,18 @@
 import { ChangeEvent, CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import {
+  THEMES,
+  type ThemeKey,
+  applyThemeToDocument,
+  getThemeKeyFromUrlOrLocalStorage,
+  isThemeKey,
+  normalizeThemeKey,
+  saveThemeKey,
+} from "@/lib/smartacctgTheme";
 
 type PageKey = "home" | "accounting" | "customers" | "products" | "invoices" | "records";
 type Lang = "zh" | "en" | "ms";
-
-type ThemeKey =
-  | "pink"
-  | "blackGold"
-  | "lightRed"
-  | "nature"
-  | "sky"
-  | "deepTeal"
-  | "futureForest"
-  | "futureWorld";
 
 type Profile = {
   id: string;
@@ -52,7 +51,6 @@ const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_TX_KEY = "smartacctg_trial_transactions";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const LANG_KEY = "smartacctg_lang";
-const THEME_KEY = "smartacctg_theme";
 
 const TXT = {
   zh: {
@@ -183,123 +181,6 @@ const TXT = {
   },
 };
 
-const futureWorldTheme = {
-  name: "未来世界",
-  pageBg:
-    "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
-  banner:
-    "linear-gradient(135deg, rgba(1,28,26,0.98), rgba(6,78,59,0.96)), radial-gradient(circle at top right, rgba(45,212,191,0.32), transparent 34%)",
-  card: "rgba(6,47,42,0.94)",
-  border: "#2dd4bf",
-  glow:
-    "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
-  accent: "#2dd4bf",
-  text: "#ecfeff",
-  muted: "#99f6e4",
-  inputBg: "#ffffff",
-  inputText: "#111827",
-};
-
-const THEMES: Record<ThemeKey, any> = {
-  deepTeal: {
-    name: "深青色",
-    pageBg: "#ecfdf5",
-    banner: "#ffffff",
-    card: "#ffffff",
-    border: "#14b8a6",
-    glow:
-      "0 0 0 1px rgba(20,184,166,0.42), 0 0 18px rgba(45,212,191,0.55), 0 18px 42px rgba(15,118,110,0.25)",
-    accent: "#0f766e",
-    text: "#064e3b",
-    muted: "#64748b",
-    inputBg: "#ffffff",
-    inputText: "#111827",
-  },
-  pink: {
-    name: "可爱粉色",
-    pageBg: "#fff7fb",
-    banner: "linear-gradient(135deg,#ffd6e7,#fff1f2)",
-    card: "#ffffff",
-    border: "#f472b6",
-    glow:
-      "0 0 0 1px rgba(244,114,182,0.36), 0 0 18px rgba(244,114,182,0.45), 0 18px 38px rgba(244,114,182,0.22)",
-    accent: "#db2777",
-    text: "#4a044e",
-    muted: "#64748b",
-    inputBg: "#ffffff",
-    inputText: "#111827",
-  },
-  blackGold: {
-    name: "黑金商务",
-    pageBg: "#111111",
-    banner: "linear-gradient(135deg,#111111,#3b2f16)",
-    card: "#1f1f1f",
-    border: "#facc15",
-    glow:
-      "0 0 0 1px rgba(250,204,21,0.5), 0 0 20px rgba(250,204,21,0.45), 0 18px 42px rgba(250,204,21,0.22)",
-    accent: "#d4af37",
-    text: "#fff7ed",
-    muted: "#fef3c7",
-    inputBg: "#ffffff",
-    inputText: "#111827",
-  },
-  lightRed: {
-    name: "可爱浅红",
-    pageBg: "#fff1f2",
-    banner: "linear-gradient(135deg,#fecdd3,#ffe4e6)",
-    card: "#ffffff",
-    border: "#fb7185",
-    glow:
-      "0 0 0 1px rgba(251,113,133,0.45), 0 0 20px rgba(251,113,133,0.5), 0 18px 38px rgba(251,113,133,0.26)",
-    accent: "#e11d48",
-    text: "#881337",
-    muted: "#64748b",
-    inputBg: "#ffffff",
-    inputText: "#111827",
-  },
-  nature: {
-    name: "风景自然系",
-    pageBg: "#f0fdf4",
-    banner: "linear-gradient(135deg,#d9f99d,#bae6fd)",
-    card: "#ffffff",
-    border: "#22d3ee",
-    glow:
-      "0 0 0 1px rgba(34,211,238,0.42), 0 0 18px rgba(34,211,238,0.42), 0 18px 38px rgba(34,211,238,0.22)",
-    accent: "#0f766e",
-    text: "#14532d",
-    muted: "#64748b",
-    inputBg: "#ffffff",
-    inputText: "#111827",
-  },
-  sky: {
-    name: "天空蓝",
-    pageBg: "#eff6ff",
-    banner: "linear-gradient(135deg,#bfdbfe,#e0f2fe)",
-    card: "#ffffff",
-    border: "#38bdf8",
-    glow:
-      "0 0 0 1px rgba(56,189,248,0.42), 0 0 18px rgba(56,189,248,0.48), 0 18px 38px rgba(56,189,248,0.24)",
-    accent: "#0284c7",
-    text: "#0f172a",
-    muted: "#64748b",
-    inputBg: "#ffffff",
-    inputText: "#111827",
-  },
-  futureForest: futureWorldTheme,
-  futureWorld: futureWorldTheme,
-};
-
-function isThemeKey(value: unknown): value is ThemeKey {
-  return typeof value === "string" && Object.prototype.hasOwnProperty.call(THEMES, value);
-}
-
-function normalizeThemeKey(value: unknown): ThemeKey {
-  if (value === "futureForest") return "futureForest";
-  if (value === "futureWorld") return "futureWorld";
-  if (isThemeKey(value)) return value;
-  return "deepTeal";
-}
-
 function safeLocalGet(key: string) {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(key);
@@ -315,22 +196,40 @@ function safeLocalRemove(key: string) {
   localStorage.removeItem(key);
 }
 
-function applyThemeToDocument(key: ThemeKey) {
-  if (typeof document === "undefined") return;
+function safeParseArray<T>(raw: string | null): T[] {
+  if (!raw) return [];
 
-  const theme = THEMES[key] || THEMES.deepTeal;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
-  document.documentElement.setAttribute("data-smartacctg-theme", key);
-  document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
-  document.documentElement.style.setProperty("--sa-theme-banner", theme.banner);
-  document.documentElement.style.setProperty("--sa-theme-card", theme.card);
-  document.documentElement.style.setProperty("--sa-theme-border", theme.border);
-  document.documentElement.style.setProperty("--sa-theme-accent", theme.accent);
-  document.documentElement.style.setProperty("--sa-theme-text", theme.text);
-  document.documentElement.style.setProperty("--sa-theme-muted", theme.muted);
-  document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
-  document.documentElement.style.setProperty("--sa-theme-input-bg", theme.inputBg || "#ffffff");
-  document.documentElement.style.setProperty("--sa-theme-input-text", theme.inputText || "#111827");
+function getInitialLang(): Lang {
+  if (typeof window === "undefined") return "zh";
+
+  const q = new URLSearchParams(window.location.search);
+  const urlLang = q.get("lang") as Lang | null;
+  const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
+
+  if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
+  if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
+
+  return "zh";
+}
+
+function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
+  if (typeof window === "undefined") return;
+
+  const q = new URLSearchParams(window.location.search);
+
+  q.set("lang", nextLang);
+  q.set("theme", nextTheme);
+  q.set("refresh", String(Date.now()));
+
+  window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
 }
 
 export default function DashboardClient({ page }: { page: PageKey }) {
@@ -360,59 +259,56 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [msg, setMsg] = useState("");
 
   const t = TXT[lang];
-  const theme = THEMES[themeKey];
+  const theme = THEMES[themeKey] || THEMES.deepTeal;
+
+  const themedInputStyle: CSSProperties = {
+    ...inputStyle,
+    borderColor: theme.border,
+    background: theme.inputBg,
+    color: theme.inputText,
+  };
 
   useEffect(() => {
     applyThemeToDocument(themeKey);
   }, [themeKey]);
 
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
+    const initialLang = getInitialLang();
+    const initialTheme = getThemeKeyFromUrlOrLocalStorage("deepTeal");
 
-    const urlLang = q.get("lang") as Lang | null;
-    const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
-    const urlTheme = q.get("theme");
-    const savedTheme = safeLocalGet(THEME_KEY);
+    setLang(initialLang);
+    safeLocalSet(LANG_KEY, initialLang);
 
-    if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
-      setLang(urlLang);
-      safeLocalSet(LANG_KEY, urlLang);
-    } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
-      setLang(savedLang);
-    }
+    setThemeKey(initialTheme);
+    saveThemeKey(initialTheme);
+    applyThemeToDocument(initialTheme);
 
-    if (isThemeKey(urlTheme)) {
-      setThemeKey(urlTheme);
-      safeLocalSet(THEME_KEY, urlTheme);
-      applyThemeToDocument(urlTheme);
-    } else if (isThemeKey(savedTheme)) {
-      setThemeKey(savedTheme);
-      applyThemeToDocument(savedTheme);
-    }
+    init(initialLang, initialTheme);
 
-    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function init() {
+  async function init(currentLang: Lang, currentTheme: ThemeKey) {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if (mode === "trial" && trialRaw) {
-      const trial = JSON.parse(trialRaw);
+      try {
+        const trial = JSON.parse(trialRaw);
 
-      if (Date.now() < Number(trial.expiresAt)) {
-        setIsTrial(true);
-        setSession(null);
-        setProfile(null);
+        if (Date.now() < Number(trial.expiresAt)) {
+          setIsTrial(true);
+          setSession(null);
+          setProfile(null);
 
-        const savedTx = safeLocalGet(TRIAL_TX_KEY);
-        const savedCustomers = safeLocalGet(TRIAL_CUSTOMERS_KEY);
+          setTransactions(safeParseArray<Txn>(safeLocalGet(TRIAL_TX_KEY)));
+          setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
 
-        setTransactions(savedTx ? JSON.parse(savedTx) : []);
-        setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
-        return;
+          return;
+        }
+      } catch {
+        // Bad trial data, clear below.
       }
 
       safeLocalRemove(TRIAL_KEY);
@@ -440,6 +336,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .eq("id", userId)
       .single();
 
+    let finalTheme = currentTheme;
+
     if (profileData) {
       const p = profileData as Profile;
 
@@ -451,14 +349,17 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       setCompanyPhone(p.company_phone || "");
       setCompanyAddress(p.company_address || "");
 
-      const fixedTheme = normalizeThemeKey(p.theme);
+      const profileTheme = normalizeThemeKey(p.theme, currentTheme);
 
-      if (p.theme && isThemeKey(fixedTheme)) {
-        setThemeKey(fixedTheme);
-        safeLocalSet(THEME_KEY, fixedTheme);
-        applyThemeToDocument(fixedTheme);
+      if (p.theme && isThemeKey(profileTheme)) {
+        finalTheme = profileTheme;
+        setThemeKey(profileTheme);
+        saveThemeKey(profileTheme);
+        applyThemeToDocument(profileTheme);
       }
     }
+
+    replaceUrlLangTheme(currentLang, finalTheme);
 
     const { data: txData } = await supabase
       .from("transactions")
@@ -478,10 +379,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
   function buildUrl(path: string, extra?: string) {
     const q = new URLSearchParams();
+    const currentTheme = getThemeKeyFromUrlOrLocalStorage(themeKey);
 
     if (isTrial) q.set("mode", "trial");
+
     q.set("lang", lang);
-    q.set("theme", themeKey);
+    q.set("theme", currentTheme);
     q.set("refresh", String(Date.now()));
 
     if (extra) {
@@ -503,13 +406,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   function switchLang(next: Lang) {
     setLang(next);
     safeLocalSet(LANG_KEY, next);
-
-    const q = new URLSearchParams(window.location.search);
-    q.set("lang", next);
-    q.set("theme", themeKey);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    replaceUrlLangTheme(next, themeKey);
   }
 
   async function logout() {
@@ -603,21 +500,17 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function changeTheme(key: ThemeKey) {
-    setThemeKey(key);
-    safeLocalSet(THEME_KEY, key);
-    applyThemeToDocument(key);
+    const fixedTheme = normalizeThemeKey(key, "deepTeal");
 
-    const q = new URLSearchParams(window.location.search);
-    q.set("lang", lang);
-    q.set("theme", key);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    setThemeKey(fixedTheme);
+    saveThemeKey(fixedTheme);
+    applyThemeToDocument(fixedTheme);
+    replaceUrlLangTheme(lang, fixedTheme);
 
     if (!isTrial && session) {
       const { error } = await supabase
         .from("profiles")
-        .update({ theme: key })
+        .update({ theme: fixedTheme })
         .eq("id", session.user.id);
 
       if (error) {
@@ -1000,7 +893,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 <button
                   type="button"
                   onClick={() => goQuick("/dashboard/records")}
-                  style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
+                  style={{
+                    ...quickBtnStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                    background: theme.inputBg,
+                  }}
                 >
                   {t.quickAccounting}
                 </button>
@@ -1008,7 +906,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 <button
                   type="button"
                   onClick={() => goQuick("/dashboard/invoices")}
-                  style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
+                  style={{
+                    ...quickBtnStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                    background: theme.inputBg,
+                  }}
                 >
                   {t.quickInvoice}
                 </button>
@@ -1016,7 +919,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 <button
                   type="button"
                   onClick={() => goQuick("/dashboard/customers")}
-                  style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
+                  style={{
+                    ...quickBtnStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                    background: theme.inputBg,
+                  }}
                 >
                   {t.quickCustomer}
                 </button>
@@ -1024,7 +932,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 <button
                   type="button"
                   onClick={() => goQuick("/dashboard/products")}
-                  style={{ ...quickBtnStyle, borderColor: theme.border, color: theme.accent }}
+                  style={{
+                    ...quickBtnStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                    background: theme.inputBg,
+                  }}
                 >
                   {t.quickProduct}
                 </button>
@@ -1047,7 +960,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           <button
             type="button"
             onClick={() => go("/dashboard")}
-            style={{ ...backBtnStyle, borderColor: theme.border, color: theme.accent }}
+            style={{
+              ...backBtnStyle,
+              borderColor: theme.border,
+              color: theme.accent,
+              background: theme.inputBg,
+            }}
           >
             ← {t.back}
           </button>
@@ -1080,14 +998,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             placeholder={t.name}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           />
 
           <input
             placeholder={t.phone}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           />
 
           <h3>{t.company}</h3>
@@ -1096,28 +1014,28 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             placeholder={t.companyName}
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           />
 
           <input
             placeholder={t.ssm}
             value={companyRegNo}
             onChange={(e) => setCompanyRegNo(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           />
 
           <input
             placeholder={t.companyPhone}
             value={companyPhone}
             onChange={(e) => setCompanyPhone(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           />
 
           <input
             placeholder={t.companyAddress}
             value={companyAddress}
             onChange={(e) => setCompanyAddress(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           />
 
           <button
@@ -1135,7 +1053,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             placeholder={t.newPassword}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           />
 
           <button
@@ -1296,7 +1214,7 @@ const langRowStyle: CSSProperties = {
 
 const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
   borderColor: theme.accent,
-  background: active ? theme.accent : "#fff",
+  background: active ? theme.accent : theme.inputBg || "#fff",
   color: active ? "#fff" : theme.accent,
 });
 
