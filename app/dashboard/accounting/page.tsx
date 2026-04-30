@@ -3,17 +3,18 @@
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import {
+  THEMES,
+  type ThemeKey,
+  applyThemeToDocument,
+  getThemeKeyFromUrlOrLocalStorage,
+  isThemeKey,
+  normalizeThemeKey,
+  saveThemeKey,
+} from "@/lib/smartacctgTheme";
 
 type Lang = "zh" | "en" | "ms";
 type TxnType = "income" | "expense";
-type ThemeKey =
-  | "deepTeal"
-  | "pink"
-  | "blackGold"
-  | "lightRed"
-  | "nature"
-  | "sky"
-  | "futureForest";
 
 type Txn = {
   id: string;
@@ -71,104 +72,8 @@ const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 
 const LANG_KEY = "smartacctg_lang";
-const THEME_KEY = "smartacctg_theme";
 
 const today = () => new Date().toISOString().slice(0, 10);
-
-const THEMES: Record<
-  ThemeKey,
-  {
-    name: string;
-    pageBg: string;
-    card: string;
-    border: string;
-    accent: string;
-    text: string;
-    subText: string;
-    softBg: string;
-    glow: string;
-  }
-> = {
-  deepTeal: {
-    name: "深青色",
-    pageBg: "#ecfdf5",
-    card: "#ffffff",
-    border: "#14b8a6",
-    accent: "#0f766e",
-    text: "#064e3b",
-    subText: "#64748b",
-    softBg: "#ccfbf1",
-    glow: "0 0 0 1px rgba(20,184,166,0.35), 0 16px 36px rgba(20,184,166,0.22)",
-  },
-  pink: {
-    name: "可爱粉色",
-    pageBg: "#fff7fb",
-    card: "#ffffff",
-    border: "#f472b6",
-    accent: "#db2777",
-    text: "#4a044e",
-    subText: "#831843",
-    softBg: "#fce7f3",
-    glow: "0 0 0 1px rgba(244,114,182,0.32), 0 16px 36px rgba(244,114,182,0.20)",
-  },
-  blackGold: {
-    name: "黑金商务",
-    pageBg: "#111111",
-    card: "#1f1f1f",
-    border: "#facc15",
-    accent: "#d4af37",
-    text: "#fff7ed",
-    subText: "#d6c8a4",
-    softBg: "#3b2f16",
-    glow: "0 0 0 1px rgba(250,204,21,0.38), 0 16px 38px rgba(250,204,21,0.20)",
-  },
-  lightRed: {
-    name: "可爱浅红",
-    pageBg: "#fff1f2",
-    card: "#ffffff",
-    border: "#fb7185",
-    accent: "#e11d48",
-    text: "#881337",
-    subText: "#9f1239",
-    softBg: "#ffe4e6",
-    glow: "0 0 0 1px rgba(251,113,133,0.35), 0 16px 36px rgba(251,113,133,0.20)",
-  },
-  nature: {
-    name: "风景自然系",
-    pageBg: "#f0fdf4",
-    card: "#ffffff",
-    border: "#22d3ee",
-    accent: "#0f766e",
-    text: "#14532d",
-    subText: "#166534",
-    softBg: "#dcfce7",
-    glow: "0 0 0 1px rgba(34,211,238,0.32), 0 16px 36px rgba(34,211,238,0.20)",
-  },
-  sky: {
-    name: "天空蓝",
-    pageBg: "#eff6ff",
-    card: "#ffffff",
-    border: "#38bdf8",
-    accent: "#0284c7",
-    text: "#0f172a",
-    subText: "#0369a1",
-    softBg: "#dbeafe",
-    glow: "0 0 0 1px rgba(56,189,248,0.35), 0 16px 36px rgba(56,189,248,0.20)",
-  },
-  futureForest: {
-    name: "未来世界｜深林青色",
-    pageBg:
-      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
-    card: "rgba(6,47,42,0.94)",
-    border: "#2dd4bf",
-    accent: "#2dd4bf",
-    text: "#ecfeff",
-    subText: "#99f6e4",
-    softBg: "rgba(20,184,166,0.18)",
-    glow:
-      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
-  },
-};
 
 const TXT = {
   zh: {
@@ -220,6 +125,7 @@ const TXT = {
     endDate: "结束日期",
     sourceInvoice: "来自发票",
     manualRecord: "手动记录",
+    needRequired: "请填写日期、金额和分类",
   },
   en: {
     title: "Accounting Records",
@@ -270,6 +176,7 @@ const TXT = {
     endDate: "End Date",
     sourceInvoice: "From Invoice",
     manualRecord: "Manual Record",
+    needRequired: "Please fill in date, amount and category",
   },
   ms: {
     title: "Rekod Akaun",
@@ -320,14 +227,17 @@ const TXT = {
     endDate: "Tarikh Akhir",
     sourceInvoice: "Daripada Invois",
     manualRecord: "Rekod Manual",
+    needRequired: "Sila isi tarikh, jumlah dan kategori",
   },
 };
 
-const RECORDS_PAGE_FIX_CSS = `
+const ACCOUNTING_PAGE_FIX_CSS = `
+  .smartacctg-accounting-page .sa-back-btn,
   .smartacctg-records-page .sa-back-btn {
     border-radius: 999px !important;
   }
 
+  .smartacctg-accounting-page .records-summary-grid,
   .smartacctg-records-page .records-summary-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -336,6 +246,7 @@ const RECORDS_PAGE_FIX_CSS = `
     align-items: stretch !important;
   }
 
+  .smartacctg-accounting-page .records-stat-card,
   .smartacctg-records-page .records-stat-card {
     display: flex !important;
     flex-direction: column !important;
@@ -350,6 +261,8 @@ const RECORDS_PAGE_FIX_CSS = `
     padding: clamp(12px, 2.5vw, 18px) !important;
   }
 
+  .smartacctg-accounting-page .records-stat-card span,
+  .smartacctg-accounting-page .records-stat-card strong,
   .smartacctg-records-page .records-stat-card span,
   .smartacctg-records-page .records-stat-card strong {
     display: block !important;
@@ -359,16 +272,34 @@ const RECORDS_PAGE_FIX_CSS = `
     line-height: 1.2 !important;
   }
 
+  .smartacctg-accounting-page .records-stat-card span,
   .smartacctg-records-page .records-stat-card span {
     font-size: clamp(16px, 3.5vw, 22px) !important;
     font-weight: 900 !important;
   }
 
+  .smartacctg-accounting-page .records-stat-card strong,
   .smartacctg-records-page .records-stat-card strong {
     font-size: clamp(20px, 4.5vw, 30px) !important;
     font-weight: 900 !important;
   }
 
+  .smartacctg-accounting-page strong[data-stat="balance"],
+  .smartacctg-records-page strong[data-stat="balance"] {
+    color: var(--sa-accent) !important;
+  }
+
+  .smartacctg-accounting-page strong[data-stat="income"],
+  .smartacctg-records-page strong[data-stat="income"] {
+    color: #16a34a !important;
+  }
+
+  .smartacctg-accounting-page strong[data-stat="expense"],
+  .smartacctg-records-page strong[data-stat="expense"] {
+    color: #dc2626 !important;
+  }
+
+  .smartacctg-accounting-page .records-list,
   .smartacctg-records-page .records-list {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -376,6 +307,7 @@ const RECORDS_PAGE_FIX_CSS = `
     width: 100% !important;
   }
 
+  .smartacctg-accounting-page .record-card,
   .smartacctg-records-page .record-card {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -388,10 +320,12 @@ const RECORDS_PAGE_FIX_CSS = `
     overflow-wrap: anywhere !important;
   }
 
+  .smartacctg-accounting-page .record-card *,
   .smartacctg-records-page .record-card * {
     text-align: left !important;
   }
 
+  .smartacctg-accounting-page .record-card h3,
   .smartacctg-records-page .record-card h3 {
     margin: 0 0 10px 0 !important;
     font-size: var(--sa-fs-xl) !important;
@@ -399,12 +333,14 @@ const RECORDS_PAGE_FIX_CSS = `
     font-weight: 900 !important;
   }
 
+  .smartacctg-accounting-page .record-card p,
   .smartacctg-records-page .record-card p {
     margin: 8px 0 0 !important;
     line-height: 1.55 !important;
     overflow-wrap: anywhere !important;
   }
 
+  .smartacctg-accounting-page .records-action-row,
   .smartacctg-records-page .records-action-row {
     display: flex !important;
     flex-direction: row !important;
@@ -416,6 +352,7 @@ const RECORDS_PAGE_FIX_CSS = `
     margin-top: 6px !important;
   }
 
+  .smartacctg-accounting-page .records-action-row button,
   .smartacctg-records-page .records-action-row button {
     width: auto !important;
     min-width: 110px !important;
@@ -423,6 +360,7 @@ const RECORDS_PAGE_FIX_CSS = `
     white-space: nowrap !important;
   }
 
+  .smartacctg-accounting-page input[type="date"],
   .smartacctg-records-page input[type="date"] {
     text-align: center !important;
     display: block !important;
@@ -431,6 +369,7 @@ const RECORDS_PAGE_FIX_CSS = `
     appearance: none !important;
   }
 
+  .smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value,
   .smartacctg-records-page input[type="date"]::-webkit-date-and-time-value {
     text-align: center !important;
     width: 100% !important;
@@ -438,40 +377,48 @@ const RECORDS_PAGE_FIX_CSS = `
     min-height: 1.6em !important;
   }
 
+  .smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit,
   .smartacctg-records-page input[type="date"]::-webkit-datetime-edit {
     width: 100% !important;
     text-align: center !important;
   }
 
+  .smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
   .smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
     justify-content: center !important;
   }
 
   @media (max-width: 520px) {
+    .smartacctg-accounting-page .records-summary-grid,
     .smartacctg-records-page .records-summary-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
       gap: 10px !important;
     }
 
+    .smartacctg-accounting-page .records-stat-card,
     .smartacctg-records-page .records-stat-card {
       min-height: 105px !important;
       padding: 12px 8px !important;
     }
 
+    .smartacctg-accounting-page .records-list,
     .smartacctg-records-page .records-list {
       gap: 16px !important;
     }
 
+    .smartacctg-accounting-page .record-card,
     .smartacctg-records-page .record-card {
       gap: 12px !important;
     }
 
+    .smartacctg-accounting-page .records-action-row,
     .smartacctg-records-page .records-action-row {
       flex-direction: row !important;
       justify-content: flex-start !important;
       gap: 8px !important;
     }
 
+    .smartacctg-accounting-page .records-action-row button,
     .smartacctg-records-page .records-action-row button {
       min-width: 105px !important;
       flex: 0 1 auto !important;
@@ -499,24 +446,66 @@ function safeLocalRemove(key: string) {
   localStorage.removeItem(key);
 }
 
-function isThemeKey(value: unknown): value is ThemeKey {
-  return typeof value === "string" && Object.prototype.hasOwnProperty.call(THEMES, value);
+function safeParseArray<T>(raw: string | null): T[] {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
-function applyThemeToDocument(key: ThemeKey) {
+function getInitialLang(): Lang {
+  if (typeof window === "undefined") return "zh";
+
+  const q = new URLSearchParams(window.location.search);
+  const urlLang = q.get("lang") as Lang | null;
+  const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
+
+  if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
+  if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
+
+  return "zh";
+}
+
+function applyThemeEverywhere(key: ThemeKey) {
   if (typeof document === "undefined") return;
 
-  const theme = THEMES[key] || THEMES.deepTeal;
+  const fixedKey = normalizeThemeKey(key);
+  const theme = THEMES[fixedKey] || THEMES.deepTeal;
 
-  document.documentElement.setAttribute("data-smartacctg-theme", key);
-  document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
-  document.documentElement.style.setProperty("--sa-theme-card", theme.card);
-  document.documentElement.style.setProperty("--sa-theme-border", theme.border);
-  document.documentElement.style.setProperty("--sa-theme-accent", theme.accent);
-  document.documentElement.style.setProperty("--sa-theme-text", theme.text);
-  document.documentElement.style.setProperty("--sa-theme-muted", theme.subText);
-  document.documentElement.style.setProperty("--sa-theme-soft-bg", theme.softBg);
-  document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
+  applyThemeToDocument(fixedKey);
+
+  document.documentElement.setAttribute("data-sa-theme", fixedKey);
+  document.documentElement.setAttribute("data-smartacctg-theme", fixedKey);
+
+  document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-card-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
+  document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
+  document.documentElement.style.setProperty("--sa-border", theme.border);
+  document.documentElement.style.setProperty("--sa-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-text", theme.text);
+  document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
+  document.documentElement.style.setProperty("--sa-muted", theme.muted || theme.subText);
+  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.card);
+  document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card);
+  document.documentElement.style.setProperty("--sa-glow", theme.glow);
+}
+
+function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
+  if (typeof window === "undefined") return;
+
+  const q = new URLSearchParams(window.location.search);
+  q.set("lang", nextLang);
+  q.set("theme", nextTheme);
+  q.set("refresh", String(Date.now()));
+
+  window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
 }
 
 function isSchemaCacheMissingSource(message: string) {
@@ -567,67 +556,79 @@ export default function RecordsPage() {
   });
 
   const t = TXT[lang];
-  const theme = THEMES[themeKey];
+  const theme = THEMES[themeKey] || THEMES.deepTeal;
+
+  const themeSubText = theme.subText || theme.muted || "#64748b";
+
+  const themedInputStyle: CSSProperties = {
+    ...inputStyle,
+    borderColor: theme.border,
+    background: theme.inputBg || "#ffffff",
+    color: theme.inputText || "#111827",
+  };
+
+  const themedDateInputStyle: CSSProperties = {
+    ...dateInputStyle,
+    borderColor: theme.border,
+    background: theme.inputBg || "#ffffff",
+    color: theme.inputText || "#111827",
+  };
 
   useEffect(() => {
-    applyThemeToDocument(themeKey);
+    applyThemeEverywhere(themeKey);
   }, [themeKey]);
 
   useEffect(() => {
+    const initialLang = getInitialLang();
+    const initialTheme = getThemeKeyFromUrlOrLocalStorage("deepTeal");
+
+    setLang(initialLang);
+    safeLocalSet(LANG_KEY, initialLang);
+
+    setThemeKey(initialTheme);
+    saveThemeKey(initialTheme);
+    applyThemeEverywhere(initialTheme);
+
+    init(initialLang, initialTheme);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function init(currentLang: Lang, currentTheme: ThemeKey) {
     const q = new URLSearchParams(window.location.search);
-
-    const urlLang = q.get("lang") as Lang | null;
-    const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
-
-    if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
-      setLang(urlLang);
-      safeLocalSet(LANG_KEY, urlLang);
-    } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
-      setLang(savedLang);
-    }
-
-    const urlTheme = q.get("theme");
-    const savedTheme = safeLocalGet(THEME_KEY);
-
-    if (isThemeKey(urlTheme)) {
-      setThemeKey(urlTheme);
-      safeLocalSet(THEME_KEY, urlTheme);
-      applyThemeToDocument(urlTheme);
-    } else if (isThemeKey(savedTheme)) {
-      setThemeKey(savedTheme);
-      applyThemeToDocument(savedTheme);
-    }
-
+    const mode = q.get("mode");
+    const openParam = q.get("open");
     const view = q.get("view");
+
     if (view === "income") setFilterType("income");
     if (view === "expense") setFilterType("expense");
 
-    init();
-  }, []);
-
-  async function init() {
-    const q = new URLSearchParams(window.location.search);
-    const mode = q.get("mode");
+    const shouldOpenNew = openParam === "new";
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
-      const trial = JSON.parse(trialRaw);
+      try {
+        const trial = JSON.parse(trialRaw);
 
-      if (Date.now() < Number(trial.expiresAt)) {
-        setIsTrial(true);
-        setSession(null);
+        if (Date.now() < Number(trial.expiresAt)) {
+          setIsTrial(true);
+          setSession(null);
 
-        const savedTx = safeLocalGet(TRIAL_TX_KEY);
-        const savedCustomers = safeLocalGet(TRIAL_CUSTOMERS_KEY);
-        const savedProducts = safeLocalGet(TRIAL_PRODUCTS_KEY);
-        const savedInvoices = safeLocalGet(TRIAL_INVOICES_KEY);
+          setTransactions(safeParseArray<Txn>(safeLocalGet(TRIAL_TX_KEY)));
+          setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
+          setProducts(safeParseArray<Product>(safeLocalGet(TRIAL_PRODUCTS_KEY)));
+          setInvoices(safeParseArray<Invoice>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
-        setTransactions(savedTx ? JSON.parse(savedTx) : []);
-        setCustomers(savedCustomers ? JSON.parse(savedCustomers) : []);
-        setProducts(savedProducts ? JSON.parse(savedProducts) : []);
-        setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
+          replaceUrlLangTheme(currentLang, currentTheme);
 
-        return;
+          if (shouldOpenNew) {
+            setTimeout(() => openNewForm(), 100);
+          }
+
+          return;
+        }
+      } catch {
+        // Bad trial data, clear below.
       }
 
       safeLocalRemove(TRIAL_KEY);
@@ -649,21 +650,35 @@ export default function RecordsPage() {
     setIsTrial(false);
     setSession(data.session);
 
+    const userId = data.session.user.id;
+
     const { data: profileData } = await supabase
       .from("profiles")
       .select("theme")
-      .eq("id", data.session.user.id)
+      .eq("id", userId)
       .single();
 
+    let finalTheme = currentTheme;
     const profile = profileData as Profile | null;
 
-    if (isThemeKey(profile?.theme)) {
-      setThemeKey(profile.theme);
-      safeLocalSet(THEME_KEY, profile.theme);
-      applyThemeToDocument(profile.theme);
+    if (profile?.theme) {
+      const profileTheme = normalizeThemeKey(profile.theme);
+
+      if (isThemeKey(profileTheme)) {
+        finalTheme = profileTheme;
+        setThemeKey(profileTheme);
+        saveThemeKey(profileTheme);
+        applyThemeEverywhere(profileTheme);
+      }
     }
 
-    await loadAll(data.session.user.id);
+    replaceUrlLangTheme(currentLang, finalTheme);
+
+    await loadAll(userId);
+
+    if (shouldOpenNew) {
+      setTimeout(() => openNewForm(), 100);
+    }
   }
 
   async function loadAll(userId: string) {
@@ -736,13 +751,7 @@ export default function RecordsPage() {
   function switchLang(next: Lang) {
     setLang(next);
     safeLocalSet(LANG_KEY, next);
-
-    const q = new URLSearchParams(window.location.search);
-    q.set("lang", next);
-    q.set("theme", themeKey);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    replaceUrlLangTheme(next, themeKey);
   }
 
   function openNewForm() {
@@ -775,6 +784,13 @@ export default function RecordsPage() {
       product_id: "",
       invoice_id: "",
     });
+
+    const q = new URLSearchParams(window.location.search);
+    q.delete("open");
+    q.delete("fullscreen");
+    q.set("refresh", String(Date.now()));
+
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
   function editTransaction(tx: Txn) {
@@ -824,7 +840,10 @@ export default function RecordsPage() {
   async function saveTransaction() {
     setMsg("");
 
-    if (!form.txn_date || !form.amount || !form.category_name.trim()) return;
+    if (!form.txn_date || !form.amount || !form.category_name.trim()) {
+      setMsg(t.needRequired);
+      return;
+    }
 
     const amount = Number(form.amount || 0);
     const debt = Number(form.debt_amount || 0);
@@ -975,18 +994,16 @@ export default function RecordsPage() {
 
     return transactions.filter((tx) => {
       const invoice =
-        tx.source_type === "invoice"
-          ? invoices.find((x) => x.id === tx.source_id)
-          : null;
+        tx.source_type === "invoice" ? invoices.find((x) => x.id === tx.source_id) : null;
 
-      const customerName =
+      const selectedFilterCustomerName =
         customers.find((c) => c.id === filterCustomerId)?.name?.toLowerCase() || "";
 
       const matchType = filterType === "all" || tx.txn_type === filterType;
 
       const matchCustomer =
         !filterCustomerId ||
-        Boolean(tx.note?.toLowerCase().includes(customerName)) ||
+        Boolean(tx.note?.toLowerCase().includes(selectedFilterCustomerName)) ||
         invoice?.customer_id === filterCustomerId;
 
       const matchStart = !filterStartDate || tx.txn_date >= filterStartDate;
@@ -1028,21 +1045,23 @@ export default function RecordsPage() {
 
   return (
     <main
-      className="smartacctg-page smartacctg-records-page"
+      className="smartacctg-page smartacctg-accounting-page smartacctg-records-page"
       data-sa-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
-      <style jsx global>{RECORDS_PAGE_FIX_CSS}</style>
+      <style jsx global>{ACCOUNTING_PAGE_FIX_CSS}</style>
 
       <div className="sa-topbar">
         <div className="sa-topbar-left">
           <button
+            type="button"
             onClick={backToDashboard}
             className="sa-back-btn"
             style={{
               ...backBtnStyle,
               color: theme.accent,
               borderColor: theme.border,
+              background: theme.inputBg || "#fff",
             }}
           >
             ← {t.back}
@@ -1054,6 +1073,7 @@ export default function RecordsPage() {
         <div className="sa-topbar-right">
           <div className="sa-lang-row">
             <button
+              type="button"
               onClick={() => switchLang("zh")}
               className="sa-lang-btn"
               style={langBtnStyle(lang === "zh", theme)}
@@ -1062,6 +1082,7 @@ export default function RecordsPage() {
             </button>
 
             <button
+              type="button"
               onClick={() => switchLang("en")}
               className="sa-lang-btn"
               style={langBtnStyle(lang === "en", theme)}
@@ -1070,6 +1091,7 @@ export default function RecordsPage() {
             </button>
 
             <button
+              type="button"
               onClick={() => switchLang("ms")}
               className="sa-lang-btn"
               style={langBtnStyle(lang === "ms", theme)}
@@ -1083,7 +1105,13 @@ export default function RecordsPage() {
       {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
 
       {msg ? (
-        <div style={{ ...msgStyle, background: theme.softBg, color: theme.text }}>
+        <div
+          style={{
+            ...msgStyle,
+            background: theme.softBg || theme.soft || theme.card,
+            color: theme.text,
+          }}
+        >
           {msg}
         </div>
       ) : null}
@@ -1101,6 +1129,7 @@ export default function RecordsPage() {
           <h1 style={titleStyle}>{t.title}</h1>
 
           <button
+            type="button"
             onClick={openNewForm}
             aria-label={t.add}
             style={{
@@ -1118,12 +1147,14 @@ export default function RecordsPage() {
             className="sa-stat-card records-stat-card"
             style={{
               ...statCardStyle,
+              background: theme.card,
               borderColor: theme.border,
+              color: theme.text,
             }}
             onClick={() => setFilterType("all")}
           >
-            <span style={statLabelStyle}>{t.balance}</span>
-            <strong style={{ ...statAmountStyle, color: theme.accent }}>
+            <span style={{ ...statLabelStyle, color: theme.text }}>{t.balance}</span>
+            <strong data-stat="balance" style={statAmountStyle}>
               RM {balance.toFixed(2)}
             </strong>
           </button>
@@ -1133,12 +1164,14 @@ export default function RecordsPage() {
             className="sa-stat-card records-stat-card"
             style={{
               ...statCardStyle,
+              background: theme.card,
               borderColor: theme.border,
+              color: theme.text,
             }}
             onClick={() => setFilterType("income")}
           >
-            <span style={statLabelStyle}>{t.monthIncome}</span>
-            <strong style={{ ...statAmountStyle, color: "#16a34a" }}>
+            <span style={{ ...statLabelStyle, color: theme.text }}>{t.monthIncome}</span>
+            <strong data-stat="income" style={statAmountStyle}>
               RM {monthIncome.toFixed(2)}
             </strong>
           </button>
@@ -1148,12 +1181,14 @@ export default function RecordsPage() {
             className="sa-stat-card records-stat-card"
             style={{
               ...statCardStyle,
+              background: theme.card,
               borderColor: theme.border,
+              color: theme.text,
             }}
             onClick={() => setFilterType("expense")}
           >
-            <span style={statLabelStyle}>{t.monthExpense}</span>
-            <strong style={{ ...statAmountStyle, color: "#dc2626" }}>
+            <span style={{ ...statLabelStyle, color: theme.text }}>{t.monthExpense}</span>
+            <strong data-stat="expense" style={statAmountStyle}>
               RM {monthExpense.toFixed(2)}
             </strong>
           </button>
@@ -1176,13 +1211,13 @@ export default function RecordsPage() {
             placeholder={t.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           />
 
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as "all" | TxnType)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           >
             <option value="all">{t.all}</option>
             <option value="income">{t.income}</option>
@@ -1192,7 +1227,7 @@ export default function RecordsPage() {
           <select
             value={filterCustomerId}
             onChange={(e) => setFilterCustomerId(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           >
             <option value="">{t.filterCustomer}</option>
             {customers.map((c) => (
@@ -1203,26 +1238,22 @@ export default function RecordsPage() {
           </select>
 
           <div style={dateWrapStyle}>
-            <label style={{ ...dateLabelStyle, color: theme.subText }}>
-              {t.startDate}
-            </label>
+            <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.startDate}</label>
             <input
               type="date"
               value={filterStartDate}
               onChange={(e) => setFilterStartDate(e.target.value)}
-              style={{ ...dateInputStyle, borderColor: theme.border }}
+              style={themedDateInputStyle}
             />
           </div>
 
           <div style={dateWrapStyle}>
-            <label style={{ ...dateLabelStyle, color: theme.subText }}>
-              {t.endDate}
-            </label>
+            <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.endDate}</label>
             <input
               type="date"
               value={filterEndDate}
               onChange={(e) => setFilterEndDate(e.target.value)}
-              style={{ ...dateInputStyle, borderColor: theme.border }}
+              style={themedDateInputStyle}
             />
           </div>
         </div>
@@ -1238,7 +1269,7 @@ export default function RecordsPage() {
         }}
       >
         {filteredRecords.length === 0 ? (
-          <p style={{ color: theme.subText, fontWeight: 800 }}>{t.noRecord}</p>
+          <p style={{ color: themeSubText, fontWeight: 800 }}>{t.noRecord}</p>
         ) : (
           <div className="records-list" style={recordListStyle}>
             {filteredRecords.map((tx) => {
@@ -1252,7 +1283,7 @@ export default function RecordsPage() {
                   style={{
                     ...recordCardStyle,
                     borderColor: theme.border,
-                    background: theme.card,
+                    background: theme.itemBg || theme.card,
                     color: theme.text,
                     boxShadow: theme.glow,
                   }}
@@ -1262,7 +1293,7 @@ export default function RecordsPage() {
                       {isIncome ? t.income : t.expense} · {tx.category_name || "-"}
                     </h3>
 
-                    <p style={{ ...mutedStyle, color: theme.subText }}>
+                    <p style={{ ...mutedStyle, color: themeSubText }}>
                       {t.date}: {tx.txn_date} ｜ {t.amount}:{" "}
                       <strong style={{ color: isIncome ? "#16a34a" : "#dc2626" }}>
                         RM {Number(tx.amount || 0).toFixed(2)}
@@ -1270,24 +1301,22 @@ export default function RecordsPage() {
                     </p>
 
                     {Number(tx.debt_amount || 0) > 0 ? (
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                      <p style={{ ...mutedStyle, color: themeSubText }}>
                         {t.debtAmount}: RM {Number(tx.debt_amount || 0).toFixed(2)}
                       </p>
                     ) : null}
 
                     {invoice ? (
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                      <p style={{ ...mutedStyle, color: themeSubText }}>
                         {t.sourceInvoice}: {invoice.invoice_no || invoice.id}{" "}
                         {invoice.customer_name ? `｜${invoice.customer_name}` : ""}
                       </p>
                     ) : (
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
-                        {t.manualRecord}
-                      </p>
+                      <p style={{ ...mutedStyle, color: themeSubText }}>{t.manualRecord}</p>
                     )}
 
                     {tx.note ? (
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
+                      <p style={{ ...mutedStyle, color: themeSubText }}>
                         {t.note}: {tx.note}
                       </p>
                     ) : null}
@@ -1295,6 +1324,7 @@ export default function RecordsPage() {
 
                   <div className="records-action-row" style={actionRowStyle}>
                     <button
+                      type="button"
                       onClick={() => editTransaction(tx)}
                       style={{
                         ...actionBtnStyle,
@@ -1305,6 +1335,7 @@ export default function RecordsPage() {
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => deleteTransaction(tx.id)}
                       style={deleteBtnStyle}
                     >
@@ -1333,7 +1364,7 @@ export default function RecordsPage() {
           <select
             value={relatedPath}
             onChange={(e) => setRelatedPath(e.target.value)}
-            style={{ ...inputStyle, borderColor: theme.border }}
+            style={themedInputStyle}
           >
             <option value="/dashboard/customers">{t.customers}</option>
             <option value="/dashboard/products">{t.products}</option>
@@ -1341,6 +1372,7 @@ export default function RecordsPage() {
           </select>
 
           <button
+            type="button"
             onClick={goRelatedFeature}
             style={{
               ...primaryBtnStyle,
@@ -1369,11 +1401,10 @@ export default function RecordsPage() {
               <h2 style={modalTitleStyle}>{editingId ? t.update : t.add}</h2>
 
               <button
+                type="button"
+                className="sa-close-x"
                 onClick={closeForm}
-                style={{
-                  ...closeTextBtnStyle,
-                  color: "#dc2626",
-                }}
+                aria-label={t.close}
               >
                 {t.close}
               </button>
@@ -1381,23 +1412,19 @@ export default function RecordsPage() {
 
             <div style={responsiveGridStyle}>
               <div style={dateWrapStyle}>
-                <label style={{ ...dateLabelStyle, color: theme.subText }}>
-                  {t.date}
-                </label>
+                <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.date}</label>
                 <input
                   type="date"
                   value={form.txn_date}
                   onChange={(e) => setForm({ ...form, txn_date: e.target.value })}
-                  style={{ ...dateInputStyle, borderColor: theme.border }}
+                  style={themedDateInputStyle}
                 />
               </div>
 
               <select
                 value={form.txn_type}
-                onChange={(e) =>
-                  setForm({ ...form, txn_type: e.target.value as TxnType })
-                }
-                style={{ ...inputStyle, borderColor: theme.border }}
+                onChange={(e) => setForm({ ...form, txn_type: e.target.value as TxnType })}
+                style={themedInputStyle}
               >
                 <option value="income">{t.income}</option>
                 <option value="expense">{t.expense}</option>
@@ -1407,7 +1434,7 @@ export default function RecordsPage() {
                 placeholder={t.amount}
                 value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
                 inputMode="decimal"
               />
 
@@ -1415,14 +1442,14 @@ export default function RecordsPage() {
                 placeholder={t.category}
                 value={form.category_name}
                 onChange={(e) => setForm({ ...form, category_name: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
 
               <input
                 placeholder={t.debtAmount}
                 value={form.debt_amount}
                 onChange={(e) => setForm({ ...form, debt_amount: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
                 inputMode="decimal"
               />
 
@@ -1430,7 +1457,7 @@ export default function RecordsPage() {
                 placeholder={t.note}
                 value={form.note}
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
             </div>
 
@@ -1440,7 +1467,7 @@ export default function RecordsPage() {
               <select
                 value={form.customer_id}
                 onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               >
                 <option value="">{t.noCustomer}</option>
                 {customers.map((c) => (
@@ -1453,7 +1480,7 @@ export default function RecordsPage() {
               <select
                 value={form.product_id}
                 onChange={(e) => setForm({ ...form, product_id: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               >
                 <option value="">{t.noProduct}</option>
                 {products.map((p) => (
@@ -1466,7 +1493,7 @@ export default function RecordsPage() {
               <select
                 value={form.invoice_id}
                 onChange={(e) => setForm({ ...form, invoice_id: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               >
                 <option value="">{t.noInvoice}</option>
                 {invoices.map((inv) => (
@@ -1481,6 +1508,7 @@ export default function RecordsPage() {
 
             <div style={modalActionRowStyle}>
               <button
+                type="button"
                 onClick={saveTransaction}
                 style={{
                   ...primaryBtnStyle,
@@ -1492,11 +1520,13 @@ export default function RecordsPage() {
               </button>
 
               <button
+                type="button"
                 onClick={closeForm}
                 style={{
                   ...secondaryBtnStyle,
                   borderColor: theme.border,
                   color: theme.accent,
+                  background: theme.inputBg || "#ffffff",
                   marginTop: 0,
                 }}
               >
@@ -1516,6 +1546,8 @@ const pageStyle: CSSProperties = {
   maxWidth: "100vw",
   overflowX: "hidden",
   padding: "clamp(10px, 2vw, 24px)",
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
 };
 
 const backBtnStyle: CSSProperties = {
@@ -1528,12 +1560,9 @@ const backBtnStyle: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const langBtnStyle = (
-  active: boolean,
-  theme: (typeof THEMES)[ThemeKey]
-): CSSProperties => ({
+const langBtnStyle = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
   borderColor: theme.accent,
-  background: active ? theme.accent : "#fff",
+  background: active ? theme.accent : theme.inputBg || "#fff",
   color: active ? "#fff" : theme.accent,
 });
 
@@ -1601,7 +1630,6 @@ const statCardStyle: CSSProperties = {
 const statLabelStyle: CSSProperties = {
   display: "block",
   width: "100%",
-  color: "#111827",
   fontWeight: 900,
   textAlign: "center",
   lineHeight: 1.2,
@@ -1628,6 +1656,7 @@ const inputStyle: CSSProperties = {
   background: "#ffffff",
   color: "#111827",
   outline: "none",
+  fontSize: 16,
 };
 
 const dateInputStyle: CSSProperties = {
@@ -1767,15 +1796,6 @@ const modalStyle: CSSProperties = {
 const modalTitleStyle: CSSProperties = {
   margin: 0,
   fontWeight: 900,
-};
-
-const closeTextBtnStyle: CSSProperties = {
-  background: "transparent",
-  border: "none",
-  padding: "0 4px",
-  minHeight: 0,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
 };
 
 const dateWrapStyle: CSSProperties = {
