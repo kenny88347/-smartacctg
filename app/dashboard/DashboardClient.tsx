@@ -6,7 +6,14 @@ import { supabase } from "@/lib/supabase";
 
 type PageKey = "home" | "accounting" | "customers" | "products" | "invoices" | "records";
 type Lang = "zh" | "en" | "ms";
-type ThemeKey = "pink" | "blackGold" | "lightRed" | "nature" | "sky" | "deepTeal";
+type ThemeKey =
+  | "pink"
+  | "blackGold"
+  | "lightRed"
+  | "nature"
+  | "sky"
+  | "deepTeal"
+  | "futureForest";
 
 type Profile = {
   id: string;
@@ -247,6 +254,20 @@ const THEMES: Record<ThemeKey, any> = {
     text: "#0f172a",
     muted: "#64748b",
   },
+  futureForest: {
+    name: "未来世界｜深林青色",
+    pageBg:
+      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
+    banner:
+      "linear-gradient(135deg, rgba(1,28,26,0.98), rgba(6,78,59,0.96)), radial-gradient(circle at top right, rgba(45,212,191,0.32), transparent 34%)",
+    card: "rgba(6,47,42,0.94)",
+    border: "#2dd4bf",
+    glow:
+      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
+    accent: "#2dd4bf",
+    text: "#ecfeff",
+    muted: "#99f6e4",
+  },
 };
 
 function safeLocalGet(key: string) {
@@ -311,8 +332,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     if (urlTheme && THEMES[urlTheme]) {
       setThemeKey(urlTheme);
       safeLocalSet(THEME_KEY, urlTheme);
-    } else if (savedTheme && THEMES[savedTheme]) {
-      setThemeKey(savedTheme);
+    } else if (savedTheme && THEMES[savedTheme as ThemeKey]) {
+      setThemeKey(savedTheme as ThemeKey);
     }
 
     init();
@@ -525,9 +546,24 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     setThemeKey(key);
     safeLocalSet(THEME_KEY, key);
 
+    const q = new URLSearchParams(window.location.search);
+    q.set("lang", lang);
+    q.set("theme", key);
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+
     if (!isTrial && session) {
-      await supabase.from("profiles").update({ theme: key }).eq("id", session.user.id);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ theme: key })
+        .eq("id", session.user.id);
+
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
     }
+
+    setMsg(t.saved);
   }
 
   const monthKey = new Date().toISOString().slice(0, 7);
@@ -1080,6 +1116,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               </button>
             ))}
           </div>
+
+          {msg ? <p style={{ color: theme.accent, fontWeight: 900 }}>{msg}</p> : null}
         </section>
       ) : null}
     </main>
