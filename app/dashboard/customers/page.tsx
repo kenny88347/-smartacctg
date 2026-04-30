@@ -702,9 +702,23 @@ async function updateAdaptive(
 }
 
 function normalizeCustomerStatus(value: any): CustomerStatus {
-  if (value === "vip") return "vip";
-  if (value === "debt") return "debt";
-  if (value === "blocked") return "blocked";
+  const v = String(value || "").toLowerCase().trim();
+
+  if (v === "vip" || v.includes("vip")) return "vip";
+  if (v === "debt" || v.includes("欠款") || v.includes("hutang") || v.includes("debt")) {
+    return "debt";
+  }
+
+  if (
+    v === "blocked" ||
+    v.includes("停止") ||
+    v.includes("合作") ||
+    v.includes("block") ||
+    v.includes("disekat")
+  ) {
+    return "blocked";
+  }
+
   return "normal";
 }
 
@@ -773,7 +787,6 @@ function normalizeWhatsAppPhone(phone: string) {
   const clean = String(phone || "").replace(/\D/g, "");
 
   if (!clean) return "";
-
   if (clean.startsWith("60")) return clean;
   if (clean.startsWith("0")) return `6${clean}`;
 
@@ -865,6 +878,7 @@ export default function CustomersPage() {
     }
 
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function init() {
@@ -1303,8 +1317,10 @@ export default function CustomersPage() {
   }
 
   function openPriceModal(c: Customer) {
-    setPriceCustomerId(c.id);
-    setPriceCustomerName(c.name);
+    const fixed = normalizeCustomer(c);
+
+    setPriceCustomerId(fixed.id);
+    setPriceCustomerName(fixed.name);
     setPriceProductId("");
     setCustomPrice("");
     setShowPriceModal(true);
@@ -1346,7 +1362,8 @@ export default function CustomersPage() {
   }
 
   function openCustomerWhatsApp(c: Customer) {
-    const phone = c.phone || c.company_phone || "";
+    const fixed = normalizeCustomer(c);
+    const phone = fixed.phone || fixed.company_phone || "";
     const malaysiaPhone = normalizeWhatsAppPhone(phone);
 
     if (!malaysiaPhone) {
@@ -1354,10 +1371,10 @@ export default function CustomersPage() {
       return;
     }
 
-    const message = encodeURIComponent(`Hi ${c.name || ""}`);
+    const message = encodeURIComponent(`Hi ${fixed.name || ""}`);
     const url = `https://wa.me/${malaysiaPhone}?text=${message}`;
 
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.location.href = url;
   }
 
   const filteredCustomers = useMemo(() => {
@@ -1527,7 +1544,9 @@ export default function CustomersPage() {
                 const statusColor = statusBadgeColors(customerStatus);
                 const debtLeft = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
                 const prices = customerPrices.filter((p) => p.customer_id === c.id);
-                const hasWhatsappPhone = Boolean(normalizeWhatsAppPhone(c.phone || c.company_phone || ""));
+                const hasWhatsappPhone = Boolean(
+                  normalizeWhatsAppPhone(c.phone || c.company_phone || "")
+                );
 
                 return (
                   <div
@@ -1595,7 +1614,11 @@ export default function CustomersPage() {
                     </div>
 
                     <div className="customers-action-row" style={actionRowStyle}>
-                      <button type="button" onClick={() => openInvoiceRecords(c)} style={invoiceBtnStyle}>
+                      <button
+                        type="button"
+                        onClick={() => openInvoiceRecords(c)}
+                        style={invoiceBtnStyle}
+                      >
                         {t.invoice}
                       </button>
 
@@ -1633,7 +1656,11 @@ export default function CustomersPage() {
                         {t.edit}
                       </button>
 
-                      <button type="button" onClick={() => deleteCustomer(c.id)} style={deleteBtnStyle}>
+                      <button
+                        type="button"
+                        onClick={() => deleteCustomer(c.id)}
+                        style={deleteBtnStyle}
+                      >
                         {t.delete}
                       </button>
                     </div>
