@@ -1058,3 +1058,291 @@ body {
     gap: 8px !important;
   }
 }
+/* =========================================================
+   SmartAcctg 全站日期居中 + 字体粗细修复
+   放在 app/globals.css 最下面
+   作用：
+   1. 每一页日期框内容居中
+   2. 只有标题 h1 / h2 / h3 保持粗体
+   3. 其他文字、按钮、金额、输入框全部改普通字重
+========================================================= */
+
+/* 全部 SmartAcctg 页面：默认普通字体 */
+.smartacctg-page,
+.smartacctg-page *,
+.smartacctg-dashboard-page,
+.smartacctg-dashboard-page *,
+.smartacctg-records-page,
+.smartacctg-records-page *,
+.smartacctg-accounting-page,
+.smartacctg-accounting-page *,
+.smartacctg-invoice-page,
+.smartacctg-invoice-page *,
+.smartacctg-customers-page,
+.smartacctg-customers-page *,
+.smartacctg-products-page,
+.smartacctg-products-page *,
+.smartacctg-settings-page,
+.smartacctg-settings-page *,
+.smartacctg-app-page,
+.smartacctg-app-page * {
+  font-weight: 400 !important;
+}
+
+/* 只有标题保持粗体 */
+.smartacctg-page h1,
+.smartacctg-page h2,
+.smartacctg-page h3,
+.smartacctg-dashboard-page h1,
+.smartacctg-dashboard-page h2,
+.smartacctg-dashboard-page h3,
+.smartacctg-records-page h1,
+.smartacctg-records-page h2,
+.smartacctg-records-page h3,
+.smartacctg-accounting-page h1,
+.smartacctg-accounting-page h2,
+.smartacctg-accounting-page h3,
+.smartacctg-invoice-page h1,
+.smartacctg-invoice-page h2,
+.smartacctg-invoice-page h3,
+.smartacctg-customers-page h1,
+.smartacctg-customers-page h2,
+.smartacctg-customers-page h3,
+.smartacctg-products-page h1,
+.smartacctg-products-page h2,
+.smartacctg-products-page h3,
+.smartacctg-settings-page h1,
+.smartacctg-settings-page h2,
+.smartacctg-settings-page h3,
+.smartacctg-app-page h1,
+.smartacctg-app-page h2,
+.smartacctg-app-page h3 {
+  font-weight: 900 !important;
+}
+
+/* 标题里面的文字也保持粗体 */
+.smartacctg-page h1 *,
+.smartacctg-page h2 *,
+.smartacctg-page h3 *,
+.smartacctg-dashboard-page h1 *,
+.smartacctg-dashboard-page h2 *,
+.smartacctg-dashboard-page h3 *,
+.smartacctg-records-page h1 *,
+.smartacctg-records-page h2 *,
+.smartacctg-records-page h3 *,
+.smartacctg-accounting-page h1 *,
+.smartacctg-accounting-page h2 *,
+.smartacctg-accounting-page h3 *,
+.smartacctg-invoice-page h1 *,
+.smartacctg-invoice-page h2 *,
+.smartacctg-invoice-page h3 *,
+.smartacctg-customers-page h1 *,
+.smartacctg-customers-page h2 *,
+.smartacctg-customers-page h3 *,
+.smartacctg-products-page h1 *,
+.smartacctg-products-page h2 *,
+.smartacctg-products-page h3 * {
+  font-weight: 900 !important;
+}
+
+/* 按钮、金额、strong、label 全部改普通字重 */
+.smartacctg-page button,
+.smartacctg-page strong,
+.smartacctg-page label,
+.smartacctg-page span,
+.smartacctg-page p,
+.smartacctg-page div,
+.smartacctg-dashboard-page button,
+.smartacctg-dashboard-page strong,
+.smartacctg-dashboard-page label,
+.smartacctg-dashboard-page span,
+.smartacctg-dashboard-page p,
+.smartacctg-dashboard-page div,
+.smartacctg-records-page button,
+.smartacctg-records-page strong,
+.smartacctg-records-page label,
+.smartacctg-records-page span,
+.smartacctg-records-page p,
+.smartacctg-records-page div,
+.smartacctg-invoice-page button,
+.smartacctg-invoice-page strong,
+.smartacctg-invoice-page label,
+.smartacctg-invoice-page span,
+.smartacctg-invoice-page p,
+.smartacctg-invoice-page div,
+.smartacctg-customers-page button,
+.smartacctg-customers-page strong,
+.smartacctg-customers-page label,
+.smartacctg-customers-page span,
+.smartacctg-customers-page p,
+.smartacctg-customers-page div,
+.smartacctg-products-page button,
+.smartacctg-products-page strong,
+.smartacctg-products-page label,
+.smartacctg-products-page span,
+.smartacctg-products-page p,
+.smartacctg-products-page div {
+  font-weight: 400 !important;
+}
+
+/* 标题重新覆盖回粗体 */
+.smartacctg-page h1,
+.smartacctg-page h2,
+.smartacctg-page h3,
+.smartacctg-dashboard-page h1,
+.smartacctg-dashboard-page h2,
+.smartacctg-dashboard-page h3,
+.smartacctg-records-page h1,
+.smartacctg-records-page h2,
+.smartacctg-records-page h3,
+.smartacctg-invoice-page h1,
+.smartacctg-invoice-page h2,
+.smartacctg-invoice-page h3,
+.smartacctg-customers-page h1,
+.smartacctg-customers-page h2,
+.smartacctg-customers-page h3,
+.smartacctg-products-page h1,
+.smartacctg-products-page h2,
+.smartacctg-products-page h3 {
+  font-weight: 900 !important;
+}
+
+/* 每一页日期 / 时间 / 月份输入框居中 */
+.smartacctg-page input[type="date"],
+.smartacctg-page input[type="datetime-local"],
+.smartacctg-page input[type="time"],
+.smartacctg-page input[type="month"],
+.smartacctg-dashboard-page input[type="date"],
+.smartacctg-dashboard-page input[type="datetime-local"],
+.smartacctg-dashboard-page input[type="time"],
+.smartacctg-dashboard-page input[type="month"],
+.smartacctg-records-page input[type="date"],
+.smartacctg-records-page input[type="datetime-local"],
+.smartacctg-records-page input[type="time"],
+.smartacctg-records-page input[type="month"],
+.smartacctg-accounting-page input[type="date"],
+.smartacctg-accounting-page input[type="datetime-local"],
+.smartacctg-accounting-page input[type="time"],
+.smartacctg-accounting-page input[type="month"],
+.smartacctg-invoice-page input[type="date"],
+.smartacctg-invoice-page input[type="datetime-local"],
+.smartacctg-invoice-page input[type="time"],
+.smartacctg-invoice-page input[type="month"],
+.smartacctg-customers-page input[type="date"],
+.smartacctg-customers-page input[type="datetime-local"],
+.smartacctg-customers-page input[type="time"],
+.smartacctg-customers-page input[type="month"],
+.smartacctg-products-page input[type="date"],
+.smartacctg-products-page input[type="datetime-local"],
+.smartacctg-products-page input[type="time"],
+.smartacctg-products-page input[type="month"] {
+  text-align: center !important;
+  text-align-last: center !important;
+  justify-content: center !important;
+  align-items: center !important;
+  display: block !important;
+  width: 100% !important;
+  height: var(--sa-control-h, 54px) !important;
+  min-height: var(--sa-control-h, 54px) !important;
+  line-height: var(--sa-control-h, 54px) !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+/* iPhone / Safari 日期文字居中 */
+.smartacctg-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="month"]::-webkit-date-and-time-value {
+  text-align: center !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  min-height: 1.6em !important;
+  line-height: normal !important;
+}
+
+/* iPhone / Safari 日期字段 wrapper 居中 */
+.smartacctg-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="month"]::-webkit-datetime-edit {
+  width: 100% !important;
+  text-align: center !important;
+  padding: 0 !important;
+}
+
+.smartacctg-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="month"]::-webkit-datetime-edit-fields-wrapper {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
