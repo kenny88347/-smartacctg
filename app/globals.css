@@ -6,6 +6,8 @@
    2. 已兼容 data-sa-theme 和 data-smartacctg-theme
    3. 已兼容 futureForest / futureWorld
    4. 已兼容 --sa-* 和 --sa-theme-* 双变量
+   5. 已修复 iPhone 日期框不居中
+   6. 已修复发票记录按钮排版
 ========================================================= */
 
 :root {
@@ -58,6 +60,7 @@
 
   --sa-theme-page-bg: var(--sa-page-bg);
   --sa-theme-banner: var(--sa-banner-bg);
+  --sa-theme-banner-bg: var(--sa-banner-bg);
   --sa-theme-card: var(--sa-card-bg);
   --sa-theme-panel-bg: var(--sa-panel-bg);
   --sa-theme-item-bg: var(--sa-item-bg);
@@ -291,6 +294,7 @@ html[data-sa-theme],
 html[data-smartacctg-theme] {
   --sa-theme-page-bg: var(--sa-page-bg);
   --sa-theme-banner: var(--sa-banner-bg);
+  --sa-theme-banner-bg: var(--sa-banner-bg);
   --sa-theme-card: var(--sa-card-bg);
   --sa-theme-panel-bg: var(--sa-panel-bg);
   --sa-theme-item-bg: var(--sa-item-bg);
@@ -542,6 +546,7 @@ body {
 .smartacctg-accounting-page textarea {
   width: 100% !important;
   min-height: var(--sa-control-h) !important;
+  height: auto !important;
   padding-left: var(--sa-control-x) !important;
   padding-right: var(--sa-control-x) !important;
   border-radius: var(--sa-radius-control) !important;
@@ -551,59 +556,195 @@ body {
   outline: none !important;
 }
 
-/* 日期输入框置中 */
+/* =========================================================
+   日期 / 时间输入框：iPhone Safari 垂直居中修复
+========================================================= */
+
 .smartacctg-page input[type="date"],
+.smartacctg-page input[type="datetime-local"],
+.smartacctg-page input[type="time"],
+.smartacctg-page input[type="month"],
 .smartacctg-dashboard-page input[type="date"],
+.smartacctg-dashboard-page input[type="datetime-local"],
+.smartacctg-dashboard-page input[type="time"],
+.smartacctg-dashboard-page input[type="month"],
 .smartacctg-products-page input[type="date"],
+.smartacctg-products-page input[type="datetime-local"],
+.smartacctg-products-page input[type="time"],
+.smartacctg-products-page input[type="month"],
 .smartacctg-invoice-page input[type="date"],
+.smartacctg-invoice-page input[type="datetime-local"],
+.smartacctg-invoice-page input[type="time"],
+.smartacctg-invoice-page input[type="month"],
 .smartacctg-records-page input[type="date"],
+.smartacctg-records-page input[type="datetime-local"],
+.smartacctg-records-page input[type="time"],
+.smartacctg-records-page input[type="month"],
 .smartacctg-customers-page input[type="date"],
-.smartacctg-accounting-page input[type="date"] {
+.smartacctg-customers-page input[type="datetime-local"],
+.smartacctg-customers-page input[type="time"],
+.smartacctg-customers-page input[type="month"],
+.smartacctg-accounting-page input[type="date"],
+.smartacctg-accounting-page input[type="datetime-local"],
+.smartacctg-accounting-page input[type="time"],
+.smartacctg-accounting-page input[type="month"] {
   display: block !important;
   width: 100% !important;
+  min-height: var(--sa-control-h) !important;
+  height: var(--sa-control-h) !important;
+  line-height: var(--sa-control-h) !important;
   text-align: center !important;
   text-align-last: center !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
-  line-height: normal !important;
+  padding-left: var(--sa-control-x) !important;
+  padding-right: var(--sa-control-x) !important;
   -webkit-appearance: none !important;
   appearance: none !important;
 }
 
 .smartacctg-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="month"]::-webkit-date-and-time-value,
 .smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="month"]::-webkit-date-and-time-value,
 .smartacctg-products-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="month"]::-webkit-date-and-time-value,
 .smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="month"]::-webkit-date-and-time-value,
 .smartacctg-records-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="month"]::-webkit-date-and-time-value,
 .smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value,
-.smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value {
-  text-align: center !important;
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="month"]::-webkit-date-and-time-value {
   width: 100% !important;
+  min-height: calc(var(--sa-control-h) - 2px) !important;
+  height: calc(var(--sa-control-h) - 2px) !important;
+  line-height: calc(var(--sa-control-h) - 2px) !important;
   margin: 0 auto !important;
-  min-height: 1.6em !important;
-  line-height: normal !important;
+  padding: 0 !important;
+  text-align: center !important;
 }
 
 .smartacctg-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-page input[type="month"]::-webkit-datetime-edit,
 .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit,
 .smartacctg-products-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="month"]::-webkit-datetime-edit,
 .smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="month"]::-webkit-datetime-edit,
 .smartacctg-records-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="month"]::-webkit-datetime-edit,
 .smartacctg-customers-page input[type="date"]::-webkit-datetime-edit,
-.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit {
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-accounting-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-accounting-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit {
   width: 100% !important;
+  min-height: calc(var(--sa-control-h) - 2px) !important;
+  height: calc(var(--sa-control-h) - 2px) !important;
+  line-height: calc(var(--sa-control-h) - 2px) !important;
   padding: 0 !important;
   text-align: center !important;
 }
 
 .smartacctg-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
 .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
 .smartacctg-products-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
 .smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
 .smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
 .smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit-fields-wrapper {
+  width: 100% !important;
+  min-height: calc(var(--sa-control-h) - 2px) !important;
+  height: calc(var(--sa-control-h) - 2px) !important;
+  line-height: calc(var(--sa-control-h) - 2px) !important;
+  display: flex !important;
+  align-items: center !important;
   justify-content: center !important;
+  text-align: center !important;
+}
+
+.smartacctg-page input[type="date"]::-webkit-calendar-picker-indicator,
+.smartacctg-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.smartacctg-page input[type="time"]::-webkit-calendar-picker-indicator,
+.smartacctg-page input[type="month"]::-webkit-calendar-picker-indicator,
+.smartacctg-dashboard-page input[type="date"]::-webkit-calendar-picker-indicator,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.smartacctg-dashboard-page input[type="time"]::-webkit-calendar-picker-indicator,
+.smartacctg-dashboard-page input[type="month"]::-webkit-calendar-picker-indicator,
+.smartacctg-products-page input[type="date"]::-webkit-calendar-picker-indicator,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.smartacctg-products-page input[type="time"]::-webkit-calendar-picker-indicator,
+.smartacctg-products-page input[type="month"]::-webkit-calendar-picker-indicator,
+.smartacctg-invoice-page input[type="date"]::-webkit-calendar-picker-indicator,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.smartacctg-invoice-page input[type="time"]::-webkit-calendar-picker-indicator,
+.smartacctg-invoice-page input[type="month"]::-webkit-calendar-picker-indicator,
+.smartacctg-records-page input[type="date"]::-webkit-calendar-picker-indicator,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.smartacctg-records-page input[type="time"]::-webkit-calendar-picker-indicator,
+.smartacctg-records-page input[type="month"]::-webkit-calendar-picker-indicator,
+.smartacctg-customers-page input[type="date"]::-webkit-calendar-picker-indicator,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.smartacctg-customers-page input[type="time"]::-webkit-calendar-picker-indicator,
+.smartacctg-customers-page input[type="month"]::-webkit-calendar-picker-indicator,
+.smartacctg-accounting-page input[type="date"]::-webkit-calendar-picker-indicator,
+.smartacctg-accounting-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.smartacctg-accounting-page input[type="time"]::-webkit-calendar-picker-indicator,
+.smartacctg-accounting-page input[type="month"]::-webkit-calendar-picker-indicator {
+  margin: 0 !important;
+  padding: 0 !important;
+  cursor: pointer !important;
 }
 
 /* 按钮基础 */
@@ -768,6 +909,28 @@ body {
 }
 
 /* =========================================================
+   深色主题资料卡文字增强
+========================================================= */
+
+html[data-sa-theme="futureForest"] .sa-item-card,
+html[data-sa-theme="futureWorld"] .sa-item-card,
+html[data-sa-theme="blackGold"] .sa-item-card,
+html[data-smartacctg-theme="futureForest"] .sa-item-card,
+html[data-smartacctg-theme="futureWorld"] .sa-item-card,
+html[data-smartacctg-theme="blackGold"] .sa-item-card {
+  color: #ecfeff !important;
+}
+
+html[data-sa-theme="futureForest"] .sa-item-card *,
+html[data-sa-theme="futureWorld"] .sa-item-card *,
+html[data-sa-theme="blackGold"] .sa-item-card *,
+html[data-smartacctg-theme="futureForest"] .sa-item-card *,
+html[data-smartacctg-theme="futureWorld"] .sa-item-card *,
+html[data-smartacctg-theme="blackGold"] .sa-item-card * {
+  color: inherit;
+}
+
+/* =========================================================
    搜索行
 ========================================================= */
 
@@ -920,6 +1083,55 @@ body {
   text-align: center !important;
 }
 
+/* 深色主题统计卡文字更清楚 */
+html[data-sa-theme="futureForest"] .sa-stat-card,
+html[data-sa-theme="futureWorld"] .sa-stat-card,
+html[data-sa-theme="blackGold"] .sa-stat-card,
+html[data-smartacctg-theme="futureForest"] .sa-stat-card,
+html[data-smartacctg-theme="futureWorld"] .sa-stat-card,
+html[data-smartacctg-theme="blackGold"] .sa-stat-card,
+html[data-sa-theme="futureForest"] .products-summary-grid > button,
+html[data-sa-theme="futureWorld"] .products-summary-grid > button,
+html[data-sa-theme="blackGold"] .products-summary-grid > button,
+html[data-smartacctg-theme="futureForest"] .products-summary-grid > button,
+html[data-smartacctg-theme="futureWorld"] .products-summary-grid > button,
+html[data-smartacctg-theme="blackGold"] .products-summary-grid > button {
+  background: var(--sa-card-bg) !important;
+  color: #ecfeff !important;
+}
+
+html[data-sa-theme="futureForest"] .sa-stat-card span,
+html[data-sa-theme="futureWorld"] .sa-stat-card span,
+html[data-sa-theme="blackGold"] .sa-stat-card span,
+html[data-smartacctg-theme="futureForest"] .sa-stat-card span,
+html[data-smartacctg-theme="futureWorld"] .sa-stat-card span,
+html[data-smartacctg-theme="blackGold"] .sa-stat-card span,
+html[data-sa-theme="futureForest"] .products-summary-grid > button span,
+html[data-sa-theme="futureWorld"] .products-summary-grid > button span,
+html[data-sa-theme="blackGold"] .products-summary-grid > button span,
+html[data-smartacctg-theme="futureForest"] .products-summary-grid > button span,
+html[data-smartacctg-theme="futureWorld"] .products-summary-grid > button span,
+html[data-smartacctg-theme="blackGold"] .products-summary-grid > button span {
+  color: #ecfeff !important;
+  text-shadow: 0 1px 10px rgba(236, 254, 255, 0.35) !important;
+}
+
+html[data-sa-theme="futureForest"] .sa-stat-card strong,
+html[data-sa-theme="futureWorld"] .sa-stat-card strong,
+html[data-sa-theme="blackGold"] .sa-stat-card strong,
+html[data-smartacctg-theme="futureForest"] .sa-stat-card strong,
+html[data-smartacctg-theme="futureWorld"] .sa-stat-card strong,
+html[data-smartacctg-theme="blackGold"] .sa-stat-card strong,
+html[data-sa-theme="futureForest"] .products-summary-grid > button strong,
+html[data-sa-theme="futureWorld"] .products-summary-grid > button strong,
+html[data-sa-theme="blackGold"] .products-summary-grid > button strong,
+html[data-smartacctg-theme="futureForest"] .products-summary-grid > button strong,
+html[data-smartacctg-theme="futureWorld"] .products-summary-grid > button strong,
+html[data-smartacctg-theme="blackGold"] .products-summary-grid > button strong {
+  color: #4ade80 !important;
+  text-shadow: 0 1px 14px rgba(74, 222, 128, 0.38) !important;
+}
+
 /* =========================================================
    产品明细 / 客户资料列表恢复
 ========================================================= */
@@ -1000,6 +1212,33 @@ body {
   max-width: none !important;
   flex: 0 1 auto !important;
   white-space: nowrap !important;
+}
+
+/* 发票记录卡片按钮：编辑 / 删除 / WhatsApp 一排，分享下一排整行 */
+.smartacctg-invoice-page .invoice-action-row {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  width: 100% !important;
+  margin-top: 14px !important;
+}
+
+.smartacctg-invoice-page .invoice-action-row button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 52px !important;
+  height: auto !important;
+  flex: none !important;
+  white-space: normal !important;
+  font-size: clamp(15px, 3.5vw, 18px) !important;
+  font-weight: 900 !important;
+  border-radius: var(--sa-radius-control) !important;
+  padding: 0 10px !important;
+}
+
+.smartacctg-invoice-page .invoice-action-row button:nth-child(4) {
+  grid-column: 1 / -1 !important;
 }
 
 .smartacctg-customers-page .customers-action-row button,
@@ -1134,6 +1373,14 @@ span.sa-close-x::before,
   .dashboard-stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
+
+  .smartacctg-invoice-page .invoice-action-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .smartacctg-invoice-page .invoice-action-row button:nth-child(4) {
+    grid-column: 1 / -1 !important;
+  }
 }
 
 @media (max-width: 520px) {
@@ -1203,6 +1450,21 @@ span.sa-close-x::before,
   .sa-action-row button,
   .sa-actions-row button {
     min-width: 88px !important;
+  }
+
+  .smartacctg-invoice-page .invoice-action-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .smartacctg-invoice-page .invoice-action-row button {
+    min-width: 0 !important;
+    min-height: 52px !important;
+    font-size: clamp(14px, 3.3vw, 17px) !important;
+  }
+
+  .smartacctg-invoice-page .invoice-action-row button:nth-child(4) {
+    grid-column: 1 / -1 !important;
   }
 
   .smartacctg-customers-page .customers-action-row,
