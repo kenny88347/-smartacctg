@@ -405,9 +405,15 @@ const ACCOUNTING_PAGE_FIX_CSS = `
       0 12px 28px rgba(220, 38, 38, 0.22) !important;
   }
 
-  .smartacctg-accounting-page .record-card.debt-record *,
-  .smartacctg-records-page .record-card.debt-record * {
-    color: inherit;
+  .smartacctg-accounting-page .record-card.debt-record h3,
+  .smartacctg-accounting-page .record-card.debt-record p,
+  .smartacctg-accounting-page .record-card.debt-record span,
+  .smartacctg-accounting-page .record-card.debt-record strong,
+  .smartacctg-records-page .record-card.debt-record h3,
+  .smartacctg-records-page .record-card.debt-record p,
+  .smartacctg-records-page .record-card.debt-record span,
+  .smartacctg-records-page .record-card.debt-record strong {
+    color: #7f1d1d !important;
   }
 
   .smartacctg-accounting-page .records-action-row,
@@ -436,6 +442,37 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     grid-template-columns: minmax(0, 1fr) auto !important;
     gap: 10px !important;
     align-items: center !important;
+  }
+
+  .smartacctg-accounting-page .fullscreen-record-modal,
+  .smartacctg-records-page .fullscreen-record-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
+    box-sizing: border-box !important;
+  }
+
+  .smartacctg-accounting-page .fullscreen-record-modal .sa-modal-header,
+  .smartacctg-records-page .fullscreen-record-modal .sa-modal-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: var(--sa-card-bg) !important;
+    padding-bottom: 12px !important;
   }
 
   .smartacctg-accounting-page input[type="date"],
@@ -652,6 +689,7 @@ export default function RecordsPage() {
   const [filterEndDate, setFilterEndDate] = useState("");
 
   const [showForm, setShowForm] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
 
@@ -700,6 +738,16 @@ export default function RecordsPage() {
     const initialLang = getInitialLang();
     const initialTheme = getThemeKeyFromUrlOrLocalStorage("deepTeal");
 
+    const savedCategoryRaw = safeLocalGet(CATEGORY_KEY);
+    const savedCategories = safeParseArray<string>(savedCategoryRaw);
+
+    if (savedCategoryRaw && savedCategories.length > 0) {
+      setCategories(uniqueCleanList(savedCategories));
+    } else {
+      setCategories(DEFAULT_CATEGORIES);
+      safeLocalSet(CATEGORY_KEY, JSON.stringify(DEFAULT_CATEGORIES));
+    }
+
     setLang(initialLang);
     safeLocalSet(LANG_KEY, initialLang);
 
@@ -707,7 +755,6 @@ export default function RecordsPage() {
     saveThemeKey(initialTheme);
     applyThemeEverywhere(initialTheme);
 
-    loadCategories();
     init(initialLang, initialTheme);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -717,12 +764,14 @@ export default function RecordsPage() {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
     const openParam = q.get("open");
+    const fullscreenParam = q.get("fullscreen");
     const view = q.get("view");
 
     if (view === "income") setFilterType("income");
     if (view === "expense") setFilterType("expense");
 
     const shouldOpenNew = openParam === "new";
+    const shouldFullscreen = fullscreenParam === "1" || shouldOpenNew;
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
@@ -741,7 +790,7 @@ export default function RecordsPage() {
           replaceUrlLangTheme(currentLang, currentTheme);
 
           if (shouldOpenNew) {
-            setTimeout(() => openNewForm(), 100);
+            setTimeout(() => openNewForm(shouldFullscreen), 100);
           }
 
           return;
@@ -796,7 +845,7 @@ export default function RecordsPage() {
     await loadAll(userId);
 
     if (shouldOpenNew) {
-      setTimeout(() => openNewForm(), 100);
+      setTimeout(() => openNewForm(shouldFullscreen), 100);
     }
   }
 
@@ -831,20 +880,15 @@ export default function RecordsPage() {
     setInvoices((invoiceData || []) as Invoice[]);
   }
 
-  function loadCategories() {
-    const saved = safeLocalGet(CATEGORY_KEY);
-    const parsed = safeParseArray<string>(saved);
-    const next = uniqueCleanList(parsed.length > 0 ? parsed : DEFAULT_CATEGORIES);
-
-    setCategories(next.length > 0 ? next : DEFAULT_CATEGORIES);
+  function saveTrialTransactions(nextTx: Txn[]) {
+    setTransactions(nextTx);
+    safeLocalSet(TRIAL_TX_KEY, JSON.stringify(nextTx));
   }
 
-  function saveCategories(nextList: string[]) {
-    const clean = uniqueCleanList(nextList);
-    const finalList = clean.length > 0 ? clean : DEFAULT_CATEGORIES;
-
-    setCategories(finalList);
-    safeLocalSet(CATEGORY_KEY, JSON.stringify(finalList));
+  function saveCategories(next: string[]) {
+    const fixed = uniqueCleanList(next);
+    setCategories(fixed);
+    safeLocalSet(CATEGORY_KEY, JSON.stringify(fixed));
   }
 
   function addCategory() {
@@ -853,24 +897,19 @@ export default function RecordsPage() {
 
     const next = uniqueCleanList([...categories, value]);
     saveCategories(next);
-    setForm({ ...form, category_name: value });
+    setForm((prev) => ({ ...prev, category_name: value }));
     setNewCategory("");
   }
 
-  function deleteCategory(value: string) {
-    const next = categories.filter((x) => x !== value);
-    const finalList = next.length > 0 ? next : DEFAULT_CATEGORIES;
+  function deleteCategory(name: string) {
+    const next = categories.filter((x) => x !== name);
+    const fixed = next.length > 0 ? next : DEFAULT_CATEGORIES;
 
-    saveCategories(finalList);
+    saveCategories(fixed);
 
-    if (form.category_name === value) {
-      setForm({ ...form, category_name: "" });
+    if (form.category_name === name) {
+      setForm((prev) => ({ ...prev, category_name: "" }));
     }
-  }
-
-  function saveTrialTransactions(nextTx: Txn[]) {
-    setTransactions(nextTx);
-    safeLocalSet(TRIAL_TX_KEY, JSON.stringify(nextTx));
   }
 
   function buildUrl(path: string, extra?: string) {
@@ -910,7 +949,18 @@ export default function RecordsPage() {
     replaceUrlLangTheme(next, themeKey);
   }
 
-  function openNewForm() {
+  function closeToDashboardIfNeeded(q: URLSearchParams) {
+    const returnTo = q.get("return");
+
+    if (returnTo === "dashboard") {
+      window.location.href = buildUrl("/dashboard");
+      return true;
+    }
+
+    return false;
+  }
+
+  function openNewForm(forceFullscreen = false) {
     setEditingId(null);
     setForm({
       txn_date: today(),
@@ -923,14 +973,18 @@ export default function RecordsPage() {
       product_id: "",
       invoice_id: "",
     });
-    setNewCategory("");
+    setFullscreen(forceFullscreen);
     setShowForm(true);
   }
 
   function closeForm() {
+    const q = new URLSearchParams(window.location.search);
+
+    if (closeToDashboardIfNeeded(q)) return true;
+
     setEditingId(null);
     setShowForm(false);
-    setNewCategory("");
+    setFullscreen(false);
     setForm({
       txn_date: today(),
       txn_type: "income",
@@ -943,26 +997,25 @@ export default function RecordsPage() {
       invoice_id: "",
     });
 
-    const q = new URLSearchParams(window.location.search);
     q.delete("open");
     q.delete("fullscreen");
+    q.delete("return");
+    q.set("lang", lang);
+    q.set("theme", themeKey);
     q.set("refresh", String(Date.now()));
 
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    return false;
   }
 
   function editTransaction(tx: Txn) {
-    const category = tx.category_name || "";
-    if (category && !categories.includes(category)) {
-      saveCategories([...categories, category]);
-    }
-
     setEditingId(tx.id);
+    setFullscreen(false);
     setForm({
       txn_date: tx.txn_date || today(),
       txn_type: tx.txn_type || "income",
       amount: String(tx.amount || ""),
-      category_name: category,
+      category_name: tx.category_name || "",
       debt_amount: String(tx.debt_amount || ""),
       note: tx.note || "",
       customer_id: "",
@@ -1012,10 +1065,6 @@ export default function RecordsPage() {
     const debt = Number(form.debt_amount || 0);
     const finalNote = buildFinalNote();
 
-    if (form.category_name.trim() && !categories.includes(form.category_name.trim())) {
-      saveCategories([...categories, form.category_name.trim()]);
-    }
-
     if (isTrial) {
       const payload: Txn = {
         id: editingId || makeId(),
@@ -1037,7 +1086,10 @@ export default function RecordsPage() {
 
       saveTrialTransactions(next);
       setMsg(t.saved);
-      closeForm();
+
+      const redirected = closeForm();
+      if (redirected) return;
+
       return;
     }
 
@@ -1102,7 +1154,10 @@ export default function RecordsPage() {
     }
 
     setMsg(t.saved);
-    closeForm();
+
+    const redirected = closeForm();
+    if (redirected) return;
+
     await loadAll(session.user.id);
   }
 
@@ -1217,6 +1272,9 @@ export default function RecordsPage() {
       const selectedFilterCustomerName =
         customers.find((c) => c.id === filterCustomerId)?.name?.toLowerCase() || "";
 
+      const matchSummaryMonth =
+        filterStartDate || filterEndDate ? true : tx.txn_date?.startsWith(activeMonthKey);
+
       const matchType = filterType === "all" || tx.txn_type === filterType;
 
       const matchCustomer =
@@ -1244,7 +1302,7 @@ export default function RecordsPage() {
 
       const matchSearch = !s || searchText.includes(s);
 
-      return matchType && matchCustomer && matchStart && matchEnd && matchSearch;
+      return matchSummaryMonth && matchType && matchCustomer && matchStart && matchEnd && matchSearch;
     });
   }, [
     transactions,
@@ -1255,11 +1313,18 @@ export default function RecordsPage() {
     filterEndDate,
     invoices,
     customers,
+    activeMonthKey,
   ]);
 
   function getInvoice(tx: Txn) {
     if (tx.source_type !== "invoice" || !tx.source_id) return null;
     return invoices.find((x) => x.id === tx.source_id) || null;
+  }
+
+  function isDebtRecord(tx: Txn, invoice: Invoice | null) {
+    if (Number(tx.debt_amount || 0) > 0) return true;
+    if (invoice && isInvoiceUnpaid(invoice)) return true;
+    return false;
   }
 
   return (
@@ -1349,7 +1414,7 @@ export default function RecordsPage() {
 
           <button
             type="button"
-            onClick={openNewForm}
+            onClick={() => openNewForm(false)}
             aria-label={t.add}
             style={{
               ...plusBtnStyle,
@@ -1487,7 +1552,7 @@ export default function RecordsPage() {
             <option value="">{t.filterCustomer}</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name || "-"}
+                {c.name || "-"} {c.company_name ? `｜${c.company_name}` : ""}
               </option>
             ))}
           </select>
@@ -1530,19 +1595,19 @@ export default function RecordsPage() {
             {filteredRecords.map((tx) => {
               const invoice = getInvoice(tx);
               const isIncome = tx.txn_type === "income";
-              const hasDebt = Number(tx.debt_amount || 0) > 0;
+              const debtRecord = isDebtRecord(tx, invoice);
 
               return (
                 <div
                   key={tx.id}
-                  className={`record-card ${hasDebt ? "debt-record" : ""}`}
+                  className={`record-card ${debtRecord ? "debt-record" : ""}`}
                   style={{
                     ...recordCardStyle,
-                    borderColor: hasDebt ? "#dc2626" : theme.border,
-                    background: hasDebt ? "#fee2e2" : theme.itemBg || theme.card,
-                    color: hasDebt ? "#7f1d1d" : theme.text,
-                    boxShadow: hasDebt
-                      ? "0 0 0 1px rgba(220,38,38,0.35), 0 12px 28px rgba(220,38,38,0.22)"
+                    borderColor: debtRecord ? "#dc2626" : theme.border,
+                    background: debtRecord ? "#fee2e2" : theme.itemBg || theme.card,
+                    color: debtRecord ? "#7f1d1d" : theme.text,
+                    boxShadow: debtRecord
+                      ? "0 0 0 1px rgba(220, 38, 38, 0.35), 0 12px 28px rgba(220, 38, 38, 0.22)"
                       : theme.glow,
                   }}
                 >
@@ -1551,32 +1616,32 @@ export default function RecordsPage() {
                       {isIncome ? t.income : t.expense} · {tx.category_name || "-"}
                     </h3>
 
-                    <p style={{ ...mutedStyle, color: hasDebt ? "#7f1d1d" : themeSubText }}>
+                    <p style={{ ...mutedStyle, color: debtRecord ? "#7f1d1d" : themeSubText }}>
                       {t.date}: {tx.txn_date} ｜ {t.amount}:{" "}
-                      <strong style={{ color: isIncome ? "#16a34a" : "#dc2626" }}>
+                      <strong style={{ color: debtRecord ? "#7f1d1d" : isIncome ? "#16a34a" : "#dc2626" }}>
                         RM {Number(tx.amount || 0).toFixed(2)}
                       </strong>
                     </p>
 
-                    {hasDebt ? (
-                      <p style={{ ...mutedStyle, color: "#dc2626", fontWeight: 900 }}>
+                    {Number(tx.debt_amount || 0) > 0 ? (
+                      <p style={{ ...mutedStyle, color: "#7f1d1d" }}>
                         {t.debtAmount}: RM {Number(tx.debt_amount || 0).toFixed(2)}
                       </p>
                     ) : null}
 
                     {invoice ? (
-                      <p style={{ ...mutedStyle, color: hasDebt ? "#7f1d1d" : themeSubText }}>
+                      <p style={{ ...mutedStyle, color: debtRecord ? "#7f1d1d" : themeSubText }}>
                         {t.sourceInvoice}: {invoice.invoice_no || invoice.id}{" "}
                         {invoice.customer_name ? `｜${invoice.customer_name}` : ""}
                       </p>
                     ) : (
-                      <p style={{ ...mutedStyle, color: hasDebt ? "#7f1d1d" : themeSubText }}>
+                      <p style={{ ...mutedStyle, color: debtRecord ? "#7f1d1d" : themeSubText }}>
                         {t.manualRecord}
                       </p>
                     )}
 
                     {tx.note ? (
-                      <p style={{ ...mutedStyle, color: hasDebt ? "#7f1d1d" : themeSubText }}>
+                      <p style={{ ...mutedStyle, color: debtRecord ? "#7f1d1d" : themeSubText }}>
                         {t.note}: {tx.note}
                       </p>
                     ) : null}
@@ -1646,9 +1711,9 @@ export default function RecordsPage() {
       </section>
 
       {showForm ? (
-        <div style={overlayStyle}>
+        <div style={fullscreen ? fullOverlayStyle : overlayStyle}>
           <section
-            className="sa-modal"
+            className={`sa-modal ${fullscreen ? "fullscreen-record-modal" : ""}`}
             style={{
               ...modalStyle,
               background: theme.card,
@@ -1698,58 +1763,18 @@ export default function RecordsPage() {
                 inputMode="decimal"
               />
 
-              <div style={categoryManageBoxStyle}>
-                <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.category}</label>
-
-                <select
-                  value={form.category_name}
-                  onChange={(e) => setForm({ ...form, category_name: e.target.value })}
-                  style={themedInputStyle}
-                >
-                  <option value="">{t.category}</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="category-add-row" style={categoryAddRowStyle}>
-                  <input
-                    placeholder={t.addCategory}
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    style={themedInputStyle}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={addCategory}
-                    style={{
-                      ...primaryBtnStyle,
-                      background: theme.accent,
-                      minHeight: "var(--sa-control-h)",
-                      marginTop: 0,
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
-
-                <div style={categoryChipWrapStyle}>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => deleteCategory(cat)}
-                      style={categoryChipStyle}
-                      title={`${t.delete} ${cat}`}
-                    >
-                      {cat} ×
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <select
+                value={form.category_name}
+                onChange={(e) => setForm({ ...form, category_name: e.target.value })}
+                style={themedInputStyle}
+              >
+                <option value="">{t.category}</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
 
               <input
                 placeholder={t.debtAmount}
@@ -1767,6 +1792,66 @@ export default function RecordsPage() {
               />
             </div>
 
+            <h3 style={sectionTitleStyle}>{t.savedCategory}</h3>
+
+            <div className="category-add-row" style={categoryAddRowStyle}>
+              <input
+                placeholder={t.addCategory}
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                style={themedInputStyle}
+              />
+
+              <button
+                type="button"
+                onClick={addCategory}
+                style={{
+                  ...primaryBtnStyle,
+                  background: theme.accent,
+                  marginTop: 0,
+                  marginBottom: 0,
+                }}
+              >
+                +
+              </button>
+            </div>
+
+            <div style={categoryChipRowStyle}>
+              {categories.map((category) => (
+                <div
+                  key={category}
+                  style={{
+                    ...categoryChipStyle,
+                    borderColor: theme.border,
+                    background:
+                      form.category_name === category
+                        ? theme.accent
+                        : theme.inputBg || "#ffffff",
+                    color: form.category_name === category ? "#ffffff" : theme.accent,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, category_name: category })}
+                    style={categoryChipNameStyle}
+                  >
+                    {category}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteCategory(category)}
+                    style={{
+                      ...categoryChipDeleteStyle,
+                      color: form.category_name === category ? "#ffffff" : "#dc2626",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
             <h3 style={sectionTitleStyle}>{t.linkedInfo}</h3>
 
             <div style={responsiveGridStyle}>
@@ -1778,7 +1863,7 @@ export default function RecordsPage() {
                 <option value="">{t.noCustomer}</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name || "-"}
+                    {c.name || "-"} {c.company_name ? `｜${c.company_name}` : ""}
                   </option>
                 ))}
               </select>
@@ -1887,7 +1972,7 @@ const titleStyle: CSSProperties = {
 };
 
 const sectionTitleStyle: CSSProperties = {
-  marginTop: 0,
+  marginTop: 18,
   marginBottom: 14,
   fontWeight: 900,
 };
@@ -2076,6 +2161,15 @@ const overlayStyle: CSSProperties = {
   overflowY: "auto",
 };
 
+const fullOverlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15, 23, 42, 0.52)",
+  padding: 0,
+  zIndex: 9999,
+  overflow: "hidden",
+};
+
 const modalStyle: CSSProperties = {
   width: "100%",
   maxWidth: 900,
@@ -2105,31 +2199,46 @@ const modalActionRowStyle: CSSProperties = {
   flexWrap: "wrap",
 };
 
-const categoryManageBoxStyle: CSSProperties = {
-  display: "grid",
-  gap: 10,
-  width: "100%",
-};
-
 const categoryAddRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   gap: 10,
   alignItems: "center",
+  marginBottom: 12,
 };
 
-const categoryChipWrapStyle: CSSProperties = {
+const categoryChipRowStyle: CSSProperties = {
   display: "flex",
-  flexWrap: "wrap",
   gap: 8,
+  flexWrap: "wrap",
+  marginBottom: 16,
 };
 
 const categoryChipStyle: CSSProperties = {
-  border: "none",
-  background: "#fee2e2",
-  color: "#b91c1c",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  border: "var(--sa-border-w) solid",
   borderRadius: 999,
-  minHeight: 34,
-  padding: "0 12px",
+  minHeight: 40,
+  padding: "0 8px 0 12px",
   fontWeight: 900,
+};
+
+const categoryChipNameStyle: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "inherit",
+  padding: 0,
+  minHeight: 0,
+  fontWeight: 900,
+};
+
+const categoryChipDeleteStyle: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  padding: "0 4px",
+  minHeight: 0,
+  fontWeight: 900,
+  fontSize: 18,
 };
