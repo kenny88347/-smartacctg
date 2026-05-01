@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  CSSProperties,
-  ChangeEvent,
-  PointerEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { ChangeEvent, CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   THEMES,
@@ -22,6 +14,7 @@ import {
 type Lang = "zh" | "en" | "ms";
 type Mode = "list" | "new";
 type ChargeMode = "%" | "RM";
+type SignatureTarget = "issuer" | "customer" | null;
 
 type Customer = {
   id: string;
@@ -30,11 +23,6 @@ type Customer = {
   phone?: string | null;
   company_name?: string | null;
   address?: string | null;
-  debt_amount?: number | null;
-  paid_amount?: number | null;
-  last_payment_date?: string | null;
-  status?: string | null;
-  customer_status?: string | null;
 };
 
 type Product = {
@@ -43,7 +31,6 @@ type Product = {
   name: string;
   price?: number | null;
   cost?: number | null;
-  discount?: number | null;
   stock_qty?: number | null;
   note?: string | null;
 };
@@ -91,6 +78,20 @@ type InvoiceItem = {
   discount: string;
 };
 
+type ItemCalc = {
+  product: Product | null;
+  name: string;
+  price: number;
+  cost: number;
+  stock: number;
+  qty: number;
+  discount: number;
+  lineSubtotal: number;
+  lineTotal: number;
+  lineCost: number;
+  lineProfit: number;
+};
+
 type SignatureOption = {
   id: string;
   name: string;
@@ -101,22 +102,6 @@ type SignatureOption = {
 type ChargeInput = {
   mode: ChargeMode;
   value: string;
-};
-
-type PrintableItem = {
-  product?: Partial<Product> | null;
-  calc: {
-    name?: string;
-    qty?: number;
-    price?: number;
-    cost?: number;
-    stock?: number;
-    discount?: number;
-    lineSubtotal?: number;
-    lineTotal?: number;
-    lineCost?: number;
-    lineProfit?: number;
-  };
 };
 
 const TRIAL_KEY = "smartacctg_trial";
@@ -131,16 +116,22 @@ const LANG_KEY = "smartacctg_lang";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const DEFAULT_PAYMENT_OPTIONS: PaymentOption[] = [
+  { id: "cash", name: "Cash" },
+  { id: "bank-transfer", name: "Bank Transfer", bankAccount: "", receiverName: "" },
+  { id: "duitnow-qr", name: "DuitNow QR", qrCodeUrl: "" },
+  { id: "tng-ewallet", name: "TNG eWallet", link: "" },
+  { id: "credit-term", name: "Credit Term" },
+];
+
 const TXT = {
   zh: {
     dashboardBack: "返回控制台",
     close: "关闭",
     title: "发票记录",
     newInvoice: "新发票",
-    edit: "编辑",
     delete: "删除",
     share: "分享",
-    whatsapp: "WhatsApp",
     saveEdit: "保存修改",
     confirmDelete: "确定要删除这张发票吗？",
     latestInvoices: "正式 Invoice｜客户联动｜产品联动｜自动进记账｜自动扣库存",
@@ -213,7 +204,7 @@ const TXT = {
     noSignature: "不选择签名",
     customerSignature: "客户签名",
     issuerSignNotice: "这里是你的签名，确认后会放进「签名图片 URL」，可以再按保存签名。",
-    customerSignNotice: "客户签名不会保存到签名库，只会显示在这张发票预览。",
+    customerSignNotice: "客户签名不会保存，只会在当前发票预览显示。",
     confirmSignature: "确认",
     clearSignature: "清除",
     preview: "正式发票预览",
@@ -228,7 +219,6 @@ const TXT = {
     generating: "生成中...",
     print: "列印",
     pdf: "下载 PDF",
-    whatsappPdf: "WhatsApp发送PDF",
     needCustomer: "请选择客户",
     needNewCustomer: "请填写新客户名称",
     needProduct: "请最少添加一个产品",
@@ -251,10 +241,8 @@ const TXT = {
     close: "Close",
     title: "Invoice Records",
     newInvoice: "New Invoice",
-    edit: "Edit",
     delete: "Delete",
     share: "Share",
-    whatsapp: "WhatsApp",
     saveEdit: "Save Changes",
     confirmDelete: "Delete this invoice?",
     latestInvoices: "Official Invoice｜Customer Link｜Product Link｜Auto Accounting｜Auto Stock",
@@ -327,7 +315,7 @@ const TXT = {
     noSignature: "No signature",
     customerSignature: "Customer Signature",
     issuerSignNotice: "This is your signature. After confirm, it will be placed into Signature Image URL.",
-    customerSignNotice: "This signature will not be saved. It only appears on this invoice.",
+    customerSignNotice: "Customer signature will not be saved. It only appears on this invoice preview.",
     confirmSignature: "Confirm",
     clearSignature: "Clear",
     preview: "Official Invoice Preview",
@@ -342,7 +330,6 @@ const TXT = {
     generating: "Generating...",
     print: "Print",
     pdf: "Download PDF",
-    whatsappPdf: "Send PDF via WhatsApp",
     needCustomer: "Please select customer",
     needNewCustomer: "Please enter new customer name",
     needProduct: "Please add at least one product",
@@ -365,10 +352,8 @@ const TXT = {
     close: "Tutup",
     title: "Rekod Invois",
     newInvoice: "Invois Baru",
-    edit: "Edit",
     delete: "Padam",
     share: "Kongsi",
-    whatsapp: "WhatsApp",
     saveEdit: "Simpan Perubahan",
     confirmDelete: "Padam invois ini?",
     latestInvoices: "Invois Rasmi｜Pelanggan｜Produk｜Auto Akaun｜Auto Stok",
@@ -441,7 +426,7 @@ const TXT = {
     noSignature: "Tiada tandatangan",
     customerSignature: "Tandatangan Pelanggan",
     issuerSignNotice: "Ini tandatangan anda. Selepas sahkan, ia akan masuk ke URL gambar tandatangan.",
-    customerSignNotice: "Tandatangan ini tidak akan disimpan.",
+    customerSignNotice: "Tandatangan pelanggan tidak akan disimpan, hanya muncul pada pratonton invois ini.",
     confirmSignature: "Sahkan",
     clearSignature: "Kosongkan",
     preview: "Pratonton Invois Rasmi",
@@ -456,7 +441,6 @@ const TXT = {
     generating: "Sedang Jana...",
     print: "Cetak",
     pdf: "Muat Turun PDF",
-    whatsappPdf: "Hantar PDF WhatsApp",
     needCustomer: "Sila pilih pelanggan",
     needNewCustomer: "Sila isi nama pelanggan baru",
     needProduct: "Sila tambah sekurang-kurangnya satu produk",
@@ -475,14 +459,6 @@ const TXT = {
     previewTotal: "Jumlah",
   },
 };
-
-const DEFAULT_PAYMENT_OPTIONS: PaymentOption[] = [
-  { id: "cash", name: "Cash" },
-  { id: "bank-transfer", name: "Bank Transfer", bankAccount: "", receiverName: "" },
-  { id: "duitnow-qr", name: "DuitNow QR", qrCodeUrl: "" },
-  { id: "tng-ewallet", name: "TNG eWallet", link: "" },
-  { id: "credit-term", name: "Credit Term" },
-];
 
 const INVOICE_PAGE_CSS = `
   .smartacctg-invoice-page input[type="date"] {
@@ -525,20 +501,17 @@ const INVOICE_PAGE_CSS = `
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
     width: 100% !important;
-    align-items: stretch !important;
   }
 
-  .smartacctg-invoice-page .same-size-action-row > button {
+  .smartacctg-invoice-page .same-size-action-row button {
     width: 100% !important;
     min-width: 0 !important;
     min-height: var(--sa-control-h, 54px) !important;
-    height: 100% !important;
-    margin: 0 !important;
   }
 
   .smartacctg-invoice-page .company-info-box {
     display: grid !important;
-    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
     align-items: center !important;
     gap: 14px !important;
     width: 100% !important;
@@ -546,20 +519,13 @@ const INVOICE_PAGE_CSS = `
     overflow: hidden !important;
   }
 
-  .smartacctg-invoice-page .company-info-text {
+  .smartacctg-invoice-page .company-info-text,
+  .smartacctg-invoice-page .company-info-text * {
     min-width: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
     overflow-wrap: anywhere !important;
-    word-break: break-word !important;
+    word-break: normal !important;
     white-space: normal !important;
     line-height: 1.45 !important;
-  }
-
-  .smartacctg-invoice-page .company-info-text * {
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-    white-space: normal !important;
   }
 
   .smartacctg-invoice-page .invoice-preview-action-row {
@@ -576,7 +542,6 @@ const INVOICE_PAGE_CSS = `
     min-height: 50px !important;
     padding: 0 8px !important;
     white-space: nowrap !important;
-    font-weight: 900 !important;
   }
 
   .smartacctg-invoice-page .invoice-record-action-row {
@@ -626,24 +591,15 @@ const INVOICE_PAGE_CSS = `
   }
 
   .smartacctg-invoice-page .signature-canvas {
-    width: 100% !important;
-    height: 220px !important;
-    background: #fff !important;
-    border: 3px solid var(--sa-border, #14b8a6) !important;
-    border-radius: 18px !important;
-    touch-action: none !important;
+    width: 100%;
+    height: 220px;
+    background: #fff;
+    border: 3px solid var(--sa-border, #14b8a6);
+    border-radius: 18px;
+    touch-action: none;
   }
 
   @media (max-width: 768px) {
-    .smartacctg-invoice-page .company-info-box {
-      grid-template-columns: auto minmax(0, 1fr) !important;
-    }
-
-    .smartacctg-invoice-page .company-info-box button {
-      grid-column: 1 / -1 !important;
-      width: 100% !important;
-    }
-
     .smartacctg-invoice-page .invoice-preview-action-row {
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
       gap: 8px !important;
@@ -651,11 +607,7 @@ const INVOICE_PAGE_CSS = `
 
     .smartacctg-invoice-page .invoice-preview-action-row button {
       font-size: 14px !important;
-      padding: 0 5px !important;
-    }
-
-    .smartacctg-invoice-page .invoice-record-action-row {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      padding: 0 6px !important;
     }
 
     .smartacctg-invoice-page .fullscreen-invoice-modal input,
@@ -709,12 +661,12 @@ const INVOICE_PAGE_CSS = `
   }
 `;
 
-function makeInvoiceNo() {
-  return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
-}
-
 function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function makeInvoiceNo() {
+  return `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 }
 
 function makeInvoiceItem(): InvoiceItem {
@@ -853,17 +805,6 @@ function applyThemeEverywhere(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-glow", theme.glow);
 }
 
-function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
-  if (typeof window === "undefined") return;
-
-  const q = new URLSearchParams(window.location.search);
-  q.set("lang", nextLang);
-  q.set("theme", nextTheme);
-  q.set("refresh", String(Date.now()));
-
-  window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-}
-
 function isSchemaCacheMissing(message: string) {
   const lower = String(message || "").toLowerCase();
 
@@ -873,25 +814,6 @@ function isSchemaCacheMissing(message: string) {
     lower.includes("column") ||
     lower.includes("does not exist")
   );
-}
-
-function isMissingTable(message: string) {
-  const lower = String(message || "").toLowerCase();
-
-  return (
-    lower.includes("relation") ||
-    lower.includes("does not exist") ||
-    lower.includes("table")
-  );
-}
-
-function isPaidStatus(status?: string | null) {
-  return String(status || "").toLowerCase() === "paid";
-}
-
-function isCancelledStatus(status?: string | null) {
-  const s = String(status || "").toLowerCase();
-  return s === "cancelled" || s === "canceled";
 }
 
 export default function InvoicesPage() {
@@ -915,7 +837,6 @@ export default function InvoicesPage() {
   const [msg, setMsg] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const [invoiceNo, setInvoiceNo] = useState(makeInvoiceNo());
   const [invoiceDate, setInvoiceDate] = useState(today());
   const [dueDate, setDueDate] = useState(today());
   const [status, setStatus] = useState("sent");
@@ -953,17 +874,18 @@ export default function InvoicesPage() {
   const [selectedSignatureId, setSelectedSignatureId] = useState("");
   const [signatureText, setSignatureText] = useState("");
   const [signatureImageUrl, setSignatureImageUrl] = useState("");
+
+  // 重要：客户签名只保存在当前页面 state，不写入 Supabase，也不写入 localStorage
   const [customerSignatureImageUrl, setCustomerSignatureImageUrl] = useState("");
 
-  const [signaturePadTarget, setSignaturePadTarget] = useState<"issuer" | "customer" | null>(
-    null
-  );
-
-  const [lastPrintableInvoice, setLastPrintableInvoice] = useState<InvoiceRecord | null>(null);
-  const [lastPrintableItems, setLastPrintableItems] = useState<PrintableItem[]>([]);
-
+  const [signaturePadTarget, setSignaturePadTarget] = useState<SignatureTarget>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
+
+  const [lastPrintableInvoice, setLastPrintableInvoice] = useState<InvoiceRecord | null>(null);
+  const [lastPrintableItems, setLastPrintableItems] = useState<
+    Array<{ product: Product | null; calc: ItemCalc }>
+  >([]);
 
   const t = TXT[lang];
   const theme = (THEMES[themeKey] || THEMES.deepTeal) as any;
@@ -1045,7 +967,7 @@ export default function InvoicesPage() {
           return;
         }
       } catch {
-        // Bad trial data, clear below.
+        // ignore bad trial data
       }
 
       safeLocalRemove(TRIAL_KEY);
@@ -1066,7 +988,6 @@ export default function InvoicesPage() {
     }
 
     const userId = data.session.user.id;
-
     setSessionUserId(userId);
     setIsTrial(false);
 
@@ -1079,23 +1000,33 @@ export default function InvoicesPage() {
     let finalTheme = currentTheme;
 
     if (profileData) {
-      const profileTheme = normalizeThemeKey(profileData.theme || currentTheme);
-
+      const profileTheme = normalizeThemeKey((profileData as any).theme || currentTheme);
       finalTheme = profileTheme;
+
       setThemeKey(profileTheme);
       saveThemeKey(profileTheme);
       applyThemeEverywhere(profileTheme);
 
-      setCompanyLogoUrl(profileData.company_logo_url || profileData.logo_url || "");
-      setCompanyName(profileData.company_name || "");
-      setCompanyRegNo(profileData.company_reg_no || "");
-      setCompanyPhone(profileData.company_phone || profileData.phone || "");
-      setCompanyAddress(profileData.company_address || "");
+      setCompanyLogoUrl((profileData as any).company_logo_url || (profileData as any).logo_url || "");
+      setCompanyName((profileData as any).company_name || "");
+      setCompanyRegNo((profileData as any).company_reg_no || "");
+      setCompanyPhone((profileData as any).company_phone || (profileData as any).phone || "");
+      setCompanyAddress((profileData as any).company_address || "");
     }
 
     replaceUrlLangTheme(currentLang, finalTheme);
-
     await loadAll(userId);
+  }
+
+  function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
+    if (typeof window === "undefined") return;
+
+    const q = new URLSearchParams(window.location.search);
+    q.set("lang", nextLang);
+    q.set("theme", nextTheme);
+    q.set("refresh", String(Date.now()));
+
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
   async function loadAll(userId: string) {
@@ -1120,16 +1051,6 @@ export default function InvoicesPage() {
     setCustomers((customerData || []) as Customer[]);
     setProducts((productData || []) as Product[]);
     setInvoices((invoiceData || []) as InvoiceRecord[]);
-  }
-
-  async function loadProducts(userId: string) {
-    const { data } = await supabase
-      .from("products")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    setProducts((data || []) as Product[]);
   }
 
   function savePaymentOptions(next: PaymentOption[]) {
@@ -1157,7 +1078,6 @@ export default function InvoicesPage() {
   function fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-
       reader.onload = () => resolve(String(reader.result || ""));
       reader.onerror = () => reject(new Error("Upload failed"));
       reader.readAsDataURL(file);
@@ -1191,7 +1111,6 @@ export default function InvoicesPage() {
 
   function addPaymentOption() {
     const name = paymentName.trim();
-
     if (!name) return;
 
     const nextOption: PaymentOption = {
@@ -1299,13 +1218,11 @@ export default function InvoicesPage() {
   }
 
   function resetInvoiceForm() {
-    setInvoiceNo(makeInvoiceNo());
     setInvoiceDate(today());
     setDueDate(today());
     setStatus("sent");
 
     setSelectedPaymentId(paymentOptions[0]?.id || DEFAULT_PAYMENT_OPTIONS[0].id);
-    setShowPaymentAdd(false);
 
     setCustomerMode("select");
     setSelectedCustomerId("");
@@ -1326,10 +1243,9 @@ export default function InvoicesPage() {
     setSelectedSignatureId("");
     setSignatureText("");
     setSignatureImageUrl("");
-    setCustomerSignatureImageUrl("");
 
-    setLastPrintableInvoice(null);
-    setLastPrintableItems([]);
+    // 客户签名不保存，每次重开表格都会清空
+    setCustomerSignatureImageUrl("");
 
     setMsg("");
   }
@@ -1381,7 +1297,7 @@ export default function InvoicesPage() {
     return products.find((p) => p.id === item.productId) || null;
   }
 
-  function getItemCalc(item: InvoiceItem) {
+  function getItemCalc(item: InvoiceItem): ItemCalc {
     const product = getProduct(item);
 
     const name =
@@ -1452,7 +1368,6 @@ export default function InvoicesPage() {
   const preview = useMemo(() => {
     const subtotal = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.lineSubtotal, 0));
     const productDiscount = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.discount, 0));
-
     const afterProductDiscount = roundMoney(subtotal - productDiscount);
 
     const extraDiscount = calcDiscountCharge(
@@ -1463,11 +1378,7 @@ export default function InvoicesPage() {
 
     const sst = calcCharge(sstInput.value, sstInput.mode, afterProductDiscount);
     const serviceFee = calcCharge(serviceFeeInput.value, serviceFeeInput.mode, afterProductDiscount);
-    const handlingFee = calcCharge(
-      handlingFeeInput.value,
-      handlingFeeInput.mode,
-      afterProductDiscount
-    );
+    const handlingFee = calcCharge(handlingFeeInput.value, handlingFeeInput.mode, afterProductDiscount);
 
     const total = roundMoney(afterProductDiscount + extraDiscount + sst + serviceFee + handlingFee);
     const totalCost = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.lineCost, 0));
@@ -1508,10 +1419,12 @@ export default function InvoicesPage() {
     });
   }, [invoices, search]);
 
+  const currentInvoiceNo = useMemo(() => makeInvoiceNo(), []);
+
   const currentPreviewInvoice: InvoiceRecord = {
     id: "",
     user_id: sessionUserId,
-    invoice_no: invoiceNo,
+    invoice_no: currentInvoiceNo,
     invoice_date: invoiceDate,
     due_date: dueDate,
     status,
@@ -1574,31 +1487,21 @@ export default function InvoicesPage() {
       "line_profit",
       "stock_qty",
       "cost",
-      "company_logo_url",
-      "logo_url",
-      "company_reg_no",
-      "company_phone",
-      "company_address",
-      "last_payment_date",
-      "customer_status",
     ];
 
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 35; i++) {
       const { data, error } = await supabase.from(table).insert(payload).select("*").single();
 
       if (!error) return data;
 
       lastError = error;
 
-      if (isMissingTable(error.message) && table === "invoice_items") {
-        return null;
-      }
-
       if (!isSchemaCacheMissing(error.message)) throw error;
 
       const missingMatch =
         error.message.match(/Could not find the '([^']+)' column/i) ||
-        error.message.match(/column "([^"]+)" does not exist/i);
+        error.message.match(/column "([^"]+)" does not exist/i) ||
+        error.message.match(/column '([^']+)' does not exist/i);
 
       const missing = missingMatch?.[1];
 
@@ -1632,22 +1535,7 @@ export default function InvoicesPage() {
     let payload: Record<string, any> = { ...payloadInput };
     let lastError: any = null;
 
-    const optionalKeys = [
-      "company_logo_url",
-      "logo_url",
-      "company_name",
-      "company_reg_no",
-      "company_phone",
-      "company_address",
-      "phone",
-      "debt_amount",
-      "paid_amount",
-      "last_payment_date",
-      "status",
-      "customer_status",
-    ];
-
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 25; i++) {
       const { error } = await supabase.from(table).update(payload).eq("id", id).eq("user_id", userId);
 
       if (!error) return;
@@ -1658,7 +1546,8 @@ export default function InvoicesPage() {
 
       const missingMatch =
         error.message.match(/Could not find the '([^']+)' column/i) ||
-        error.message.match(/column "([^"]+)" does not exist/i);
+        error.message.match(/column "([^"]+)" does not exist/i) ||
+        error.message.match(/column '([^']+)' does not exist/i);
 
       const missing = missingMatch?.[1];
 
@@ -1669,44 +1558,15 @@ export default function InvoicesPage() {
         continue;
       }
 
-      const removable = optionalKeys.find((key) =>
-        Object.prototype.hasOwnProperty.call(payload, key)
-      );
-
-      if (!removable) throw error;
+      const keys = Object.keys(payload);
+      if (keys.length <= 1) throw error;
 
       const next = { ...payload };
-      delete next[removable];
+      delete next[keys[keys.length - 1]];
       payload = next;
     }
 
     throw lastError || new Error("Update failed");
-  }
-
-  async function saveCompanyInfo() {
-    if (isTrial) {
-      setMsg(t.saved);
-      return;
-    }
-
-    if (!sessionUserId) return;
-
-    try {
-      await updateAdaptive("profiles", sessionUserId, sessionUserId, {
-        company_logo_url: companyLogoUrl,
-        logo_url: companyLogoUrl,
-        company_name: companyName,
-        company_reg_no: companyRegNo,
-        company_phone: companyPhone,
-        phone: companyPhone,
-        company_address: companyAddress,
-      });
-
-      setMsg(t.saved);
-      setShowCompanyForm(false);
-    } catch (error: any) {
-      setMsg(t.fail + (error?.message || String(error)));
-    }
   }
 
   async function updateProductStock(productId: string, nextStock: number) {
@@ -1732,16 +1592,38 @@ export default function InvoicesPage() {
     }
   }
 
-  async function createCustomerIfNeeded() {
-    if (customerMode === "select") {
-      return selectedCustomer;
+  async function saveCompanyInfo() {
+    if (isTrial) {
+      setMsg(t.saved);
+      setShowCompanyForm(false);
+      return;
     }
+
+    if (!sessionUserId) return;
+
+    try {
+      await updateAdaptive("profiles", sessionUserId, sessionUserId, {
+        company_logo_url: companyLogoUrl,
+        logo_url: companyLogoUrl,
+        company_name: companyName,
+        company_reg_no: companyRegNo,
+        company_phone: companyPhone,
+        company_address: companyAddress,
+      });
+
+      setMsg(t.saved);
+      setShowCompanyForm(false);
+    } catch (error: any) {
+      setMsg(t.fail + (error?.message || String(error)));
+    }
+  }
+
+  async function createCustomerIfNeeded() {
+    if (customerMode === "select") return selectedCustomer;
 
     const name = newCustomerName.trim();
 
-    if (!name) {
-      throw new Error(t.needNewCustomer);
-    }
+    if (!name) throw new Error(t.needNewCustomer);
 
     const trialCustomer: Customer = {
       id: makeId("customer"),
@@ -1750,9 +1632,6 @@ export default function InvoicesPage() {
       phone: newCustomerPhone.trim(),
       company_name: newCustomerCompany.trim(),
       address: newCustomerAddress.trim(),
-      debt_amount: 0,
-      paid_amount: 0,
-      last_payment_date: dueDate,
     };
 
     if (isTrial) {
@@ -1768,9 +1647,6 @@ export default function InvoicesPage() {
       phone: newCustomerPhone.trim(),
       company_name: newCustomerCompany.trim(),
       address: newCustomerAddress.trim(),
-      debt_amount: 0,
-      paid_amount: 0,
-      last_payment_date: dueDate,
     });
 
     const saved = data as Customer;
@@ -1821,56 +1697,6 @@ export default function InvoicesPage() {
     setProducts((prev) => [saved, ...prev]);
 
     return saved;
-  }
-
-  async function addDebtToCustomer(customerId: string, amount: number) {
-    if (!customerId || amount <= 0 || isPaidStatus(status) || isCancelledStatus(status)) return;
-
-    const current = customers.find((c) => c.id === customerId);
-    const nextDebt = Number(current?.debt_amount || 0) + Number(amount || 0);
-
-    if (isTrial) {
-      const next = customers.map((c) =>
-        c.id === customerId
-          ? {
-              ...c,
-              debt_amount: nextDebt,
-              last_payment_date: dueDate,
-              status: "debt",
-              customer_status: "debt",
-            }
-          : c
-      );
-
-      setCustomers(next);
-      safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(next));
-      return;
-    }
-
-    try {
-      await updateAdaptive("customers", customerId, sessionUserId, {
-        debt_amount: nextDebt,
-        last_payment_date: dueDate,
-        status: "debt",
-        customer_status: "debt",
-      });
-
-      setCustomers((prev) =>
-        prev.map((c) =>
-          c.id === customerId
-            ? {
-                ...c,
-                debt_amount: nextDebt,
-                last_payment_date: dueDate,
-                status: "debt",
-                customer_status: "debt",
-              }
-            : c
-        )
-      );
-    } catch {
-      // Do not block invoice generation if the debt columns do not exist.
-    }
   }
 
   async function createInvoice() {
@@ -1924,27 +1750,21 @@ export default function InvoicesPage() {
         return;
       }
 
-      const finalItems: PrintableItem[] = [];
+      const finalItems: Array<{ product: Product; calc: ItemCalc }> = [];
 
       for (const pair of itemCalcs) {
         const product = await createProductIfNeeded(pair.item);
-        const calc = getItemCalc({
-          ...pair.item,
-          productId: product.id,
-          productMode: "select",
-        });
 
-        finalItems.push({
+        const fixedCalc: ItemCalc = {
+          ...pair.calc,
           product,
-          calc: {
-            ...pair.calc,
-            product,
-            name: product.name,
-            price: Number(product.price || pair.calc.price || 0),
-            cost: Number(product.cost || pair.calc.cost || 0),
-            stock: Number(product.stock_qty || pair.calc.stock || 0),
-          },
-        });
+          name: product.name,
+          price: Number(product.price || pair.calc.price || 0),
+          cost: Number(product.cost || pair.calc.cost || 0),
+          stock: Number(product.stock_qty || pair.calc.stock || 0),
+        };
+
+        finalItems.push({ product, calc: fixedCalc });
       }
 
       const invoicePayload = {
@@ -1954,7 +1774,7 @@ export default function InvoicesPage() {
         customer_phone: finalCustomer.phone || "",
         customer_company: finalCustomer.company_name || "",
         customer_address: finalCustomer.address || "",
-        invoice_no: invoiceNo,
+        invoice_no: currentInvoiceNo,
         invoice_date: invoiceDate,
         due_date: dueDate,
         status,
@@ -1967,23 +1787,33 @@ export default function InvoicesPage() {
         note,
       };
 
-      const printableRecord: InvoiceRecord = {
+      const localRecord: InvoiceRecord = {
         id: makeId("invoice"),
         ...invoicePayload,
         created_at: new Date().toISOString(),
       };
 
       if (isTrial) {
-        const nextProducts = products.map((p) => {
-          const used = finalItems.find((x) => x.product?.id === p.id);
+        const fixedProducts = products.map((p) => {
+          const used = finalItems.find((x) => x.product.id === p.id);
           if (!used) return p;
 
           const nextStock = Math.max(Number(p.stock_qty || 0) - Number(used.calc.qty || 0), 0);
-
           return { ...p, stock_qty: nextStock };
         });
 
-        const nextInvoices = [printableRecord, ...invoices];
+        const existingIds = new Set(fixedProducts.map((p) => p.id));
+        const appendedProducts = finalItems
+          .map((x) => x.product)
+          .filter((p) => !existingIds.has(p.id))
+          .map((p) => {
+            const used = finalItems.find((x) => x.product.id === p.id);
+            const nextStock = Math.max(Number(p.stock_qty || 0) - Number(used?.calc.qty || 0), 0);
+            return { ...p, stock_qty: nextStock };
+          });
+
+        const nextProducts = [...appendedProducts, ...fixedProducts];
+        const nextInvoices = [localRecord, ...invoices];
 
         const oldTx = safeParseArray<any>(safeLocalGet(TRIAL_TX_KEY));
         const nextTx = [
@@ -1997,8 +1827,8 @@ export default function InvoicesPage() {
               lang === "zh" ? "发票收入" : lang === "en" ? "Invoice Income" : "Pendapatan Invois",
             debt_amount: 0,
             source_type: "invoice",
-            source_id: printableRecord.id,
-            note: `${invoiceNo}｜${finalCustomer.name}`,
+            source_id: localRecord.id,
+            note: `${currentInvoiceNo}｜${finalCustomer.name}`,
             created_at: new Date().toISOString(),
           },
           ...oldTx,
@@ -2006,14 +1836,12 @@ export default function InvoicesPage() {
 
         setProducts(nextProducts);
         setInvoices(nextInvoices);
-        setLastPrintableInvoice(printableRecord);
-        setLastPrintableItems(finalItems);
+        setLastPrintableInvoice(localRecord);
+        setLastPrintableItems(finalItems.map((x) => ({ product: x.product, calc: x.calc })));
 
         safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
         safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(nextInvoices));
         safeLocalSet(TRIAL_TX_KEY, JSON.stringify(nextTx));
-
-        await addDebtToCustomer(finalCustomer.id, preview.total);
 
         setMsg(t.trialSuccess);
         setIsGenerating(false);
@@ -2021,7 +1849,7 @@ export default function InvoicesPage() {
         if (returnTo === "dashboard") {
           setTimeout(() => {
             window.location.href = buildDashboardUrl();
-          }, 500);
+          }, 600);
           return;
         }
 
@@ -2033,21 +1861,24 @@ export default function InvoicesPage() {
       const savedInvoice = (await insertAdaptive("invoices", invoicePayload)) as InvoiceRecord;
 
       for (const { product, calc } of finalItems) {
-        await insertAdaptive("invoice_items", {
-          invoice_id: savedInvoice.id,
-          product_id: product?.id,
-          product_name: product?.name,
-          qty: calc.qty,
-          unit_price: calc.price,
-          unit_cost: calc.cost,
-          discount: calc.discount,
-          line_total: calc.lineTotal,
-          line_profit: calc.lineProfit,
-        });
+        try {
+          await insertAdaptive("invoice_items", {
+            invoice_id: savedInvoice.id,
+            product_id: product.id,
+            product_name: product.name,
+            qty: calc.qty,
+            unit_price: calc.price,
+            unit_cost: calc.cost,
+            discount: calc.discount,
+            line_total: calc.lineTotal,
+            line_profit: calc.lineProfit,
+          });
+        } catch {
+          // invoice_items 没有建表时，不阻止发票生成
+        }
 
-        const newStock = Math.max(Number(product?.stock_qty || 0) - Number(calc.qty || 0), 0);
-
-        if (product?.id) await updateProductStock(product.id, newStock);
+        const newStock = Math.max(Number(product.stock_qty || 0) - Number(calc.qty || 0), 0);
+        await updateProductStock(product.id, newStock);
       }
 
       await insertAdaptive("transactions", {
@@ -2060,15 +1891,13 @@ export default function InvoicesPage() {
         debt_amount: 0,
         source_type: "invoice",
         source_id: savedInvoice.id,
-        note: `${invoiceNo}｜${finalCustomer.name}`,
+        note: `${currentInvoiceNo}｜${finalCustomer.name}`,
       });
 
-      await addDebtToCustomer(finalCustomer.id, preview.total);
-
       const finalRecord: InvoiceRecord = {
-        ...printableRecord,
+        ...localRecord,
         ...savedInvoice,
-        invoice_no: savedInvoice.invoice_no || invoiceNo,
+        invoice_no: savedInvoice.invoice_no || currentInvoiceNo,
         invoice_date: savedInvoice.invoice_date || invoiceDate,
         due_date: savedInvoice.due_date || dueDate,
         status: savedInvoice.status || status,
@@ -2078,8 +1907,7 @@ export default function InvoicesPage() {
         customer_address: savedInvoice.customer_address || finalCustomer.address || "",
         payment_method: savedInvoice.payment_method || getPaymentText(),
         subtotal: savedInvoice.subtotal ?? preview.subtotal,
-        discount:
-          savedInvoice.discount ?? preview.productDiscount + Math.abs(preview.extraDiscount),
+        discount: savedInvoice.discount ?? preview.productDiscount + Math.abs(preview.extraDiscount),
         total: savedInvoice.total ?? preview.total,
         total_cost: savedInvoice.total_cost ?? preview.totalCost,
         total_profit: savedInvoice.total_profit ?? preview.profit,
@@ -2088,9 +1916,9 @@ export default function InvoicesPage() {
 
       setInvoices((prev) => [finalRecord, ...prev]);
       setLastPrintableInvoice(finalRecord);
-      setLastPrintableItems(finalItems);
+      setLastPrintableItems(finalItems.map((x) => ({ product: x.product, calc: x.calc })));
 
-      await loadProducts(sessionUserId);
+      await loadAll(sessionUserId);
 
       setMsg(t.success);
       setIsGenerating(false);
@@ -2098,7 +1926,7 @@ export default function InvoicesPage() {
       if (returnTo === "dashboard") {
         setTimeout(() => {
           window.location.href = buildDashboardUrl();
-        }, 500);
+        }, 600);
         return;
       }
 
@@ -2115,13 +1943,19 @@ export default function InvoicesPage() {
       setLastPrintableInvoice(record);
       setLastPrintableItems([
         {
-          product: { id: "", name: "Invoice Item" },
+          product: null,
           calc: {
+            product: null,
             name: "Invoice Item",
             qty: 1,
             price: Number(record.subtotal || record.total || 0),
+            cost: Number(record.total_cost || 0),
+            stock: 0,
             discount: Number(record.discount || 0),
+            lineSubtotal: Number(record.subtotal || record.total || 0),
             lineTotal: Number(record.total || 0),
+            lineCost: Number(record.total_cost || 0),
+            lineProfit: Number(record.total_profit || 0),
           },
         },
       ]);
@@ -2177,7 +2011,7 @@ export default function InvoicesPage() {
         setMsg(t.copied);
         return;
       } catch {
-        // User cancelled share.
+        // user cancelled
       }
     }
 
@@ -2187,11 +2021,6 @@ export default function InvoicesPage() {
     } catch {
       setMsg(t.copied);
     }
-  }
-
-  function sendWhatsApp(record?: InvoiceRecord) {
-    const text = encodeURIComponent(buildShareText(record));
-    window.location.href = `https://wa.me/?text=${text}`;
   }
 
   async function deleteInvoice(inv: InvoiceRecord) {
@@ -2205,7 +2034,11 @@ export default function InvoicesPage() {
       return;
     }
 
-    await supabase.from("invoice_items").delete().eq("invoice_id", inv.id);
+    try {
+      await supabase.from("invoice_items").delete().eq("invoice_id", inv.id);
+    } catch {
+      // ignore
+    }
 
     const { error } = await supabase
       .from("invoices")
@@ -2222,57 +2055,17 @@ export default function InvoicesPage() {
     setMsg(t.saved);
   }
 
-  function getCanvasPoint(e: PointerEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-
+  function getCanvasPoint(e: any, canvas: HTMLCanvasElement) {
     const rect = canvas.getBoundingClientRect();
+    const touch = e.touches?.[0] || e.changedTouches?.[0];
+
+    const clientX = touch ? touch.clientX : e.clientX;
+    const clientY = touch ? touch.clientY : e.clientY;
 
     return {
-      x: ((e.clientX - rect.left) / rect.width) * canvas.width,
-      y: ((e.clientY - rect.top) / rect.height) * canvas.height,
+      x: ((clientX - rect.left) / rect.width) * canvas.width,
+      y: ((clientY - rect.top) / rect.height) * canvas.height,
     };
-  }
-
-  function startDraw(e: PointerEvent<HTMLCanvasElement>) {
-    e.preventDefault();
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    drawingRef.current = true;
-
-    const point = getCanvasPoint(e);
-
-    ctx.beginPath();
-    ctx.moveTo(point.x, point.y);
-  }
-
-  function draw(e: PointerEvent<HTMLCanvasElement>) {
-    if (!drawingRef.current) return;
-
-    e.preventDefault();
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const point = getCanvasPoint(e);
-
-    ctx.lineWidth = 4;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#111827";
-    ctx.lineTo(point.x, point.y);
-    ctx.stroke();
-  }
-
-  function stopDraw() {
-    drawingRef.current = false;
   }
 
   function openSignaturePad(target: "issuer" | "customer") {
@@ -2286,7 +2079,50 @@ export default function InvoicesPage() {
       if (!ctx) return;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }, 80);
+  }
+
+  function startDraw(e: any) {
+    e.preventDefault();
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    drawingRef.current = true;
+
+    const point = getCanvasPoint(e, canvas);
+
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y);
+  }
+
+  function draw(e: any) {
+    if (!drawingRef.current) return;
+
+    e.preventDefault();
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const point = getCanvasPoint(e, canvas);
+
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#111827";
+    ctx.lineTo(point.x, point.y);
+    ctx.stroke();
+  }
+
+  function stopDraw() {
+    drawingRef.current = false;
   }
 
   function clearSignaturePad() {
@@ -2297,9 +2133,8 @@ export default function InvoicesPage() {
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (signaturePadTarget === "issuer") setSignatureImageUrl("");
-    if (signaturePadTarget === "customer") setCustomerSignatureImageUrl("");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
   function confirmSignaturePad() {
@@ -2314,6 +2149,7 @@ export default function InvoicesPage() {
     }
 
     if (signaturePadTarget === "customer") {
+      // 重要：客户签名只放进 state，不保存 localStorage / Supabase
       setCustomerSignatureImageUrl(dataUrl);
       setMsg(t.saved);
     }
@@ -2339,7 +2175,7 @@ export default function InvoicesPage() {
             style={{
               ...themedInputStyle,
               marginBottom: 0,
-              color: Number(charge.value || 0) < 0 ? "#dc2626" : theme.inputText,
+              color: Number(charge.value || 0) < 0 ? "#dc2626" : theme.inputText || "#111827",
             }}
           />
 
@@ -2375,7 +2211,10 @@ export default function InvoicesPage() {
     );
   }
 
-  function renderOfficialInvoice(inv: InvoiceRecord, officialItems: PrintableItem[]) {
+  function renderOfficialInvoice(
+    inv: InvoiceRecord,
+    officialItems: Array<{ product: Product | null; calc: ItemCalc }>
+  ) {
     const payment = selectedPaymentDetail(inv);
 
     const subtotal = Number(inv.subtotal || 0);
@@ -2401,12 +2240,8 @@ export default function InvoicesPage() {
             <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
               <h2 style={officialCompanyNameStyle}>{companyName || "-"}</h2>
               <div>SSM: {companyRegNo || "-"}</div>
-              <div>
-                {t.phone}: {companyPhone || "-"}
-              </div>
-              <div>
-                {t.address}: {companyAddress || "-"}
-              </div>
+              <div>{t.phone}: {companyPhone || "-"}</div>
+              <div>{t.address}: {companyAddress || "-"}</div>
             </div>
           </div>
 
@@ -2489,8 +2324,8 @@ export default function InvoicesPage() {
               <tr key={`${x.calc.name}-${index}`}>
                 <td style={officialTdStyle}>{x.calc.name || x.product?.name || "-"}</td>
                 <td style={officialTdStyle}>{Number(x.calc.qty || 1)}</td>
-                <td style={officialTdStyle}>RM {Number(x.calc.price || 0).toFixed(2)}</td>
-                <td style={officialTdStyle}>{formatSignedRM(Number(x.calc.discount || 0))}</td>
+                <td style={officialTdStyle}>{formatRM(Number(x.calc.price || 0))}</td>
+                <td style={officialTdStyle}>{formatSignedRM(-Math.abs(Number(x.calc.discount || 0)))}</td>
                 <td style={officialTdStyle}>{formatSignedRM(Number(x.calc.lineTotal || 0))}</td>
               </tr>
             ))}
@@ -2500,7 +2335,7 @@ export default function InvoicesPage() {
         <div style={officialSummaryStyle}>
           <div style={officialSummaryRowStyle}>
             <span>{t.subtotal}</span>
-            <strong>RM {subtotal.toFixed(2)}</strong>
+            <strong>{formatRM(subtotal)}</strong>
           </div>
 
           <div style={officialSummaryRowStyle}>
@@ -2544,16 +2379,10 @@ export default function InvoicesPage() {
             {showIssuerSignature ? (
               <div style={officialSignatureBoxStyle}>
                 {signatureImageUrl ? (
-                  <img
-                    src={signatureImageUrl}
-                    alt="Issuer Signature"
-                    style={officialSignatureImageStyle}
-                  />
+                  <img src={signatureImageUrl} alt="Issuer Signature" style={officialSignatureImageStyle} />
                 ) : null}
 
-                {signatureText ? (
-                  <div style={officialSignatureTextStyle}>{signatureText}</div>
-                ) : null}
+                {signatureText ? <div style={officialSignatureTextStyle}>{signatureText}</div> : null}
 
                 <div style={officialSignatureLineStyle} />
                 <div style={officialSignatureLabelStyle}>{t.issuerSignature}</div>
@@ -2601,65 +2430,33 @@ export default function InvoicesPage() {
           style={{
             borderColor: theme.border,
             color: theme.accent,
-            background: theme.inputBg,
+            background: theme.inputBg || "#fff",
           }}
         >
           ← {t.dashboardBack}
         </button>
 
-        <div className="sa-lang-row">
-          <button
-            type="button"
-            onClick={() => switchLang("zh")}
-            className="sa-lang-btn"
-            style={{
-              borderColor: theme.accent,
-              background: lang === "zh" ? theme.accent : theme.inputBg,
-              color: lang === "zh" ? "#fff" : theme.accent,
-            }}
-          >
-            中文
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchLang("en")}
-            className="sa-lang-btn"
-            style={{
-              borderColor: theme.accent,
-              background: lang === "en" ? theme.accent : theme.inputBg,
-              color: lang === "en" ? "#fff" : theme.accent,
-            }}
-          >
-            EN
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchLang("ms")}
-            className="sa-lang-btn"
-            style={{
-              borderColor: theme.accent,
-              background: lang === "ms" ? theme.accent : theme.inputBg,
-              color: lang === "ms" ? "#fff" : theme.accent,
-            }}
-          >
-            BM
-          </button>
+        <div className="sa-lang-row" style={langRowStyle}>
+          {(["zh", "en", "ms"] as Lang[]).map((code) => (
+            <button
+              key={code}
+              type="button"
+              onClick={() => switchLang(code)}
+              className="sa-lang-btn"
+              style={{
+                borderColor: theme.accent,
+                background: lang === code ? theme.accent : theme.inputBg || "#fff",
+                color: lang === code ? "#fff" : theme.accent,
+              }}
+            >
+              {code === "zh" ? "中文" : code === "en" ? "EN" : "BM"}
+            </button>
+          ))}
         </div>
       </div>
 
       {mode === "list" ? (
-        <section
-          className="no-print sa-card"
-          style={{
-            ...cardStyle,
-            background: theme.card,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-            color: theme.text,
-          }}
-        >
+        <section className="no-print sa-card" style={{ ...cardStyle, ...themedCard(theme) }}>
           <div style={listTitleRowStyle}>
             <h1 style={{ ...titleStyle, color: theme.accent }}>{t.title}</h1>
 
@@ -2673,7 +2470,7 @@ export default function InvoicesPage() {
             </button>
           </div>
 
-          <p style={{ ...descStyle, color: theme.muted }}>{t.latestInvoices}</p>
+          <p style={{ ...descStyle, color: theme.muted || theme.subText }}>{t.latestInvoices}</p>
 
           <input
             value={search}
@@ -2683,7 +2480,7 @@ export default function InvoicesPage() {
           />
 
           {filteredInvoices.length === 0 ? (
-            <p style={{ ...emptyStyle, color: theme.muted }}>{t.noInvoice}</p>
+            <p style={{ ...emptyStyle, color: theme.muted || theme.subText }}>{t.noInvoice}</p>
           ) : (
             <div style={invoiceListStyle}>
               {filteredInvoices.map((inv) => (
@@ -2701,16 +2498,15 @@ export default function InvoicesPage() {
                   <div style={{ minWidth: 0 }}>
                     <strong>{inv.invoice_no}</strong>
 
-                    <div style={{ ...mutedTextStyle, color: theme.muted }}>
-                      {inv.customer_name || "-"}{" "}
-                      {inv.customer_company ? `｜${inv.customer_company}` : ""}
+                    <div style={{ ...mutedTextStyle, color: theme.muted || theme.subText }}>
+                      {inv.customer_name || "-"} {inv.customer_company ? `｜${inv.customer_company}` : ""}
                     </div>
 
-                    <div style={{ ...mutedTextStyle, color: theme.muted }}>
+                    <div style={{ ...mutedTextStyle, color: theme.muted || theme.subText }}>
                       {t.recordDateTime}: {formatDateTime(inv.created_at, inv.invoice_date)}
                     </div>
 
-                    <div style={{ ...mutedTextStyle, color: theme.muted }}>
+                    <div style={{ ...mutedTextStyle, color: theme.muted || theme.subText }}>
                       {t.phone}: {inv.customer_phone || "-"}
                     </div>
 
@@ -2718,10 +2514,7 @@ export default function InvoicesPage() {
                       <button
                         type="button"
                         onClick={() => printInvoice(inv)}
-                        style={{
-                          ...recordEditBtnStyle,
-                          background: theme.accent,
-                        }}
+                        style={{ ...recordEditBtnStyle, background: theme.accent }}
                       >
                         {t.print}
                       </button>
@@ -2733,7 +2526,7 @@ export default function InvoicesPage() {
                           ...recordShareBtnStyle,
                           borderColor: theme.accent,
                           color: theme.accent,
-                          background: theme.inputBg,
+                          background: theme.inputBg || "#fff",
                         }}
                       >
                         {t.pdf}
@@ -2764,31 +2557,20 @@ export default function InvoicesPage() {
       {mode === "new" ? (
         <section
           className={`no-print sa-card ${isFullscreen ? "fullscreen-invoice-modal" : ""}`}
-          style={{
-            ...cardStyle,
-            background: theme.card,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-            color: theme.text,
-          }}
+          style={{ ...cardStyle, ...themedCard(theme) }}
         >
           <div className="sa-titlebar" style={titleBarStyle}>
             <h1 style={{ ...newTitleStyle, color: theme.accent }}>{t.createTitle}</h1>
 
-            <button
-              type="button"
-              className="sa-close-x"
-              onClick={closeInvoiceForm}
-              aria-label={t.close}
-            >
+            <button type="button" className="sa-close-x" onClick={closeInvoiceForm} aria-label={t.close}>
               {t.close}
             </button>
           </div>
 
-          <p style={{ ...newDescStyle, color: theme.muted }}>{t.desc}</p>
+          <p style={{ ...newDescStyle, color: theme.muted || theme.subText }}>{t.desc}</p>
 
           <div className="sa-panel" style={{ ...invoiceNoBox, ...themedPanelStyle }}>
-            <strong>Invoice No:</strong>&nbsp;{invoiceNo}
+            <strong>Invoice No:</strong>&nbsp;{currentInvoiceNo}
           </div>
 
           <h3>{t.invoiceInfo}</h3>
@@ -2837,7 +2619,7 @@ export default function InvoicesPage() {
               ))}
             </select>
 
-            <div className="same-size-action-row" style={twoButtonRowStyle}>
+            <div className="same-size-action-row">
               <button
                 type="button"
                 onClick={() => setShowPaymentAdd((v) => !v)}
@@ -2845,69 +2627,32 @@ export default function InvoicesPage() {
                   ...paymentToggleBtnStyle,
                   borderColor: theme.border,
                   color: showPaymentAdd ? "#fff" : theme.accent,
-                  background: showPaymentAdd ? theme.accent : theme.inputBg,
+                  background: showPaymentAdd ? theme.accent : theme.inputBg || "#fff",
+                  marginBottom: 0,
                 }}
               >
                 {t.addPayment}
               </button>
 
-              <button type="button" onClick={deletePaymentOption} style={dangerOutlineBtnStyle}>
+              <button type="button" onClick={deletePaymentOption} style={{ ...dangerOutlineBtnStyle, marginBottom: 0 }}>
                 {t.deletePayment}
               </button>
             </div>
 
             {showPaymentAdd ? (
               <div className="sa-panel" style={{ ...paymentAddBoxStyle, ...themedPanelStyle }}>
-                <input
-                  value={paymentName}
-                  onChange={(e) => setPaymentName(e.target.value)}
-                  placeholder={t.paymentName}
-                  style={themedInputStyle}
-                />
+                <input value={paymentName} onChange={(e) => setPaymentName(e.target.value)} placeholder={t.paymentName} style={themedInputStyle} />
+                <input value={paymentBankAccount} onChange={(e) => setPaymentBankAccount(e.target.value)} placeholder={t.paymentBankAccount} style={themedInputStyle} />
+                <input value={paymentReceiverName} onChange={(e) => setPaymentReceiverName(e.target.value)} placeholder={t.paymentReceiverName} style={themedInputStyle} />
+                <input value={paymentLink} onChange={(e) => setPaymentLink(e.target.value)} placeholder={t.paymentLink} style={themedInputStyle} />
+                <input value={paymentQrCodeUrl} onChange={(e) => setPaymentQrCodeUrl(e.target.value)} placeholder={t.paymentQr} style={themedInputStyle} />
 
-                <input
-                  value={paymentBankAccount}
-                  onChange={(e) => setPaymentBankAccount(e.target.value)}
-                  placeholder={t.paymentBankAccount}
-                  style={themedInputStyle}
-                />
-
-                <input
-                  value={paymentReceiverName}
-                  onChange={(e) => setPaymentReceiverName(e.target.value)}
-                  placeholder={t.paymentReceiverName}
-                  style={themedInputStyle}
-                />
-
-                <input
-                  value={paymentLink}
-                  onChange={(e) => setPaymentLink(e.target.value)}
-                  placeholder={t.paymentLink}
-                  style={themedInputStyle}
-                />
-
-                <input
-                  value={paymentQrCodeUrl}
-                  onChange={(e) => setPaymentQrCodeUrl(e.target.value)}
-                  placeholder={t.paymentQr}
-                  style={themedInputStyle}
-                />
-
-                <label
-                  style={{
-                    ...uploadQrBtnStyle,
-                    borderColor: theme.border,
-                    color: theme.accent,
-                    background: theme.inputBg,
-                  }}
-                >
+                <label style={{ ...uploadQrBtnStyle, borderColor: theme.border, color: theme.accent, background: theme.inputBg || "#fff" }}>
                   {t.uploadQr}
                   <input type="file" accept="image/*" onChange={uploadPaymentQr} style={{ display: "none" }} />
                 </label>
 
-                {paymentQrCodeUrl ? (
-                  <img src={paymentQrCodeUrl} alt="QR Preview" style={qrPreviewStyle} />
-                ) : null}
+                {paymentQrCodeUrl ? <img src={paymentQrCodeUrl} alt="QR Preview" style={qrPreviewStyle} /> : null}
 
                 <button type="button" onClick={addPaymentOption} style={{ ...addBtnStyle, background: theme.accent }}>
                   {t.savePayment}
@@ -2933,23 +2678,14 @@ export default function InvoicesPage() {
             <div className="company-info-text" style={{ color: theme.panelText || theme.text }}>
               <strong>{companyName || "-"}</strong>
               <div>SSM: {companyRegNo || "-"}</div>
-              <div>
-                {t.phone}: {companyPhone || "-"}
-              </div>
-              <div>
-                {t.address}: {companyAddress || "-"}
-              </div>
+              <div>{t.phone}: {companyPhone || "-"}</div>
+              <div>{t.address}: {companyAddress || "-"}</div>
             </div>
 
             <button
               type="button"
               onClick={() => setShowCompanyForm((v) => !v)}
-              style={{
-                ...editBtnStyle,
-                borderColor: theme.border,
-                color: theme.accent,
-                background: theme.inputBg,
-              }}
+              style={{ ...editBtnStyle, borderColor: theme.border, color: theme.accent, background: theme.inputBg || "#fff" }}
             >
               {t.editCompany}
             </button>
@@ -2957,40 +2693,11 @@ export default function InvoicesPage() {
 
           {showCompanyForm ? (
             <div className="sa-panel" style={{ ...companyEditBoxStyle, ...themedPanelStyle }}>
-              <input
-                placeholder={t.companyLogoUrl}
-                value={companyLogoUrl}
-                onChange={(e) => setCompanyLogoUrl(e.target.value)}
-                style={themedInputStyle}
-              />
-
-              <input
-                placeholder={t.companyName}
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                style={themedInputStyle}
-              />
-
-              <input
-                placeholder={t.companyRegNo}
-                value={companyRegNo}
-                onChange={(e) => setCompanyRegNo(e.target.value)}
-                style={themedInputStyle}
-              />
-
-              <input
-                placeholder={t.phone}
-                value={companyPhone}
-                onChange={(e) => setCompanyPhone(e.target.value)}
-                style={themedInputStyle}
-              />
-
-              <input
-                placeholder={t.address}
-                value={companyAddress}
-                onChange={(e) => setCompanyAddress(e.target.value)}
-                style={themedInputStyle}
-              />
+              <input placeholder={t.companyLogoUrl} value={companyLogoUrl} onChange={(e) => setCompanyLogoUrl(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.companyName} value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.companyRegNo} value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.phone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.address} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={themedInputStyle} />
 
               <button type="button" onClick={saveCompanyInfo} style={{ ...submitSmallBtnStyle, background: theme.accent }}>
                 {t.saveCompany}
@@ -3011,11 +2718,7 @@ export default function InvoicesPage() {
           </div>
 
           {customerMode === "select" ? (
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
-              style={themedInputStyle}
-            >
+            <select value={selectedCustomerId} onChange={(e) => setSelectedCustomerId(e.target.value)} style={themedInputStyle}>
               <option value="">{t.chooseCustomer}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -3025,33 +2728,10 @@ export default function InvoicesPage() {
             </select>
           ) : (
             <div style={formGrid}>
-              <input
-                placeholder={t.customerName}
-                value={newCustomerName}
-                onChange={(e) => setNewCustomerName(e.target.value)}
-                style={themedInputStyle}
-              />
-
-              <input
-                placeholder={t.customerPhone}
-                value={newCustomerPhone}
-                onChange={(e) => setNewCustomerPhone(e.target.value)}
-                style={themedInputStyle}
-              />
-
-              <input
-                placeholder={t.customerCompany}
-                value={newCustomerCompany}
-                onChange={(e) => setNewCustomerCompany(e.target.value)}
-                style={themedInputStyle}
-              />
-
-              <input
-                placeholder={t.customerAddress}
-                value={newCustomerAddress}
-                onChange={(e) => setNewCustomerAddress(e.target.value)}
-                style={themedInputStyle}
-              />
+              <input placeholder={t.customerName} value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.customerPhone} value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.customerCompany} value={newCustomerCompany} onChange={(e) => setNewCustomerCompany(e.target.value)} style={themedInputStyle} />
+              <input placeholder={t.customerAddress} value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} style={themedInputStyle} />
             </div>
           )}
 
@@ -3059,7 +2739,7 @@ export default function InvoicesPage() {
 
           <div style={formGrid}>
             {items.map((item, index) => {
-              const selectedProduct = getProduct(item);
+              const calc = getItemCalc(item);
 
               return (
                 <div key={item.id} className="sa-panel" style={{ ...productLineBoxStyle, ...themedPanelStyle }}>
@@ -3074,29 +2754,17 @@ export default function InvoicesPage() {
                   </div>
 
                   <div style={switchRow}>
-                    <button
-                      type="button"
-                      onClick={() => updateItem(item.id, { productMode: "select" })}
-                      style={modeBtn(item.productMode === "select", theme)}
-                    >
+                    <button type="button" onClick={() => updateItem(item.id, { productMode: "select" })} style={modeBtn(item.productMode === "select", theme)}>
                       {t.selectProduct}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => updateItem(item.id, { productMode: "new" })}
-                      style={modeBtn(item.productMode === "new", theme)}
-                    >
+                    <button type="button" onClick={() => updateItem(item.id, { productMode: "new" })} style={modeBtn(item.productMode === "new", theme)}>
                       {t.newProduct}
                     </button>
                   </div>
 
                   {item.productMode === "select" ? (
-                    <select
-                      value={item.productId}
-                      onChange={(e) => updateItem(item.id, { productId: e.target.value })}
-                      style={themedInputStyle}
-                    >
+                    <select value={item.productId} onChange={(e) => updateItem(item.id, { productId: e.target.value })} style={themedInputStyle}>
                       <option value="">{t.chooseProduct}</option>
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -3107,48 +2775,17 @@ export default function InvoicesPage() {
                     </select>
                   ) : (
                     <div style={formGrid}>
-                      <input
-                        placeholder={t.productName}
-                        value={item.newProductName}
-                        onChange={(e) => updateItem(item.id, { newProductName: e.target.value })}
-                        style={themedInputStyle}
-                      />
-
-                      <input
-                        placeholder={t.price}
-                        value={item.newProductPrice}
-                        onChange={(e) => updateItem(item.id, { newProductPrice: e.target.value })}
-                        style={themedInputStyle}
-                        inputMode="decimal"
-                      />
-
-                      <input
-                        placeholder={t.cost}
-                        value={item.newProductCost}
-                        onChange={(e) => updateItem(item.id, { newProductCost: e.target.value })}
-                        style={themedInputStyle}
-                        inputMode="decimal"
-                      />
-
-                      <input
-                        placeholder={t.stock}
-                        value={item.newProductStock}
-                        onChange={(e) => updateItem(item.id, { newProductStock: e.target.value })}
-                        style={themedInputStyle}
-                        inputMode="decimal"
-                      />
+                      <input placeholder={t.productName} value={item.newProductName} onChange={(e) => updateItem(item.id, { newProductName: e.target.value })} style={themedInputStyle} />
+                      <input placeholder={t.price} value={item.newProductPrice} onChange={(e) => updateItem(item.id, { newProductPrice: e.target.value })} style={themedInputStyle} inputMode="decimal" />
+                      <input placeholder={t.cost} value={item.newProductCost} onChange={(e) => updateItem(item.id, { newProductCost: e.target.value })} style={themedInputStyle} inputMode="decimal" />
+                      <input placeholder={t.stock} value={item.newProductStock} onChange={(e) => updateItem(item.id, { newProductStock: e.target.value })} style={themedInputStyle} inputMode="decimal" />
                     </div>
                   )}
 
                   <div style={dateTwoColGridStyle}>
                     <div>
                       <label style={{ ...labelStyle, color: theme.accent }}>{t.qty}</label>
-                      <input
-                        value={item.qty}
-                        onChange={(e) => updateItem(item.id, { qty: e.target.value })}
-                        style={themedInputStyle}
-                        inputMode="decimal"
-                      />
+                      <input value={item.qty} onChange={(e) => updateItem(item.id, { qty: e.target.value })} style={themedInputStyle} inputMode="decimal" />
                     </div>
 
                     <div>
@@ -3158,18 +2795,16 @@ export default function InvoicesPage() {
                         onChange={(e) => updateItem(item.id, { discount: e.target.value })}
                         style={{
                           ...themedInputStyle,
-                          color: Number(item.discount || 0) < 0 ? "#dc2626" : theme.inputText,
+                          color: Number(item.discount || 0) < 0 ? "#dc2626" : theme.inputText || "#111827",
                         }}
                         inputMode="decimal"
                       />
                     </div>
                   </div>
 
-                  {selectedProduct ? (
-                    <p style={{ margin: 0, color: theme.muted, fontWeight: 900 }}>
-                      {selectedProduct.name}｜RM {Number(selectedProduct.price || 0).toFixed(2)}
-                    </p>
-                  ) : null}
+                  <p style={{ margin: 0, color: theme.muted || theme.subText, fontWeight: 900 }}>
+                    {calc.name}｜{formatRM(calc.price)}｜Line Total: {formatRM(calc.lineTotal)}
+                  </p>
                 </div>
               );
             })}
@@ -3200,42 +2835,19 @@ export default function InvoicesPage() {
               ))}
             </select>
 
-            <input
-              placeholder={t.signatureText}
-              value={signatureText}
-              onChange={(e) => setSignatureText(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
-              placeholder={t.signatureImageUrl}
-              value={signatureImageUrl}
-              onChange={(e) => setSignatureImageUrl(e.target.value)}
-              style={themedInputStyle}
-            />
+            <input placeholder={t.signatureText} value={signatureText} onChange={(e) => setSignatureText(e.target.value)} style={themedInputStyle} />
+            <input placeholder={t.signatureImageUrl} value={signatureImageUrl} onChange={(e) => setSignatureImageUrl(e.target.value)} style={themedInputStyle} />
 
             <button
               type="button"
               onClick={() => openSignaturePad("issuer")}
-              style={{
-                ...paymentToggleBtnStyle,
-                borderColor: theme.border,
-                color: theme.accent,
-                background: theme.inputBg,
-              }}
+              style={{ ...paymentToggleBtnStyle, borderColor: theme.border, color: theme.accent, background: theme.inputBg || "#fff" }}
             >
               {t.handwriteSignature}
             </button>
 
-            <div style={twoButtonRowStyle}>
-              <label
-                style={{
-                  ...uploadQrBtnStyle,
-                  borderColor: theme.border,
-                  color: theme.accent,
-                  background: theme.inputBg,
-                }}
-              >
+            <div className="same-size-action-row">
+              <label style={{ ...uploadQrBtnStyle, borderColor: theme.border, color: theme.accent, background: theme.inputBg || "#fff" }}>
                 {t.uploadSignature}
                 <input type="file" accept="image/*" onChange={uploadSignatureImage} style={{ display: "none" }} />
               </label>
@@ -3252,22 +2864,16 @@ export default function InvoicesPage() {
             <button
               type="button"
               onClick={() => openSignaturePad("customer")}
-              style={{
-                ...paymentToggleBtnStyle,
-                borderColor: theme.border,
-                color: theme.accent,
-                background: theme.inputBg,
-              }}
+              style={{ ...paymentToggleBtnStyle, borderColor: theme.border, color: theme.accent, background: theme.inputBg || "#fff" }}
             >
               {t.customerSignature}
             </button>
 
+            <p style={{ color: "#dc2626", fontWeight: 900, margin: 0 }}>{t.customerSignNotice}</p>
+
             {signatureImageUrl || signatureText ? (
               <div style={signatureMiniPreviewStyle}>
-                {signatureImageUrl ? (
-                  <img src={signatureImageUrl} alt="Signature Preview" style={signatureMiniImageStyle} />
-                ) : null}
-
+                {signatureImageUrl ? <img src={signatureImageUrl} alt="Signature Preview" style={signatureMiniImageStyle} /> : null}
                 {signatureText ? <strong>{signatureText}</strong> : null}
               </div>
             ) : null}
@@ -3275,14 +2881,7 @@ export default function InvoicesPage() {
 
           <h3>{t.preview}</h3>
 
-          <div
-            className="sa-panel"
-            style={{
-              ...screenPreviewWrapStyle,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-            }}
-          >
+          <div className="sa-panel" style={{ ...screenPreviewWrapStyle, borderColor: theme.border, boxShadow: theme.glow }}>
             <div style={screenInvoiceInnerStyle}>
               {renderOfficialInvoice(
                 currentPreviewInvoice,
@@ -3291,16 +2890,11 @@ export default function InvoicesPage() {
             </div>
           </div>
 
-          <div className="invoice-preview-action-row" style={previewActionRowStyle}>
+          <div className="invoice-preview-action-row">
             <button
               type="button"
               onClick={() => printInvoice()}
-              style={{
-                ...secondaryBtn,
-                borderColor: theme.border,
-                color: theme.accent,
-                background: theme.inputBg,
-              }}
+              style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent, background: theme.inputBg || "#fff" }}
             >
               {t.print}
             </button>
@@ -3308,12 +2902,7 @@ export default function InvoicesPage() {
             <button
               type="button"
               onClick={() => downloadPdf()}
-              style={{
-                ...secondaryBtn,
-                borderColor: theme.border,
-                color: theme.accent,
-                background: theme.inputBg,
-              }}
+              style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent, background: theme.inputBg || "#fff" }}
             >
               {t.pdf}
             </button>
@@ -3321,12 +2910,7 @@ export default function InvoicesPage() {
             <button
               type="button"
               onClick={() => shareInvoice()}
-              style={{
-                ...secondaryBtn,
-                borderColor: theme.border,
-                color: theme.accent,
-                background: theme.inputBg,
-              }}
+              style={{ ...secondaryBtn, borderColor: theme.border, color: theme.accent, background: theme.inputBg || "#fff" }}
             >
               {t.share}
             </button>
@@ -3351,16 +2935,7 @@ export default function InvoicesPage() {
 
       {signaturePadTarget ? (
         <div style={overlayStyle}>
-          <section
-            className="sa-card"
-            style={{
-              ...signatureModalStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              color: theme.text,
-              boxShadow: theme.glow,
-            }}
-          >
+          <section className="sa-card" style={{ ...signatureModalStyle, ...themedCard(theme) }}>
             <div style={titleBarStyle}>
               <h2 style={{ margin: 0 }}>
                 {signaturePadTarget === "issuer" ? t.handwriteSignature : t.customerSignature}
@@ -3380,13 +2955,16 @@ export default function InvoicesPage() {
               width={900}
               height={360}
               className="signature-canvas"
-              onPointerDown={startDraw}
-              onPointerMove={draw}
-              onPointerUp={stopDraw}
-              onPointerLeave={stopDraw}
+              onMouseDown={startDraw}
+              onMouseMove={draw}
+              onMouseUp={stopDraw}
+              onMouseLeave={stopDraw}
+              onTouchStart={startDraw}
+              onTouchMove={draw}
+              onTouchEnd={stopDraw}
             />
 
-            <div style={twoButtonRowStyle}>
+            <div className="same-size-action-row" style={{ marginTop: 12 }}>
               <button type="button" onClick={clearSignaturePad} style={dangerOutlineBtnStyle}>
                 {t.clearSignature}
               </button>
@@ -3406,6 +2984,15 @@ export default function InvoicesPage() {
   );
 }
 
+function themedCard(theme: any): CSSProperties {
+  return {
+    background: theme.card,
+    borderColor: theme.border,
+    boxShadow: theme.glow,
+    color: theme.text,
+  };
+}
+
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
   width: "100%",
@@ -3423,6 +3010,12 @@ const topToolbarStyle: CSSProperties = {
   alignItems: "center",
   gap: 12,
   marginBottom: 14,
+};
+
+const langRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "nowrap",
 };
 
 const cardStyle: CSSProperties = {
@@ -3618,13 +3211,6 @@ const dateInputStyle: CSSProperties = {
   appearance: "none" as any,
 };
 
-const twoButtonRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 10,
-  alignItems: "stretch",
-};
-
 const paymentToggleBtnStyle: CSSProperties = {
   width: "100%",
   border: "var(--sa-border-w) solid",
@@ -3633,7 +3219,7 @@ const paymentToggleBtnStyle: CSSProperties = {
   padding: "0 var(--sa-control-x)",
   fontWeight: 900,
   fontSize: "var(--sa-fs-base)",
-  marginBottom: 0,
+  marginBottom: 10,
 };
 
 const dangerOutlineBtnStyle: CSSProperties = {
@@ -3688,14 +3274,12 @@ const addBtnStyle: CSSProperties = {
 
 const companyBox: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "auto minmax(0, 1fr) auto",
+  gridTemplateColumns: "auto minmax(0, 1fr)",
   gap: 14,
   alignItems: "center",
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
-  width: "100%",
-  minWidth: 0,
 };
 
 const logoStyle: CSSProperties = {
@@ -3717,6 +3301,7 @@ const logoPlaceholder: CSSProperties = {
 };
 
 const editBtnStyle: CSSProperties = {
+  gridColumn: "1 / -1",
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-control)",
   minHeight: "var(--sa-control-h)",
@@ -3845,13 +3430,6 @@ const screenInvoiceInnerStyle: CSSProperties = {
   minWidth: 780,
 };
 
-const previewActionRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: 10,
-  marginTop: 14,
-};
-
 const secondaryBtn: CSSProperties = {
   minHeight: "var(--sa-control-h)",
   padding: "0 10px",
@@ -3935,7 +3513,6 @@ const officialCompanyBlockStyle: CSSProperties = {
   gap: 14,
   lineHeight: 1.5,
   minWidth: 0,
-  overflowWrap: "anywhere",
 };
 
 const officialLogoStyle: CSSProperties = {
