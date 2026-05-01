@@ -6,15 +6,14 @@ import { supabase } from "@/lib/supabase";
 import {
   THEMES,
   type ThemeKey,
+  applyThemeToDocument,
   getThemeKeyFromUrlOrLocalStorage,
   normalizeThemeKey,
   saveThemeKey,
-  applyThemeToDocument,
 } from "@/lib/smartacctgTheme";
 
 type PageKey = "home" | "accounting" | "customers" | "products" | "invoices" | "records";
 type Lang = "zh" | "en" | "ms";
-type TxnType = "income" | "expense";
 
 type Profile = {
   id: string;
@@ -25,6 +24,7 @@ type Profile = {
   company_reg_no: string | null;
   company_phone: string | null;
   company_address: string | null;
+  company_logo_url?: string | null;
   theme: string | null;
   plan_type: string | null;
   plan_expiry: string | null;
@@ -34,13 +34,10 @@ type Txn = {
   id: string;
   user_id?: string;
   txn_date: string;
-  txn_type: TxnType;
+  txn_type: "income" | "expense";
   amount: number;
   category_name?: string | null;
-  debt_amount?: number | null;
   note?: string | null;
-  source_type?: string | null;
-  source_id?: string | null;
   created_at?: string | null;
 };
 
@@ -53,7 +50,7 @@ type Customer = {
   debt_amount?: number | null;
   paid_amount?: number | null;
   last_payment_date?: string | null;
-  due_date?: string | null;
+  created_at?: string | null;
 };
 
 type Invoice = {
@@ -71,14 +68,17 @@ type Invoice = {
   created_at?: string | null;
 };
 
-type DebtRow = {
+type DebtItem = {
   id: string;
-  name: string;
-  company?: string;
-  amount: number;
-  dueDate?: string;
   source: "customer" | "invoice";
+  name: string;
+  companyName: string;
+  amount: number;
+  date: string;
+  sortTime: number;
 };
+
+type FullscreenModal = "settings" | "themes" | "extensions" | "nkshop" | null;
 
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_TX_KEY = "smartacctg_trial_transactions";
@@ -89,30 +89,33 @@ const LANG_KEY = "smartacctg_lang";
 const TXT = {
   zh: {
     dashboard: "控制台",
-    notice: "通知：欢迎使用 SmartAcctg，系统通知会在这里滚动显示……",
+    notice: "通知：这里显示系统通知、订阅提醒、功能更新……",
     recordsOverview: "记录总览",
+    latestMonth: "最新月份",
     customerDebt: "客户欠款",
     estimatedProfit: "预计利润",
     balance: "当前余额",
     monthIncome: "本月收入",
     monthExpense: "本月支出",
-    latestMonth: "最新月份",
-    totalDebt: "欠款总额",
     accounting: "记账系统",
     customers: "客户管理",
     products: "产品管理",
     invoices: "发票系统",
-    extension: "扩展功能",
-    nkShop: "NK网店",
     quick: "快速记录 / 开发票",
     quickAccounting: "记账",
     quickInvoice: "发票",
     quickCustomer: "客户",
     quickProduct: "产品",
+    extension: "扩展功能",
+    nkShop: "NK网店",
+    eNameCard: "电子名片",
+    onlineStore: "网店系统",
+    orderSystem: "订单系统",
+    comingSoon: "此功能预留给后续订阅开通",
     expiry: "订阅期限",
     noSub: "未订阅",
     trial: "免费试用",
-    logout: "退出登录",
+    logout: "退出",
     changeAvatar: "更换头像",
     settings: "设置",
     theme: "主题切换",
@@ -132,35 +135,35 @@ const TXT = {
     noRecord: "暂无记录",
     noDebt: "暂无欠款",
     back: "返回",
-    comingSoon: "开发中",
-    extensionTitle: "扩展功能",
-    digitalNameCard: "电子名片",
-    shopSystem: "网店系统",
-    shopDesc: "之后可以给用户订阅开自己的网店、订单系统、产品展示页。",
-    dueDate: "到期日",
+    close: "关闭",
+    open: "打开",
+    totalDebt: "总欠款",
   },
   en: {
     dashboard: "Dashboard",
-    notice: "Notice: SmartAcctg system notifications will appear here...",
+    notice: "Notice: system notifications, subscription reminders and updates appear here...",
     recordsOverview: "Records Overview",
+    latestMonth: "Latest Month",
     customerDebt: "Customer Debt",
     estimatedProfit: "Estimated Profit",
     balance: "Balance",
     monthIncome: "Monthly Income",
     monthExpense: "Monthly Expense",
-    latestMonth: "Latest Month",
-    totalDebt: "Total Debt",
     accounting: "Accounting",
     customers: "Customers",
     products: "Products",
     invoices: "Invoices",
-    extension: "Extensions",
-    nkShop: "NK Shop",
     quick: "Quick Record / Invoice",
     quickAccounting: "Record",
     quickInvoice: "Invoice",
     quickCustomer: "Customer",
     quickProduct: "Product",
+    extension: "Extensions",
+    nkShop: "NK Shop",
+    eNameCard: "E-Name Card",
+    onlineStore: "Online Store",
+    orderSystem: "Order System",
+    comingSoon: "Reserved for future subscription add-ons",
     expiry: "Expiry",
     noSub: "Not Subscribed",
     trial: "Free Trial",
@@ -184,39 +187,39 @@ const TXT = {
     noRecord: "No records",
     noDebt: "No debt",
     back: "Back",
-    comingSoon: "Coming Soon",
-    extensionTitle: "Extensions",
-    digitalNameCard: "Digital Name Card",
-    shopSystem: "Online Store System",
-    shopDesc: "Users can subscribe to create their own online store, order system and product showcase.",
-    dueDate: "Due Date",
+    close: "Close",
+    open: "Open",
+    totalDebt: "Total Debt",
   },
   ms: {
     dashboard: "Papan Pemuka",
-    notice: "Notis: pemberitahuan sistem SmartAcctg akan dipaparkan di sini...",
+    notice: "Notis: pemberitahuan sistem, langganan dan kemas kini akan dipaparkan di sini...",
     recordsOverview: "Ringkasan Rekod",
+    latestMonth: "Bulan Terkini",
     customerDebt: "Hutang Pelanggan",
     estimatedProfit: "Anggaran Untung",
     balance: "Baki",
     monthIncome: "Pendapatan Bulan Ini",
     monthExpense: "Perbelanjaan Bulan Ini",
-    latestMonth: "Bulan Terkini",
-    totalDebt: "Jumlah Hutang",
     accounting: "Sistem Akaun",
     customers: "Pelanggan",
     products: "Produk",
     invoices: "Invois",
-    extension: "Fungsi Tambahan",
-    nkShop: "NK Kedai",
     quick: "Rekod Pantas / Invois",
     quickAccounting: "Rekod",
     quickInvoice: "Invois",
     quickCustomer: "Pelanggan",
     quickProduct: "Produk",
+    extension: "Fungsi Tambahan",
+    nkShop: "Kedai NK",
+    eNameCard: "Kad Nama Digital",
+    onlineStore: "Sistem Kedai Online",
+    orderSystem: "Sistem Pesanan",
+    comingSoon: "Disediakan untuk add-on langganan akan datang",
     expiry: "Tarikh Tamat",
     noSub: "Belum Langgan",
     trial: "Percubaan Percuma",
-    logout: "Log Keluar",
+    logout: "Keluar",
     changeAvatar: "Tukar Avatar",
     settings: "Tetapan",
     theme: "Tema",
@@ -236,39 +239,144 @@ const TXT = {
     noRecord: "Tiada rekod",
     noDebt: "Tiada hutang",
     back: "Kembali",
-    comingSoon: "Akan Datang",
-    extensionTitle: "Fungsi Tambahan",
-    digitalNameCard: "Kad Nama Digital",
-    shopSystem: "Sistem Kedai Online",
-    shopDesc: "Pengguna boleh melanggan untuk buka kedai online, sistem pesanan dan paparan produk sendiri.",
-    dueDate: "Tarikh Tamat",
+    close: "Tutup",
+    open: "Buka",
+    totalDebt: "Jumlah Hutang",
   },
 };
 
-const DASHBOARD_FIX_CSS = `
-  .smartacctg-dashboard-page .dashboard-card-btn {
-    cursor: pointer !important;
+const DASHBOARD_CSS = `
+  .smartacctg-dashboard-page,
+  .smartacctg-dashboard-page * {
+    box-sizing: border-box !important;
   }
 
-  .smartacctg-dashboard-page .dashboard-card-btn:active {
-    transform: scale(0.985) !important;
+  .smartacctg-dashboard-page {
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    font-weight: 400 !important;
   }
 
-  .smartacctg-dashboard-page .dashboard-summary-grid {
+  .smartacctg-dashboard-page h1,
+  .smartacctg-dashboard-page h2,
+  .smartacctg-dashboard-page h3 {
+    font-weight: 900 !important;
+  }
+
+  .smartacctg-dashboard-page p,
+  .smartacctg-dashboard-page div,
+  .smartacctg-dashboard-page span,
+  .smartacctg-dashboard-page label {
+    font-weight: 400 !important;
+  }
+
+  .smartacctg-dashboard-page button,
+  .smartacctg-dashboard-page strong {
+    font-weight: 800 !important;
+  }
+
+  .smartacctg-dashboard-topbar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    margin-bottom: 14px !important;
+  }
+
+  .smartacctg-dashboard-topbar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .smartacctg-dashboard-topbar-left,
+  .smartacctg-dashboard-topbar-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+    min-width: max-content !important;
+  }
+
+  .smartacctg-dashboard-page .sa-lang-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .smartacctg-dashboard-page .sa-lang-btn {
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    border-radius: 999px !important;
+    border: var(--sa-border-w, 2px) solid !important;
+    padding: 0 10px !important;
+    white-space: nowrap !important;
+  }
+
+  .smartacctg-dashboard-page input,
+  .smartacctg-dashboard-page select,
+  .smartacctg-dashboard-page textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: var(--sa-control-h, 54px) !important;
+    border-radius: var(--sa-radius-control, 16px) !important;
+    border: var(--sa-border-w, 2px) solid var(--sa-border, #14b8a6) !important;
+    padding: 0 var(--sa-control-x, 14px) !important;
+    font-size: 16px !important;
+    background: var(--sa-input-bg, #fff) !important;
+    color: var(--sa-input-text, #111827) !important;
+    outline: none !important;
+    font-weight: 400 !important;
+  }
+
+  .smartacctg-dashboard-page input[type="date"],
+  .smartacctg-dashboard-page input[type="month"],
+  .smartacctg-dashboard-page input[type="time"],
+  .smartacctg-dashboard-page input[type="datetime-local"] {
+    height: var(--sa-control-h, 54px) !important;
+    line-height: var(--sa-control-h, 54px) !important;
+    text-align: center !important;
+    text-align-last: center !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+
+  .smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
+  .smartacctg-dashboard-page input[type="month"]::-webkit-date-and-time-value,
+  .smartacctg-dashboard-page input[type="time"]::-webkit-date-and-time-value,
+  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-date-and-time-value {
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    line-height: normal !important;
+  }
+
+  .smartacctg-dashboard-summary-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 12px !important;
     width: 100% !important;
+    margin: 14px 0 !important;
   }
 
-  .smartacctg-dashboard-page .dashboard-feature-grid {
+  .smartacctg-dashboard-feature-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 12px !important;
     width: 100% !important;
+    margin-bottom: 14px !important;
   }
 
-  .smartacctg-dashboard-page .dashboard-quick-grid {
+  .smartacctg-dashboard-quick-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
@@ -276,60 +384,86 @@ const DASHBOARD_FIX_CSS = `
     margin-top: 14px !important;
   }
 
-  .smartacctg-dashboard-page .dashboard-row {
+  .smartacctg-dashboard-fullscreen-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    background: rgba(15, 23, 42, 0.58) !important;
+    overflow: hidden !important;
+  }
+
+  .smartacctg-dashboard-fullscreen-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 0 !important;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .smartacctg-dashboard-modal-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
-    gap: 10px !important;
     align-items: center !important;
-    width: 100% !important;
-  }
-
-  .smartacctg-dashboard-page .dashboard-row span,
-  .smartacctg-dashboard-page .dashboard-row strong {
-    font-weight: 900 !important;
-    overflow-wrap: anywhere !important;
-  }
-
-  .smartacctg-dashboard-page .dashboard-extension-panel {
-    display: grid !important;
     gap: 12px !important;
+    padding-bottom: 12px !important;
+    background: inherit !important;
   }
 
-  .smartacctg-dashboard-page .sa-notice-marquee {
-    display: inline-block !important;
-    padding-left: 100% !important;
-    animation: saNoticeMarquee 14s linear infinite !important;
+  .smartacctg-dashboard-close-x {
+    border: none !important;
+    background: transparent !important;
+    color: #dc2626 !important;
+    font-size: clamp(18px, 4vw, 24px) !important;
+    padding: 8px !important;
   }
 
-  @keyframes saNoticeMarquee {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-100%);
-    }
+  .smartacctg-dashboard-avatar-menu {
+    position: absolute !important;
+    top: 58px !important;
+    left: 0 !important;
+    width: 210px !important;
+    border-radius: 18px !important;
+    padding: 10px !important;
+    z-index: 50 !important;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24) !important;
   }
 
-  @media (max-width: 720px) {
-    .smartacctg-dashboard-page .dashboard-summary-grid {
+  @media (max-width: 680px) {
+    .smartacctg-dashboard-summary-grid {
       grid-template-columns: 1fr !important;
     }
-  }
 
-  @media (max-width: 520px) {
-    .smartacctg-dashboard-page .dashboard-feature-grid,
-    .smartacctg-dashboard-page .dashboard-quick-grid {
+    .smartacctg-dashboard-feature-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 10px !important;
     }
 
-    .smartacctg-dashboard-page .dashboard-top-card {
+    .smartacctg-dashboard-topbar {
+      align-items: center !important;
+    }
+  }
+
+  @media (max-width: 390px) {
+    .smartacctg-dashboard-feature-grid,
+    .smartacctg-dashboard-quick-grid {
       grid-template-columns: 1fr !important;
-      align-items: stretch !important;
     }
 
-    .smartacctg-dashboard-page .dashboard-top-actions {
-      justify-content: flex-start !important;
+    .smartacctg-dashboard-page .sa-lang-btn {
+      min-width: 40px !important;
+      height: 40px !important;
+      min-height: 40px !important;
+      padding: 0 8px !important;
+      font-size: 14px !important;
     }
   }
 `;
@@ -360,17 +494,13 @@ function safeParseArray<T>(raw: string | null): T[] {
   }
 }
 
-function getInitialLang(): Lang {
-  if (typeof window === "undefined") return "zh";
+function todayMonth() {
+  return new Date().toISOString().slice(0, 7);
+}
 
-  const q = new URLSearchParams(window.location.search);
-  const urlLang = q.get("lang") as Lang | null;
-  const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
-
-  if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
-  if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
-
-  return "zh";
+function getMonthKey(date?: string | null) {
+  if (!date) return "";
+  return String(date).slice(0, 7);
 }
 
 function formatRM(value: number) {
@@ -380,9 +510,10 @@ function formatRM(value: number) {
   })}`;
 }
 
-function getMonthKeyFromDate(date?: string | null) {
-  if (!date) return "";
-  return String(date).slice(0, 7);
+function getDueTime(date?: string | null) {
+  if (!date) return Number.MAX_SAFE_INTEGER;
+  const time = new Date(`${date}T00:00:00`).getTime();
+  return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
 }
 
 function isInvoiceUnpaid(inv: Invoice) {
@@ -391,17 +522,24 @@ function isInvoiceUnpaid(inv: Invoice) {
   return Number(inv.total || 0) > 0;
 }
 
-function getDateTime(value?: string | null) {
-  if (!value) return Number.MAX_SAFE_INTEGER;
-  const time = new Date(`${String(value).slice(0, 10)}T00:00:00`).getTime();
-  return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
+function getInitialLang(): Lang {
+  if (typeof window === "undefined") return "zh";
+
+  const q = new URLSearchParams(window.location.search);
+  const urlLang = q.get("lang");
+  const savedLang = safeLocalGet(LANG_KEY);
+
+  if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
+  if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
+
+  return "zh";
 }
 
 function applyThemeEverywhere(key: ThemeKey) {
   if (typeof document === "undefined") return;
 
   const fixedKey = normalizeThemeKey(key);
-  const theme = ((THEMES as any)[fixedKey] || (THEMES as any).deepTeal) as any;
+  const theme = (THEMES[fixedKey] || THEMES.deepTeal) as any;
 
   applyThemeToDocument(fixedKey);
 
@@ -412,8 +550,6 @@ function applyThemeEverywhere(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-card-bg", theme.card);
   document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
   document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
-  document.documentElement.style.setProperty("--sa-item-card", theme.itemCard || theme.itemBg || theme.card);
-  document.documentElement.style.setProperty("--sa-item-text", theme.itemText || theme.panelText || theme.text);
   document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
   document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
   document.documentElement.style.setProperty("--sa-border", theme.border);
@@ -421,7 +557,6 @@ function applyThemeEverywhere(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-text", theme.text);
   document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
   document.documentElement.style.setProperty("--sa-muted", theme.muted || theme.subText);
-  document.documentElement.style.setProperty("--sa-sub-text", theme.subText || theme.muted);
   document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.card);
   document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card);
   document.documentElement.style.setProperty("--sa-glow", theme.glow);
@@ -450,12 +585,11 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showThemes, setShowThemes] = useState(false);
+  const [activeModal, setActiveModal] = useState<FullscreenModal>(null);
+
   const [showRecordSummary, setShowRecordSummary] = useState(false);
   const [showDebtSummary, setShowDebtSummary] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
-  const [showExtensions, setShowExtensions] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -467,7 +601,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [msg, setMsg] = useState("");
 
   const t = TXT[lang];
-  const theme = ((THEMES as any)[themeKey] || (THEMES as any).deepTeal) as any;
+  const theme = (THEMES[themeKey] || THEMES.deepTeal) as any;
+  const themeSubText = theme.subText || theme.muted || "#64748b";
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
@@ -506,18 +641,21 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         const trial = JSON.parse(trialRaw);
 
         if (Date.now() < Number(trial.expiresAt)) {
+          const trialTheme = normalizeThemeKey(currentTheme);
+
           setIsTrial(true);
           setSession(null);
           setProfile(null);
+          setThemeKey(trialTheme);
+
+          saveThemeKey(trialTheme);
+          applyThemeEverywhere(trialTheme);
 
           setTransactions(safeParseArray<Txn>(safeLocalGet(TRIAL_TX_KEY)));
           setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
           setInvoices(safeParseArray<Invoice>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
-          setThemeKey(currentTheme);
-          saveThemeKey(currentTheme);
-          applyThemeEverywhere(currentTheme);
-          replaceUrlLangTheme(currentLang, currentTheme);
+          replaceUrlLangTheme(currentLang, trialTheme);
           return;
         }
       } catch {
@@ -528,6 +666,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       safeLocalRemove(TRIAL_TX_KEY);
       safeLocalRemove(TRIAL_CUSTOMERS_KEY);
       safeLocalRemove(TRIAL_INVOICES_KEY);
+
       window.location.href = "/zh";
       return;
     }
@@ -635,7 +774,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     safeLocalRemove(TRIAL_CUSTOMERS_KEY);
     safeLocalRemove(TRIAL_INVOICES_KEY);
 
-    await supabase.auth.signOut();
+    if (!isTrial) {
+      await supabase.auth.signOut();
+    }
+
     window.location.href = "/zh";
   }
 
@@ -663,10 +805,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     const { data } = supabase.storage.from("company-assets").getPublicUrl(path);
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("profiles")
       .update({ avatar_url: data.publicUrl })
       .eq("id", session.user.id);
+
+    if (updateError) {
+      setMsg(updateError.message);
+      return;
+    }
 
     setProfile((p) => (p ? { ...p, avatar_url: data.publicUrl } : p));
     setMsg(t.saved);
@@ -680,16 +827,18 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     if (!session) return;
 
+    const payload = {
+      full_name: fullName,
+      phone,
+      company_name: companyName,
+      company_reg_no: companyRegNo,
+      company_phone: companyPhone,
+      company_address: companyAddress,
+    };
+
     const { error } = await supabase
       .from("profiles")
-      .update({
-        full_name: fullName,
-        phone,
-        company_name: companyName,
-        company_reg_no: companyRegNo,
-        company_phone: companyPhone,
-        company_address: companyAddress,
-      })
+      .update(payload)
       .eq("id", session.user.id);
 
     if (error) {
@@ -697,20 +846,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
-    setProfile((p) =>
-      p
-        ? {
-            ...p,
-            full_name: fullName,
-            phone,
-            company_name: companyName,
-            company_reg_no: companyRegNo,
-            company_phone: companyPhone,
-            company_address: companyAddress,
-          }
-        : p
-    );
-
+    setProfile((p) => (p ? { ...p, ...payload } : p));
     setMsg(t.saved);
   }
 
@@ -749,7 +885,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
-    if (!session) return;
+    if (!session) {
+      setMsg("请先登录");
+      return;
+    }
 
     const { error } = await supabase
       .from("profiles")
@@ -766,11 +905,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   const latestMonthKey = useMemo(() => {
-    const months = transactions.map((tx) => getMonthKeyFromDate(tx.txn_date)).filter(Boolean);
+    const months = transactions.map((tx) => getMonthKey(tx.txn_date)).filter(Boolean);
 
-    if (months.length === 0) {
-      return new Date().toISOString().slice(0, 7);
-    }
+    if (months.length === 0) return todayMonth();
 
     return months.sort().reverse()[0];
   }, [transactions]);
@@ -799,51 +936,43 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     return monthIncome - monthExpense;
   }, [monthIncome, monthExpense]);
 
-  const debtRows = useMemo<DebtRow[]>(() => {
-    const customerRows: DebtRow[] = customers
+  const debtItems = useMemo<DebtItem[]>(() => {
+    const customerDebts: DebtItem[] = customers
       .map((c) => {
         const amount = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
 
         return {
           id: `customer-${c.id}`,
-          name: c.name || "-",
-          company: c.company_name || "",
-          amount,
-          dueDate: c.due_date || c.last_payment_date || "",
           source: "customer" as const,
+          name: c.name || "-",
+          companyName: c.company_name || "",
+          amount,
+          date: c.last_payment_date || c.created_at?.slice(0, 10) || "-",
+          sortTime: getDueTime(c.last_payment_date || c.created_at?.slice(0, 10)),
         };
       })
       .filter((x) => x.amount > 0);
 
-    const invoiceRows: DebtRow[] = invoices
+    const invoiceDebts: DebtItem[] = invoices
       .filter((inv) => isInvoiceUnpaid(inv))
-      .map((inv) => {
-        const customer = customers.find((c) => c.id === inv.customer_id);
+      .map((inv) => ({
+        id: `invoice-${inv.id}`,
+        source: "invoice" as const,
+        name: inv.customer_name || "-",
+        companyName: inv.customer_company || "",
+        amount: Number(inv.total || 0),
+        date: inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10) || "-",
+        sortTime: getDueTime(inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10)),
+      }));
 
-        return {
-          id: `invoice-${inv.id}`,
-          name: inv.customer_name || customer?.name || "-",
-          company: inv.customer_company || customer?.company_name || "",
-          amount: Number(inv.total || 0),
-          dueDate: inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10) || "",
-          source: "invoice" as const,
-        };
-      });
-
-    return [...customerRows, ...invoiceRows].sort((a, b) => {
-      const dateA = getDateTime(a.dueDate);
-      const dateB = getDateTime(b.dueDate);
-
-      if (dateA !== dateB) return dateA - dateB;
-      return b.amount - a.amount;
-    });
+    return [...customerDebts, ...invoiceDebts].sort((a, b) => a.sortTime - b.sortTime);
   }, [customers, invoices]);
 
   const totalDebt = useMemo(() => {
-    return debtRows.reduce((s, x) => s + Number(x.amount || 0), 0);
-  }, [debtRows]);
+    return debtItems.reduce((s, x) => s + Number(x.amount || 0), 0);
+  }, [debtItems]);
 
-  const topDebt = debtRows[0] || null;
+  const topDebtItem = debtItems[0] || null;
 
   const expiryText = isTrial
     ? t.trial
@@ -851,31 +980,22 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       ? new Date(profile.plan_expiry).toLocaleDateString()
       : t.noSub;
 
-  return (
-    <main
-      className="smartacctg-page smartacctg-dashboard-page"
-      data-sa-theme={themeKey}
-      data-smartacctg-theme={themeKey}
-      style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
-    >
-      <style jsx global>{DASHBOARD_FIX_CSS}</style>
+  const themeDisplayKeys = useMemo(() => {
+    return (Object.keys(THEMES) as ThemeKey[]).filter(
+      (key) => String(key) !== "futureWorld"
+    );
+  }, []);
 
-      <header
-        className="sa-card dashboard-top-card"
-        style={{
-          ...topCardStyle,
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
-        <div style={leftTopStyle}>
-          <div style={{ position: "relative" }}>
+  function renderTopbar() {
+    return (
+      <header className="smartacctg-dashboard-topbar">
+        <div className="smartacctg-dashboard-topbar-left">
+          <div style={{ position: "relative", flexShrink: 0 }}>
             <button
               type="button"
-              onClick={() => setShowAvatarMenu(!showAvatarMenu)}
+              onClick={() => setShowAvatarMenu((v) => !v)}
               style={avatarBtnStyle}
+              aria-label="avatar"
             >
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} />
@@ -885,7 +1005,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             </button>
 
             {showAvatarMenu ? (
-              <div style={avatarMenuStyle}>
+              <div
+                className="smartacctg-dashboard-avatar-menu"
+                style={{
+                  background: theme.inputBg || "#ffffff",
+                  border: `2px solid ${theme.border}`,
+                  color: theme.inputText || "#111827",
+                }}
+              >
                 <label style={menuItemStyle}>
                   {t.changeAvatar}
                   <input
@@ -900,9 +1027,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   type="button"
                   style={menuItemStyle}
                   onClick={() => {
-                    setShowSettings(true);
-                    setShowThemes(false);
+                    setActiveModal("settings");
                     setShowAvatarMenu(false);
+                    setMsg("");
                   }}
                 >
                   {t.settings}
@@ -912,9 +1039,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   type="button"
                   style={menuItemStyle}
                   onClick={() => {
-                    setShowThemes(true);
-                    setShowSettings(false);
+                    setActiveModal("themes");
                     setShowAvatarMenu(false);
+                    setMsg("");
                   }}
                 >
                   {t.theme}
@@ -927,13 +1054,24 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             ) : null}
           </div>
 
-          <div style={planTextStyle}>
+          <div style={{ ...planTextStyle, color: theme.text }}>
             {t.expiry}: {expiryText}
           </div>
         </div>
 
-        <div className="dashboard-top-actions" style={topRightStyle}>
-          <div className="sa-lang-row" style={langRowStyle}>
+        <div className="smartacctg-dashboard-topbar-right">
+          <button
+            type="button"
+            onClick={logout}
+            style={{
+              ...logoutBtnStyle,
+              background: theme.accent,
+            }}
+          >
+            {t.logout}
+          </button>
+
+          <div className="sa-lang-row">
             <button
               type="button"
               onClick={() => switchLang("zh")}
@@ -961,16 +1099,332 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               BM
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={logout}
-            style={{ ...logoutBtnStyle, background: theme.accent }}
-          >
-            {t.logout}
-          </button>
         </div>
       </header>
+    );
+  }
+
+  function renderSettingsModal() {
+    if (activeModal !== "settings") return null;
+
+    return (
+      <div className="smartacctg-dashboard-fullscreen-overlay">
+        <section
+          className="smartacctg-dashboard-fullscreen-modal"
+          style={{
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+            color: theme.text,
+          }}
+        >
+          <div className="smartacctg-dashboard-modal-header">
+            <h1 style={modalTitleStyle}>{t.settings}</h1>
+
+            <button
+              type="button"
+              className="smartacctg-dashboard-close-x"
+              onClick={() => setActiveModal(null)}
+            >
+              {t.close}
+            </button>
+          </div>
+
+          <section style={modalSectionStyle}>
+            <h2>{t.personal}</h2>
+
+            <input
+              placeholder={t.name}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <input
+              placeholder={t.phone}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={themedInputStyle}
+            />
+          </section>
+
+          <section style={modalSectionStyle}>
+            <h2>{t.company}</h2>
+
+            <input
+              placeholder={t.companyName}
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <input
+              placeholder={t.ssm}
+              value={companyRegNo}
+              onChange={(e) => setCompanyRegNo(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <input
+              placeholder={t.companyPhone}
+              value={companyPhone}
+              onChange={(e) => setCompanyPhone(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <input
+              placeholder={t.companyAddress}
+              value={companyAddress}
+              onChange={(e) => setCompanyAddress(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <button
+              type="button"
+              onClick={saveSettings}
+              style={{ ...primaryBtnStyle, background: theme.accent }}
+            >
+              {t.save}
+            </button>
+          </section>
+
+          <section style={modalSectionStyle}>
+            <h2>{t.password}</h2>
+
+            <input
+              type="password"
+              placeholder={t.newPassword}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <button
+              type="button"
+              onClick={changePassword}
+              style={{ ...primaryBtnStyle, background: theme.accent }}
+            >
+              {t.updatePassword}
+            </button>
+          </section>
+
+          {msg ? <p style={{ color: theme.accent, fontWeight: 800 }}>{msg}</p> : null}
+        </section>
+      </div>
+    );
+  }
+
+  function renderThemesModal() {
+    if (activeModal !== "themes") return null;
+
+    return (
+      <div className="smartacctg-dashboard-fullscreen-overlay">
+        <section
+          className="smartacctg-dashboard-fullscreen-modal"
+          style={{
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+            color: theme.text,
+          }}
+        >
+          <div className="smartacctg-dashboard-modal-header">
+            <h1 style={modalTitleStyle}>{t.theme}</h1>
+
+            <button
+              type="button"
+              className="smartacctg-dashboard-close-x"
+              onClick={() => setActiveModal(null)}
+            >
+              {t.close}
+            </button>
+          </div>
+
+          <div style={themeGridStyle}>
+            {themeDisplayKeys.map((key) => {
+              const itemTheme = (THEMES[key] || THEMES.deepTeal) as any;
+              const active = normalizeThemeKey(key) === themeKey;
+
+              return (
+                <button
+                  type="button"
+                  key={key}
+                  onClick={() => changeTheme(key)}
+                  style={{
+                    ...themeBtnStyle,
+                    borderColor: active ? itemTheme.accent : itemTheme.border,
+                    background: itemTheme.banner || itemTheme.card,
+                    color: itemTheme.text,
+                    boxShadow: itemTheme.glow,
+                  }}
+                >
+                  {itemTheme.name || key}
+                  {active ? " ✓" : ""}
+                </button>
+              );
+            })}
+          </div>
+
+          {msg ? <p style={{ color: theme.accent, fontWeight: 800 }}>{msg}</p> : null}
+        </section>
+      </div>
+    );
+  }
+
+  function renderExtensionsModal() {
+    if (activeModal !== "extensions") return null;
+
+    return (
+      <div className="smartacctg-dashboard-fullscreen-overlay">
+        <section
+          className="smartacctg-dashboard-fullscreen-modal"
+          style={{
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+            color: theme.text,
+          }}
+        >
+          <div className="smartacctg-dashboard-modal-header">
+            <h1 style={modalTitleStyle}>{t.extension}</h1>
+
+            <button
+              type="button"
+              className="smartacctg-dashboard-close-x"
+              onClick={() => setActiveModal(null)}
+            >
+              {t.close}
+            </button>
+          </div>
+
+          <div className="smartacctg-dashboard-feature-grid">
+            <button
+              type="button"
+              style={{
+                ...featureBtnStyle,
+                background: theme.itemBg || theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+                boxShadow: theme.glow,
+              }}
+              onClick={() => setMsg(t.comingSoon)}
+            >
+              {t.eNameCard}
+            </button>
+
+            <button
+              type="button"
+              style={{
+                ...featureBtnStyle,
+                background: theme.itemBg || theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+                boxShadow: theme.glow,
+              }}
+              onClick={() => setMsg(t.comingSoon)}
+            >
+              {t.onlineStore}
+            </button>
+          </div>
+
+          <section
+            className="sa-card"
+            style={{
+              ...infoBoxStyle,
+              background: theme.panelBg || theme.card,
+              borderColor: theme.border,
+              color: theme.panelText || theme.text,
+            }}
+          >
+            <h2>{t.onlineStore}</h2>
+            <p>{t.comingSoon}</p>
+          </section>
+
+          {msg ? <p style={{ color: theme.accent, fontWeight: 800 }}>{msg}</p> : null}
+        </section>
+      </div>
+    );
+  }
+
+  function renderNkShopModal() {
+    if (activeModal !== "nkshop") return null;
+
+    return (
+      <div className="smartacctg-dashboard-fullscreen-overlay">
+        <section
+          className="smartacctg-dashboard-fullscreen-modal"
+          style={{
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+            color: theme.text,
+          }}
+        >
+          <div className="smartacctg-dashboard-modal-header">
+            <h1 style={modalTitleStyle}>{t.nkShop}</h1>
+
+            <button
+              type="button"
+              className="smartacctg-dashboard-close-x"
+              onClick={() => setActiveModal(null)}
+            >
+              {t.close}
+            </button>
+          </div>
+
+          <section
+            className="sa-card"
+            style={{
+              ...infoBoxStyle,
+              background: theme.panelBg || theme.card,
+              borderColor: theme.border,
+              color: theme.panelText || theme.text,
+            }}
+          >
+            <h2>{t.nkShop}</h2>
+            <p>{t.comingSoon}</p>
+
+            <div className="smartacctg-dashboard-feature-grid">
+              <button
+                type="button"
+                style={{
+                  ...quickBtnStyle,
+                  borderColor: theme.border,
+                  color: theme.accent,
+                  background: theme.inputBg,
+                }}
+              >
+                {t.onlineStore}
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  ...quickBtnStyle,
+                  borderColor: theme.border,
+                  color: theme.accent,
+                  background: theme.inputBg,
+                }}
+              >
+                {t.orderSystem}
+              </button>
+            </div>
+          </section>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <main
+      className="smartacctg-page smartacctg-dashboard-page"
+      data-sa-theme={themeKey}
+      data-smartacctg-theme={themeKey}
+      style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
+    >
+      <style jsx global>{DASHBOARD_CSS}</style>
+
+      {renderTopbar()}
 
       {page === "home" ? (
         <>
@@ -986,13 +1440,13 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             <h1 style={titleStyle}>{t.dashboard}</h1>
 
             <div style={noticeWrapStyle}>
-              <div className="sa-notice-marquee">{t.notice}</div>
+              <div style={noticeMarqueeStyle}>{t.notice}</div>
             </div>
           </section>
 
-          <section className="dashboard-summary-grid" style={summaryGridStyle}>
+          <section className="smartacctg-dashboard-summary-grid">
             <div
-              className="sa-card"
+              className="sa-card dashboard-stat-card"
               style={{
                 ...summaryBoxStyle,
                 background: theme.card,
@@ -1003,7 +1457,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             >
               <button
                 type="button"
-                onClick={() => setShowRecordSummary(!showRecordSummary)}
+                onClick={() => setShowRecordSummary((v) => !v)}
                 style={summaryHeaderBtnStyle}
               >
                 <span>{t.recordsOverview}</span>
@@ -1012,27 +1466,26 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
               {showRecordSummary ? (
                 <div style={summaryDetailListStyle}>
-                  <div className="dashboard-row" style={summaryRowStyle}>
-                    <span>{t.latestMonth}</span>
-                    <strong>{latestMonthKey}</strong>
+                  <div style={{ ...smallNoteStyle, color: themeSubText }}>
+                    {t.latestMonth}: {latestMonthKey}
                   </div>
 
-                  <div className="dashboard-row" style={summaryRowStyle}>
+                  <div style={summaryRowStyle}>
                     <span>{t.balance}</span>
                     <strong style={{ color: theme.accent }}>{formatRM(balance)}</strong>
                   </div>
 
-                  <div className="dashboard-row" style={summaryRowStyle}>
+                  <div style={summaryRowStyle}>
                     <span>{t.monthIncome}</span>
                     <strong style={{ color: "#16a34a" }}>{formatRM(monthIncome)}</strong>
                   </div>
 
-                  <div className="dashboard-row" style={summaryRowStyle}>
+                  <div style={summaryRowStyle}>
                     <span>{t.monthExpense}</span>
                     <strong style={{ color: "#dc2626" }}>{formatRM(monthExpense)}</strong>
                   </div>
 
-                  <div className="dashboard-row" style={summaryRowStyle}>
+                  <div style={summaryRowStyle}>
                     <span>{t.estimatedProfit}</span>
                     <strong style={{ color: estimatedProfit < 0 ? "#dc2626" : theme.accent }}>
                       {formatRM(estimatedProfit)}
@@ -1040,7 +1493,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   </div>
                 </div>
               ) : (
-                <div className="dashboard-row" style={{ ...summaryRowStyle, marginTop: 14 }}>
+                <div style={summaryRowStyle}>
                   <span>{t.estimatedProfit}</span>
                   <strong style={{ color: estimatedProfit < 0 ? "#dc2626" : theme.accent }}>
                     {formatRM(estimatedProfit)}
@@ -1050,7 +1503,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             </div>
 
             <div
-              className="sa-card"
+              className="sa-card dashboard-stat-card"
               style={{
                 ...summaryBoxStyle,
                 background: theme.card,
@@ -1061,59 +1514,56 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             >
               <button
                 type="button"
-                onClick={() => setShowDebtSummary(!showDebtSummary)}
+                onClick={() => setShowDebtSummary((v) => !v)}
                 style={summaryHeaderBtnStyle}
               >
-                <span style={{ color: "#dc2626" }}>{t.customerDebt}</span>
-                <strong style={{ color: "#dc2626" }}>{showDebtSummary ? "▲" : "▼"}</strong>
+                <span>{t.customerDebt}</span>
+                <strong>{showDebtSummary ? "▲" : "▼"}</strong>
               </button>
 
               {showDebtSummary ? (
                 <div style={summaryDetailListStyle}>
-                  <div className="dashboard-row" style={summaryRowStyle}>
+                  <div style={summaryRowStyle}>
                     <span>{t.totalDebt}</span>
-                    <strong style={{ color: "#dc2626" }}>{formatRM(totalDebt)}</strong>
+                    <strong style={{ color: totalDebt > 0 ? "#dc2626" : theme.accent }}>
+                      {formatRM(totalDebt)}
+                    </strong>
                   </div>
 
-                  {debtRows.length === 0 ? (
-                    <div className="dashboard-row" style={summaryRowStyle}>
+                  {debtItems.length === 0 ? (
+                    <div style={summaryRowStyle}>
                       <span>{t.noDebt}</span>
-                      <strong>RM 0.00</strong>
+                      <strong>{formatRM(0)}</strong>
                     </div>
                   ) : (
-                    debtRows.map((row) => (
-                      <div key={row.id} style={debtItemStyle}>
-                        <div style={{ color: "#dc2626", fontWeight: 900 }}>
-                          {row.company ? `${row.name} / ${row.company}` : row.name}
+                    debtItems.map((item) => (
+                      <div key={item.id} style={debtItemStyle}>
+                        <div>
+                          <strong>
+                            {item.name}
+                            {item.companyName ? ` / ${item.companyName}` : ""}
+                          </strong>
+                          <div style={{ ...smallNoteStyle, color: themeSubText }}>
+                            {item.date}
+                          </div>
                         </div>
 
-                        <div className="dashboard-row" style={summaryRowStyle}>
-                          <span>{row.dueDate ? `${t.dueDate}: ${row.dueDate}` : t.customerDebt}</span>
-                          <strong style={{ color: "#dc2626" }}>{formatRM(row.amount)}</strong>
-                        </div>
+                        <strong style={{ color: "#dc2626" }}>{formatRM(item.amount)}</strong>
                       </div>
                     ))
                   )}
                 </div>
               ) : (
-                <div style={{ marginTop: 14 }}>
-                  {topDebt ? (
-                    <>
-                      <div style={{ color: "#dc2626", fontWeight: 900 }}>
-                        {topDebt.company ? `${topDebt.name} / ${topDebt.company}` : topDebt.name}
-                      </div>
+                <div style={summaryRowStyle}>
+                  <span>
+                    {topDebtItem
+                      ? `${topDebtItem.name}${topDebtItem.companyName ? ` / ${topDebtItem.companyName}` : ""}`
+                      : t.noDebt}
+                  </span>
 
-                      <div className="dashboard-row" style={summaryRowStyle}>
-                        <span>{topDebt.dueDate ? `${t.dueDate}: ${topDebt.dueDate}` : t.customerDebt}</span>
-                        <strong style={{ color: "#dc2626" }}>{formatRM(topDebt.amount)}</strong>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="dashboard-row" style={summaryRowStyle}>
-                      <span>{t.noDebt}</span>
-                      <strong>RM 0.00</strong>
-                    </div>
-                  )}
+                  <strong style={{ color: topDebtItem ? "#dc2626" : theme.accent }}>
+                    {formatRM(topDebtItem?.amount || 0)}
+                  </strong>
                 </div>
               )}
             </div>
@@ -1126,11 +1576,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               borderColor: theme.border,
               boxShadow: theme.glow,
               color: theme.text,
+              marginBottom: 14,
             }}
           >
             <button
               type="button"
-              onClick={() => setShowQuickMenu(!showQuickMenu)}
+              onClick={() => setShowQuickMenu((v) => !v)}
               style={quickHeaderBtnStyle}
             >
               <span>{t.quick}</span>
@@ -1138,11 +1589,16 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             </button>
 
             {showQuickMenu ? (
-              <div className="dashboard-quick-grid">
+              <div className="smartacctg-dashboard-quick-grid">
                 <button
                   type="button"
                   onClick={() => goQuick("/dashboard/records")}
-                  style={quickBtnStyle(theme)}
+                  style={{
+                    ...quickBtnStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                    background: theme.inputBg,
+                  }}
                 >
                   {t.quickAccounting}
                 </button>
@@ -1150,7 +1606,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 <button
                   type="button"
                   onClick={() => goQuick("/dashboard/invoices")}
-                  style={quickBtnStyle(theme)}
+                  style={{
+                    ...quickBtnStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                    background: theme.inputBg,
+                  }}
                 >
                   {t.quickInvoice}
                 </button>
@@ -1158,7 +1619,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 <button
                   type="button"
                   onClick={() => goQuick("/dashboard/customers")}
-                  style={quickBtnStyle(theme)}
+                  style={{
+                    ...quickBtnStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                    background: theme.inputBg,
+                  }}
                 >
                   {t.quickCustomer}
                 </button>
@@ -1166,7 +1632,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 <button
                   type="button"
                   onClick={() => goQuick("/dashboard/products")}
-                  style={quickBtnStyle(theme)}
+                  style={{
+                    ...quickBtnStyle,
+                    borderColor: theme.border,
+                    color: theme.accent,
+                    background: theme.inputBg,
+                  }}
                 >
                   {t.quickProduct}
                 </button>
@@ -1174,12 +1645,18 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             ) : null}
           </section>
 
-          <section className="dashboard-feature-grid" style={featureGridStyle}>
+          <section className="smartacctg-dashboard-feature-grid">
             <button
               type="button"
               onClick={() => go("/dashboard/records")}
-              className="sa-card dashboard-card-btn"
-              style={featureBtnStyle(theme)}
+              className="sa-card"
+              style={{
+                ...featureBtnStyle,
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+                color: theme.text,
+              }}
             >
               {t.accounting}
             </button>
@@ -1187,8 +1664,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             <button
               type="button"
               onClick={() => go("/dashboard/customers")}
-              className="sa-card dashboard-card-btn"
-              style={featureBtnStyle(theme)}
+              className="sa-card"
+              style={{
+                ...featureBtnStyle,
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+                color: theme.text,
+              }}
             >
               {t.customers}
             </button>
@@ -1196,8 +1679,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             <button
               type="button"
               onClick={() => go("/dashboard/products")}
-              className="sa-card dashboard-card-btn"
-              style={featureBtnStyle(theme)}
+              className="sa-card"
+              style={{
+                ...featureBtnStyle,
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+                color: theme.text,
+              }}
             >
               {t.products}
             </button>
@@ -1205,17 +1694,32 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             <button
               type="button"
               onClick={() => go("/dashboard/invoices")}
-              className="sa-card dashboard-card-btn"
-              style={featureBtnStyle(theme)}
+              className="sa-card"
+              style={{
+                ...featureBtnStyle,
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+                color: theme.text,
+              }}
             >
               {t.invoices}
             </button>
 
             <button
               type="button"
-              onClick={() => setShowExtensions(!showExtensions)}
-              className="sa-card dashboard-card-btn"
-              style={featureBtnStyle(theme)}
+              onClick={() => {
+                setActiveModal("extensions");
+                setMsg("");
+              }}
+              className="sa-card"
+              style={{
+                ...featureBtnStyle,
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+                color: theme.text,
+              }}
             >
               {t.extension}
             </button>
@@ -1223,49 +1727,25 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             <button
               type="button"
               onClick={() => {
-                setShowExtensions(true);
-                setMsg(t.shopDesc);
+                setActiveModal("nkshop");
+                setMsg("");
               }}
-              className="sa-card dashboard-card-btn"
-              style={featureBtnStyle(theme)}
-            >
-              {t.nkShop}
-            </button>
-          </section>
-
-          {showExtensions ? (
-            <section
-              className="sa-card dashboard-extension-panel"
+              className="sa-card"
               style={{
+                ...featureBtnStyle,
                 background: theme.card,
                 borderColor: theme.border,
                 boxShadow: theme.glow,
                 color: theme.text,
               }}
             >
-              <h2 style={sectionTitleStyle}>{t.extensionTitle}</h2>
-
-              <button
-                type="button"
-                onClick={() => setMsg(`${t.digitalNameCard} - ${t.comingSoon}`)}
-                style={extensionBtnStyle(theme)}
-              >
-                {t.digitalNameCard}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMsg(t.shopDesc)}
-                style={extensionBtnStyle(theme)}
-              >
-                {t.shopSystem}
-              </button>
-
-              {msg ? <p style={{ ...msgStyle, color: theme.accent }}>{msg}</p> : null}
-            </section>
-          ) : null}
+              {t.nkShop}
+            </button>
+          </section>
         </>
-      ) : (
+      ) : null}
+
+      {page !== "home" ? (
         <section
           className="sa-card"
           style={{
@@ -1296,134 +1776,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             {page === "invoices" && t.invoices}
           </h1>
         </section>
-      )}
-
-      {showSettings ? (
-        <section
-          className="sa-card"
-          style={{
-            background: theme.card,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-            color: theme.text,
-          }}
-        >
-          <h2 style={sectionTitleStyle}>{t.settings}</h2>
-
-          <h3>{t.personal}</h3>
-
-          <input
-            placeholder={t.name}
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            style={themedInputStyle}
-          />
-
-          <input
-            placeholder={t.phone}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            style={themedInputStyle}
-          />
-
-          <h3>{t.company}</h3>
-
-          <input
-            placeholder={t.companyName}
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            style={themedInputStyle}
-          />
-
-          <input
-            placeholder={t.ssm}
-            value={companyRegNo}
-            onChange={(e) => setCompanyRegNo(e.target.value)}
-            style={themedInputStyle}
-          />
-
-          <input
-            placeholder={t.companyPhone}
-            value={companyPhone}
-            onChange={(e) => setCompanyPhone(e.target.value)}
-            style={themedInputStyle}
-          />
-
-          <input
-            placeholder={t.companyAddress}
-            value={companyAddress}
-            onChange={(e) => setCompanyAddress(e.target.value)}
-            style={themedInputStyle}
-          />
-
-          <button
-            type="button"
-            onClick={saveSettings}
-            style={{ ...primaryBtnStyle, background: theme.accent }}
-          >
-            {t.save}
-          </button>
-
-          <h3>{t.password}</h3>
-
-          <input
-            type="password"
-            placeholder={t.newPassword}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            style={themedInputStyle}
-          />
-
-          <button
-            type="button"
-            onClick={changePassword}
-            style={{ ...primaryBtnStyle, background: theme.accent }}
-          >
-            {t.updatePassword}
-          </button>
-
-          {msg ? <p style={{ ...msgStyle, color: theme.accent }}>{msg}</p> : null}
-        </section>
       ) : null}
 
-      {showThemes ? (
-        <section
-          className="sa-card"
-          style={{
-            background: theme.card,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-            color: theme.text,
-          }}
-        >
-          <h2 style={sectionTitleStyle}>{t.theme}</h2>
-
-          <div style={themeGridStyle}>
-            {(Object.keys(THEMES) as ThemeKey[]).map((key) => {
-              const themeOption = ((THEMES as any)[key] || {}) as any;
-
-              return (
-                <button
-                  type="button"
-                  key={key}
-                  onClick={() => changeTheme(key)}
-                  style={{
-                    ...themeBtnStyle,
-                    borderColor: themeOption.border || theme.border,
-                    background: themeOption.banner || themeOption.card || theme.card,
-                    color: themeOption.text || theme.text,
-                    boxShadow: themeOption.glow || theme.glow,
-                  }}
-                >
-                  {themeOption.name || key}
-                </button>
-              );
-            })}
-          </div>
-
-          {msg ? <p style={{ ...msgStyle, color: theme.accent }}>{msg}</p> : null}
-        </section>
-      ) : null}
+      {renderSettingsModal()}
+      {renderThemesModal()}
+      {renderExtensionsModal()}
+      {renderNkShopModal()}
     </main>
   );
 }
@@ -1438,29 +1796,6 @@ const pageStyle: CSSProperties = {
     '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
 };
 
-const topCardStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 14,
-};
-
-const leftTopStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  minWidth: 0,
-};
-
-const topRightStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "flex-end",
-  gap: 10,
-  flexWrap: "wrap",
-};
-
 const avatarBtnStyle: CSSProperties = {
   width: 52,
   height: 52,
@@ -1473,25 +1808,15 @@ const avatarBtnStyle: CSSProperties = {
   overflow: "hidden",
   boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
   padding: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const avatarImgStyle: CSSProperties = {
   width: "100%",
   height: "100%",
   objectFit: "cover",
-};
-
-const avatarMenuStyle: CSSProperties = {
-  position: "absolute",
-  top: 60,
-  left: 0,
-  width: 190,
-  background: "#fff",
-  color: "#111827",
-  borderRadius: 16,
-  padding: 10,
-  zIndex: 99,
-  boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
 };
 
 const menuItemStyle: CSSProperties = {
@@ -1501,72 +1826,59 @@ const menuItemStyle: CSSProperties = {
   border: "none",
   background: "transparent",
   textAlign: "left",
-  fontWeight: 900,
-  borderRadius: 10,
-  color: "#111827",
+  borderRadius: 12,
+  color: "inherit",
+  cursor: "pointer",
 };
 
 const planTextStyle: CSSProperties = {
-  fontWeight: 900,
   lineHeight: 1.25,
   overflowWrap: "anywhere",
+  whiteSpace: "nowrap",
+  fontSize: "clamp(13px, 3vw, 16px)",
 };
 
 const logoutBtnStyle: CSSProperties = {
   color: "#fff",
   border: "none",
-  borderRadius: "var(--sa-radius-control)",
+  borderRadius: "999px",
   padding: "0 14px",
-  minHeight: "var(--sa-control-h)",
-  fontWeight: 900,
+  minHeight: 44,
+  fontWeight: 800,
   whiteSpace: "nowrap",
 };
+
+const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
+  borderColor: theme.accent,
+  background: active ? theme.accent : theme.inputBg || "#fff",
+  color: active ? "#fff" : theme.accent,
+});
 
 const titleStyle: CSSProperties = {
   margin: 0,
   fontSize: "var(--sa-fs-2xl)",
-  fontWeight: 900,
   lineHeight: 1.15,
-};
-
-const sectionTitleStyle: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 14,
   fontWeight: 900,
 };
 
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 6,
-  flexWrap: "nowrap",
-};
-
-const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
-  border: `var(--sa-border-w) solid ${theme.accent}`,
-  borderColor: theme.accent,
-  background: active ? theme.accent : theme.inputBg || "#fff",
-  color: active ? "#fff" : theme.accent,
-  borderRadius: "999px",
-  minHeight: 44,
-  minWidth: 52,
-  padding: "0 12px",
+const modalTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-2xl)",
+  lineHeight: 1.15,
   fontWeight: 900,
-});
+};
 
 const noticeWrapStyle: CSSProperties = {
   marginTop: 12,
   overflow: "hidden",
   color: "#dc2626",
-  fontWeight: 900,
   whiteSpace: "nowrap",
 };
 
-const summaryGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 12,
-  marginTop: 14,
-  marginBottom: 14,
+const noticeMarqueeStyle: CSSProperties = {
+  display: "inline-block",
+  paddingLeft: "100%",
+  animation: "saNoticeMarquee 12s linear infinite",
 };
 
 const summaryBoxStyle: CSSProperties = {
@@ -1585,8 +1897,7 @@ const summaryHeaderBtnStyle: CSSProperties = {
   color: "inherit",
   padding: 0,
   minHeight: 0,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-lg)",
+  fontSize: "var(--sa-fs-base)",
 };
 
 const summaryDetailListStyle: CSSProperties = {
@@ -1600,37 +1911,30 @@ const summaryRowStyle: CSSProperties = {
   gridTemplateColumns: "minmax(0, 1fr) auto",
   gap: 10,
   alignItems: "center",
-  fontWeight: 900,
   lineHeight: 1.25,
 };
 
 const debtItemStyle: CSSProperties = {
   display: "grid",
-  gap: 5,
-  paddingTop: 8,
-  borderTop: "1px solid rgba(220,38,38,0.25)",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 10,
+  alignItems: "start",
+  lineHeight: 1.35,
 };
 
-const featureGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 12,
-  marginBottom: 14,
+const smallNoteStyle: CSSProperties = {
+  fontSize: "var(--sa-fs-sm)",
+  lineHeight: 1.35,
 };
 
-const featureBtnStyle = (theme: any): CSSProperties => ({
-  minHeight: 76,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-lg)",
-  textAlign: "center",
-  background: theme.card,
-  borderColor: theme.border,
-  boxShadow: theme.glow,
-  color: theme.text,
+const featureBtnStyle: CSSProperties = {
+  minHeight: 74,
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
-});
+  fontSize: "var(--sa-fs-lg)",
+  textAlign: "center",
+};
 
 const quickHeaderBtnStyle: CSSProperties = {
   width: "100%",
@@ -1643,30 +1947,16 @@ const quickHeaderBtnStyle: CSSProperties = {
   color: "inherit",
   padding: 0,
   minHeight: 0,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-lg)",
+  fontSize: "var(--sa-fs-base)",
 };
 
-const quickBtnStyle = (theme: any): CSSProperties => ({
-  background: theme.inputBg || "#fff",
-  border: `var(--sa-border-w) solid ${theme.border}`,
-  color: theme.accent,
+const quickBtnStyle: CSSProperties = {
+  background: "#fff",
+  border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: 58,
+  minHeight: 56,
   padding: "0 12px",
-  fontWeight: 900,
-});
-
-const extensionBtnStyle = (theme: any): CSSProperties => ({
-  width: "100%",
-  minHeight: 60,
-  border: `var(--sa-border-w) solid ${theme.border}`,
-  borderRadius: "var(--sa-radius-control)",
-  background: theme.inputBg || "#fff",
-  color: theme.accent,
-  padding: "0 14px",
-  fontWeight: 900,
-});
+};
 
 const backBtnStyle: CSSProperties = {
   background: "#fff",
@@ -1674,7 +1964,6 @@ const backBtnStyle: CSSProperties = {
   borderRadius: "var(--sa-radius-control)",
   padding: "0 var(--sa-control-x)",
   minHeight: "var(--sa-control-h)",
-  fontWeight: 900,
   marginBottom: 14,
 };
 
@@ -1689,7 +1978,6 @@ const inputStyle: CSSProperties = {
   fontSize: 16,
   background: "#fff",
   color: "#111827",
-  outline: "none",
 };
 
 const primaryBtnStyle: CSSProperties = {
@@ -1697,13 +1985,19 @@ const primaryBtnStyle: CSSProperties = {
   color: "#fff",
   padding: "0 18px",
   borderRadius: "var(--sa-radius-control)",
-  fontWeight: 900,
   minHeight: "var(--sa-control-h)",
   marginBottom: 16,
 };
 
+const modalSectionStyle: CSSProperties = {
+  display: "grid",
+  gap: 10,
+  marginBottom: 22,
+};
+
 const themeGridStyle: CSSProperties = {
   display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
   gap: 12,
 };
 
@@ -1711,11 +2005,13 @@ const themeBtnStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
-  fontWeight: 900,
+  minHeight: 88,
+  fontSize: "var(--sa-fs-base)",
 };
 
-const msgStyle: CSSProperties = {
-  marginTop: 12,
-  fontWeight: 900,
-  lineHeight: 1.5,
+const infoBoxStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+  marginTop: 14,
 };
