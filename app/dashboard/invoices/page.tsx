@@ -7,6 +7,7 @@ import {
   type ThemeKey,
   applyThemeToDocument,
   getThemeKeyFromUrlOrLocalStorage,
+  isThemeKey,
   normalizeThemeKey,
   saveThemeKey,
 } from "@/lib/smartacctgTheme";
@@ -457,11 +458,23 @@ const DEFAULT_PAYMENT_OPTIONS: PaymentOption[] = [
   { id: "tng-ewallet", name: "TNG eWallet", link: "" },
   { id: "credit-term", name: "Credit Term" },
 ];
+
 const INVOICE_PAGE_CSS = `
+  .smartacctg-invoice-page {
+    --sa-btn-fs: var(--sa-fs-base, 16px);
+  }
+
   .smartacctg-invoice-page input[type="date"] {
-    text-align: center !important;
     display: block !important;
     width: 100% !important;
+    min-width: 0 !important;
+    height: var(--sa-control-h, 54px) !important;
+    min-height: var(--sa-control-h, 54px) !important;
+    text-align: center !important;
+    text-align-last: center !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: var(--sa-control-h, 54px) !important;
     -webkit-appearance: none !important;
     appearance: none !important;
   }
@@ -471,15 +484,43 @@ const INVOICE_PAGE_CSS = `
     width: 100% !important;
     margin: 0 auto !important;
     min-height: 1.6em !important;
+    line-height: normal !important;
   }
 
   .smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit {
     width: 100% !important;
+    padding: 0 !important;
     text-align: center !important;
   }
 
   .smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    width: 100% !important;
+    display: flex !important;
     justify-content: center !important;
+  }
+
+  .smartacctg-invoice-page .invoice-date-field {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .smartacctg-invoice-page .invoice-record-action-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin-top: 14px !important;
+  }
+
+  .smartacctg-invoice-page .invoice-record-action-row button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 52px !important;
+    border-radius: var(--sa-radius-control, 16px) !important;
+    padding: 0 12px !important;
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+    line-height: 1.15 !important;
   }
 
   .smartacctg-invoice-page .fullscreen-invoice-modal {
@@ -526,11 +567,14 @@ const INVOICE_PAGE_CSS = `
   }
 
   @media (max-width: 768px) {
-    .smartacctg-invoice-page .responsive-actions,
-    .smartacctg-invoice-page .invoice-action-row {
+    .smartacctg-invoice-page .responsive-actions {
       display: grid !important;
       grid-template-columns: 1fr !important;
       gap: 10px !important;
+    }
+
+    .smartacctg-invoice-page .invoice-record-action-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
 
     .smartacctg-invoice-page .fullscreen-invoice-modal input,
@@ -914,6 +958,7 @@ function formatDateTime(value?: string | null, fallbackDate?: string | null) {
     return value || fallbackDate || "-";
   }
 }
+
 export default function InvoicePage() {
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
@@ -1030,17 +1075,37 @@ export default function InvoicePage() {
     return "zh";
   }
 
+  function getThemeFromUrlOnly(): ThemeKey | null {
+    const q = new URLSearchParams(window.location.search);
+    const rawTheme = q.get("theme");
+
+    if (!rawTheme) return null;
+
+    if (isThemeKey(rawTheme)) return normalizeThemeKey(rawTheme);
+
+    if (rawTheme === "futureWorld" && isThemeKey("futureForest")) {
+      return "futureForest";
+    }
+
+    return null;
+  }
+
   function getCurrentTheme(): ThemeKey {
+    const urlTheme = getThemeFromUrlOnly();
+    if (urlTheme) return urlTheme;
+
     return getThemeKeyFromUrlOrLocalStorage("deepTeal");
   }
 
   function syncThemeToUrlAndLocalStorage(nextTheme: ThemeKey, nextLang = lang) {
-    saveThemeKey(nextTheme);
-    applyThemeToDocument(nextTheme);
+    const fixedTheme = normalizeThemeKey(nextTheme);
+
+    saveThemeKey(fixedTheme);
+    applyThemeToDocument(fixedTheme);
 
     const q = new URLSearchParams(window.location.search);
     q.set("lang", nextLang);
-    q.set("theme", nextTheme);
+    q.set("theme", fixedTheme);
     q.set("refresh", String(Date.now()));
 
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
@@ -1049,17 +1114,12 @@ export default function InvoicePage() {
   function switchLang(next: Lang) {
     setLang(next);
     safeLocalSet(LANG_KEY, next);
-
-    const q = new URLSearchParams(window.location.search);
-    q.set("lang", next);
-    q.set("theme", themeKey);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    syncThemeToUrlAndLocalStorage(themeKey, next);
   }
 
   async function init() {
     const currentLang = getCurrentLang();
+    const urlTheme = getThemeFromUrlOnly();
     const currentTheme = getCurrentTheme();
 
     setLang(currentLang);
@@ -1115,6 +1175,8 @@ export default function InvoicePage() {
           setProducts(trialProducts.map((p: any) => normalizeProduct(p)));
           setInvoices(safeParseArray<InvoiceRecord>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
+          syncThemeToUrlAndLocalStorage(currentTheme, currentLang);
+
           if (shouldOpenNew) {
             setTimeout(() => {
               openNewInvoice(true);
@@ -1152,6 +1214,8 @@ export default function InvoicePage() {
       .eq("id", uid)
       .single();
 
+    let finalTheme = currentTheme;
+
     if (profile) {
       setCompanyName(profile.company_name || "NK DIGITAL HUB");
       setCompanyRegNo(profile.company_reg_no || "");
@@ -1161,13 +1225,15 @@ export default function InvoicePage() {
 
       const profileTheme = normalizeThemeKey(profile.theme || currentTheme, currentTheme);
 
-      if (profile.theme && THEMES[profileTheme]) {
+      if (!urlTheme && profile.theme && THEMES[profileTheme]) {
+        finalTheme = profileTheme;
         setThemeKey(profileTheme);
         saveThemeKey(profileTheme);
         applyThemeToDocument(profileTheme);
-        syncThemeToUrlAndLocalStorage(profileTheme, currentLang);
       }
     }
+
+    syncThemeToUrlAndLocalStorage(finalTheme, currentLang);
 
     await loadCustomers(uid);
     await loadProducts(uid);
@@ -1325,7 +1391,8 @@ export default function InvoicePage() {
       .toLowerCase()
       .includes(q);
   });
-    function savePaymentOptions(next: PaymentOption[]) {
+
+  function savePaymentOptions(next: PaymentOption[]) {
     setPaymentOptions(next);
     safeLocalSet(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
   }
@@ -1891,7 +1958,8 @@ export default function InvoicePage() {
 
     setLoading(false);
   }
-    function startEditInvoice(inv: InvoiceRecord) {
+
+  function startEditInvoice(inv: InvoiceRecord) {
     setEditInvoiceId(inv.id);
     setInvoiceNo(inv.invoice_no || makeInvoiceNo());
     setInvoiceDate(inv.invoice_date || today());
@@ -2047,11 +2115,12 @@ export default function InvoicePage() {
   function goBack() {
     const q = new URLSearchParams(window.location.search);
     const modeParam = q.get("mode");
+    const currentTheme = normalizeThemeKey(themeKey);
 
     window.location.href =
       modeParam === "trial"
-        ? `/dashboard?mode=trial&lang=${lang}&theme=${themeKey}&refresh=${Date.now()}`
-        : `/dashboard?lang=${lang}&theme=${themeKey}&refresh=${Date.now()}`;
+        ? `/dashboard?mode=trial&lang=${lang}&theme=${currentTheme}&refresh=${Date.now()}`
+        : `/dashboard?lang=${lang}&theme=${currentTheme}&refresh=${Date.now()}`;
   }
 
   function openNewInvoice(forceFullscreen = false) {
@@ -2097,11 +2166,11 @@ export default function InvoicePage() {
     const q = new URLSearchParams(window.location.search);
     q.delete("open");
     q.delete("fullscreen");
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
 
-    const nextQuery = q.toString();
-    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
-
-    window.history.replaceState({}, "", nextUrl);
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
   function renderChargeInput(
@@ -2491,10 +2560,12 @@ export default function InvoicePage() {
       </div>
     );
   }
-    return (
+
+  return (
     <main
       className="smartacctg-page smartacctg-invoice-page"
       data-sa-theme={themeKey}
+      data-smartacctg-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
       <style jsx global>{INVOICE_PAGE_CSS}</style>
@@ -2604,7 +2675,7 @@ export default function InvoicePage() {
                     boxShadow: theme.glow,
                   }}
                 >
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <strong>{inv.invoice_no}</strong>
 
                     <div style={{ ...mutedTextStyle, color: theme.muted }}>
@@ -2620,7 +2691,7 @@ export default function InvoicePage() {
                       {t.phone}：{inv.customer_phone || "-"}
                     </div>
 
-                    <div className="invoice-action-row" style={recordActionRowStyle}>
+                    <div className="invoice-record-action-row" style={recordActionRowStyle}>
                       <button
                         type="button"
                         onClick={() => startEditInvoice(inv)}
@@ -2663,7 +2734,7 @@ export default function InvoicePage() {
                     </div>
                   </div>
 
-                  <div style={{ textAlign: "right" }}>
+                  <div style={{ textAlign: "right", minWidth: 100 }}>
                     <strong style={{ color: theme.accent }}>
                       RM {Number(inv.total || 0).toFixed(2)}
                     </strong>
@@ -2712,7 +2783,7 @@ export default function InvoicePage() {
           <h3>{t.invoiceInfo}</h3>
 
           <div style={dateTwoColGridStyle}>
-            <div style={fieldBlockStyle}>
+            <div className="invoice-date-field" style={fieldBlockStyle}>
               <label style={{ ...labelStyle, color: theme.accent }}>{t.invoiceDate}</label>
               <input
                 type="date"
@@ -2722,7 +2793,7 @@ export default function InvoicePage() {
               />
             </div>
 
-            <div style={fieldBlockStyle}>
+            <div className="invoice-date-field" style={fieldBlockStyle}>
               <label style={{ ...labelStyle, color: theme.accent }}>{t.dueDate}</label>
               <input
                 type="date"
@@ -3422,6 +3493,7 @@ export default function InvoicePage() {
     </main>
   );
 }
+
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
   width: "100%",
@@ -3510,7 +3582,7 @@ const invoiceNoBox: CSSProperties = {
 
 const invoiceListStyle: CSSProperties = {
   display: "grid",
-  gap: 12,
+  gap: 14,
 };
 
 const invoiceItemStyle: CSSProperties = {
@@ -3531,18 +3603,19 @@ const mutedTextStyle: CSSProperties = {
 };
 
 const recordActionRowStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-  marginTop: 12,
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  marginTop: 14,
+  width: "100%",
 };
 
 const recordEditBtnStyle: CSSProperties = {
   border: "none",
   background: "#0f766e",
   color: "#fff",
-  borderRadius: 10,
-  minHeight: 38,
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: 52,
   padding: "0 12px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
@@ -3552,8 +3625,8 @@ const recordDeleteBtnStyle: CSSProperties = {
   border: "none",
   background: "#fee2e2",
   color: "#b91c1c",
-  borderRadius: 10,
-  minHeight: 38,
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: 52,
   padding: "0 12px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
@@ -3563,8 +3636,8 @@ const recordWhatsappBtnStyle: CSSProperties = {
   border: "none",
   background: "#25D366",
   color: "#fff",
-  borderRadius: 10,
-  minHeight: 38,
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: 52,
   padding: "0 12px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
@@ -3574,8 +3647,8 @@ const recordShareBtnStyle: CSSProperties = {
   border: "var(--sa-border-w) solid #0f766e",
   background: "#fff",
   color: "#0f766e",
-  borderRadius: 10,
-  minHeight: 38,
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: 52,
   padding: "0 12px",
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
