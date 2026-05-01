@@ -113,6 +113,8 @@ const TXT = {
     customerDebt: "客户欠款",
     summaryMonth: "统计月份",
     chooseMonth: "选择月份",
+    year: "年份",
+    month: "月份",
     dueDate: "到期日",
     noDebt: "暂无客户欠款",
     date: "日期",
@@ -170,6 +172,8 @@ const TXT = {
     customerDebt: "Customer Debt",
     summaryMonth: "Summary Month",
     chooseMonth: "Choose Month",
+    year: "Year",
+    month: "Month",
     dueDate: "Due Date",
     noDebt: "No customer debt",
     date: "Date",
@@ -227,6 +231,8 @@ const TXT = {
     customerDebt: "Hutang Pelanggan",
     summaryMonth: "Bulan Ringkasan",
     chooseMonth: "Pilih Bulan",
+    year: "Tahun",
+    month: "Bulan",
     dueDate: "Tarikh Tamat",
     noDebt: "Tiada hutang pelanggan",
     date: "Tarikh",
@@ -281,9 +287,17 @@ const ACCOUNTING_PAGE_FIX_CSS = `
   .smartacctg-accounting-page .records-month-row,
   .smartacctg-records-page .records-month-row {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) minmax(150px, 220px) !important;
+    grid-template-columns: 1fr !important;
     gap: 10px !important;
     align-items: center !important;
+    width: 100% !important;
+  }
+
+  .smartacctg-accounting-page .records-month-select-grid,
+  .smartacctg-records-page .records-month-select-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
     width: 100% !important;
   }
 
@@ -383,9 +397,7 @@ const ACCOUNTING_PAGE_FIX_CSS = `
   }
 
   .smartacctg-accounting-page input[type="date"],
-  .smartacctg-accounting-page input[type="month"],
-  .smartacctg-records-page input[type="date"],
-  .smartacctg-records-page input[type="month"] {
+  .smartacctg-records-page input[type="date"] {
     text-align: center !important;
     display: block !important;
     width: 100% !important;
@@ -394,9 +406,7 @@ const ACCOUNTING_PAGE_FIX_CSS = `
   }
 
   .smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value,
-  .smartacctg-accounting-page input[type="month"]::-webkit-date-and-time-value,
-  .smartacctg-records-page input[type="date"]::-webkit-date-and-time-value,
-  .smartacctg-records-page input[type="month"]::-webkit-date-and-time-value {
+  .smartacctg-records-page input[type="date"]::-webkit-date-and-time-value {
     text-align: center !important;
     width: 100% !important;
     margin: 0 auto !important;
@@ -404,24 +414,20 @@ const ACCOUNTING_PAGE_FIX_CSS = `
   }
 
   .smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit,
-  .smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit,
-  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit,
-  .smartacctg-records-page input[type="month"]::-webkit-datetime-edit {
+  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit {
     width: 100% !important;
     text-align: center !important;
   }
 
   .smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-records-page input[type="month"]::-webkit-datetime-edit-fields-wrapper {
+  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
     justify-content: center !important;
   }
 
   @media (max-width: 520px) {
-    .smartacctg-accounting-page .records-month-row,
-    .smartacctg-records-page .records-month-row {
-      grid-template-columns: 1fr !important;
+    .smartacctg-accounting-page .records-month-select-grid,
+    .smartacctg-records-page .records-month-select-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
       gap: 8px !important;
     }
 
@@ -621,6 +627,10 @@ export default function RecordsPage() {
   const theme = THEMES[themeKey] || THEMES.deepTeal;
 
   const themeSubText = theme.subText || theme.muted || "#64748b";
+
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 9 }, (_, i) => String(currentYear - 4 + i));
+  const monthOptions = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
@@ -1264,16 +1274,43 @@ export default function RecordsPage() {
               {t.summaryMonth}: {activeMonthKey}
             </strong>
 
-            <div style={dateWrapStyle}>
-              <label style={{ ...dateLabelStyle, color: themeSubText }}>
-                {t.chooseMonth}
-              </label>
-              <input
-                type="month"
-                value={activeMonthKey}
-                onChange={(e) => setSummaryMonth(e.target.value)}
-                style={themedDateInputStyle}
-              />
+            <div className="records-month-select-grid" style={monthSelectGridStyle}>
+              <div style={dateWrapStyle}>
+                <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.year}</label>
+                <select
+                  value={activeMonthKey.slice(0, 4)}
+                  onChange={(e) => {
+                    const nextYear = e.target.value;
+                    const currentMonthValue = activeMonthKey.slice(5, 7) || "01";
+                    setSummaryMonth(`${nextYear}-${currentMonthValue}`);
+                  }}
+                  style={themedInputStyle}
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={dateWrapStyle}>
+                <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.month}</label>
+                <select
+                  value={activeMonthKey.slice(5, 7)}
+                  onChange={(e) => {
+                    const currentYearValue = activeMonthKey.slice(0, 4) || String(currentYear);
+                    setSummaryMonth(`${currentYearValue}-${e.target.value}`);
+                  }}
+                  style={themedInputStyle}
+                >
+                  {monthOptions.map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -1736,9 +1773,16 @@ const summaryBoxStyle: CSSProperties = {
 
 const monthRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(150px, 220px)",
+  gridTemplateColumns: "1fr",
   gap: 10,
   alignItems: "center",
+};
+
+const monthSelectGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  width: "100%",
 };
 
 const summaryDividerStyle: CSSProperties = {
