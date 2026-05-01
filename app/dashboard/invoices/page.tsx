@@ -7,7 +7,6 @@ import {
   type ThemeKey,
   applyThemeToDocument,
   getThemeKeyFromUrlOrLocalStorage,
-  isThemeKey,
   normalizeThemeKey,
   saveThemeKey,
 } from "@/lib/smartacctgTheme";
@@ -504,6 +503,60 @@ const INVOICE_PAGE_CSS = `
     min-width: 0 !important;
   }
 
+  .smartacctg-invoice-page .same-size-action-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .smartacctg-invoice-page .same-size-action-row button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: var(--sa-control-h, 54px) !important;
+  }
+
+  .smartacctg-invoice-page .company-info-box {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 14px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .smartacctg-invoice-page .company-info-text {
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    line-height: 1.45 !important;
+  }
+
+  .smartacctg-invoice-page .company-info-text * {
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+  }
+
+  .smartacctg-invoice-page .invoice-preview-action-row {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin-top: 12px !important;
+  }
+
+  .smartacctg-invoice-page .invoice-preview-action-row button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 50px !important;
+    padding: 0 8px !important;
+    white-space: nowrap !important;
+  }
+
   .smartacctg-invoice-page .invoice-record-action-row {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -567,6 +620,25 @@ const INVOICE_PAGE_CSS = `
   }
 
   @media (max-width: 768px) {
+    .smartacctg-invoice-page .company-info-box {
+      grid-template-columns: auto minmax(0, 1fr) !important;
+    }
+
+    .smartacctg-invoice-page .company-info-box button {
+      grid-column: 1 / -1 !important;
+      width: 100% !important;
+    }
+
+    .smartacctg-invoice-page .invoice-preview-action-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+    }
+
+    .smartacctg-invoice-page .invoice-preview-action-row button {
+      font-size: 14px !important;
+      padding: 0 6px !important;
+    }
+
     .smartacctg-invoice-page .responsive-actions {
       display: grid !important;
       grid-template-columns: 1fr !important;
@@ -581,6 +653,16 @@ const INVOICE_PAGE_CSS = `
     .smartacctg-invoice-page .fullscreen-invoice-modal select,
     .smartacctg-invoice-page .fullscreen-invoice-modal textarea {
       font-size: 16px !important;
+    }
+  }
+
+  @media (max-width: 390px) {
+    .smartacctg-invoice-page .invoice-preview-action-row {
+      grid-template-columns: 1fr !important;
+    }
+
+    .smartacctg-invoice-page .same-size-action-row {
+      grid-template-columns: 1fr !important;
     }
   }
 
@@ -658,12 +740,12 @@ function calcDiscountCharge(value: string, mode: ChargeMode, base: number) {
 
 function formatSignedRM(value: number) {
   const num = Number(value || 0);
-  const sign = num < 0 ? "- " : "";
+  const sign = num < 0 ? "-" : "";
   return `${sign}RM ${Math.abs(num).toFixed(2)}`;
 }
 
-function amountColor(value: number, fallback = "#0f766e") {
-  return Number(value || 0) < 0 ? "#dc2626" : fallback;
+function formatRM(value: number) {
+  return `RM ${Number(value || 0).toFixed(2)}`;
 }
 
 function safeLocalGet(key: string) {
@@ -692,475 +774,229 @@ function safeParseArray<T>(raw: string | null): T[] {
   }
 }
 
-function isSchemaColumnError(error: any) {
-  const message = String(error?.message || "").toLowerCase();
+function getInitialLang(): Lang {
+  if (typeof window === "undefined") return "zh";
+
+  const q = new URLSearchParams(window.location.search);
+  const urlLang = q.get("lang") as Lang | null;
+  const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
+
+  if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
+  if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
+
+  return "zh";
+}
+
+function getInitialMode(): Mode {
+  if (typeof window === "undefined") return "list";
+
+  const q = new URLSearchParams(window.location.search);
+  const open = q.get("open");
+
+  if (open === "new") return "new";
+  return "list";
+}
+
+function getIsFullscreenFromUrl() {
+  if (typeof window === "undefined") return false;
+
+  const q = new URLSearchParams(window.location.search);
+  return q.get("fullscreen") === "1";
+}
+
+function getReturnFromUrl() {
+  if (typeof window === "undefined") return "";
+
+  const q = new URLSearchParams(window.location.search);
+  return q.get("return") || "";
+}
+
+function applyThemeEverywhere(key: ThemeKey) {
+  if (typeof document === "undefined") return;
+
+  const fixedKey = normalizeThemeKey(key);
+  const theme = THEMES[fixedKey] || THEMES.deepTeal;
+
+  applyThemeToDocument(fixedKey);
+
+  document.documentElement.setAttribute("data-sa-theme", fixedKey);
+  document.documentElement.setAttribute("data-smartacctg-theme", fixedKey);
+
+  document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-card-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
+  document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
+  document.documentElement.style.setProperty("--sa-border", theme.border);
+  document.documentElement.style.setProperty("--sa-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-text", theme.text);
+  document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
+  document.documentElement.style.setProperty("--sa-muted", theme.muted || theme.subText);
+  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.card);
+  document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card);
+  document.documentElement.style.setProperty("--sa-glow", theme.glow);
+}
+
+function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
+  if (typeof window === "undefined") return;
+
+  const q = new URLSearchParams(window.location.search);
+  q.set("lang", nextLang);
+  q.set("theme", nextTheme);
+  q.set("refresh", String(Date.now()));
+
+  window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+}
+
+function isSchemaCacheMissing(message: string) {
+  const lower = String(message || "").toLowerCase();
 
   return (
-    message.includes("schema cache") ||
-    message.includes("could not find") ||
-    message.includes("column")
+    lower.includes("schema cache") ||
+    lower.includes("could not find") ||
+    lower.includes("column")
   );
 }
 
-function getMissingColumnName(error: any) {
-  const message = String(error?.message || "");
-  const match1 = message.match(/Could not find the '([^']+)' column/i);
-  const match2 = message.match(/column "([^"]+)" does not exist/i);
-  const match3 = message.match(/column '([^']+)' does not exist/i);
-
-  return match1?.[1] || match2?.[1] || match3?.[1] || "";
+function isPaidStatus(status?: string | null) {
+  const s = String(status || "").toLowerCase();
+  return s === "paid";
 }
 
-async function insertAdaptive(table: string, inputPayload: Record<string, any>) {
-  let payload: Record<string, any> = { ...inputPayload };
-  let lastError: any = null;
-
-  for (let i = 0; i < 40; i++) {
-    const { data, error } = await supabase.from(table).insert(payload).select("*").single();
-
-    if (!error) return data;
-
-    lastError = error;
-
-    if (!isSchemaColumnError(error)) throw error;
-
-    const missing = getMissingColumnName(error);
-
-    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
-      const next = { ...payload };
-      delete next[missing];
-      payload = next;
-      continue;
-    }
-
-    const optionalKeys = [
-      "supplier_tin",
-      "buyer_tin",
-      "sst_no",
-      "msic_code",
-      "einvoice_uuid",
-      "validation_status",
-      "qr_code_url",
-      "myinvois_status",
-      "discount",
-      "total_cost",
-      "total_profit",
-      "payment_method",
-      "due_date",
-      "status",
-      "customer_phone",
-      "customer_company",
-      "customer_address",
-      "invoice_date",
-      "note",
-      "customer_id",
-      "subtotal",
-      "line_profit",
-      "line_total",
-      "unit_cost",
-      "source_type",
-      "source_id",
-      "debt_amount",
-      "category_name",
-      "txn_type",
-      "product_name",
-      "qty",
-      "unit_price",
-      "invoice_id",
-      "product_id",
-      "company_logo_url",
-      "company_reg_no",
-      "company_phone",
-      "company_address",
-    ];
-
-    const removable = optionalKeys.find((key) =>
-      Object.prototype.hasOwnProperty.call(payload, key)
-    );
-
-    if (!removable) throw error;
-
-    const next = { ...payload };
-    delete next[removable];
-    payload = next;
-  }
-
-  throw lastError || new Error("Insert failed");
+function isCancelledStatus(status?: string | null) {
+  const s = String(status || "").toLowerCase();
+  return s === "cancelled" || s === "canceled";
 }
 
-async function updateAdaptive(table: string, id: string, inputPayload: Record<string, any>) {
-  let payload: Record<string, any> = { ...inputPayload };
-  let lastError: any = null;
+export default function InvoicesPage() {
+  const [mode, setMode] = useState<Mode>(getInitialMode);
+  const [isFullscreen, setIsFullscreen] = useState(getIsFullscreenFromUrl);
+  const [returnTo, setReturnTo] = useState(getReturnFromUrl);
 
-  for (let i = 0; i < 40; i++) {
-    const { error } = await supabase.from(table).update(payload).eq("id", id);
-
-    if (!error) return;
-
-    lastError = error;
-
-    if (!isSchemaColumnError(error)) throw error;
-
-    const missing = getMissingColumnName(error);
-
-    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
-      const next = { ...payload };
-      delete next[missing];
-      payload = next;
-      continue;
-    }
-
-    const optionalKeys = [
-      "discount",
-      "total_cost",
-      "total_profit",
-      "payment_method",
-      "due_date",
-      "status",
-      "customer_phone",
-      "customer_company",
-      "customer_address",
-      "invoice_date",
-      "note",
-      "subtotal",
-      "company_logo_url",
-      "company_reg_no",
-      "company_phone",
-      "company_address",
-    ];
-
-    const removable = optionalKeys.find((key) =>
-      Object.prototype.hasOwnProperty.call(payload, key)
-    );
-
-    if (!removable) throw error;
-
-    const next = { ...payload };
-    delete next[removable];
-    payload = next;
-  }
-
-  throw lastError || new Error("Update failed");
-}
-
-function readStockMap(): Record<string, number> {
-  try {
-    const raw = safeLocalGet(PRODUCT_STOCK_MAP_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeStockMap(map: Record<string, number>) {
-  safeLocalSet(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
-}
-
-function saveStockValue(productId: string, stock: number) {
-  if (!productId) return;
-
-  const map = readStockMap();
-  map[productId] = Number(stock || 0);
-  writeStockMap(map);
-}
-
-function normalizeProduct(row: any): Product {
-  const stockMap = readStockMap();
-  const localStock = stockMap[row?.id];
-
-  const rawStock =
-    row?.stock_qty ?? row?.stock ?? row?.stock_quantity ?? row?.quantity ?? row?.qty ?? 0;
-
-  return {
-    ...row,
-    id: String(row?.id || ""),
-    name: String(row?.name || ""),
-    price: Number(row?.price || 0),
-    cost: Number(row?.cost || 0),
-    discount: Number(row?.discount || 0),
-    stock_qty: localStock !== undefined ? Number(localStock || 0) : Number(rawStock || 0),
-    note: row?.note || "",
-  };
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Upload failed"));
-    reader.readAsDataURL(file);
-  });
-}
-
-function normalizePaymentOptions(value: any): PaymentOption[] {
-  if (!Array.isArray(value)) return DEFAULT_PAYMENT_OPTIONS;
-
-  const normalized = value
-    .map((item) => {
-      if (typeof item === "string") {
-        return { id: makeId("pay"), name: item };
-      }
-
-      if (item && typeof item === "object" && item.name) {
-        return {
-          id: item.id || makeId("pay"),
-          name: String(item.name),
-          bankAccount: item.bankAccount || "",
-          receiverName: item.receiverName || "",
-          link: item.link || "",
-          qrCodeUrl: item.qrCodeUrl || "",
-        };
-      }
-
-      return null;
-    })
-    .filter(Boolean) as PaymentOption[];
-
-  return normalized.length > 0 ? normalized : DEFAULT_PAYMENT_OPTIONS;
-}
-
-function normalizeSignatureOptions(value: any): SignatureOption[] {
-  if (!Array.isArray(value)) return [];
-
-  return value
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-
-      return {
-        id: item.id || makeId("sig"),
-        name: String(item.name || item.signatureText || "Signature"),
-        signatureText: String(item.signatureText || ""),
-        signatureImageUrl: String(item.signatureImageUrl || ""),
-      };
-    })
-    .filter(Boolean) as SignatureOption[];
-}
-
-function formatDateTime(value?: string | null, fallbackDate?: string | null) {
-  if (!value && fallbackDate) return fallbackDate;
-  if (!value) return "-";
-
-  try {
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-
-    return `${d.toLocaleDateString("zh-MY", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })} ${d.toLocaleTimeString("zh-MY", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    })}`;
-  } catch {
-    return value || fallbackDate || "-";
-  }
-}
-
-export default function InvoicePage() {
+  const [sessionUserId, setSessionUserId] = useState("");
+  const [isTrial, setIsTrial] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
-
-  const t = TXT[lang];
-  const theme = THEMES[themeKey] || THEMES.deepTeal;
-
-  const [mode, setMode] = useState<Mode>("list");
-  const [fullscreen, setFullscreen] = useState(false);
-  const [userId, setUserId] = useState("");
-  const [isTrial, setIsTrial] = useState(false);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+
+  const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>(DEFAULT_PAYMENT_OPTIONS);
+  const [signatureOptions, setSignatureOptions] = useState<SignatureOption[]>([]);
+
   const [search, setSearch] = useState("");
-  const [editInvoiceId, setEditInvoiceId] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const [invoiceDate, setInvoiceDate] = useState(today());
+  const [dueDate, setDueDate] = useState(today());
+  const [status, setStatus] = useState("sent");
+
+  const [selectedPaymentId, setSelectedPaymentId] = useState("cash");
+  const [paymentName, setPaymentName] = useState("");
+  const [paymentBankAccount, setPaymentBankAccount] = useState("");
+  const [paymentReceiverName, setPaymentReceiverName] = useState("");
+  const [paymentLink, setPaymentLink] = useState("");
+  const [paymentQrCodeUrl, setPaymentQrCodeUrl] = useState("");
+
+  const [companyLogoUrl, setCompanyLogoUrl] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [companyRegNo, setCompanyRegNo] = useState("");
+  const [companyPhone, setCompanyPhone] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
+  const [showCompanyForm, setShowCompanyForm] = useState(false);
 
   const [customerMode, setCustomerMode] = useState<"select" | "new">("select");
-  const [customerId, setCustomerId] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [newCustomerCompany, setNewCustomerCompany] = useState("");
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
 
-  const [invoiceNo, setInvoiceNo] = useState(makeInvoiceNo());
-  const [invoiceDate, setInvoiceDate] = useState(today());
-  const [dueDate, setDueDate] = useState(today());
-  const [status, setStatus] = useState("sent");
-
-  const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_OPTIONS[0].id);
-  const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>(DEFAULT_PAYMENT_OPTIONS);
-
-  const [showPaymentAdd, setShowPaymentAdd] = useState(false);
-  const [newPaymentName, setNewPaymentName] = useState("");
-  const [newPaymentBankAccount, setNewPaymentBankAccount] = useState("");
-  const [newPaymentReceiverName, setNewPaymentReceiverName] = useState("");
-  const [newPaymentLink, setNewPaymentLink] = useState("");
-  const [newPaymentQr, setNewPaymentQr] = useState("");
-
   const [items, setItems] = useState<InvoiceItem[]>([makeInvoiceItem()]);
 
-  const [chargeDiscount, setChargeDiscount] = useState<ChargeInput>({ mode: "%", value: "0" });
-  const [sst, setSst] = useState<ChargeInput>({ mode: "%", value: "0" });
-  const [serviceFee, setServiceFee] = useState<ChargeInput>({ mode: "%", value: "0" });
-  const [handlingFee, setHandlingFee] = useState<ChargeInput>({ mode: "%", value: "0" });
+  const [discountInput, setDiscountInput] = useState<ChargeInput>({ mode: "RM", value: "0" });
+  const [sstInput, setSstInput] = useState<ChargeInput>({ mode: "%", value: "0" });
+  const [serviceFeeInput, setServiceFeeInput] = useState<ChargeInput>({ mode: "RM", value: "0" });
+  const [handlingFeeInput, setHandlingFeeInput] = useState<ChargeInput>({ mode: "RM", value: "0" });
+  const [note, setNote] = useState("");
 
-  const [signatureOptions, setSignatureOptions] = useState<SignatureOption[]>([]);
   const [selectedSignatureId, setSelectedSignatureId] = useState("");
   const [signatureText, setSignatureText] = useState("");
   const [signatureImageUrl, setSignatureImageUrl] = useState("");
+  const [customerSignatureImageUrl, setCustomerSignatureImageUrl] = useState("");
 
-  const [signaturePadTarget, setSignaturePadTarget] = useState<"issuer" | "customer" | null>(
-    null
-  );
-  const [customerSignatureUrl, setCustomerSignatureUrl] = useState("");
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const drawingRef = useRef(false);
+  const issuerCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const customerCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const issuerDrawingRef = useRef(false);
+  const customerDrawingRef = useRef(false);
+  const printAreaRef = useRef<HTMLDivElement | null>(null);
 
-  const [note, setNote] = useState("");
-
-  const [companyName, setCompanyName] = useState("NK DIGITAL HUB");
-  const [companyRegNo, setCompanyRegNo] = useState("");
-  const [companyPhone, setCompanyPhone] = useState("");
-  const [companyAddress, setCompanyAddress] = useState("");
-  const [companyLogoUrl, setCompanyLogoUrl] = useState("");
-  const [showCompanyEdit, setShowCompanyEdit] = useState(false);
-
-  const [msg, setMsg] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [lastPrintableInvoice, setLastPrintableInvoice] = useState<InvoiceRecord | null>(null);
-  const [lastPrintableItems, setLastPrintableItems] = useState<any[]>([]);
-
-  const selectedPayment = paymentOptions.find((p) => p.id === paymentMethod) || paymentOptions[0];
-  const paymentMethodText = selectedPayment?.name || paymentMethod || "-";
+  const t = TXT[lang];
+  const theme = THEMES[themeKey] || THEMES.deepTeal;
+  const themeSubText = theme.subText || theme.muted || "#64748b";
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
     borderColor: theme.border,
-    background: theme.inputBg,
-    color: theme.inputText,
+    background: theme.inputBg || "#ffffff",
+    color: theme.inputText || "#111827",
   };
 
-  const themedDateInputStyle: CSSProperties = {
-    ...dateInputStyle,
+  const themedCardStyle: CSSProperties = {
+    background: theme.card,
     borderColor: theme.border,
-    background: theme.inputBg,
-    color: theme.inputText,
-  };
-
-  const themedPanelStyle: CSSProperties = {
-    background: theme.panelBg,
-    color: theme.panelText,
-    borderColor: theme.border,
+    boxShadow: theme.glow,
+    color: theme.text,
   };
 
   useEffect(() => {
-    applyThemeToDocument(themeKey);
+    applyThemeEverywhere(themeKey);
   }, [themeKey]);
 
   useEffect(() => {
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const initialLang = getInitialLang();
+    const initialTheme = getThemeKeyFromUrlOrLocalStorage("deepTeal");
 
-  function getCurrentLang(): Lang {
-    const q = new URLSearchParams(window.location.search);
-    const urlLang = q.get("lang") as Lang | null;
-    const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
+    setLang(initialLang);
+    safeLocalSet(LANG_KEY, initialLang);
 
-    if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
-    if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
-
-    return "zh";
-  }
-
-  function getThemeFromUrlOnly(): ThemeKey | null {
-    const q = new URLSearchParams(window.location.search);
-    const rawTheme = q.get("theme");
-
-    if (!rawTheme) return null;
-
-    if (isThemeKey(rawTheme)) return normalizeThemeKey(rawTheme);
-
-    if (rawTheme === "futureWorld" && isThemeKey("futureForest")) {
-      return "futureForest";
-    }
-
-    return null;
-  }
-
-  function getCurrentTheme(): ThemeKey {
-    const urlTheme = getThemeFromUrlOnly();
-    if (urlTheme) return urlTheme;
-
-    return getThemeKeyFromUrlOrLocalStorage("deepTeal");
-  }
-
-  function syncThemeToUrlAndLocalStorage(nextTheme: ThemeKey, nextLang = lang) {
-    const fixedTheme = normalizeThemeKey(nextTheme);
-
-    saveThemeKey(fixedTheme);
-    applyThemeToDocument(fixedTheme);
-
-    const q = new URLSearchParams(window.location.search);
-    q.set("lang", nextLang);
-    q.set("theme", fixedTheme);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-  }
-
-  function switchLang(next: Lang) {
-    setLang(next);
-    safeLocalSet(LANG_KEY, next);
-    syncThemeToUrlAndLocalStorage(themeKey, next);
-  }
-
-  async function init() {
-    const currentLang = getCurrentLang();
-    const urlTheme = getThemeFromUrlOnly();
-    const currentTheme = getCurrentTheme();
-
-    setLang(currentLang);
-    setThemeKey(currentTheme);
-    saveThemeKey(currentTheme);
-    applyThemeToDocument(currentTheme);
+    setThemeKey(initialTheme);
+    saveThemeKey(initialTheme);
+    applyThemeEverywhere(initialTheme);
 
     const q = new URLSearchParams(window.location.search);
     const openParam = q.get("open");
     const fullscreenParam = q.get("fullscreen");
+    const returnParam = q.get("return");
 
-    const shouldOpenNew = openParam === "new";
-    const shouldFullscreen = fullscreenParam === "1" || shouldOpenNew;
+    setReturnTo(returnParam || "");
+    setIsFullscreen(fullscreenParam === "1");
 
-    if (shouldFullscreen) {
-      setFullscreen(true);
-    }
+    if (openParam === "new") setMode("new");
 
-    const savedPayment = safeLocalGet(PAYMENT_OPTIONS_KEY);
-    if (savedPayment) {
-      try {
-        const parsed = normalizePaymentOptions(JSON.parse(savedPayment));
-        setPaymentOptions(parsed);
-        setPaymentMethod(parsed[0]?.id || DEFAULT_PAYMENT_OPTIONS[0].id);
-      } catch {
-        setPaymentOptions(DEFAULT_PAYMENT_OPTIONS);
-        setPaymentMethod(DEFAULT_PAYMENT_OPTIONS[0].id);
-      }
-    }
+    init(initialLang, initialTheme);
 
-    const savedSignature = safeLocalGet(SIGNATURE_OPTIONS_KEY);
-    if (savedSignature) {
-      try {
-        setSignatureOptions(normalizeSignatureOptions(JSON.parse(savedSignature)));
-      } catch {
-        setSignatureOptions([]);
-      }
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  async function init(currentLang: Lang, currentTheme: ThemeKey) {
+    const q = new URLSearchParams(window.location.search);
     const modeParam = q.get("mode");
     const trialRaw = safeLocalGet(TRIAL_KEY);
+
+    const savedPayment = safeParseArray<PaymentOption>(safeLocalGet(PAYMENT_OPTIONS_KEY));
+    const savedSignatures = safeParseArray<SignatureOption>(safeLocalGet(SIGNATURE_OPTIONS_KEY));
+
+    if (savedPayment.length > 0) {
+      setPaymentOptions(savedPayment);
+    }
+
+    if (savedSignatures.length > 0) {
+      setSignatureOptions(savedSignatures);
+    }
 
     if ((modeParam === "trial" || trialRaw) && trialRaw) {
       try {
@@ -1168,21 +1004,13 @@ export default function InvoicePage() {
 
         if (Date.now() < Number(trial.expiresAt)) {
           setIsTrial(true);
-
-          const trialProducts = safeParseArray<any>(safeLocalGet(TRIAL_PRODUCTS_KEY));
+          setSessionUserId("trial");
 
           setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
-          setProducts(trialProducts.map((p: any) => normalizeProduct(p)));
+          setProducts(safeParseArray<Product>(safeLocalGet(TRIAL_PRODUCTS_KEY)));
           setInvoices(safeParseArray<InvoiceRecord>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
-          syncThemeToUrlAndLocalStorage(currentTheme, currentLang);
-
-          if (shouldOpenNew) {
-            setTimeout(() => {
-              openNewInvoice(true);
-            }, 120);
-          }
-
+          replaceUrlLangTheme(currentLang, currentTheme);
           return;
         }
       } catch {
@@ -1194,6 +1022,7 @@ export default function InvoicePage() {
       safeLocalRemove(TRIAL_CUSTOMERS_KEY);
       safeLocalRemove(TRIAL_PRODUCTS_KEY);
       safeLocalRemove(TRIAL_INVOICES_KEY);
+
       window.location.href = "/zh";
       return;
     }
@@ -1205,246 +1034,107 @@ export default function InvoicePage() {
       return;
     }
 
-    const uid = data.session.user.id;
-    setUserId(uid);
+    const userId = data.session.user.id;
+    setSessionUserId(userId);
+    setIsTrial(false);
 
-    const { data: profile } = await supabase
+    const { data: profileData } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", uid)
+      .eq("id", userId)
       .single();
 
     let finalTheme = currentTheme;
 
-    if (profile) {
-      setCompanyName(profile.company_name || "NK DIGITAL HUB");
-      setCompanyRegNo(profile.company_reg_no || "");
-      setCompanyPhone(profile.company_phone || "");
-      setCompanyAddress(profile.company_address || "");
-      setCompanyLogoUrl(profile.company_logo_url || "");
+    if (profileData) {
+      const profileTheme = normalizeThemeKey(profileData.theme || currentTheme);
 
-      const profileTheme = normalizeThemeKey(profile.theme || currentTheme, currentTheme);
+      finalTheme = profileTheme;
+      setThemeKey(profileTheme);
+      saveThemeKey(profileTheme);
+      applyThemeEverywhere(profileTheme);
 
-      if (!urlTheme && profile.theme && THEMES[profileTheme]) {
-        finalTheme = profileTheme;
-        setThemeKey(profileTheme);
-        saveThemeKey(profileTheme);
-        applyThemeToDocument(profileTheme);
-      }
+      setCompanyLogoUrl(profileData.company_logo_url || profileData.logo_url || "");
+      setCompanyName(profileData.company_name || "");
+      setCompanyRegNo(profileData.company_reg_no || "");
+      setCompanyPhone(profileData.company_phone || profileData.phone || "");
+      setCompanyAddress(profileData.company_address || "");
     }
 
-    syncThemeToUrlAndLocalStorage(finalTheme, currentLang);
-
-    await loadCustomers(uid);
-    await loadProducts(uid);
-    await loadInvoices(uid);
-
-    if (shouldOpenNew) {
-      setTimeout(() => {
-        openNewInvoice(true);
-      }, 120);
-    }
+    replaceUrlLangTheme(currentLang, finalTheme);
+    await loadAll(userId);
   }
 
-  async function loadCustomers(uid: string) {
-    const { data } = await supabase
+  async function loadAll(userId: string) {
+    const { data: customerData } = await supabase
       .from("customers")
       .select("*")
-      .eq("user_id", uid)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
-    setCustomers((data || []) as Customer[]);
-  }
-
-  async function loadProducts(uid: string) {
-    const { data, error } = await supabase
+    const { data: productData } = await supabase
       .from("products")
       .select("*")
-      .eq("user_id", uid)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      setMsg(t.fail + error.message);
-      setProducts([]);
-      return;
-    }
-
-    setProducts((data || []).map((p: any) => normalizeProduct(p)));
-  }
-
-  async function loadInvoices(uid: string) {
-    const { data } = await supabase
+    const { data: invoiceData } = await supabase
       .from("invoices")
       .select("*")
-      .eq("user_id", uid)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
-    setInvoices((data || []) as InvoiceRecord[]);
+    setCustomers((customerData || []) as Customer[]);
+    setProducts((productData || []) as Product[]);
+    setInvoices((invoiceData || []) as InvoiceRecord[]);
   }
-
-  const selectedCustomer = customers.find((c) => c.id === customerId);
-
-  const activeCustomerForPreview: Customer =
-    customerMode === "select"
-      ? selectedCustomer || { id: "", name: "-" }
-      : {
-          id: "",
-          name: newCustomerName || "-",
-          phone: newCustomerPhone,
-          company_name: newCustomerCompany,
-          address: newCustomerAddress,
-        };
-
-  function getProductForItem(item: InvoiceItem) {
-    return products.find((p) => p.id === item.productId) || null;
-  }
-
-  function getItemCalc(item: InvoiceItem) {
-    const selectedProduct = getProductForItem(item);
-
-    const name =
-      item.productMode === "new" ? item.newProductName || "-" : selectedProduct?.name || "-";
-
-    const price =
-      item.productMode === "new"
-        ? Number(item.newProductPrice || 0)
-        : Number(selectedProduct?.price || 0);
-
-    const cost =
-      item.productMode === "new"
-        ? Number(item.newProductCost || 0)
-        : Number(selectedProduct?.cost || 0);
-
-    const stock =
-      item.productMode === "new"
-        ? Number(item.newProductStock || 0)
-        : Number(selectedProduct?.stock_qty || 0);
-
-    const qty = Number(item.qty || 0);
-    const discount = Number(item.discount || 0);
-    const lineSubtotal = roundMoney(price * qty);
-    const lineTotal = roundMoney(lineSubtotal - discount);
-    const lineCost = roundMoney(cost * qty);
-    const lineProfit = roundMoney(lineTotal - lineCost);
-
-    return {
-      product: selectedProduct,
-      name,
-      price,
-      cost,
-      stock,
-      qty,
-      discount,
-      lineSubtotal,
-      lineTotal,
-      lineCost,
-      lineProfit,
-    };
-  }
-
-  const itemCalcs = useMemo(() => {
-    return items.map((item) => ({ item, calc: getItemCalc(item) }));
-  }, [items, products]);
-
-  const preview = useMemo(() => {
-    const subtotal = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.lineSubtotal, 0));
-    const itemDiscount = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.discount, 0));
-    const taxableBase = roundMoney(subtotal - itemDiscount);
-
-    const chargeDiscountAmount = calcDiscountCharge(
-      chargeDiscount.value,
-      chargeDiscount.mode,
-      taxableBase
-    );
-
-    const sstAmount = calcCharge(sst.value, sst.mode, taxableBase);
-    const serviceFeeAmount = calcCharge(serviceFee.value, serviceFee.mode, taxableBase);
-    const handlingFeeAmount = calcCharge(handlingFee.value, handlingFee.mode, taxableBase);
-
-    const total = roundMoney(
-      taxableBase + chargeDiscountAmount + sstAmount + serviceFeeAmount + handlingFeeAmount
-    );
-
-    const totalCost = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.lineCost, 0));
-    const profit = roundMoney(total - totalCost);
-
-    return {
-      subtotal,
-      itemDiscount,
-      taxableBase,
-      chargeDiscountAmount,
-      sstAmount,
-      serviceFeeAmount,
-      handlingFeeAmount,
-      total,
-      totalCost,
-      profit,
-    };
-  }, [itemCalcs, chargeDiscount, sst, serviceFee, handlingFee]);
-
-  const filteredInvoices = invoices.filter((inv) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-
-    return [inv.invoice_no, inv.customer_name, inv.customer_company, inv.customer_phone]
-      .join(" ")
-      .toLowerCase()
-      .includes(q);
-  });
 
   function savePaymentOptions(next: PaymentOption[]) {
     setPaymentOptions(next);
     safeLocalSet(PAYMENT_OPTIONS_KEY, JSON.stringify(next));
   }
 
-  async function uploadPaymentQr(e: any) {
+  function saveSignatureOptions(next: SignatureOption[]) {
+    setSignatureOptions(next);
+    safeLocalSet(SIGNATURE_OPTIONS_KEY, JSON.stringify(next));
+  }
+
+  function getSelectedPayment() {
+    return (
+      paymentOptions.find((p) => p.id === selectedPaymentId) ||
+      paymentOptions[0] ||
+      DEFAULT_PAYMENT_OPTIONS[0]
+    );
+  }
+
+  function getPaymentText() {
+    const payment = getSelectedPayment();
+    return payment?.name || "-";
+  }
+
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Upload failed"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadPaymentQr(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       const dataUrl = await fileToDataUrl(file);
-      setNewPaymentQr(dataUrl);
+      setPaymentQrCodeUrl(dataUrl);
     } catch (error: any) {
-      setMsg(t.fail + error.message);
+      setMsg(t.fail + (error?.message || String(error)));
     }
   }
 
-  function addPaymentOption() {
-    const name = newPaymentName.trim();
-    if (!name) return;
-
-    const nextOption: PaymentOption = {
-      id: makeId("pay"),
-      name,
-      bankAccount: newPaymentBankAccount.trim(),
-      receiverName: newPaymentReceiverName.trim(),
-      link: newPaymentLink.trim(),
-      qrCodeUrl: newPaymentQr.trim(),
-    };
-
-    const next = [...paymentOptions, nextOption];
-
-    savePaymentOptions(next);
-    setPaymentMethod(nextOption.id);
-    setNewPaymentName("");
-    setNewPaymentBankAccount("");
-    setNewPaymentReceiverName("");
-    setNewPaymentLink("");
-    setNewPaymentQr("");
-    setShowPaymentAdd(false);
-  }
-
-  function deletePaymentOption() {
-    if (!paymentMethod) return;
-
-    const next = paymentOptions.filter((p) => p.id !== paymentMethod);
-    const fixed = next.length > 0 ? next : DEFAULT_PAYMENT_OPTIONS;
-
-    savePaymentOptions(fixed);
-    setPaymentMethod(fixed[0].id);
-  }
-
-  async function uploadSignatureImage(e: any) {
+  async function uploadSignatureImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -1453,29 +1143,82 @@ export default function InvoicePage() {
       setSignatureImageUrl(dataUrl);
       setMsg(t.saved);
     } catch (error: any) {
-      setMsg(t.fail + error.message);
+      setMsg(t.fail + (error?.message || String(error)));
     }
   }
 
-  function saveSignatureOption() {
-    const nextSig: SignatureOption = {
-      id: makeId("sig"),
-      name: signatureText.trim() || "Signature",
-      signatureText: signatureText.trim(),
-      signatureImageUrl: signatureImageUrl.trim(),
+  function addPaymentOption() {
+    const name = paymentName.trim();
+
+    if (!name) return;
+
+    const nextOption: PaymentOption = {
+      id: makeId("pay"),
+      name,
+      bankAccount: paymentBankAccount.trim(),
+      receiverName: paymentReceiverName.trim(),
+      link: paymentLink.trim(),
+      qrCodeUrl: paymentQrCodeUrl.trim(),
     };
 
-    if (!nextSig.signatureText && !nextSig.signatureImageUrl) return;
+    const next = [...paymentOptions, nextOption];
 
-    const next = [nextSig, ...signatureOptions];
+    savePaymentOptions(next);
+    setSelectedPaymentId(nextOption.id);
 
-    setSignatureOptions(next);
-    safeLocalSet(SIGNATURE_OPTIONS_KEY, JSON.stringify(next));
-    setSelectedSignatureId(nextSig.id);
+    setPaymentName("");
+    setPaymentBankAccount("");
+    setPaymentReceiverName("");
+    setPaymentLink("");
+    setPaymentQrCodeUrl("");
+
     setMsg(t.saved);
   }
 
-  function chooseSavedSignature(id: string) {
+  function deletePaymentOption() {
+    if (!selectedPaymentId) return;
+
+    const next = paymentOptions.filter((p) => p.id !== selectedPaymentId);
+    const fixed = next.length > 0 ? next : DEFAULT_PAYMENT_OPTIONS;
+
+    savePaymentOptions(fixed);
+    setSelectedPaymentId(fixed[0].id);
+    setMsg(t.saved);
+  }
+
+  function saveSignatureOption() {
+    const text = signatureText.trim();
+    const image = signatureImageUrl.trim();
+
+    if (!text && !image) return;
+
+    const nextOption: SignatureOption = {
+      id: makeId("sig"),
+      name: text || "Signature",
+      signatureText: text,
+      signatureImageUrl: image,
+    };
+
+    const next = [nextOption, ...signatureOptions];
+
+    saveSignatureOptions(next);
+    setSelectedSignatureId(nextOption.id);
+    setMsg(t.saved);
+  }
+
+  function deleteSignatureOption() {
+    if (!selectedSignatureId) return;
+
+    const next = signatureOptions.filter((x) => x.id !== selectedSignatureId);
+
+    saveSignatureOptions(next);
+    setSelectedSignatureId("");
+    setSignatureText("");
+    setSignatureImageUrl("");
+    setMsg(t.saved);
+  }
+
+  function chooseSignature(id: string) {
     setSelectedSignatureId(id);
 
     const sig = signatureOptions.find((x) => x.id === id);
@@ -1486,22 +1229,193 @@ export default function InvoicePage() {
       return;
     }
 
-    setSignatureText(sig.signatureText);
-    setSignatureImageUrl(sig.signatureImageUrl);
+    setSignatureText(sig.signatureText || "");
+    setSignatureImageUrl(sig.signatureImageUrl || "");
   }
 
-  function deleteSignatureOption() {
-    if (!selectedSignatureId) return;
+  function getCanvasPoint(e: any, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches?.[0] || e.changedTouches?.[0];
 
-    const next = signatureOptions.filter((sig) => sig.id !== selectedSignatureId);
+    const clientX = touch ? touch.clientX : e.clientX;
+    const clientY = touch ? touch.clientY : e.clientY;
 
-    setSignatureOptions(next);
-    safeLocalSet(SIGNATURE_OPTIONS_KEY, JSON.stringify(next));
+    return {
+      x: ((clientX - rect.left) / rect.width) * canvas.width,
+      y: ((clientY - rect.top) / rect.height) * canvas.height,
+    };
+  }
+
+  function startDraw(e: any, type: "issuer" | "customer") {
+    e.preventDefault();
+
+    const canvas = type === "issuer" ? issuerCanvasRef.current : customerCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    if (type === "issuer") issuerDrawingRef.current = true;
+    if (type === "customer") customerDrawingRef.current = true;
+
+    const point = getCanvasPoint(e, canvas);
+
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y);
+  }
+
+  function draw(e: any, type: "issuer" | "customer") {
+    const drawing = type === "issuer" ? issuerDrawingRef.current : customerDrawingRef.current;
+    if (!drawing) return;
+
+    e.preventDefault();
+
+    const canvas = type === "issuer" ? issuerCanvasRef.current : customerCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const point = getCanvasPoint(e, canvas);
+
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#111827";
+    ctx.lineTo(point.x, point.y);
+    ctx.stroke();
+  }
+
+  function stopDraw(type: "issuer" | "customer") {
+    if (type === "issuer") issuerDrawingRef.current = false;
+    if (type === "customer") customerDrawingRef.current = false;
+  }
+
+  function clearCanvas(type: "issuer" | "customer") {
+    const canvas = type === "issuer" ? issuerCanvasRef.current : customerCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (type === "issuer") setSignatureImageUrl("");
+    if (type === "customer") setCustomerSignatureImageUrl("");
+  }
+
+  function confirmCanvas(type: "issuer" | "customer") {
+    const canvas = type === "issuer" ? issuerCanvasRef.current : customerCanvasRef.current;
+    if (!canvas) return;
+
+    const dataUrl = canvas.toDataURL("image/png");
+
+    if (type === "issuer") {
+      setSignatureImageUrl(dataUrl);
+      setMsg(t.saved);
+    }
+
+    if (type === "customer") {
+      setCustomerSignatureImageUrl(dataUrl);
+      setMsg(t.saved);
+    }
+  }
+
+  function switchLang(next: Lang) {
+    setLang(next);
+    safeLocalSet(LANG_KEY, next);
+    replaceUrlLangTheme(next, themeKey);
+  }
+
+  function buildDashboardUrl() {
+    const q = new URLSearchParams();
+
+    if (isTrial) q.set("mode", "trial");
+
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
+    return `/dashboard?${q.toString()}`;
+  }
+
+  function buildPageUrl(path: string, extra?: string) {
+    const q = new URLSearchParams();
+
+    if (isTrial) q.set("mode", "trial");
+
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
+    if (extra) {
+      const extraQ = new URLSearchParams(extra);
+      extraQ.forEach((value, key) => q.set(key, value));
+    }
+
+    return `${path}?${q.toString()}`;
+  }
+
+  function goBack() {
+    window.location.href = buildDashboardUrl();
+  }
+
+  function resetInvoiceForm() {
+    setInvoiceDate(today());
+    setDueDate(today());
+    setStatus("sent");
+
+    setSelectedPaymentId(paymentOptions[0]?.id || DEFAULT_PAYMENT_OPTIONS[0].id);
+
+    setCustomerMode("select");
+    setSelectedCustomerId("");
+    setNewCustomerName("");
+    setNewCustomerPhone("");
+    setNewCustomerCompany("");
+    setNewCustomerAddress("");
+
+    setItems([makeInvoiceItem()]);
+
+    setDiscountInput({ mode: "RM", value: "0" });
+    setSstInput({ mode: "%", value: "0" });
+    setServiceFeeInput({ mode: "RM", value: "0" });
+    setHandlingFeeInput({ mode: "RM", value: "0" });
+
+    setNote("");
 
     setSelectedSignatureId("");
     setSignatureText("");
     setSignatureImageUrl("");
-    setMsg(t.saved);
+    setCustomerSignatureImageUrl("");
+
+    setMsg("");
+  }
+
+  function openNewInvoice(forceFullscreen = false) {
+    resetInvoiceForm();
+    setMode("new");
+    setIsFullscreen(forceFullscreen);
+  }
+
+  function closeInvoiceForm() {
+    const q = new URLSearchParams(window.location.search);
+    const returnParam = q.get("return") || returnTo;
+
+    if (returnParam === "dashboard") {
+      window.location.href = buildDashboardUrl();
+      return;
+    }
+
+    setMode("list");
+    setIsFullscreen(false);
+
+    q.delete("open");
+    q.delete("fullscreen");
+    q.delete("return");
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
   function updateItem(id: string, patch: Partial<InvoiceItem>) {
@@ -1519,179 +1433,351 @@ export default function InvoicePage() {
     });
   }
 
-  function saveTrialData(nextCustomers: Customer[], nextProducts: Product[], nextInvoices = invoices) {
-    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
-    safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
-    safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(nextInvoices));
+  function getProduct(item: InvoiceItem) {
+    return products.find((p) => p.id === item.productId) || null;
   }
 
-  function addTrialTransaction(total: number, customer: Customer, invNo: string) {
-    const oldTx = safeParseArray<any>(safeLocalGet(TRIAL_TX_KEY));
+  function getItemCalc(item: InvoiceItem) {
+    const product = getProduct(item);
 
-    const nextTx = [
-      {
-        id: String(Date.now()),
-        txn_date: invoiceDate,
-        txn_type: "income",
-        amount: total,
-        category_name:
-          lang === "zh"
-            ? "发票收入"
-            : lang === "en"
-              ? "Invoice Income"
-              : "Pendapatan Invois",
-        note: `${invNo}｜${customer.name}`,
-      },
-      ...oldTx,
+    const name =
+      item.productMode === "new"
+        ? item.newProductName || "-"
+        : product?.name || "-";
+
+    const price =
+      item.productMode === "new"
+        ? Number(item.newProductPrice || 0)
+        : Number(product?.price || 0);
+
+    const cost =
+      item.productMode === "new"
+        ? Number(item.newProductCost || 0)
+        : Number(product?.cost || 0);
+
+    const stock =
+      item.productMode === "new"
+        ? Number(item.newProductStock || 0)
+        : Number(product?.stock_qty || 0);
+
+    const qty = Number(item.qty || 0);
+    const discount = Number(item.discount || 0);
+
+    const lineSubtotal = roundMoney(price * qty);
+    const lineTotal = roundMoney(lineSubtotal - discount);
+    const lineCost = roundMoney(cost * qty);
+    const lineProfit = roundMoney(lineTotal - lineCost);
+
+    return {
+      product,
+      name,
+      price,
+      cost,
+      stock,
+      qty,
+      discount,
+      lineSubtotal,
+      lineTotal,
+      lineCost,
+      lineProfit,
+    };
+  }
+
+  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId) || null;
+
+  const activeCustomer: Customer =
+    customerMode === "select"
+      ? selectedCustomer || {
+          id: "",
+          name: "-",
+          phone: "",
+          company_name: "",
+          address: "",
+        }
+      : {
+          id: "",
+          name: newCustomerName || "-",
+          phone: newCustomerPhone,
+          company_name: newCustomerCompany,
+          address: newCustomerAddress,
+        };
+
+  const itemCalcs = useMemo(() => {
+    return items.map((item) => ({ item, calc: getItemCalc(item) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, products]);
+
+  const preview = useMemo(() => {
+    const subtotal = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.lineSubtotal, 0));
+    const productDiscount = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.discount, 0));
+
+    const afterProductDiscount = roundMoney(subtotal - productDiscount);
+
+    const extraDiscount = calcDiscountCharge(
+      discountInput.value,
+      discountInput.mode,
+      afterProductDiscount
+    );
+
+    const sst = calcCharge(sstInput.value, sstInput.mode, afterProductDiscount);
+    const serviceFee = calcCharge(serviceFeeInput.value, serviceFeeInput.mode, afterProductDiscount);
+    const handlingFee = calcCharge(handlingFeeInput.value, handlingFeeInput.mode, afterProductDiscount);
+
+    const total = roundMoney(afterProductDiscount + extraDiscount + sst + serviceFee + handlingFee);
+    const totalCost = roundMoney(itemCalcs.reduce((s, x) => s + x.calc.lineCost, 0));
+    const profit = roundMoney(total - totalCost);
+
+    return {
+      subtotal,
+      productDiscount,
+      afterProductDiscount,
+      extraDiscount,
+      sst,
+      serviceFee,
+      handlingFee,
+      total,
+      totalCost,
+      profit,
+    };
+  }, [itemCalcs, discountInput, sstInput, serviceFeeInput, handlingFeeInput]);
+
+  const filteredInvoices = useMemo(() => {
+    const s = search.trim().toLowerCase();
+
+    if (!s) return invoices;
+
+    return invoices.filter((inv) => {
+      return [
+        inv.invoice_no,
+        inv.customer_name,
+        inv.customer_phone,
+        inv.customer_company,
+        inv.total,
+        inv.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(s);
+    });
+  }, [invoices, search]);
+
+  const currentInvoiceNo = useMemo(() => makeInvoiceNo(), []);
+
+  const currentPreviewInvoice: InvoiceRecord = {
+    id: "",
+    user_id: sessionUserId,
+    invoice_no: currentInvoiceNo,
+    invoice_date: invoiceDate,
+    due_date: dueDate,
+    status,
+    customer_id: activeCustomer.id || "",
+    customer_name: activeCustomer.name || "",
+    customer_phone: activeCustomer.phone || "",
+    customer_company: activeCustomer.company_name || "",
+    customer_address: activeCustomer.address || "",
+    subtotal: preview.subtotal,
+    discount: preview.productDiscount + Math.abs(preview.extraDiscount),
+    total: preview.total,
+    total_cost: preview.totalCost,
+    total_profit: preview.profit,
+    payment_method: getPaymentText(),
+    note,
+    created_at: new Date().toISOString(),
+  };
+
+  function statusText(statusValue?: string | null) {
+    if (statusValue === "draft") return t.draft;
+    if (statusValue === "paid") return t.paid;
+    if (statusValue === "cancelled") return t.cancelled;
+    return t.sent;
+  }
+
+  function selectedPaymentDetail(inv?: InvoiceRecord | null) {
+    const paymentNameText = inv?.payment_method || getPaymentText();
+
+    return (
+      paymentOptions.find((p) => p.id === paymentNameText || p.name === paymentNameText) ||
+      getSelectedPayment()
+    );
+  }
+
+  async function insertAdaptive(table: string, payloadInput: Record<string, any>) {
+    let payload: Record<string, any> = { ...payloadInput };
+    let lastError: any = null;
+
+    const optionalKeys = [
+      "customer_phone",
+      "customer_company",
+      "customer_address",
+      "due_date",
+      "status",
+      "payment_method",
+      "subtotal",
+      "discount",
+      "total_cost",
+      "total_profit",
+      "note",
+      "source_type",
+      "source_id",
+      "debt_amount",
+      "category_name",
+      "product_name",
+      "qty",
+      "unit_price",
+      "unit_cost",
+      "line_total",
+      "line_profit",
+      "stock_qty",
+      "cost",
     ];
 
-    safeLocalSet(TRIAL_TX_KEY, JSON.stringify(nextTx));
-  }
+    for (let i = 0; i < 35; i++) {
+      const { data, error } = await supabase.from(table).insert(payload).select("*").single();
 
-  async function saveCompanyInfo() {
-    if (isTrial) {
-      setMsg(t.saved);
-      setShowCompanyEdit(false);
-      return;
+      if (!error) return data;
+
+      lastError = error;
+
+      if (!isSchemaCacheMissing(error.message)) throw error;
+
+      const missingMatch =
+        error.message.match(/Could not find the '([^']+)' column/i) ||
+        error.message.match(/column "([^"]+)" does not exist/i);
+
+      const missing = missingMatch?.[1];
+
+      if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+        const next = { ...payload };
+        delete next[missing];
+        payload = next;
+        continue;
+      }
+
+      const removable = optionalKeys.find((key) =>
+        Object.prototype.hasOwnProperty.call(payload, key)
+      );
+
+      if (!removable) throw error;
+
+      const next = { ...payload };
+      delete next[removable];
+      payload = next;
     }
 
-    if (!userId) return;
-
-    try {
-      await updateAdaptive("profiles", userId, {
-        company_name: companyName,
-        company_reg_no: companyRegNo,
-        company_phone: companyPhone,
-        company_address: companyAddress,
-        company_logo_url: companyLogoUrl,
-      });
-
-      setMsg(t.saved);
-      setShowCompanyEdit(false);
-    } catch (error: any) {
-      setMsg(t.fail + (error?.message || String(error)));
-    }
+    throw lastError || new Error("Insert failed");
   }
 
-  async function insertProductWithStock(item: InvoiceItem) {
-    const inputStock = Number(item.newProductStock || 0);
+  async function updateProductStock(productId: string, nextStock: number) {
+    if (!productId || isTrial) return;
 
-    const payload = {
-      user_id: userId,
-      name: item.newProductName,
-      price: Number(item.newProductPrice),
-      cost: Number(item.newProductCost),
-      discount: 0,
-      stock_qty: inputStock,
-      note: t.productNote,
-    };
-
-    const data = await insertAdaptive("products", payload);
-
-    const fixed = normalizeProduct({
-      ...(data as any),
-      stock_qty: inputStock,
-    });
-
-    saveStockValue(fixed.id, Number(fixed.stock_qty || inputStock || 0));
-    return fixed;
-  }
-
-  async function updateProductStockSafe(productId: string, nextStock: number) {
     const columns = ["stock_qty", "stock", "stock_quantity", "quantity", "qty"];
 
     for (const col of columns) {
-      const withUser = await supabase
+      const { error } = await supabase
         .from("products")
         .update({ [col]: nextStock })
         .eq("id", productId)
-        .eq("user_id", userId)
-        .select("id");
+        .eq("user_id", sessionUserId);
 
-      if (!withUser.error && Array.isArray(withUser.data) && withUser.data.length > 0) {
-        saveStockValue(productId, nextStock);
+      if (!error) {
         setProducts((prev) =>
           prev.map((p) => (p.id === productId ? { ...p, stock_qty: nextStock } : p))
         );
         return;
       }
 
-      if (withUser.error && !isSchemaColumnError(withUser.error)) {
-        throw withUser.error;
-      }
+      if (!isSchemaCacheMissing(error.message)) throw error;
+    }
+  }
+
+  async function createCustomerIfNeeded() {
+    if (customerMode === "select") {
+      return selectedCustomer;
     }
 
-    saveStockValue(productId, nextStock);
-    setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, stock_qty: nextStock } : p))
-    );
-  }
+    const name = newCustomerName.trim();
 
-  async function insertInvoiceWithFallback(finalCustomer: Customer) {
-    const payload = {
-      user_id: userId,
-      customer_id: finalCustomer.id,
-      customer_name: finalCustomer.name,
-      customer_phone: finalCustomer.phone || "",
-      customer_company: finalCustomer.company_name || "",
-      customer_address: finalCustomer.address || "",
-      invoice_no: invoiceNo,
-      invoice_date: invoiceDate,
-      due_date: dueDate,
-      status,
-      payment_method: paymentMethodText,
-      subtotal: preview.subtotal,
-      discount: preview.itemDiscount,
-      total: preview.total,
-      total_cost: preview.totalCost,
-      total_profit: preview.profit,
-      note,
+    if (!name) {
+      throw new Error(t.needNewCustomer);
+    }
+
+    const trialCustomer: Customer = {
+      id: makeId("customer"),
+      user_id: isTrial ? "trial" : sessionUserId,
+      name,
+      phone: newCustomerPhone.trim(),
+      company_name: newCustomerCompany.trim(),
+      address: newCustomerAddress.trim(),
     };
 
-    const data = await insertAdaptive("invoices", payload);
-    return data as InvoiceRecord;
+    if (isTrial) {
+      const nextCustomers = [trialCustomer, ...customers];
+      setCustomers(nextCustomers);
+      safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
+      return trialCustomer;
+    }
+
+    const data = await insertAdaptive("customers", {
+      user_id: sessionUserId,
+      name,
+      phone: newCustomerPhone.trim(),
+      company_name: newCustomerCompany.trim(),
+      address: newCustomerAddress.trim(),
+    });
+
+    const saved = data as Customer;
+    setCustomers((prev) => [saved, ...prev]);
+
+    return saved;
   }
 
-  async function insertInvoiceItemSafe(invoiceId: string, product: Product, calc: any) {
-    await insertAdaptive("invoice_items", {
-      invoice_id: invoiceId,
-      product_id: product.id,
-      product_name: product.name,
-      qty: calc.qty,
-      unit_price: calc.price,
-      unit_cost: calc.cost,
-      discount: calc.discount,
-      line_total: calc.lineTotal,
-      line_profit: calc.lineProfit,
-    });
-  }
+  async function createProductIfNeeded(item: InvoiceItem) {
+    const calc = getItemCalc(item);
 
-  async function insertTransactionSafe(invoiceId: string, finalCustomer: Customer) {
-    await insertAdaptive("transactions", {
-      user_id: userId,
-      txn_date: invoiceDate,
-      txn_type: "income",
-      amount: preview.total,
-      category_name:
-        lang === "zh"
-          ? "发票收入"
-          : lang === "en"
-            ? "Invoice Income"
-            : "Pendapatan Invois",
-      debt_amount: 0,
-      source_type: "invoice",
-      source_id: invoiceId,
-      note: `${invoiceNo}｜${finalCustomer.name}`,
+    if (item.productMode === "select") {
+      if (!calc.product) throw new Error(t.needProduct);
+      return calc.product;
+    }
+
+    const productName = item.newProductName.trim();
+
+    if (!productName) throw new Error(t.needProduct);
+
+    const newProduct: Product = {
+      id: makeId("product"),
+      user_id: isTrial ? "trial" : sessionUserId,
+      name: productName,
+      price: Number(item.newProductPrice || 0),
+      cost: Number(item.newProductCost || 0),
+      stock_qty: Number(item.newProductStock || 0),
+      note: t.productNote,
+    };
+
+    if (isTrial) {
+      const nextProducts = [newProduct, ...products];
+      setProducts(nextProducts);
+      safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
+      return newProduct;
+    }
+
+    const data = await insertAdaptive("products", {
+      user_id: sessionUserId,
+      name: newProduct.name,
+      price: newProduct.price,
+      cost: newProduct.cost,
+      stock_qty: newProduct.stock_qty,
+      note: newProduct.note,
     });
+
+    const saved = data as Product;
+    setProducts((prev) => [saved, ...prev]);
+
+    return saved;
   }
 
   async function createInvoice() {
     setMsg("");
-
-    if (editInvoiceId) {
-      await saveEditedInvoice();
-      return;
-    }
 
     if (customerMode === "select" && !selectedCustomer) {
       setMsg(t.needCustomer);
@@ -1733,36 +1819,7 @@ export default function InvoicePage() {
     setLoading(true);
 
     try {
-      let finalCustomer = selectedCustomer;
-      let workingCustomers = customers;
-      let workingProducts = products;
-
-      if (customerMode === "new") {
-        finalCustomer = {
-          id: makeId("customer"),
-          name: newCustomerName,
-          phone: newCustomerPhone,
-          company_name: newCustomerCompany,
-          address: newCustomerAddress,
-        };
-
-        if (isTrial) {
-          workingCustomers = [finalCustomer, ...customers];
-          setCustomers(workingCustomers);
-          saveTrialData(workingCustomers, workingProducts);
-        } else {
-          const data = await insertAdaptive("customers", {
-            user_id: userId,
-            name: newCustomerName,
-            phone: newCustomerPhone,
-            company_name: newCustomerCompany,
-            address: newCustomerAddress,
-          });
-
-          finalCustomer = data as Customer;
-          setCustomers((prev) => [finalCustomer as Customer, ...prev]);
-        }
-      }
+      const finalCustomer = await createCustomerIfNeeded();
 
       if (!finalCustomer) {
         setMsg(t.needCustomer);
@@ -1770,264 +1827,220 @@ export default function InvoicePage() {
         return;
       }
 
-      const finalItems: any[] = [];
+      const finalItems: Array<{ product: Product; calc: any }> = [];
 
       for (const pair of itemCalcs) {
-        const { item, calc } = pair;
-        let finalProduct = calc.product as Product | null;
-
-        if (item.productMode === "new") {
-          finalProduct = {
-            id: makeId("trial-product"),
-            name: item.newProductName,
-            price: Number(item.newProductPrice || 0),
-            cost: Number(item.newProductCost || 0),
-            discount: 0,
-            stock_qty: Number(item.newProductStock || 0),
-            note: t.productNote,
-          };
-
-          if (isTrial) {
-            workingProducts = [finalProduct, ...workingProducts];
-            saveStockValue(finalProduct.id, Number(finalProduct.stock_qty || 0));
-          } else {
-            finalProduct = await insertProductWithStock(item);
-            workingProducts = [finalProduct, ...workingProducts];
-          }
-        }
-
-        if (!finalProduct) continue;
+        const product = await createProductIfNeeded(pair.item);
+        const calc = getItemCalc({
+          ...pair.item,
+          productId: product.id,
+          productMode: "select",
+        });
 
         finalItems.push({
-          product: finalProduct,
+          product,
           calc: {
-            ...calc,
-            name: finalProduct.name,
+            ...pair.calc,
+            product,
+            name: product.name,
+            price: Number(product.price || pair.calc.price || 0),
+            cost: Number(product.cost || pair.calc.cost || 0),
+            stock: Number(product.stock_qty || pair.calc.stock || 0),
           },
         });
       }
 
-      const printableRecord: InvoiceRecord = {
-        id: makeId("invoice"),
-        invoice_no: invoiceNo,
-        invoice_date: invoiceDate,
-        due_date: dueDate,
-        status,
+      const invoicePayload = {
+        user_id: sessionUserId,
         customer_id: finalCustomer.id,
         customer_name: finalCustomer.name,
         customer_phone: finalCustomer.phone || "",
         customer_company: finalCustomer.company_name || "",
         customer_address: finalCustomer.address || "",
+        invoice_no: currentInvoiceNo,
+        invoice_date: invoiceDate,
+        due_date: dueDate,
+        status,
+        payment_method: getPaymentText(),
         subtotal: preview.subtotal,
-        discount: preview.itemDiscount,
+        discount: preview.productDiscount + Math.abs(preview.extraDiscount),
         total: preview.total,
         total_cost: preview.totalCost,
         total_profit: preview.profit,
-        payment_method: paymentMethodText,
         note,
+      };
+
+      const printableRecord: InvoiceRecord = {
+        id: makeId("invoice"),
+        ...invoicePayload,
         created_at: new Date().toISOString(),
       };
 
       if (isTrial) {
-        let nextProducts = workingProducts;
+        const nextProducts = products.map((p) => {
+          const used = finalItems.find((x) => x.product.id === p.id);
+          if (!used) return p;
 
-        finalItems.forEach(({ product, calc }) => {
-          const newStock = Math.max(Number(product.stock_qty || 0) - Number(calc.qty || 0), 0);
-          saveStockValue(product.id, newStock);
-
-          nextProducts = nextProducts.map((p) =>
-            p.id === product.id ? { ...p, stock_qty: newStock } : p
+          const nextStock = Math.max(
+            Number(p.stock_qty || 0) - Number(used.calc.qty || 0),
+            0
           );
+
+          return { ...p, stock_qty: nextStock };
         });
+
+        const finalProductIds = new Set(nextProducts.map((p) => p.id));
+
+        const appendedNewProducts = finalItems
+          .map((x) => x.product)
+          .filter((p) => !finalProductIds.has(p.id))
+          .map((p) => {
+            const used = finalItems.find((x) => x.product.id === p.id);
+            const nextStock = Math.max(
+              Number(p.stock_qty || 0) - Number(used?.calc.qty || 0),
+              0
+            );
+
+            return { ...p, stock_qty: nextStock };
+          });
+
+        const fixedProducts = [...appendedNewProducts, ...nextProducts];
 
         const nextInvoices = [printableRecord, ...invoices];
 
-        setProducts(nextProducts);
+        const oldTx = safeParseArray<any>(safeLocalGet(TRIAL_TX_KEY));
+        const nextTx = [
+          {
+            id: makeId("txn"),
+            user_id: "trial",
+            txn_date: invoiceDate,
+            txn_type: "income",
+            amount: preview.total,
+            category_name:
+              lang === "zh"
+                ? "发票收入"
+                : lang === "en"
+                  ? "Invoice Income"
+                  : "Pendapatan Invois",
+            debt_amount: 0,
+            source_type: "invoice",
+            source_id: printableRecord.id,
+            note: `${currentInvoiceNo}｜${finalCustomer.name}`,
+            created_at: new Date().toISOString(),
+          },
+          ...oldTx,
+        ];
+
+        setProducts(fixedProducts);
         setInvoices(nextInvoices);
         setLastPrintableInvoice(printableRecord);
         setLastPrintableItems(finalItems);
 
-        saveTrialData(workingCustomers, nextProducts, nextInvoices);
-        addTrialTransaction(preview.total, finalCustomer, invoiceNo);
+        safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(fixedProducts));
+        safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(nextInvoices));
+        safeLocalSet(TRIAL_TX_KEY, JSON.stringify(nextTx));
 
         setMsg(t.trialSuccess);
-        setMode("list");
-        setFullscreen(false);
         setLoading(false);
+
+        if (returnTo === "dashboard") {
+          setTimeout(() => {
+            window.location.href = buildDashboardUrl();
+          }, 500);
+          return;
+        }
+
+        setMode("list");
+        setIsFullscreen(false);
         return;
       }
 
-      const invoiceData = await insertInvoiceWithFallback(finalCustomer);
+      const savedInvoice = (await insertAdaptive("invoices", invoicePayload)) as InvoiceRecord;
 
       for (const { product, calc } of finalItems) {
-        await insertInvoiceItemSafe(invoiceData.id, product, calc);
+        await insertAdaptive("invoice_items", {
+          invoice_id: savedInvoice.id,
+          product_id: product.id,
+          product_name: product.name,
+          qty: calc.qty,
+          unit_price: calc.price,
+          unit_cost: calc.cost,
+          discount: calc.discount,
+          line_total: calc.lineTotal,
+          line_profit: calc.lineProfit,
+        });
 
-        const newStock = Math.max(Number(product.stock_qty || 0) - Number(calc.qty || 0), 0);
-        await updateProductStockSafe(product.id, newStock);
+        const newStock = Math.max(
+          Number(product.stock_qty || 0) - Number(calc.qty || 0),
+          0
+        );
+
+        await updateProductStock(product.id, newStock);
       }
 
-      await insertTransactionSafe(invoiceData.id, finalCustomer);
+      await insertAdaptive("transactions", {
+        user_id: sessionUserId,
+        txn_date: invoiceDate,
+        txn_type: "income",
+        amount: preview.total,
+        category_name:
+          lang === "zh"
+            ? "发票收入"
+            : lang === "en"
+              ? "Invoice Income"
+              : "Pendapatan Invois",
+        debt_amount: 0,
+        source_type: "invoice",
+        source_id: savedInvoice.id,
+        note: `${currentInvoiceNo}｜${finalCustomer.name}`,
+      });
 
-      const savedRecord: InvoiceRecord = {
+      const finalRecord: InvoiceRecord = {
         ...printableRecord,
-        ...invoiceData,
-        invoice_date: invoiceData.invoice_date || invoiceDate,
-        due_date: invoiceData.due_date || dueDate,
-        status: invoiceData.status || status,
-        customer_name: invoiceData.customer_name || finalCustomer.name,
-        customer_phone: invoiceData.customer_phone || finalCustomer.phone || "",
-        customer_company: invoiceData.customer_company || finalCustomer.company_name || "",
-        customer_address: invoiceData.customer_address || finalCustomer.address || "",
-        payment_method: invoiceData.payment_method || paymentMethodText,
-        subtotal: invoiceData.subtotal ?? preview.subtotal,
-        discount: invoiceData.discount ?? preview.itemDiscount,
-        total: invoiceData.total ?? preview.total,
-        total_cost: invoiceData.total_cost ?? preview.totalCost,
-        total_profit: invoiceData.total_profit ?? preview.profit,
-        created_at: invoiceData.created_at || printableRecord.created_at,
+        ...savedInvoice,
+        invoice_no: savedInvoice.invoice_no || currentInvoiceNo,
+        invoice_date: savedInvoice.invoice_date || invoiceDate,
+        due_date: savedInvoice.due_date || dueDate,
+        status: savedInvoice.status || status,
+        customer_name: savedInvoice.customer_name || finalCustomer.name,
+        customer_phone: savedInvoice.customer_phone || finalCustomer.phone || "",
+        customer_company: savedInvoice.customer_company || finalCustomer.company_name || "",
+        customer_address: savedInvoice.customer_address || finalCustomer.address || "",
+        payment_method: savedInvoice.payment_method || getPaymentText(),
+        subtotal: savedInvoice.subtotal ?? preview.subtotal,
+        discount:
+          savedInvoice.discount ?? preview.productDiscount + Math.abs(preview.extraDiscount),
+        total: savedInvoice.total ?? preview.total,
+        total_cost: savedInvoice.total_cost ?? preview.totalCost,
+        total_profit: savedInvoice.total_profit ?? preview.profit,
+        created_at: savedInvoice.created_at || new Date().toISOString(),
       };
 
-      setInvoices((prev) => [savedRecord, ...prev]);
-      setLastPrintableInvoice(savedRecord);
+      setInvoices((prev) => [finalRecord, ...prev]);
+      setLastPrintableInvoice(finalRecord);
       setLastPrintableItems(finalItems);
 
-      await loadProducts(userId);
+      await loadProducts(sessionUserId);
 
       setMsg(t.success);
-      setMode("list");
-      setFullscreen(false);
-    } catch (error: any) {
-      setMsg(t.fail + (error?.message || String(error)));
-    }
-
-    setLoading(false);
-  }
-
-  async function saveEditedInvoice() {
-    if (!editInvoiceId) return;
-
-    setLoading(true);
-
-    const updatedData: Partial<InvoiceRecord> = {
-      invoice_no: invoiceNo,
-      invoice_date: invoiceDate,
-      due_date: dueDate,
-      status,
-      payment_method: paymentMethodText,
-      customer_name: newCustomerName,
-      customer_phone: newCustomerPhone,
-      customer_company: newCustomerCompany,
-      customer_address: newCustomerAddress,
-      subtotal: preview.subtotal,
-      discount: preview.itemDiscount,
-      total: preview.total,
-      total_cost: preview.totalCost,
-      total_profit: preview.profit,
-      note,
-    };
-
-    if (isTrial) {
-      const next = invoices.map((inv) =>
-        inv.id === editInvoiceId ? { ...inv, ...updatedData } : inv
-      );
-
-      setInvoices(next);
-      safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(next));
-      setMsg(t.saved);
-      setMode("list");
-      setFullscreen(false);
-      setEditInvoiceId(null);
       setLoading(false);
-      return;
-    }
 
-    try {
-      await updateAdaptive("invoices", editInvoiceId, updatedData as any);
+      if (returnTo === "dashboard") {
+        setTimeout(() => {
+          window.location.href = buildDashboardUrl();
+        }, 500);
+        return;
+      }
 
-      setInvoices((prev) =>
-        prev.map((inv) => (inv.id === editInvoiceId ? { ...inv, ...updatedData } : inv))
-      );
-
-      setMsg(t.saved);
       setMode("list");
-      setFullscreen(false);
-      setEditInvoiceId(null);
+      setIsFullscreen(false);
     } catch (error: any) {
       setMsg(t.fail + (error?.message || String(error)));
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
-  function startEditInvoice(inv: InvoiceRecord) {
-    setEditInvoiceId(inv.id);
-    setInvoiceNo(inv.invoice_no || makeInvoiceNo());
-    setInvoiceDate(inv.invoice_date || today());
-    setDueDate(inv.due_date || today());
-    setStatus(inv.status || "sent");
-
-    setCustomerMode("new");
-    setNewCustomerName(inv.customer_name || "");
-    setNewCustomerPhone(inv.customer_phone || "");
-    setNewCustomerCompany(inv.customer_company || "");
-    setNewCustomerAddress(inv.customer_address || "");
-
-    setItems([
-      {
-        ...makeInvoiceItem(),
-        productMode: "new",
-        newProductName: "Invoice Item",
-        newProductPrice: String(inv.subtotal || inv.total || 0),
-        newProductCost: String(inv.total_cost || 0),
-        newProductStock: "999999",
-        qty: "1",
-        discount: String(inv.discount || 0),
-      },
-    ]);
-
-    setNote(inv.note || "");
-    setFullscreen(true);
-    setMode("new");
-  }
-
-  async function deleteInvoice(inv: InvoiceRecord) {
-    if (!confirm(t.confirmDelete)) return;
-
-    if (isTrial) {
-      const next = invoices.filter((x) => x.id !== inv.id);
-      setInvoices(next);
-      safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(next));
-      setMsg(t.saved);
-      return;
-    }
-
-    await supabase.from("invoice_items").delete().eq("invoice_id", inv.id);
-    const { error } = await supabase.from("invoices").delete().eq("id", inv.id);
-
-    if (error) {
-      setMsg(t.fail + error.message);
-      return;
-    }
-
-    setInvoices((prev) => prev.filter((x) => x.id !== inv.id));
-    setMsg(t.saved);
-  }
-
-  function statusText(value?: string | null) {
-    if (value === "draft") return t.draft;
-    if (value === "paid") return t.paid;
-    if (value === "cancelled") return t.cancelled;
-
-    return t.sent;
-  }
-
-  function getPaymentForInvoice(inv?: InvoiceRecord | null) {
-    const value = inv?.payment_method || paymentMethodText;
-
-    return paymentOptions.find((p) => p.id === value || p.name === value) || selectedPayment || null;
-  }
-
-  function setPrintable(record?: InvoiceRecord) {
+  function setPrintableInvoice(record?: InvoiceRecord) {
     if (record) {
       setLastPrintableInvoice(record);
       setLastPrintableItems([
@@ -2042,135 +2055,101 @@ export default function InvoicePage() {
           },
         },
       ]);
-    } else {
-      setLastPrintableInvoice(currentPreviewInvoice);
-      setLastPrintableItems(itemCalcs.map((x) => ({ product: x.calc.product, calc: x.calc })));
+      return;
     }
+
+    setLastPrintableInvoice(currentPreviewInvoice);
+    setLastPrintableItems(itemCalcs.map((x) => ({ product: x.calc.product, calc: x.calc })));
   }
 
   function printInvoice(record?: InvoiceRecord) {
-    setPrintable(record);
+    setPrintableInvoice(record);
     setTimeout(() => window.print(), 150);
   }
 
   function downloadPdf(record?: InvoiceRecord) {
-    setPrintable(record);
+    setPrintableInvoice(record);
     setTimeout(() => window.print(), 150);
   }
 
   function buildShareText(record?: InvoiceRecord) {
-    const invNo = record?.invoice_no || invoiceNo;
-    const customerName = record?.customer_name || activeCustomerForPreview.name;
-    const total = Number(record?.total ?? preview.total).toFixed(2);
-    const method = record?.payment_method || paymentMethodText;
-    const pay = getPaymentForInvoice(record);
+    const inv = record || currentPreviewInvoice;
+    const payment = selectedPaymentDetail(inv);
 
-    const paymentDetailText = [
-      pay?.bankAccount ? `${t.paymentBankAccount}：${pay.bankAccount}` : "",
-      pay?.receiverName ? `${t.paymentReceiverName}：${pay.receiverName}` : "",
-      pay?.link ? `Payment Link：${pay.link}` : "",
-      pay?.qrCodeUrl && !pay.qrCodeUrl.startsWith("data:") ? `QR Code：${pay.qrCodeUrl}` : "",
-    ]
-      .filter(Boolean)
-      .join("%0A");
+    const lines = [
+      `Invoice ${inv.invoice_no}`,
+      `${t.customerName}: ${inv.customer_name || "-"}`,
+      `${t.total}: RM ${Number(inv.total || 0).toFixed(2)}`,
+      `${t.paymentMethod}: ${inv.payment_method || getPaymentText()}`,
+      payment?.bankAccount ? `${t.paymentBankAccount}: ${payment.bankAccount}` : "",
+      payment?.receiverName ? `${t.paymentReceiverName}: ${payment.receiverName}` : "",
+      payment?.link ? `Payment Link: ${payment.link}` : "",
+      payment?.qrCodeUrl && !payment.qrCodeUrl.startsWith("data:")
+        ? `QR Code: ${payment.qrCodeUrl}`
+        : "",
+    ].filter(Boolean);
 
-    return `Invoice ${invNo}%0A${t.customerName}：${customerName}%0A${t.total}：RM ${total}%0A${t.paymentMethod}：${method}${
-      paymentDetailText ? `%0A${paymentDetailText}` : ""
-    }`;
+    return lines.join("\n");
   }
 
-  function sendWhatsAppPdf(record?: InvoiceRecord) {
-    setPrintable(record);
+  async function shareInvoice(record?: InvoiceRecord) {
+    setPrintableInvoice(record);
 
-    const text = `${buildShareText(record)}%0A%0A请先保存PDF，再发送给客户。`;
-
-    setTimeout(() => {
-      window.print();
-
-      setTimeout(() => {
-        window.location.href = `https://wa.me/?text=${text}`;
-      }, 800);
-    }, 150);
-  }
-
-  function shareInvoice(record: InvoiceRecord) {
-    setPrintable(record);
-
-    const plainText = decodeURIComponent(buildShareText(record).replaceAll("%0A", "\n"));
+    const inv = record || currentPreviewInvoice;
+    const text = buildShareText(record);
 
     if (typeof navigator !== "undefined" && "share" in navigator) {
-      navigator
-        .share({
-          title: `Invoice ${record.invoice_no}`,
-          text: plainText,
-        })
-        .then(() => setMsg(t.copied))
-        .catch(() => {});
+      try {
+        await navigator.share({
+          title: `Invoice ${inv.invoice_no}`,
+          text,
+        });
+        setMsg(t.copied);
+        return;
+      } catch {
+        // User cancelled share.
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setMsg(t.copied);
+    } catch {
+      setMsg(t.copied);
+    }
+  }
+
+  function sendWhatsApp(record?: InvoiceRecord) {
+    const text = encodeURIComponent(buildShareText(record));
+    window.location.href = `https://wa.me/?text=${text}`;
+  }
+
+  async function deleteInvoice(inv: InvoiceRecord) {
+    if (!confirm(t.confirmDelete)) return;
+
+    if (isTrial) {
+      const next = invoices.filter((x) => x.id !== inv.id);
+      setInvoices(next);
+      safeLocalSet(TRIAL_INVOICES_KEY, JSON.stringify(next));
+      setMsg(t.saved);
       return;
     }
 
-    setMsg(t.copied);
-  }
+    await supabase.from("invoice_items").delete().eq("invoice_id", inv.id);
 
-  function goBack() {
-    const q = new URLSearchParams(window.location.search);
-    const modeParam = q.get("mode");
-    const currentTheme = normalizeThemeKey(themeKey);
+    const { error } = await supabase
+      .from("invoices")
+      .delete()
+      .eq("id", inv.id)
+      .eq("user_id", sessionUserId);
 
-    window.location.href =
-      modeParam === "trial"
-        ? `/dashboard?mode=trial&lang=${lang}&theme=${currentTheme}&refresh=${Date.now()}`
-        : `/dashboard?lang=${lang}&theme=${currentTheme}&refresh=${Date.now()}`;
-  }
+    if (error) {
+      setMsg(t.fail + error.message);
+      return;
+    }
 
-  function openNewInvoice(forceFullscreen = false) {
-    setEditInvoiceId(null);
-    setInvoiceNo(makeInvoiceNo());
-    setInvoiceDate(today());
-    setDueDate(today());
-    setStatus("sent");
-
-    setCustomerMode("select");
-    setCustomerId("");
-    setNewCustomerName("");
-    setNewCustomerPhone("");
-    setNewCustomerCompany("");
-    setNewCustomerAddress("");
-
-    setItems([makeInvoiceItem()]);
-
-    setChargeDiscount({ mode: "%", value: "0" });
-    setSst({ mode: "%", value: "0" });
-    setServiceFee({ mode: "%", value: "0" });
-    setHandlingFee({ mode: "%", value: "0" });
-
-    setSignatureText("");
-    setSignatureImageUrl("");
-    setSelectedSignatureId("");
-    setSignaturePadTarget(null);
-    setCustomerSignatureUrl("");
-
-    setNote("");
-    setMsg("");
-    setShowPaymentAdd(false);
-
-    if (forceFullscreen) setFullscreen(true);
-    setMode("new");
-  }
-
-  function closeInvoiceForm() {
-    setMode("list");
-    setFullscreen(false);
-    setEditInvoiceId(null);
-
-    const q = new URLSearchParams(window.location.search);
-    q.delete("open");
-    q.delete("fullscreen");
-    q.set("lang", lang);
-    q.set("theme", themeKey);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    setInvoices((prev) => prev.filter((x) => x.id !== inv.id));
+    setMsg(t.saved);
   }
 
   function renderChargeInput(
@@ -2181,7 +2160,12 @@ export default function InvoicePage() {
     return (
       <div
         className="sa-panel"
-        style={{ ...chargeBoxStyle, borderColor: theme.border, background: theme.panelBg }}
+        style={{
+          ...chargeBoxStyle,
+          borderColor: theme.border,
+          background: theme.panelBg || theme.card,
+          color: theme.panelText || theme.text,
+        }}
       >
         <label style={{ ...labelStyle, color: theme.accent }}>{label}</label>
 
@@ -2190,6 +2174,7 @@ export default function InvoicePage() {
             value={charge.value}
             onChange={(e) => setCharge({ ...charge, value: e.target.value })}
             placeholder={t.chargeValue}
+            inputMode="decimal"
             style={{
               ...themedInputStyle,
               marginBottom: 0,
@@ -2210,8 +2195,8 @@ export default function InvoicePage() {
     );
   }
 
-  function renderOfficialChargeRow(label: string, charge: ChargeInput, amount: number) {
-    const show = Number(charge.value || 0) !== 0 || Number(amount || 0) !== 0;
+  function renderOfficialChargeRow(label: string, amount: number, input: ChargeInput) {
+    const show = Number(amount || 0) !== 0 || Number(input.value || 0) !== 0;
     if (!show) return null;
 
     const isNegative = Number(amount || 0) < 0;
@@ -2219,159 +2204,45 @@ export default function InvoicePage() {
     return (
       <div style={officialSummaryRowStyle}>
         <span>
-          {label} {charge.mode === "%" ? `(${charge.value || 0}%)` : "(RM)"}
+          {label} {input.mode === "%" ? `(${input.value || 0}%)` : "(RM)"}
         </span>
 
         <strong style={{ color: isNegative ? "#dc2626" : "#111827" }}>
-          {formatSignedRM(Number(amount || 0))}
+          {formatSignedRM(amount)}
         </strong>
       </div>
     );
   }
 
-  function getCanvasPos(e: any) {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches?.[0] || e.changedTouches?.[0];
-    const clientX = touch ? touch.clientX : e.clientX;
-    const clientY = touch ? touch.clientY : e.clientY;
-
-    return {
-      x: ((clientX - rect.left) / rect.width) * canvas.width,
-      y: ((clientY - rect.top) / rect.height) * canvas.height,
-    };
-  }
-
-  function startDraw(e: any) {
-    e.preventDefault();
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    drawingRef.current = true;
-    const pos = getCanvasPos(e);
-
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-  }
-
-  function draw(e: any) {
-    if (!drawingRef.current) return;
-
-    e.preventDefault();
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const pos = getCanvasPos(e);
-
-    ctx.lineWidth = 4;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#111827";
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-  }
-
-  function stopDraw() {
-    drawingRef.current = false;
-  }
-
-  function clearSignaturePad() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (signaturePadTarget === "issuer") {
-      setSignatureImageUrl("");
-    }
-
-    if (signaturePadTarget === "customer") {
-      setCustomerSignatureUrl("");
-    }
-  }
-
-  function confirmSignaturePad() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const dataUrl = canvas.toDataURL("image/png");
-
-    if (signaturePadTarget === "issuer") {
-      setSignatureImageUrl(dataUrl);
-    }
-
-    if (signaturePadTarget === "customer") {
-      setCustomerSignatureUrl(dataUrl);
-    }
-
-    setSignaturePadTarget(null);
-  }
-
-  const currentPreviewInvoice: InvoiceRecord = {
-    id: "",
-    invoice_no: invoiceNo,
-    invoice_date: invoiceDate,
-    due_date: dueDate,
-    status,
-    customer_name: activeCustomerForPreview.name,
-    customer_phone: activeCustomerForPreview.phone,
-    customer_company: activeCustomerForPreview.company_name,
-    customer_address: activeCustomerForPreview.address,
-    subtotal: preview.subtotal,
-    discount: preview.itemDiscount,
-    total: preview.total,
-    total_cost: preview.totalCost,
-    total_profit: preview.profit,
-    payment_method: paymentMethodText,
-    note,
-  };
-
-  const printableInvoice = lastPrintableInvoice || currentPreviewInvoice;
-  const printableItems =
-    lastPrintableItems.length > 0
-      ? lastPrintableItems
-      : itemCalcs.map((x) => ({ product: x.calc.product, calc: x.calc }));
-
   function renderOfficialInvoice(inv: InvoiceRecord, officialItems: any[]) {
+    const payment = selectedPaymentDetail(inv);
+
     const subtotal = Number(inv.subtotal || 0);
     const discount = Number(inv.discount || 0);
     const total = Number(inv.total || 0);
     const totalCost = Number(inv.total_cost || 0);
     const profit = Number(inv.total_profit ?? total - totalCost);
-    const lineAfterDiscount = subtotal - discount;
-    const pay = getPaymentForInvoice(inv);
 
-    const showIssuerSignature = Boolean(signatureText?.trim()) || Boolean(signatureImageUrl?.trim());
-    const showCustomerSignatureImage = Boolean(customerSignatureUrl);
-    const showSignatureArea = showIssuerSignature || showCustomerSignatureImage;
+    const afterDiscount = subtotal - discount;
+
+    const showIssuerSignature = Boolean(signatureText.trim()) || Boolean(signatureImageUrl.trim());
+    const showCustomerSignature = Boolean(customerSignatureImageUrl);
 
     return (
       <div style={officialInvoiceStyle}>
         <div style={officialHeaderStyle}>
           <div style={officialCompanyBlockStyle}>
             {companyLogoUrl ? (
-              <img src={companyLogoUrl} style={officialLogoStyle} alt="Company Logo" />
+              <img src={companyLogoUrl} alt="Company Logo" style={officialLogoStyle} />
             ) : (
               <div style={officialLogoPlaceholderStyle}>LOGO</div>
             )}
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <h2 style={officialCompanyNameStyle}>{companyName || "-"}</h2>
-              <div>SSM：{companyRegNo || "-"}</div>
-              <div>{t.phone}：{companyPhone || "-"}</div>
-              <div>{t.address}：{companyAddress || "-"}</div>
+              <div>SSM: {companyRegNo || "-"}</div>
+              <div>{t.phone}: {companyPhone || "-"}</div>
+              <div>{t.address}: {companyAddress || "-"}</div>
             </div>
           </div>
 
@@ -2414,22 +2285,24 @@ export default function InvoicePage() {
               <div style={officialPaymentInlineStyle}>
                 <strong>{inv.payment_method || "-"}</strong>
 
-                {pay?.bankAccount ? (
+                {payment?.bankAccount ? (
                   <div style={officialPaymentDetailTextStyle}>
-                    {t.paymentBankAccount}：{pay.bankAccount}
+                    {t.paymentBankAccount}: {payment.bankAccount}
                   </div>
                 ) : null}
 
-                {pay?.receiverName ? (
+                {payment?.receiverName ? (
                   <div style={officialPaymentDetailTextStyle}>
-                    {t.paymentReceiverName}：{pay.receiverName}
+                    {t.paymentReceiverName}: {payment.receiverName}
                   </div>
                 ) : null}
 
-                {pay?.link ? <div style={officialPaymentDetailTextStyle}>{pay.link}</div> : null}
+                {payment?.link ? (
+                  <div style={officialPaymentDetailTextStyle}>{payment.link}</div>
+                ) : null}
 
-                {pay?.qrCodeUrl ? (
-                  <img src={pay.qrCodeUrl} style={officialInlineQrStyle} alt="Payment QR" />
+                {payment?.qrCodeUrl ? (
+                  <img src={payment.qrCodeUrl} alt="Payment QR" style={officialInlineQrStyle} />
                 ) : null}
               </div>
             </div>
@@ -2451,24 +2324,10 @@ export default function InvoicePage() {
             {officialItems.map((x, index) => (
               <tr key={`${x.calc.name}-${index}`}>
                 <td style={officialTdStyle}>{x.calc.name || x.product?.name || "-"}</td>
-                <td style={officialTdStyle}>{x.calc.qty || 1}</td>
+                <td style={officialTdStyle}>{Number(x.calc.qty || 1)}</td>
                 <td style={officialTdStyle}>RM {Number(x.calc.price || 0).toFixed(2)}</td>
-                <td
-                  style={{
-                    ...officialTdStyle,
-                    color: Number(x.calc.discount || 0) < 0 ? "#dc2626" : "#111827",
-                  }}
-                >
-                  {formatSignedRM(Number(x.calc.discount || 0))}
-                </td>
-                <td
-                  style={{
-                    ...officialTdStyle,
-                    color: Number(x.calc.lineTotal || 0) < 0 ? "#dc2626" : "#111827",
-                  }}
-                >
-                  {formatSignedRM(Number(x.calc.lineTotal || 0))}
-                </td>
+                <td style={officialTdStyle}>{formatSignedRM(Number(x.calc.discount || 0))}</td>
+                <td style={officialTdStyle}>{formatSignedRM(Number(x.calc.lineTotal || 0))}</td>
               </tr>
             ))}
           </tbody>
@@ -2482,45 +2341,41 @@ export default function InvoicePage() {
 
           <div style={officialSummaryRowStyle}>
             <span>{t.discount}</span>
-            <strong style={{ color: "#dc2626" }}>{formatSignedRM(-Math.abs(discount))}</strong>
+            <strong style={{ color: "#dc2626" }}>
+              {formatSignedRM(-Math.abs(discount))}
+            </strong>
           </div>
 
           <div style={officialSummaryRowStyle}>
             <span>{t.taxableTotal}</span>
-            <strong style={{ color: amountColor(lineAfterDiscount, "#111827") }}>
-              {formatSignedRM(lineAfterDiscount)}
-            </strong>
+            <strong>{formatSignedRM(afterDiscount)}</strong>
           </div>
 
-          {renderOfficialChargeRow(t.chargeDiscount, chargeDiscount, preview.chargeDiscountAmount)}
-          {renderOfficialChargeRow(t.sst, sst, preview.sstAmount)}
-          {renderOfficialChargeRow(t.serviceFee, serviceFee, preview.serviceFeeAmount)}
-          {renderOfficialChargeRow(t.handlingFee, handlingFee, preview.handlingFeeAmount)}
+          {renderOfficialChargeRow(t.chargeDiscount, preview.extraDiscount, discountInput)}
+          {renderOfficialChargeRow(t.sst, preview.sst, sstInput)}
+          {renderOfficialChargeRow(t.serviceFee, preview.serviceFee, serviceFeeInput)}
+          {renderOfficialChargeRow(t.handlingFee, preview.handlingFee, handlingFeeInput)}
 
           <div style={officialTotalRowStyle}>
             <span>{t.total}</span>
-            <strong style={{ color: amountColor(total, "#0f766e") }}>
-              {formatSignedRM(total)}
-            </strong>
+            <strong>{formatSignedRM(total)}</strong>
           </div>
 
           <div style={officialProfitRowStyle}>
             <span>{t.profit}</span>
-            <strong style={{ color: amountColor(profit, "#16a34a") }}>
-              {formatSignedRM(profit)}
-            </strong>
+            <strong>{formatSignedRM(profit)}</strong>
           </div>
         </div>
 
-        {inv.note ? <div style={officialNoteStyle}>Note：{inv.note}</div> : null}
+        {inv.note ? <div style={officialNoteStyle}>Note: {inv.note}</div> : null}
 
-        {showSignatureArea ? (
+        {showIssuerSignature || showCustomerSignature ? (
           <div
             style={{
               ...officialSignatureWrapStyle,
               gridTemplateColumns:
-                showIssuerSignature && showCustomerSignatureImage ? "1fr 1fr" : "1fr",
-              width: showIssuerSignature && showCustomerSignatureImage ? "100%" : "58%",
+                showIssuerSignature && showCustomerSignature ? "1fr 1fr" : "1fr",
+              width: showIssuerSignature && showCustomerSignature ? "100%" : "58%",
               marginLeft: "auto",
             }}
           >
@@ -2529,8 +2384,8 @@ export default function InvoicePage() {
                 {signatureImageUrl ? (
                   <img
                     src={signatureImageUrl}
-                    style={officialSignatureImageStyle}
                     alt="Issuer Signature"
+                    style={officialSignatureImageStyle}
                   />
                 ) : null}
 
@@ -2543,12 +2398,12 @@ export default function InvoicePage() {
               </div>
             ) : null}
 
-            {showCustomerSignatureImage ? (
+            {showCustomerSignature ? (
               <div style={officialSignatureBoxStyle}>
                 <img
-                  src={customerSignatureUrl}
-                  style={officialSignatureImageStyle}
+                  src={customerSignatureImageUrl}
                   alt="Customer Signature"
+                  style={officialSignatureImageStyle}
                 />
 
                 <div style={officialSignatureLineStyle} />
@@ -2561,6 +2416,12 @@ export default function InvoicePage() {
     );
   }
 
+  const printableInvoice = lastPrintableInvoice || currentPreviewInvoice;
+  const printableItems =
+    lastPrintableItems.length > 0
+      ? lastPrintableItems
+      : itemCalcs.map((x) => ({ product: x.calc.product, calc: x.calc }));
+
   return (
     <main
       className="smartacctg-page smartacctg-invoice-page"
@@ -2570,7 +2431,7 @@ export default function InvoicePage() {
     >
       <style jsx global>{INVOICE_PAGE_CSS}</style>
 
-      <div className="no-print sa-user-toolbar">
+      <div className="no-print sa-user-toolbar" style={topToolbarStyle}>
         <button
           type="button"
           onClick={goBack}
@@ -2626,7 +2487,7 @@ export default function InvoicePage() {
         </div>
       </div>
 
-      {mode === "list" && (
+      {mode === "list" ? (
         <section
           className="no-print sa-card"
           style={{
@@ -2669,13 +2530,13 @@ export default function InvoicePage() {
                   className="sa-item-card"
                   style={{
                     ...invoiceItemStyle,
-                    background: theme.itemBg,
-                    color: theme.panelText,
+                    background: theme.itemBg || theme.card,
+                    color: theme.panelText || theme.text,
                     borderColor: theme.border,
                     boxShadow: theme.glow,
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ minWidth: 0 }}>
                     <strong>{inv.invoice_no}</strong>
 
                     <div style={{ ...mutedTextStyle, color: theme.muted }}>
@@ -2684,23 +2545,47 @@ export default function InvoicePage() {
                     </div>
 
                     <div style={{ ...mutedTextStyle, color: theme.muted }}>
-                      {t.recordDateTime}：{formatDateTime(inv.created_at, inv.invoice_date)}
+                      {t.recordDateTime}: {formatDateTime(inv.created_at, inv.invoice_date)}
                     </div>
 
                     <div style={{ ...mutedTextStyle, color: theme.muted }}>
-                      {t.phone}：{inv.customer_phone || "-"}
+                      {t.phone}: {inv.customer_phone || "-"}
                     </div>
 
-                    <div className="invoice-record-action-row" style={recordActionRowStyle}>
+                    <div className="invoice-record-action-row">
                       <button
                         type="button"
-                        onClick={() => startEditInvoice(inv)}
+                        onClick={() => {
+                          setLastPrintableInvoice(inv);
+                          printInvoice(inv);
+                        }}
                         style={{
                           ...recordEditBtnStyle,
                           background: theme.accent,
                         }}
                       >
-                        {t.edit}
+                        {t.print}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => downloadPdf(inv)}
+                        style={{
+                          ...recordShareBtnStyle,
+                          borderColor: theme.accent,
+                          color: theme.accent,
+                          background: theme.inputBg,
+                        }}
+                      >
+                        {t.pdf}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => shareInvoice(inv)}
+                        style={recordWhatsappBtnStyle}
+                      >
+                        {t.share}
                       </button>
 
                       <button
@@ -2710,31 +2595,10 @@ export default function InvoicePage() {
                       >
                         {t.delete}
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => sendWhatsAppPdf(inv)}
-                        style={recordWhatsappBtnStyle}
-                      >
-                        {t.whatsapp}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => shareInvoice(inv)}
-                        style={{
-                          ...recordShareBtnStyle,
-                          borderColor: theme.accent,
-                          color: theme.accent,
-                          background: theme.inputBg,
-                        }}
-                      >
-                        {t.share}
-                      </button>
                     </div>
                   </div>
 
-                  <div style={{ textAlign: "right", minWidth: 100 }}>
+                  <div style={{ textAlign: "right" }}>
                     <strong style={{ color: theme.accent }}>
                       RM {Number(inv.total || 0).toFixed(2)}
                     </strong>
@@ -2746,11 +2610,11 @@ export default function InvoicePage() {
 
           {msg ? <p style={{ ...msgStyle, color: theme.accent }}>{msg}</p> : null}
         </section>
-      )}
+      ) : null}
 
-      {mode === "new" && (
+      {mode === "new" ? (
         <section
-          className={`no-print sa-card ${fullscreen ? "fullscreen-invoice-modal" : ""}`}
+          className={`no-print sa-card ${isFullscreen ? "fullscreen-invoice-modal" : ""}`}
           style={{
             ...cardStyle,
             background: theme.card,
@@ -2760,9 +2624,7 @@ export default function InvoicePage() {
           }}
         >
           <div className="sa-titlebar" style={titleBarStyle}>
-            <h1 style={{ ...newTitleStyle, color: theme.accent }}>
-              {editInvoiceId ? t.edit : t.createTitle}
-            </h1>
+            <h1 style={{ ...newTitleStyle, color: theme.accent }}>{t.createTitle}</h1>
 
             <button
               type="button"
@@ -2777,7 +2639,7 @@ export default function InvoicePage() {
           <p style={{ ...newDescStyle, color: theme.muted }}>{t.desc}</p>
 
           <div className="sa-panel" style={{ ...invoiceNoBox, ...themedPanelStyle }}>
-            <strong>Invoice No：</strong> {invoiceNo}
+            <strong>Invoice No:</strong>&nbsp;{currentInvoiceNo}
           </div>
 
           <h3>{t.invoiceInfo}</h3>
@@ -2839,24 +2701,33 @@ export default function InvoicePage() {
                   borderColor: theme.border,
                   color: showPaymentAdd ? "#fff" : theme.accent,
                   background: showPaymentAdd ? theme.accent : theme.inputBg,
+                  marginBottom: 0,
                 }}
               >
                 {t.addPayment}
               </button>
 
-              <button type="button" onClick={deletePaymentOption} style={dangerOutlineBtnStyle}>
+              <button
+                type="button"
+                onClick={deletePaymentOption}
+                style={{
+                  ...dangerOutlineBtnStyle,
+                  marginBottom: 0,
+                  minHeight: "var(--sa-control-h)",
+                }}
+              >
                 {t.deletePayment}
               </button>
             </div>
 
-            {showPaymentAdd && (
+            {showPaymentAdd ? (
               <div
                 className="sa-panel"
                 style={{
                   ...paymentAddBoxStyle,
                   borderColor: theme.border,
-                  background: theme.panelBg,
-                  color: theme.panelText,
+                  background: theme.panelBg || theme.card,
+                  color: theme.panelText || theme.text,
                 }}
               >
                 <input
@@ -2912,7 +2783,7 @@ export default function InvoicePage() {
                 </label>
 
                 {newPaymentQr ? (
-                  <img src={newPaymentQr} style={qrPreviewStyle} alt="QR Preview" />
+                  <img src={newPaymentQr} alt="QR Preview" style={qrPreviewStyle} />
                 ) : null}
 
                 <button
@@ -2923,7 +2794,7 @@ export default function InvoicePage() {
                   {t.savePayment}
                 </button>
               </div>
-            )}
+            ) : null}
 
             <label style={{ ...labelStyle, color: theme.accent }}>{t.note}</label>
             <input
@@ -2936,9 +2807,9 @@ export default function InvoicePage() {
 
           <h3>{t.companyInfo}</h3>
 
-          <div className="sa-panel" style={{ ...companyBox, ...themedPanelStyle }}>
+          <div className="sa-panel company-info-box" style={{ ...companyBox, ...themedPanelStyle }}>
             {companyLogoUrl ? (
-              <img src={companyLogoUrl} style={logoStyle} alt="Company Logo" />
+              <img src={companyLogoUrl} alt="Company Logo" style={logoStyle} />
             ) : (
               <div
                 style={{
@@ -2951,11 +2822,11 @@ export default function InvoicePage() {
               </div>
             )}
 
-            <div style={{ flex: 1, color: theme.panelText }}>
-              <strong>{companyName}</strong>
-              <div>SSM：{companyRegNo || "-"}</div>
-              <div>{t.phone}：{companyPhone || "-"}</div>
-              <div>{t.address}：{companyAddress || "-"}</div>
+            <div style={{ minWidth: 0, color: theme.panelText || theme.text }}>
+              <strong style={{ overflowWrap: "anywhere" }}>{companyName || "-"}</strong>
+              <div style={{ overflowWrap: "anywhere" }}>SSM: {companyRegNo || "-"}</div>
+              <div style={{ overflowWrap: "anywhere" }}>{t.phone}: {companyPhone || "-"}</div>
+              <div style={{ overflowWrap: "anywhere" }}>{t.address}: {companyAddress || "-"}</div>
             </div>
 
             <button
@@ -2972,14 +2843,14 @@ export default function InvoicePage() {
             </button>
           </div>
 
-          {showCompanyEdit && (
+          {showCompanyEdit ? (
             <div
               className="sa-panel"
               style={{
                 ...companyEditBoxStyle,
                 borderColor: theme.border,
-                background: theme.panelBg,
-                color: theme.panelText,
+                background: theme.panelBg || theme.card,
+                color: theme.panelText || theme.text,
               }}
             >
               <input
@@ -3025,7 +2896,7 @@ export default function InvoicePage() {
                 {t.saveCompany}
               </button>
             </div>
-          )}
+          ) : null}
 
           <h3>{t.customerInfo}</h3>
 
@@ -3105,8 +2976,8 @@ export default function InvoicePage() {
                   style={{
                     ...productLineBoxStyle,
                     borderColor: theme.border,
-                    background: theme.panelBg,
-                    color: theme.panelText,
+                    background: theme.panelBg || theme.card,
+                    color: theme.panelText || theme.text,
                   }}
                 >
                   <div style={productLineTitleStyle}>
@@ -3148,11 +3019,11 @@ export default function InvoicePage() {
                       style={themedInputStyle}
                     >
                       <option value="">{t.chooseProduct}</option>
-
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name}｜{t.price} {Number(p.price).toFixed(2)}｜{t.cost}{" "}
-                          {Number(p.cost).toFixed(2)}｜{t.stock} {Number(p.stock_qty || 0)}
+                          {p.name}｜{t.price} {Number(p.price || 0).toFixed(2)}｜{t.cost}{" "}
+                          {Number(p.cost || 0).toFixed(2)}｜{t.stock}{" "}
+                          {Number(p.stock_qty || 0)}
                         </option>
                       ))}
                     </select>
@@ -3194,7 +3065,6 @@ export default function InvoicePage() {
                   <div style={dateTwoColGridStyle}>
                     <div>
                       <label style={{ ...labelStyle, color: theme.accent }}>{t.qty}</label>
-
                       <input
                         value={item.qty}
                         onChange={(e) => updateItem(item.id, { qty: e.target.value })}
@@ -3207,7 +3077,6 @@ export default function InvoicePage() {
                       <label style={{ ...labelStyle, color: theme.accent }}>
                         {t.lineDiscount}
                       </label>
-
                       <input
                         value={item.discount}
                         onChange={(e) => updateItem(item.id, { discount: e.target.value })}
@@ -3241,10 +3110,10 @@ export default function InvoicePage() {
           <h3>{t.extraCharges}</h3>
 
           <div style={chargeGridStyle}>
-            {renderChargeInput(t.chargeDiscount, chargeDiscount, setChargeDiscount)}
-            {renderChargeInput(t.sst, sst, setSst)}
-            {renderChargeInput(t.serviceFee, serviceFee, setServiceFee)}
-            {renderChargeInput(t.handlingFee, handlingFee, setHandlingFee)}
+            {renderChargeInput(t.chargeDiscount, discountInput, setDiscountInput)}
+            {renderChargeInput(t.sst, sstInput, setSstInput)}
+            {renderChargeInput(t.serviceFee, serviceFeeInput, setServiceFeeInput)}
+            {renderChargeInput(t.handlingFee, handlingFeeInput, setHandlingFeeInput)}
           </div>
 
           <h3>{t.yourSignature}</h3>
@@ -3254,8 +3123,8 @@ export default function InvoicePage() {
             style={{
               ...signatureInputBoxStyle,
               borderColor: theme.border,
-              background: theme.panelBg,
-              color: theme.panelText,
+              background: theme.panelBg || theme.card,
+              color: theme.panelText || theme.text,
             }}
           >
             <select
@@ -3264,7 +3133,6 @@ export default function InvoicePage() {
               style={themedInputStyle}
             >
               <option value="">{t.noSignature}</option>
-
               {signatureOptions.map((sig) => (
                 <option key={sig.id} value={sig.id}>
                   {sig.name}
@@ -3288,7 +3156,7 @@ export default function InvoicePage() {
 
             <button
               type="button"
-              onClick={() => setSignaturePadTarget("issuer")}
+              onClick={() => openSignaturePad("issuer")}
               style={{
                 ...paymentToggleBtnStyle,
                 borderColor: theme.border,
@@ -3309,7 +3177,6 @@ export default function InvoicePage() {
                 }}
               >
                 {t.uploadSignature}
-
                 <input
                   type="file"
                   accept="image/*"
@@ -3333,7 +3200,7 @@ export default function InvoicePage() {
 
             <button
               type="button"
-              onClick={() => setSignaturePadTarget("customer")}
+              onClick={() => openSignaturePad("customer")}
               style={{
                 ...paymentToggleBtnStyle,
                 borderColor: theme.border,
@@ -3349,8 +3216,8 @@ export default function InvoicePage() {
                 {signatureImageUrl ? (
                   <img
                     src={signatureImageUrl}
-                    style={signatureMiniImageStyle}
                     alt="Signature Preview"
+                    style={signatureMiniImageStyle}
                   />
                 ) : null}
 
@@ -3377,20 +3244,7 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={createInvoice}
-            disabled={loading}
-            style={{
-              ...submitBtn,
-              background: theme.accent,
-              opacity: loading ? 0.65 : 1,
-            }}
-          >
-            {loading ? t.generating : editInvoiceId ? t.saveEdit : t.generate}
-          </button>
-
-          <div className="responsive-actions invoice-action-row" style={actionRow}>
+          <div className="invoice-final-action-row" style={previewActionRowStyle}>
             <button
               type="button"
               onClick={() => printInvoice()}
@@ -3417,14 +3271,36 @@ export default function InvoicePage() {
               {t.pdf}
             </button>
 
-            <button type="button" onClick={() => sendWhatsAppPdf()} style={whatsappBtn}>
-              {t.whatsappPdf}
+            <button
+              type="button"
+              onClick={() => shareInvoice()}
+              style={{
+                ...secondaryBtn,
+                borderColor: theme.border,
+                color: theme.accent,
+                background: theme.inputBg,
+              }}
+            >
+              {t.share}
             </button>
           </div>
 
+          <button
+            type="button"
+            onClick={createInvoice}
+            disabled={loading}
+            style={{
+              ...submitBtn,
+              background: theme.accent,
+              opacity: loading ? 0.65 : 1,
+            }}
+          >
+            {loading ? t.generating : t.generate}
+          </button>
+
           {msg ? <p style={{ ...msgStyle, color: theme.accent }}>{msg}</p> : null}
         </section>
-      )}
+      ) : null}
 
       {signaturePadTarget ? (
         <div style={overlayStyle}>
@@ -3505,6 +3381,14 @@ const pageStyle: CSSProperties = {
   fontSize: "var(--sa-fs-base)",
 };
 
+const topToolbarStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 14,
+};
+
 const cardStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
@@ -3513,9 +3397,9 @@ const cardStyle: CSSProperties = {
 
 const listTitleRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1fr auto",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
-  gap: "clamp(10px, 3vw, 16px)",
+  gap: 12,
   width: "100%",
 };
 
@@ -3537,7 +3421,6 @@ const plusBtnStyle: CSSProperties = {
   color: "#fff",
   fontSize: 30,
   fontWeight: 900,
-  flexShrink: 0,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -3552,8 +3435,8 @@ const titleStyle: CSSProperties = {
 
 const newTitleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "var(--sa-fs-2xl)",
-  lineHeight: 1.08,
+  fontSize: "var(--sa-fs-xl)",
+  lineHeight: 1.1,
   fontWeight: 900,
 };
 
@@ -3578,22 +3461,21 @@ const invoiceNoBox: CSSProperties = {
   minHeight: "var(--sa-control-h)",
   display: "flex",
   alignItems: "center",
+  overflowWrap: "anywhere",
 };
 
 const invoiceListStyle: CSSProperties = {
   display: "grid",
-  gap: 14,
+  gap: 12,
 };
 
 const invoiceItemStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
   gap: 12,
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
-  flexWrap: "wrap",
 };
 
 const mutedTextStyle: CSSProperties = {
@@ -3602,23 +3484,13 @@ const mutedTextStyle: CSSProperties = {
   lineHeight: 1.5,
 };
 
-const recordActionRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 10,
-  marginTop: 14,
-  width: "100%",
-};
-
 const recordEditBtnStyle: CSSProperties = {
   border: "none",
-  background: "#0f766e",
   color: "#fff",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: 52,
+  minHeight: 44,
   padding: "0 12px",
   fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
 };
 
 const recordDeleteBtnStyle: CSSProperties = {
@@ -3626,10 +3498,9 @@ const recordDeleteBtnStyle: CSSProperties = {
   background: "#fee2e2",
   color: "#b91c1c",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: 52,
+  minHeight: 44,
   padding: "0 12px",
   fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
 };
 
 const recordWhatsappBtnStyle: CSSProperties = {
@@ -3637,10 +3508,9 @@ const recordWhatsappBtnStyle: CSSProperties = {
   background: "#25D366",
   color: "#fff",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: 52,
+  minHeight: 44,
   padding: "0 12px",
   fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
 };
 
 const recordShareBtnStyle: CSSProperties = {
@@ -3648,39 +3518,19 @@ const recordShareBtnStyle: CSSProperties = {
   background: "#fff",
   color: "#0f766e",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: 52,
+  minHeight: 44,
   padding: "0 12px",
   fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
 };
 
 const emptyStyle: CSSProperties = {
   fontWeight: 800,
 };
 
-const switchRow: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-  gap: 10,
-  marginBottom: 12,
-};
-
-const modeBtn = (active: boolean, theme: any): CSSProperties => ({
-  minHeight: "48px",
-  padding: "0 14px",
-  borderRadius: "var(--sa-radius-control)",
-  border: `var(--sa-border-w) solid ${theme.accent}`,
-  background: active ? theme.accent : theme.inputBg || "#fff",
-  color: active ? "#fff" : theme.accent,
-  fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
-});
-
 const formGrid: CSSProperties = {
   display: "grid",
   gap: 8,
   width: "100%",
-  maxWidth: "100%",
   minWidth: 0,
 };
 
@@ -3714,7 +3564,7 @@ const inputStyle: CSSProperties = {
   padding: "0 var(--sa-control-x)",
   borderRadius: "var(--sa-radius-control)",
   border: "var(--sa-border-w) solid",
-  fontSize: "16px",
+  fontSize: 16,
   marginBottom: 8,
   display: "block",
   outline: "none",
@@ -3722,16 +3572,21 @@ const inputStyle: CSSProperties = {
 
 const dateInputStyle: CSSProperties = {
   ...inputStyle,
-  width: "100%",
-  maxWidth: "100%",
-  minWidth: 0,
-  overflow: "hidden",
-  WebkitAppearance: "none" as any,
-  appearance: "none" as any,
+  height: "var(--sa-control-h)",
+  lineHeight: "var(--sa-control-h)",
   textAlign: "center",
   textAlignLast: "center" as any,
-  paddingLeft: 10,
-  paddingRight: 10,
+  paddingTop: 0,
+  paddingBottom: 0,
+  WebkitAppearance: "none" as any,
+  appearance: "none" as any,
+};
+
+const twoButtonRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  alignItems: "stretch",
 };
 
 const paymentToggleBtnStyle: CSSProperties = {
@@ -3743,6 +3598,16 @@ const paymentToggleBtnStyle: CSSProperties = {
   fontWeight: 900,
   fontSize: "var(--sa-btn-fs)",
   marginBottom: 10,
+};
+
+const dangerOutlineBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  padding: "0 14px",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid #fecaca",
+  background: "#fff",
+  color: "#dc2626",
+  fontWeight: 900,
 };
 
 const paymentAddBoxStyle: CSSProperties = {
@@ -3760,16 +3625,15 @@ const uploadQrBtnStyle: CSSProperties = {
   justifyContent: "center",
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: "48px",
+  minHeight: "var(--sa-control-h)",
   padding: "0 14px",
   fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
   cursor: "pointer",
 };
 
 const qrPreviewStyle: CSSProperties = {
-  width: "clamp(92px, 22vw, 120px)",
-  height: "clamp(92px, 22vw, 120px)",
+  width: 120,
+  height: 120,
   objectFit: "contain",
   border: "1px solid #cbd5e1",
   borderRadius: 12,
@@ -3781,37 +3645,46 @@ const addBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: "48px",
+  minHeight: "var(--sa-control-h)",
   padding: "0 16px",
-  fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
-};
-
-const twoButtonRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 10,
-  alignItems: "center",
-};
-
-const dangerOutlineBtnStyle: CSSProperties = {
-  minHeight: "48px",
-  padding: "0 14px",
-  borderRadius: "var(--sa-radius-control)",
-  border: "var(--sa-border-w) solid #fecaca",
-  background: "#fff",
-  color: "#dc2626",
   fontWeight: 900,
 };
 
 const companyBox: CSSProperties = {
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr)",
   gap: 14,
   alignItems: "center",
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
-  flexWrap: "wrap",
+};
+
+const logoStyle: CSSProperties = {
+  width: 72,
+  height: 72,
+  borderRadius: 12,
+  objectFit: "contain",
+  background: "#fff",
+};
+
+const logoPlaceholder: CSSProperties = {
+  width: 72,
+  height: 72,
+  borderRadius: 12,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 900,
+};
+
+const editBtnStyle: CSSProperties = {
+  gridColumn: "1 / -1",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 14px",
+  fontWeight: 900,
 };
 
 const companyEditBoxStyle: CSSProperties = {
@@ -3821,109 +3694,31 @@ const companyEditBoxStyle: CSSProperties = {
   padding: "var(--sa-card-pad)",
 };
 
-const logoStyle: CSSProperties = {
-  width: "clamp(64px, 15vw, 80px)",
-  height: "clamp(64px, 15vw, 80px)",
-  borderRadius: 12,
-  objectFit: "cover",
-};
-
-const logoPlaceholder: CSSProperties = {
-  width: "clamp(64px, 15vw, 80px)",
-  height: "clamp(64px, 15vw, 80px)",
-  borderRadius: 12,
-  background: "#ccfbf1",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: 900,
-  color: "#0f766e",
-};
-
-const editBtnStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  background: "#fff",
-  borderRadius: "var(--sa-radius-control)",
-  minHeight: "46px",
-  padding: "0 14px",
-  fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
-};
-
 const submitSmallBtnStyle: CSSProperties = {
   border: "none",
   color: "#fff",
   borderRadius: "var(--sa-radius-control)",
-  minHeight: "48px",
+  minHeight: "var(--sa-control-h)",
   padding: "0 16px",
   fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
 };
 
-const submitBtn: CSSProperties = {
-  width: "100%",
-  marginTop: 18,
-  minHeight: "54px",
-  padding: "0 16px",
-  border: "none",
-  borderRadius: "var(--sa-radius-control)",
-  color: "#fff",
-  fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
-};
-
-const actionRow: CSSProperties = {
+const switchRow: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, 1fr)",
+  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
   gap: 10,
-  marginTop: 12,
+  marginBottom: 12,
 };
 
-const secondaryBtn: CSSProperties = {
-  minHeight: "50px",
+const modeBtn = (active: boolean, theme: any): CSSProperties => ({
+  minHeight: "var(--sa-control-h)",
   padding: "0 14px",
   borderRadius: "var(--sa-radius-control)",
-  border: "var(--sa-border-w) solid",
-  background: "#fff",
+  border: `var(--sa-border-w) solid ${theme.accent}`,
+  background: active ? theme.accent : theme.inputBg || "#fff",
+  color: active ? "#fff" : theme.accent,
   fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
-};
-
-const whatsappBtn: CSSProperties = {
-  minHeight: "50px",
-  padding: "0 14px",
-  borderRadius: "var(--sa-radius-control)",
-  border: "none",
-  background: "#25D366",
-  color: "#fff",
-  fontWeight: 900,
-  fontSize: "var(--sa-btn-fs)",
-};
-
-const msgStyle: CSSProperties = {
-  marginTop: 14,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-};
-
-const chargeGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 10,
-};
-
-const chargeBoxStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-};
-
-const chargeInputRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) 92px",
-  gap: 8,
-  alignItems: "center",
-};
+});
 
 const productLineBoxStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
@@ -3947,6 +3742,25 @@ const dangerMiniBtnStyle: CSSProperties = {
   minHeight: 40,
   padding: "0 12px",
   fontWeight: 900,
+};
+
+const chargeGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 10,
+};
+
+const chargeBoxStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+};
+
+const chargeInputRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) 92px",
+  gap: 8,
+  alignItems: "center",
 };
 
 const signatureInputBoxStyle: CSSProperties = {
@@ -3992,7 +3806,39 @@ const screenPreviewWrapStyle: CSSProperties = {
 const screenInvoiceInnerStyle: CSSProperties = {
   width: 780,
   minWidth: 780,
-  maxWidth: "none",
+};
+
+const previewActionRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 10,
+  marginTop: 14,
+};
+
+const secondaryBtn: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  padding: "0 10px",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid",
+  fontWeight: 900,
+  whiteSpace: "nowrap",
+};
+
+const submitBtn: CSSProperties = {
+  width: "100%",
+  marginTop: 12,
+  minHeight: "var(--sa-control-h)",
+  padding: "0 16px",
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  color: "#fff",
+  fontWeight: 900,
+};
+
+const msgStyle: CSSProperties = {
+  marginTop: 14,
+  fontWeight: 900,
+  fontSize: "var(--sa-fs-base)",
 };
 
 const overlayStyle: CSSProperties = {
@@ -4051,6 +3897,7 @@ const officialCompanyBlockStyle: CSSProperties = {
   alignItems: "center",
   gap: 14,
   lineHeight: 1.5,
+  minWidth: 0,
 };
 
 const officialLogoStyle: CSSProperties = {
@@ -4111,6 +3958,7 @@ const officialInfoBoxStyle: CSSProperties = {
   padding: 14,
   minHeight: 120,
   lineHeight: 1.6,
+  overflowWrap: "anywhere",
 };
 
 const officialInfoRowStyle: CSSProperties = {
