@@ -52,10 +52,17 @@ type Invoice = {
   user_id?: string;
   customer_id?: string | null;
   customer_name?: string | null;
+  customer_company?: string | null;
+  customer_phone?: string | null;
   invoice_no?: string | null;
   invoice_date?: string | null;
+  due_date?: string | null;
+  status?: string | null;
   created_at?: string | null;
+  subtotal?: number | null;
+  discount?: number | null;
   total?: number | null;
+  total_cost?: number | null;
   total_profit?: number | null;
   note?: string | null;
 };
@@ -63,6 +70,14 @@ type Invoice = {
 type Profile = {
   id?: string;
   theme?: string | null;
+};
+
+type DebtItem = {
+  invoice: Invoice;
+  customerLabel: string;
+  amount: number;
+  dueDate: string;
+  sortTime: number;
 };
 
 const TRIAL_KEY = "smartacctg_trial";
@@ -94,6 +109,12 @@ const TXT = {
     balance: "当前余额",
     monthIncome: "本月收入",
     monthExpense: "本月支出",
+    monthProfit: "本月利润",
+    customerDebt: "客户欠款",
+    summaryMonth: "统计月份",
+    chooseMonth: "选择月份",
+    dueDate: "到期日",
+    noDebt: "暂无客户欠款",
     date: "日期",
     type: "类型",
     amount: "金额",
@@ -145,6 +166,12 @@ const TXT = {
     balance: "Balance",
     monthIncome: "Monthly Income",
     monthExpense: "Monthly Expense",
+    monthProfit: "Monthly Profit",
+    customerDebt: "Customer Debt",
+    summaryMonth: "Summary Month",
+    chooseMonth: "Choose Month",
+    dueDate: "Due Date",
+    noDebt: "No customer debt",
     date: "Date",
     type: "Type",
     amount: "Amount",
@@ -196,6 +223,12 @@ const TXT = {
     balance: "Baki",
     monthIncome: "Pendapatan Bulan Ini",
     monthExpense: "Perbelanjaan Bulan Ini",
+    monthProfit: "Untung Bulan Ini",
+    customerDebt: "Hutang Pelanggan",
+    summaryMonth: "Bulan Ringkasan",
+    chooseMonth: "Pilih Bulan",
+    dueDate: "Tarikh Tamat",
+    noDebt: "Tiada hutang pelanggan",
     date: "Tarikh",
     type: "Jenis",
     amount: "Jumlah",
@@ -237,66 +270,55 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     border-radius: 999px !important;
   }
 
-  .smartacctg-accounting-page .records-summary-grid,
-  .smartacctg-records-page .records-summary-grid {
+  .smartacctg-accounting-page .records-summary-box,
+  .smartacctg-records-page .records-summary-box {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: 1fr !important;
     gap: 12px !important;
     width: 100% !important;
-    align-items: stretch !important;
   }
 
-  .smartacctg-accounting-page .records-stat-card,
-  .smartacctg-records-page .records-stat-card {
-    display: flex !important;
-    flex-direction: column !important;
+  .smartacctg-accounting-page .records-month-row,
+  .smartacctg-records-page .records-month-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 220px) !important;
+    gap: 10px !important;
     align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    gap: 8px !important;
     width: 100% !important;
-    min-width: 0 !important;
-    height: auto !important;
-    min-height: clamp(105px, 18vw, 128px) !important;
-    padding: clamp(12px, 2.5vw, 18px) !important;
   }
 
-  .smartacctg-accounting-page .records-stat-card span,
-  .smartacctg-accounting-page .records-stat-card strong,
-  .smartacctg-records-page .records-stat-card span,
-  .smartacctg-records-page .records-stat-card strong {
-    display: block !important;
+  .smartacctg-accounting-page .records-summary-line,
+  .smartacctg-records-page .records-summary-line {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+    align-items: center !important;
     width: 100% !important;
-    text-align: center !important;
-    margin: 0 !important;
-    line-height: 1.2 !important;
+    font-weight: 900 !important;
+    line-height: 1.25 !important;
   }
 
-  .smartacctg-accounting-page .records-stat-card span,
-  .smartacctg-records-page .records-stat-card span {
-    font-size: clamp(16px, 3.5vw, 22px) !important;
+  .smartacctg-accounting-page .records-summary-line span,
+  .smartacctg-records-page .records-summary-line span {
+    font-size: clamp(17px, 3.6vw, 22px) !important;
     font-weight: 900 !important;
   }
 
-  .smartacctg-accounting-page .records-stat-card strong,
-  .smartacctg-records-page .records-stat-card strong {
-    font-size: clamp(20px, 4.5vw, 30px) !important;
+  .smartacctg-accounting-page .records-summary-line strong,
+  .smartacctg-records-page .records-summary-line strong {
+    font-size: clamp(19px, 4vw, 26px) !important;
     font-weight: 900 !important;
+    white-space: nowrap !important;
   }
 
-  .smartacctg-accounting-page strong[data-stat="balance"],
-  .smartacctg-records-page strong[data-stat="balance"] {
-    color: var(--sa-accent) !important;
-  }
-
-  .smartacctg-accounting-page strong[data-stat="income"],
-  .smartacctg-records-page strong[data-stat="income"] {
-    color: #16a34a !important;
-  }
-
-  .smartacctg-accounting-page strong[data-stat="expense"],
-  .smartacctg-records-page strong[data-stat="expense"] {
-    color: #dc2626 !important;
+  .smartacctg-accounting-page .records-debt-detail,
+  .smartacctg-records-page .records-debt-detail {
+    margin-top: 2px !important;
+    padding-top: 4px !important;
+    display: grid !important;
+    gap: 4px !important;
+    font-weight: 900 !important;
+    line-height: 1.35 !important;
   }
 
   .smartacctg-accounting-page .records-list,
@@ -361,7 +383,9 @@ const ACCOUNTING_PAGE_FIX_CSS = `
   }
 
   .smartacctg-accounting-page input[type="date"],
-  .smartacctg-records-page input[type="date"] {
+  .smartacctg-accounting-page input[type="month"],
+  .smartacctg-records-page input[type="date"],
+  .smartacctg-records-page input[type="month"] {
     text-align: center !important;
     display: block !important;
     width: 100% !important;
@@ -370,7 +394,9 @@ const ACCOUNTING_PAGE_FIX_CSS = `
   }
 
   .smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value,
-  .smartacctg-records-page input[type="date"]::-webkit-date-and-time-value {
+  .smartacctg-accounting-page input[type="month"]::-webkit-date-and-time-value,
+  .smartacctg-records-page input[type="date"]::-webkit-date-and-time-value,
+  .smartacctg-records-page input[type="month"]::-webkit-date-and-time-value {
     text-align: center !important;
     width: 100% !important;
     margin: 0 auto !important;
@@ -378,27 +404,25 @@ const ACCOUNTING_PAGE_FIX_CSS = `
   }
 
   .smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit,
-  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit {
+  .smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit,
+  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit,
+  .smartacctg-records-page input[type="month"]::-webkit-datetime-edit {
     width: 100% !important;
     text-align: center !important;
   }
 
   .smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  .smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  .smartacctg-records-page input[type="month"]::-webkit-datetime-edit-fields-wrapper {
     justify-content: center !important;
   }
 
   @media (max-width: 520px) {
-    .smartacctg-accounting-page .records-summary-grid,
-    .smartacctg-records-page .records-summary-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 10px !important;
-    }
-
-    .smartacctg-accounting-page .records-stat-card,
-    .smartacctg-records-page .records-stat-card {
-      min-height: 105px !important;
-      padding: 12px 8px !important;
+    .smartacctg-accounting-page .records-month-row,
+    .smartacctg-records-page .records-month-row {
+      grid-template-columns: 1fr !important;
+      gap: 8px !important;
     }
 
     .smartacctg-accounting-page .records-list,
@@ -520,6 +544,42 @@ function isSchemaCacheMissingSource(message: string) {
   );
 }
 
+function formatRM(value: number) {
+  return `RM ${Number(value || 0).toLocaleString("en-MY", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function getMonthKeyFromDate(date?: string | null) {
+  if (!date) return "";
+  return String(date).slice(0, 7);
+}
+
+function getMonthEndDate(monthKey: string) {
+  if (!monthKey) return today();
+
+  const [year, month] = monthKey.split("-").map(Number);
+  const end = new Date(year, month, 0);
+  return end.toISOString().slice(0, 10);
+}
+
+function getInvoiceEffectiveDate(inv: Invoice) {
+  return inv.invoice_date || inv.created_at?.slice(0, 10) || "";
+}
+
+function isInvoiceUnpaid(inv: Invoice) {
+  const status = String(inv.status || "").toLowerCase();
+  if (status === "paid" || status === "cancelled" || status === "canceled") return false;
+  return Number(inv.total || 0) > 0;
+}
+
+function getDueTime(dueDate: string) {
+  if (!dueDate) return Number.MAX_SAFE_INTEGER;
+  const time = new Date(`${dueDate}T00:00:00`).getTime();
+  return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
+}
+
 export default function RecordsPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
@@ -530,6 +590,8 @@ export default function RecordsPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+
+  const [summaryMonth, setSummaryMonth] = useState("");
 
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | TxnType>("all");
@@ -967,27 +1029,81 @@ export default function RecordsPage() {
     await loadAll(session.user.id);
   }
 
-  const monthKey = new Date().toISOString().slice(0, 7);
+  const latestMonthKey = useMemo(() => {
+    const months = [
+      ...transactions.map((tx) => getMonthKeyFromDate(tx.txn_date)),
+      ...invoices.map((inv) => getMonthKeyFromDate(getInvoiceEffectiveDate(inv))),
+    ].filter(Boolean);
 
-  const monthIncome = useMemo(() => {
-    return transactions
-      .filter((x) => x.txn_date?.startsWith(monthKey) && x.txn_type === "income")
+    if (months.length === 0) return today().slice(0, 7);
+
+    return months.sort().reverse()[0];
+  }, [transactions, invoices]);
+
+  const activeMonthKey = summaryMonth || latestMonthKey;
+  const activeMonthEndDate = getMonthEndDate(activeMonthKey);
+
+  const monthRecords = useMemo(() => {
+    return transactions.filter((tx) => tx.txn_date?.startsWith(activeMonthKey));
+  }, [transactions, activeMonthKey]);
+
+  const summaryIncome = useMemo(() => {
+    return monthRecords
+      .filter((x) => x.txn_type === "income")
       .reduce((s, x) => s + Number(x.amount || 0), 0);
-  }, [transactions, monthKey]);
+  }, [monthRecords]);
 
-  const monthExpense = useMemo(() => {
-    return transactions
-      .filter((x) => x.txn_date?.startsWith(monthKey) && x.txn_type === "expense")
+  const summaryExpense = useMemo(() => {
+    return monthRecords
+      .filter((x) => x.txn_type === "expense")
       .reduce((s, x) => s + Number(x.amount || 0), 0);
-  }, [transactions, monthKey]);
+  }, [monthRecords]);
 
-  const balance = useMemo(() => {
-    return transactions.reduce((s, x) => {
-      return x.txn_type === "income"
-        ? s + Number(x.amount || 0)
-        : s - Number(x.amount || 0);
-    }, 0);
-  }, [transactions]);
+  const summaryProfit = useMemo(() => {
+    return summaryIncome - summaryExpense;
+  }, [summaryIncome, summaryExpense]);
+
+  const summaryBalance = useMemo(() => {
+    return transactions
+      .filter((tx) => !activeMonthEndDate || tx.txn_date <= activeMonthEndDate)
+      .reduce((s, x) => {
+        return x.txn_type === "income"
+          ? s + Number(x.amount || 0)
+          : s - Number(x.amount || 0);
+      }, 0);
+  }, [transactions, activeMonthEndDate]);
+
+  const customerDebtItems = useMemo<DebtItem[]>(() => {
+    return invoices
+      .filter((inv) => isInvoiceUnpaid(inv))
+      .map((inv) => {
+        const customer = customers.find((c) => c.id === inv.customer_id);
+
+        const customerName = inv.customer_name || customer?.name || "-";
+        const companyName = inv.customer_company || customer?.company_name || "";
+
+        const customerLabel = companyName
+          ? `${customerName} / ${companyName}`
+          : customerName;
+
+        const dueDate = inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10) || "-";
+
+        return {
+          invoice: inv,
+          customerLabel,
+          amount: Number(inv.total || 0),
+          dueDate,
+          sortTime: getDueTime(dueDate),
+        };
+      })
+      .sort((a, b) => a.sortTime - b.sortTime);
+  }, [invoices, customers]);
+
+  const totalCustomerDebt = useMemo(() => {
+    return customerDebtItems.reduce((s, x) => s + Number(x.amount || 0), 0);
+  }, [customerDebtItems]);
+
+  const nearestDebt = customerDebtItems[0] || null;
 
   const filteredRecords = useMemo(() => {
     const s = search.toLowerCase().trim();
@@ -1017,6 +1133,7 @@ export default function RecordsPage() {
         tx.note,
         invoice?.invoice_no,
         invoice?.customer_name,
+        invoice?.customer_company,
         invoice?.total,
       ]
         .filter(Boolean)
@@ -1141,57 +1258,66 @@ export default function RecordsPage() {
           </button>
         </div>
 
-        <div className="sa-stats-grid records-summary-grid" style={statsGridStyle}>
-          <button
-            type="button"
-            className="sa-stat-card records-stat-card"
-            style={{
-              ...statCardStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-            onClick={() => setFilterType("all")}
-          >
-            <span style={{ ...statLabelStyle, color: theme.text }}>{t.balance}</span>
-            <strong data-stat="balance" style={statAmountStyle}>
-              RM {balance.toFixed(2)}
+        <div className="records-summary-box" style={summaryBoxStyle}>
+          <div className="records-month-row" style={monthRowStyle}>
+            <strong style={{ color: theme.text }}>
+              {t.summaryMonth}: {activeMonthKey}
             </strong>
-          </button>
 
-          <button
-            type="button"
-            className="sa-stat-card records-stat-card"
-            style={{
-              ...statCardStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-            onClick={() => setFilterType("income")}
-          >
-            <span style={{ ...statLabelStyle, color: theme.text }}>{t.monthIncome}</span>
-            <strong data-stat="income" style={statAmountStyle}>
-              RM {monthIncome.toFixed(2)}
-            </strong>
-          </button>
+            <div style={dateWrapStyle}>
+              <label style={{ ...dateLabelStyle, color: themeSubText }}>
+                {t.chooseMonth}
+              </label>
+              <input
+                type="month"
+                value={activeMonthKey}
+                onChange={(e) => setSummaryMonth(e.target.value)}
+                style={themedDateInputStyle}
+              />
+            </div>
+          </div>
 
-          <button
-            type="button"
-            className="sa-stat-card records-stat-card"
-            style={{
-              ...statCardStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-            onClick={() => setFilterType("expense")}
-          >
-            <span style={{ ...statLabelStyle, color: theme.text }}>{t.monthExpense}</span>
-            <strong data-stat="expense" style={statAmountStyle}>
-              RM {monthExpense.toFixed(2)}
+          <div style={summaryDividerStyle} />
+
+          <div className="records-summary-line">
+            <span>{t.balance}</span>
+            <strong style={{ color: theme.accent }}>{formatRM(summaryBalance)}</strong>
+          </div>
+
+          <div className="records-summary-line">
+            <span>{t.monthIncome}</span>
+            <strong style={{ color: "#16a34a" }}>{formatRM(summaryIncome)}</strong>
+          </div>
+
+          <div className="records-summary-line">
+            <span>{t.monthExpense}</span>
+            <strong style={{ color: "#dc2626" }}>{formatRM(summaryExpense)}</strong>
+          </div>
+
+          <div className="records-summary-line">
+            <span>{t.monthProfit}</span>
+            <strong style={{ color: summaryProfit < 0 ? "#dc2626" : "#16a34a" }}>
+              {formatRM(summaryProfit)}
             </strong>
-          </button>
+          </div>
+
+          <div className="records-summary-line">
+            <span style={{ color: "#dc2626" }}>{t.customerDebt}</span>
+            <strong style={{ color: "#dc2626" }}>{formatRM(totalCustomerDebt)}</strong>
+          </div>
+
+          <div className="records-debt-detail" style={{ color: "#dc2626" }}>
+            {nearestDebt ? (
+              <>
+                <div>{nearestDebt.customerLabel}</div>
+                <div>
+                  {t.dueDate}: {nearestDebt.dueDate}
+                </div>
+              </>
+            ) : (
+              <div>{t.noDebt}</div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -1601,47 +1727,24 @@ const plusBtnStyle: CSSProperties = {
   flexShrink: 0,
 };
 
-const statsGridStyle: CSSProperties = {
+const summaryBoxStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
-  marginTop: 14,
   width: "100%",
+  marginTop: 8,
 };
 
-const statCardStyle: CSSProperties = {
-  background: "#fff",
-  color: "#111827",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-  minHeight: 120,
-  textAlign: "center",
-  cursor: "pointer",
-  display: "flex",
-  flexDirection: "column",
+const monthRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(150px, 220px)",
+  gap: 10,
   alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  width: "100%",
-  minWidth: 0,
 };
 
-const statLabelStyle: CSSProperties = {
-  display: "block",
+const summaryDividerStyle: CSSProperties = {
+  height: 1,
   width: "100%",
-  fontWeight: 900,
-  textAlign: "center",
-  lineHeight: 1.2,
-};
-
-const statAmountStyle: CSSProperties = {
-  display: "block",
-  width: "100%",
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-xl)",
-  lineHeight: 1.15,
-  textAlign: "center",
+  background: "rgba(148, 163, 184, 0.38)",
 };
 
 const inputStyle: CSSProperties = {
