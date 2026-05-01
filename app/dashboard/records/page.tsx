@@ -87,6 +87,20 @@ const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 
 const LANG_KEY = "smartacctg_lang";
+const CATEGORY_KEY = "smartacctg_record_categories";
+
+const DEFAULT_CATEGORIES = [
+  "发票收入",
+  "普通收入",
+  "客户付款",
+  "进货",
+  "人工",
+  "交通",
+  "饮食",
+  "电话费",
+  "广告费",
+  "其他",
+];
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -121,6 +135,8 @@ const TXT = {
     type: "类型",
     amount: "金额",
     category: "分类 / 标签",
+    addCategory: "新增分类 / 标签",
+    savedCategory: "已保存分类",
     debtAmount: "欠款金额",
     note: "备注",
     customer: "客户",
@@ -180,6 +196,8 @@ const TXT = {
     type: "Type",
     amount: "Amount",
     category: "Category / Tag",
+    addCategory: "Add Category / Tag",
+    savedCategory: "Saved Categories",
     debtAmount: "Debt Amount",
     note: "Note",
     customer: "Customer",
@@ -239,6 +257,8 @@ const TXT = {
     type: "Jenis",
     amount: "Jumlah",
     category: "Kategori / Tag",
+    addCategory: "Tambah Kategori / Tag",
+    savedCategory: "Kategori Disimpan",
     debtAmount: "Jumlah Hutang",
     note: "Catatan",
     customer: "Pelanggan",
@@ -376,6 +396,20 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     overflow-wrap: anywhere !important;
   }
 
+  .smartacctg-accounting-page .record-card.debt-record,
+  .smartacctg-records-page .record-card.debt-record {
+    background: #fee2e2 !important;
+    color: #7f1d1d !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35),
+      0 12px 28px rgba(220, 38, 38, 0.22) !important;
+  }
+
+  .smartacctg-accounting-page .record-card.debt-record *,
+  .smartacctg-records-page .record-card.debt-record * {
+    color: inherit;
+  }
+
   .smartacctg-accounting-page .records-action-row,
   .smartacctg-records-page .records-action-row {
     display: flex !important;
@@ -394,6 +428,14 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     min-width: 110px !important;
     flex: 0 1 auto !important;
     white-space: nowrap !important;
+  }
+
+  .smartacctg-accounting-page .category-add-row,
+  .smartacctg-records-page .category-add-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+    align-items: center !important;
   }
 
   .smartacctg-accounting-page input[type="date"],
@@ -453,6 +495,11 @@ const ACCOUNTING_PAGE_FIX_CSS = `
       min-width: 105px !important;
       flex: 0 1 auto !important;
     }
+
+    .smartacctg-accounting-page .category-add-row,
+    .smartacctg-records-page .category-add-row {
+      grid-template-columns: 1fr !important;
+    }
   }
 `;
 
@@ -485,6 +532,10 @@ function safeParseArray<T>(raw: string | null): T[] {
   } catch {
     return [];
   }
+}
+
+function uniqueCleanList(list: string[]) {
+  return Array.from(new Set(list.map((x) => String(x || "").trim()).filter(Boolean)));
 }
 
 function getInitialLang(): Lang {
@@ -591,6 +642,9 @@ export default function RecordsPage() {
 
   const [summaryMonth, setSummaryMonth] = useState("");
 
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [newCategory, setNewCategory] = useState("");
+
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | TxnType>("all");
   const [filterCustomerId, setFilterCustomerId] = useState("");
@@ -653,6 +707,7 @@ export default function RecordsPage() {
     saveThemeKey(initialTheme);
     applyThemeEverywhere(initialTheme);
 
+    loadCategories();
     init(initialLang, initialTheme);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -776,6 +831,43 @@ export default function RecordsPage() {
     setInvoices((invoiceData || []) as Invoice[]);
   }
 
+  function loadCategories() {
+    const saved = safeLocalGet(CATEGORY_KEY);
+    const parsed = safeParseArray<string>(saved);
+    const next = uniqueCleanList(parsed.length > 0 ? parsed : DEFAULT_CATEGORIES);
+
+    setCategories(next.length > 0 ? next : DEFAULT_CATEGORIES);
+  }
+
+  function saveCategories(nextList: string[]) {
+    const clean = uniqueCleanList(nextList);
+    const finalList = clean.length > 0 ? clean : DEFAULT_CATEGORIES;
+
+    setCategories(finalList);
+    safeLocalSet(CATEGORY_KEY, JSON.stringify(finalList));
+  }
+
+  function addCategory() {
+    const value = newCategory.trim();
+    if (!value) return;
+
+    const next = uniqueCleanList([...categories, value]);
+    saveCategories(next);
+    setForm({ ...form, category_name: value });
+    setNewCategory("");
+  }
+
+  function deleteCategory(value: string) {
+    const next = categories.filter((x) => x !== value);
+    const finalList = next.length > 0 ? next : DEFAULT_CATEGORIES;
+
+    saveCategories(finalList);
+
+    if (form.category_name === value) {
+      setForm({ ...form, category_name: "" });
+    }
+  }
+
   function saveTrialTransactions(nextTx: Txn[]) {
     setTransactions(nextTx);
     safeLocalSet(TRIAL_TX_KEY, JSON.stringify(nextTx));
@@ -831,12 +923,14 @@ export default function RecordsPage() {
       product_id: "",
       invoice_id: "",
     });
+    setNewCategory("");
     setShowForm(true);
   }
 
   function closeForm() {
     setEditingId(null);
     setShowForm(false);
+    setNewCategory("");
     setForm({
       txn_date: today(),
       txn_type: "income",
@@ -858,12 +952,17 @@ export default function RecordsPage() {
   }
 
   function editTransaction(tx: Txn) {
+    const category = tx.category_name || "";
+    if (category && !categories.includes(category)) {
+      saveCategories([...categories, category]);
+    }
+
     setEditingId(tx.id);
     setForm({
       txn_date: tx.txn_date || today(),
       txn_type: tx.txn_type || "income",
       amount: String(tx.amount || ""),
-      category_name: tx.category_name || "",
+      category_name: category,
       debt_amount: String(tx.debt_amount || ""),
       note: tx.note || "",
       customer_id: "",
@@ -912,6 +1011,10 @@ export default function RecordsPage() {
     const amount = Number(form.amount || 0);
     const debt = Number(form.debt_amount || 0);
     const finalNote = buildFinalNote();
+
+    if (form.category_name.trim() && !categories.includes(form.category_name.trim())) {
+      saveCategories([...categories, form.category_name.trim()]);
+    }
 
     if (isTrial) {
       const payload: Txn = {
@@ -1427,17 +1530,20 @@ export default function RecordsPage() {
             {filteredRecords.map((tx) => {
               const invoice = getInvoice(tx);
               const isIncome = tx.txn_type === "income";
+              const hasDebt = Number(tx.debt_amount || 0) > 0;
 
               return (
                 <div
                   key={tx.id}
-                  className="record-card"
+                  className={`record-card ${hasDebt ? "debt-record" : ""}`}
                   style={{
                     ...recordCardStyle,
-                    borderColor: theme.border,
-                    background: theme.itemBg || theme.card,
-                    color: theme.text,
-                    boxShadow: theme.glow,
+                    borderColor: hasDebt ? "#dc2626" : theme.border,
+                    background: hasDebt ? "#fee2e2" : theme.itemBg || theme.card,
+                    color: hasDebt ? "#7f1d1d" : theme.text,
+                    boxShadow: hasDebt
+                      ? "0 0 0 1px rgba(220,38,38,0.35), 0 12px 28px rgba(220,38,38,0.22)"
+                      : theme.glow,
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
@@ -1445,30 +1551,32 @@ export default function RecordsPage() {
                       {isIncome ? t.income : t.expense} · {tx.category_name || "-"}
                     </h3>
 
-                    <p style={{ ...mutedStyle, color: themeSubText }}>
+                    <p style={{ ...mutedStyle, color: hasDebt ? "#7f1d1d" : themeSubText }}>
                       {t.date}: {tx.txn_date} ｜ {t.amount}:{" "}
                       <strong style={{ color: isIncome ? "#16a34a" : "#dc2626" }}>
                         RM {Number(tx.amount || 0).toFixed(2)}
                       </strong>
                     </p>
 
-                    {Number(tx.debt_amount || 0) > 0 ? (
-                      <p style={{ ...mutedStyle, color: themeSubText }}>
+                    {hasDebt ? (
+                      <p style={{ ...mutedStyle, color: "#dc2626", fontWeight: 900 }}>
                         {t.debtAmount}: RM {Number(tx.debt_amount || 0).toFixed(2)}
                       </p>
                     ) : null}
 
                     {invoice ? (
-                      <p style={{ ...mutedStyle, color: themeSubText }}>
+                      <p style={{ ...mutedStyle, color: hasDebt ? "#7f1d1d" : themeSubText }}>
                         {t.sourceInvoice}: {invoice.invoice_no || invoice.id}{" "}
                         {invoice.customer_name ? `｜${invoice.customer_name}` : ""}
                       </p>
                     ) : (
-                      <p style={{ ...mutedStyle, color: themeSubText }}>{t.manualRecord}</p>
+                      <p style={{ ...mutedStyle, color: hasDebt ? "#7f1d1d" : themeSubText }}>
+                        {t.manualRecord}
+                      </p>
                     )}
 
                     {tx.note ? (
-                      <p style={{ ...mutedStyle, color: themeSubText }}>
+                      <p style={{ ...mutedStyle, color: hasDebt ? "#7f1d1d" : themeSubText }}>
                         {t.note}: {tx.note}
                       </p>
                     ) : null}
@@ -1590,12 +1698,58 @@ export default function RecordsPage() {
                 inputMode="decimal"
               />
 
-              <input
-                placeholder={t.category}
-                value={form.category_name}
-                onChange={(e) => setForm({ ...form, category_name: e.target.value })}
-                style={themedInputStyle}
-              />
+              <div style={categoryManageBoxStyle}>
+                <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.category}</label>
+
+                <select
+                  value={form.category_name}
+                  onChange={(e) => setForm({ ...form, category_name: e.target.value })}
+                  style={themedInputStyle}
+                >
+                  <option value="">{t.category}</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="category-add-row" style={categoryAddRowStyle}>
+                  <input
+                    placeholder={t.addCategory}
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    style={themedInputStyle}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={addCategory}
+                    style={{
+                      ...primaryBtnStyle,
+                      background: theme.accent,
+                      minHeight: "var(--sa-control-h)",
+                      marginTop: 0,
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+
+                <div style={categoryChipWrapStyle}>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => deleteCategory(cat)}
+                      style={categoryChipStyle}
+                      title={`${t.delete} ${cat}`}
+                    >
+                      {cat} ×
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <input
                 placeholder={t.debtAmount}
@@ -1949,4 +2103,33 @@ const modalActionRowStyle: CSSProperties = {
   gap: 10,
   marginTop: 18,
   flexWrap: "wrap",
+};
+
+const categoryManageBoxStyle: CSSProperties = {
+  display: "grid",
+  gap: 10,
+  width: "100%",
+};
+
+const categoryAddRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 10,
+  alignItems: "center",
+};
+
+const categoryChipWrapStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+};
+
+const categoryChipStyle: CSSProperties = {
+  border: "none",
+  background: "#fee2e2",
+  color: "#b91c1c",
+  borderRadius: 999,
+  minHeight: 34,
+  padding: "0 12px",
+  fontWeight: 900,
 };
