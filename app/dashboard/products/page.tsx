@@ -595,6 +595,20 @@ export default function ProductsPage() {
     };
   }, [session, isTrial]);
 
+  function getCurrentThemeKey(): ThemeKey {
+    if (typeof window === "undefined") return themeKey;
+
+    const query = new URLSearchParams(window.location.search);
+    const urlTheme = query.get("theme");
+
+    if (isThemeKey(urlTheme)) return normalizeThemeKey(urlTheme);
+
+    const savedTheme = getThemeKeyFromUrlOrLocalStorage(themeKey);
+    if (isThemeKey(savedTheme)) return normalizeThemeKey(savedTheme);
+
+    return themeKey;
+  }
+
   function isStockColumnError(error: any) {
     const message = String(error?.message || "").toLowerCase();
 
@@ -645,6 +659,8 @@ export default function ProductsPage() {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
     const trialRaw = safeLocalGet(TRIAL_KEY);
+    const urlTheme = q.get("theme");
+    const hasValidUrlTheme = isThemeKey(urlTheme);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
       try {
@@ -697,7 +713,7 @@ export default function ProductsPage() {
     const profile = profileData as Profile | null;
     let finalTheme = currentTheme;
 
-    if (profile?.theme) {
+    if (!hasValidUrlTheme && profile?.theme) {
       const profileTheme = normalizeThemeKey(profile.theme);
 
       if (isThemeKey(profileTheme)) {
@@ -706,6 +722,13 @@ export default function ProductsPage() {
         saveThemeKey(profileTheme);
         applyThemeEverywhere(profileTheme);
       }
+    }
+
+    if (hasValidUrlTheme) {
+      finalTheme = normalizeThemeKey(urlTheme);
+      setThemeKey(finalTheme);
+      saveThemeKey(finalTheme);
+      applyThemeEverywhere(finalTheme);
     }
 
     replaceUrlLangTheme(currentLang, finalTheme);
@@ -757,15 +780,22 @@ export default function ProductsPage() {
   }
 
   function switchLang(next: Lang) {
+    const currentTheme = getCurrentThemeKey();
+
     setLang(next);
     safeLocalSet(LANG_KEY, next);
-    replaceUrlLangTheme(next, themeKey);
+    replaceUrlLangTheme(next, currentTheme);
   }
 
   function goBack() {
+    const currentTheme = getCurrentThemeKey();
+
+    saveThemeKey(currentTheme);
+    applyThemeEverywhere(currentTheme);
+
     window.location.href = isTrial
-      ? `/dashboard?mode=trial&lang=${lang}&theme=${themeKey}&refresh=${Date.now()}`
-      : `/dashboard?lang=${lang}&theme=${themeKey}&refresh=${Date.now()}`;
+      ? `/dashboard?mode=trial&lang=${lang}&theme=${currentTheme}&refresh=${Date.now()}`
+      : `/dashboard?lang=${lang}&theme=${currentTheme}&refresh=${Date.now()}`;
   }
 
   function productCode(p: Product) {
@@ -782,6 +812,8 @@ export default function ProductsPage() {
   }
 
   function resetForm() {
+    const currentTheme = getCurrentThemeKey();
+
     setEditingId(null);
     setProductName("");
     setProductPrice("");
@@ -796,7 +828,7 @@ export default function ProductsPage() {
     q.delete("open");
     q.delete("fullscreen");
     q.set("lang", lang);
-    q.set("theme", themeKey);
+    q.set("theme", currentTheme);
     q.set("refresh", String(Date.now()));
 
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
