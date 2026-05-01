@@ -562,14 +562,6 @@ function getMonthKeyFromDate(date?: string | null) {
   return String(date).slice(0, 7);
 }
 
-function getMonthEndDate(monthKey: string) {
-  if (!monthKey) return today();
-
-  const [year, month] = monthKey.split("-").map(Number);
-  const end = new Date(year, month, 0);
-  return end.toISOString().slice(0, 10);
-}
-
 function getInvoiceEffectiveDate(inv: Invoice) {
   return inv.invoice_date || inv.created_at?.slice(0, 10) || "";
 }
@@ -1051,7 +1043,6 @@ export default function RecordsPage() {
   }, [transactions, invoices]);
 
   const activeMonthKey = summaryMonth || latestMonthKey;
-  const activeMonthEndDate = getMonthEndDate(activeMonthKey);
 
   const monthRecords = useMemo(() => {
     return transactions.filter((tx) => tx.txn_date?.startsWith(activeMonthKey));
@@ -1074,14 +1065,12 @@ export default function RecordsPage() {
   }, [summaryIncome, summaryExpense]);
 
   const summaryBalance = useMemo(() => {
-    return transactions
-      .filter((tx) => !activeMonthEndDate || tx.txn_date <= activeMonthEndDate)
-      .reduce((s, x) => {
-        return x.txn_type === "income"
-          ? s + Number(x.amount || 0)
-          : s - Number(x.amount || 0);
-      }, 0);
-  }, [transactions, activeMonthEndDate]);
+    return monthRecords.reduce((s, x) => {
+      return x.txn_type === "income"
+        ? s + Number(x.amount || 0)
+        : s - Number(x.amount || 0);
+    }, 0);
+  }, [monthRecords]);
 
   const customerDebtItems = useMemo<DebtItem[]>(() => {
     return invoices
