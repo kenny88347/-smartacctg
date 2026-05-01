@@ -416,6 +416,21 @@ const CUSTOMERS_PAGE_FIX_CSS = `
     overflow-wrap: anywhere !important;
   }
 
+  .smartacctg-customers-page .customer-card.debt-customer-card {
+    background: #fee2e2 !important;
+    border-color: #dc2626 !important;
+    color: #7f1d1d !important;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35),
+      0 12px 28px rgba(220, 38, 38, 0.22) !important;
+  }
+
+  .smartacctg-customers-page .customer-card.debt-customer-card h3,
+  .smartacctg-customers-page .customer-card.debt-customer-card p,
+  .smartacctg-customers-page .customer-card.debt-customer-card span,
+  .smartacctg-customers-page .customer-card.debt-customer-card strong {
+    color: #7f1d1d !important;
+  }
+
   .smartacctg-customers-page .customer-status-badge {
     display: inline-flex !important;
     align-items: center !important;
@@ -611,16 +626,73 @@ function safeLocalRemove(key: string) {
   localStorage.removeItem(key);
 }
 
+function safeParseArray<T>(raw: string | null): T[] {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function isThemeKey(value: unknown): value is ThemeKey {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(THEMES, value);
+}
+
+function normalizeThemeKey(value: unknown, fallback: ThemeKey = "deepTeal"): ThemeKey {
+  if (isThemeKey(value)) return value;
+  if (value === "futureWorld") return "futureForest";
+  return fallback;
+}
+
+function getInitialLang(): Lang {
+  if (typeof window === "undefined") return "zh";
+
+  const q = new URLSearchParams(window.location.search);
+  const urlLang = q.get("lang") as Lang | null;
+  const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
+
+  if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
+  if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
+
+  return "zh";
+}
+
+function getInitialTheme(): ThemeKey {
+  if (typeof window === "undefined") return "deepTeal";
+
+  const q = new URLSearchParams(window.location.search);
+  const urlTheme = q.get("theme");
+  const savedTheme = safeLocalGet(THEME_KEY);
+
+  return normalizeThemeKey(urlTheme || savedTheme || "deepTeal", "deepTeal");
 }
 
 function applyThemeToDocument(key: ThemeKey) {
   if (typeof document === "undefined") return;
 
-  const theme = THEMES[key] || THEMES.deepTeal;
+  const fixedKey = normalizeThemeKey(key);
+  const theme = THEMES[fixedKey] || THEMES.deepTeal;
 
-  document.documentElement.setAttribute("data-smartacctg-theme", key);
+  document.documentElement.setAttribute("data-sa-theme", fixedKey);
+  document.documentElement.setAttribute("data-smartacctg-theme", fixedKey);
+
+  document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-card-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-panel-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-item-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-input-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-input-text", theme.text);
+  document.documentElement.style.setProperty("--sa-border", theme.border);
+  document.documentElement.style.setProperty("--sa-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-text", theme.text);
+  document.documentElement.style.setProperty("--sa-panel-text", theme.text);
+  document.documentElement.style.setProperty("--sa-muted", theme.subText);
+  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg);
+  document.documentElement.style.setProperty("--sa-glow", theme.glow);
+
   document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
   document.documentElement.style.setProperty("--sa-theme-card", theme.card);
   document.documentElement.style.setProperty("--sa-theme-border", theme.border);
@@ -629,6 +701,17 @@ function applyThemeToDocument(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-theme-muted", theme.subText);
   document.documentElement.style.setProperty("--sa-theme-soft-bg", theme.softBg);
   document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
+}
+
+function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
+  if (typeof window === "undefined") return;
+
+  const q = new URLSearchParams(window.location.search);
+  q.set("lang", nextLang);
+  q.set("theme", nextTheme);
+  q.set("refresh", String(Date.now()));
+
+  window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
 }
 
 function isSchemaColumnError(error: any) {
@@ -710,7 +793,11 @@ async function updateAdaptive(
   let lastError: any = null;
 
   for (let i = 0; i < 30; i++) {
-    const { error } = await supabase.from(table).update(payload).eq("id", id).eq("user_id", userId);
+    const { error } = await supabase
+      .from(table)
+      .update(payload)
+      .eq("id", id)
+      .eq("user_id", userId);
 
     if (!error) return;
 
@@ -741,97 +828,45 @@ async function updateAdaptive(
   throw lastError || new Error("Update failed");
 }
 
-function normalizeCustomerStatus(value: any): CustomerStatus {
-  const v = String(value || "").toLowerCase().trim();
-
-  if (v === "vip" || v.includes("vip")) return "vip";
-
-  if (v === "debt" || v.includes("欠款") || v.includes("hutang") || v.includes("debt")) {
-    return "debt";
-  }
-
-  if (
-    v === "blocked" ||
-    v.includes("停止") ||
-    v.includes("合作") ||
-    v.includes("block") ||
-    v.includes("disekat")
-  ) {
-    return "blocked";
-  }
-
-  return "normal";
-}
-
 function normalizeCustomer(row: any): Customer {
-  const fixedStatus = normalizeCustomerStatus(row?.status || row?.customer_status || "normal");
-
   return {
-    id: String(row?.id || ""),
-    user_id: row?.user_id || "",
+    id: String(row?.id || makeId()),
+    user_id: row?.user_id,
     name: String(row?.name || ""),
-    phone: row?.phone || "",
-    email: row?.email || "",
-    company_name: row?.company_name || "",
-    company_reg_no: row?.company_reg_no || "",
-    company_phone: row?.company_phone || "",
-    address: row?.address || "",
-    status: fixedStatus,
-    customer_status: fixedStatus,
+    phone: row?.phone || null,
+    email: row?.email || null,
+    company_name: row?.company_name || null,
+    company_reg_no: row?.company_reg_no || null,
+    company_phone: row?.company_phone || null,
+    address: row?.address || null,
+    status: (row?.status || row?.customer_status || "normal") as CustomerStatus,
+    customer_status: (row?.customer_status || row?.status || "normal") as CustomerStatus,
     debt_amount: Number(row?.debt_amount || 0),
     paid_amount: Number(row?.paid_amount || 0),
-    last_payment_date: row?.last_payment_date || "",
-    note: row?.note || "",
+    last_payment_date: row?.last_payment_date || null,
+    note: row?.note || null,
   };
 }
 
-function statusText(status: CustomerStatus, t: any) {
-  if (status === "vip") return t.vip;
-  if (status === "debt") return t.debt;
-  if (status === "blocked") return t.blocked;
-  return t.normal;
+function customerBalance(customer: Customer) {
+  return Number(customer.debt_amount || 0) - Number(customer.paid_amount || 0);
 }
 
-function statusBadgeColors(status: CustomerStatus) {
-  if (status === "vip") {
-    return {
-      background: "#fef3c7",
-      color: "#92400e",
-      borderColor: "#fbbf24",
-    };
-  }
-
-  if (status === "debt") {
-    return {
-      background: "#fee2e2",
-      color: "#b91c1c",
-      borderColor: "#fca5a5",
-    };
-  }
-
-  if (status === "blocked") {
-    return {
-      background: "#e5e7eb",
-      color: "#374151",
-      borderColor: "#9ca3af",
-    };
-  }
-
-  return {
-    background: "#ccfbf1",
-    color: "#0f766e",
-    borderColor: "#5eead4",
-  };
+function formatRM(value: number) {
+  return `RM ${Number(value || 0).toLocaleString("en-MY", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
-function normalizeWhatsAppPhone(phone: string) {
-  const clean = String(phone || "").replace(/\D/g, "");
+function normalizePhoneForWhatsapp(value: string) {
+  const only = String(value || "").replace(/[^\d]/g, "");
 
-  if (!clean) return "";
-  if (clean.startsWith("60")) return clean;
-  if (clean.startsWith("0")) return `6${clean}`;
+  if (!only) return "";
+  if (only.startsWith("60")) return only;
+  if (only.startsWith("0")) return `60${only.slice(1)}`;
 
-  return `60${clean}`;
+  return only;
 }
 
 export default function CustomersPage() {
@@ -846,26 +881,20 @@ export default function CustomersPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | CustomerStatus>("all");
-  const [showForm, setShowForm] = useState(false);
-  const [fullscreenForm, setFullscreenForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [msg, setMsg] = useState("");
-  const [savingCustomer, setSavingCustomer] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | CustomerStatus>("all");
 
-  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const [selectedInvoiceCustomerId, setSelectedInvoiceCustomerId] = useState("");
+  const [relatedPath, setRelatedPath] = useState("/dashboard/invoices");
+
   const [priceCustomerId, setPriceCustomerId] = useState("");
-  const [priceCustomerName, setPriceCustomerName] = useState("");
   const [priceProductId, setPriceProductId] = useState("");
   const [customPrice, setCustomPrice] = useState("");
-
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [invoiceCustomer, setInvoiceCustomer] = useState<Customer | null>(null);
-
-  const [formPriceProductId, setFormPriceProductId] = useState("");
-  const [formCustomPrice, setFormCustomPrice] = useState("");
-
-  const [relatedPath, setRelatedPath] = useState("/dashboard/records");
 
   const [form, setForm] = useState({
     name: "",
@@ -883,76 +912,75 @@ export default function CustomersPage() {
   });
 
   const t = TXT[lang];
-  const theme = THEMES[themeKey];
+  const theme = THEMES[themeKey] || THEMES.deepTeal;
+
+  const themedInputStyle: CSSProperties = {
+    ...inputStyle,
+    borderColor: theme.border,
+    background: themeKey === "blackGold" || themeKey === "futureForest" ? theme.softBg : "#fff",
+    color: theme.text,
+  };
 
   useEffect(() => {
     applyThemeToDocument(themeKey);
   }, [themeKey]);
 
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
+    const initialLang = getInitialLang();
+    const initialTheme = getInitialTheme();
 
-    const urlLang = q.get("lang") as Lang | null;
-    const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
+    setLang(initialLang);
+    safeLocalSet(LANG_KEY, initialLang);
 
-    if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") {
-      setLang(urlLang);
-      safeLocalSet(LANG_KEY, urlLang);
-    } else if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") {
-      setLang(savedLang);
-    }
+    setThemeKey(initialTheme);
+    safeLocalSet(THEME_KEY, initialTheme);
+    applyThemeToDocument(initialTheme);
 
-    const urlTheme = q.get("theme");
-    const savedTheme = safeLocalGet(THEME_KEY);
+    init(initialLang, initialTheme);
 
-    if (isThemeKey(urlTheme)) {
-      setThemeKey(urlTheme);
-      safeLocalSet(THEME_KEY, urlTheme);
-      applyThemeToDocument(urlTheme);
-    } else if (isThemeKey(savedTheme)) {
-      setThemeKey(savedTheme);
-      applyThemeToDocument(savedTheme);
-    }
-
-    const shouldOpenNew = q.get("open") === "new";
-    const shouldFullscreen = q.get("fullscreen") === "1";
-
-    if (shouldOpenNew) {
-      setFullscreenForm(shouldFullscreen);
-      setTimeout(() => {
-        openNewCustomerForm(shouldFullscreen);
-      }, 0);
-    }
-
-    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function init() {
+  async function init(currentLang: Lang, currentTheme: ThemeKey) {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
+    const openParam = q.get("open");
+    const fullscreenParam = q.get("fullscreen");
+
+    const shouldOpenNew = openParam === "new";
+    const shouldFullscreen = fullscreenParam === "1" || shouldOpenNew;
+
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
-      const trial = JSON.parse(trialRaw);
+      try {
+        const trial = JSON.parse(trialRaw);
 
-      if (Date.now() < Number(trial.expiresAt)) {
-        setIsTrial(true);
-        setSession(null);
+        if (Date.now() < Number(trial.expiresAt)) {
+          setIsTrial(true);
+          setSession(null);
 
-        const savedCustomers = safeLocalGet(TRIAL_CUSTOMERS_KEY);
-        const savedPrices = safeLocalGet(TRIAL_CUSTOMER_PRICES_KEY);
-        const savedProducts = safeLocalGet(TRIAL_PRODUCTS_KEY);
-        const savedInvoices = safeLocalGet(TRIAL_INVOICES_KEY);
+          setCustomers(
+            safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)).map((x) =>
+              normalizeCustomer(x)
+            )
+          );
+          setProducts(safeParseArray<Product>(safeLocalGet(TRIAL_PRODUCTS_KEY)));
+          setCustomerPrices(
+            safeParseArray<CustomerPrice>(safeLocalGet(TRIAL_CUSTOMER_PRICES_KEY))
+          );
+          setInvoices(safeParseArray<Invoice>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
-        const parsedCustomers = savedCustomers ? JSON.parse(savedCustomers) : [];
+          replaceUrlLangTheme(currentLang, currentTheme);
 
-        setCustomers(parsedCustomers.map((c: any) => normalizeCustomer(c)));
-        setCustomerPrices(savedPrices ? JSON.parse(savedPrices) : []);
-        setProducts(savedProducts ? JSON.parse(savedProducts) : []);
-        setInvoices(savedInvoices ? JSON.parse(savedInvoices) : []);
+          if (shouldOpenNew) {
+            setTimeout(() => openNewForm(shouldFullscreen), 100);
+          }
 
-        return;
+          return;
+        }
+      } catch {
+        // Bad trial data, clear below.
       }
 
       safeLocalRemove(TRIAL_KEY);
@@ -974,21 +1002,27 @@ export default function CustomersPage() {
     setIsTrial(false);
     setSession(data.session);
 
+    const userId = data.session.user.id;
+
     const { data: profileData } = await supabase
       .from("profiles")
       .select("theme")
-      .eq("id", data.session.user.id)
+      .eq("id", userId)
       .single();
 
     const profile = profileData as Profile | null;
+    const profileTheme = normalizeThemeKey(profile?.theme || currentTheme, currentTheme);
 
-    if (isThemeKey(profile?.theme)) {
-      setThemeKey(profile.theme);
-      safeLocalSet(THEME_KEY, profile.theme);
-      applyThemeToDocument(profile.theme);
+    setThemeKey(profileTheme);
+    safeLocalSet(THEME_KEY, profileTheme);
+    applyThemeToDocument(profileTheme);
+    replaceUrlLangTheme(currentLang, profileTheme);
+
+    await loadAll(userId);
+
+    if (shouldOpenNew) {
+      setTimeout(() => openNewForm(shouldFullscreen), 100);
     }
-
-    await loadAll(data.session.user.id);
   }
 
   async function loadAll(userId: string) {
@@ -1015,116 +1049,58 @@ export default function CustomersPage() {
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
-    setCustomers((customerData || []).map((c: any) => normalizeCustomer(c)));
+    setCustomers((customerData || []).map((x) => normalizeCustomer(x)));
     setProducts((productData || []) as Product[]);
     setCustomerPrices((priceData || []) as CustomerPrice[]);
     setInvoices((invoiceData || []) as Invoice[]);
   }
 
-  function saveTrialCustomers(nextCustomers: Customer[]) {
-    const fixed = nextCustomers.map((c) => normalizeCustomer(c));
-    setCustomers(fixed);
-    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(fixed));
-  }
-
-  function saveTrialPrices(nextPrices: CustomerPrice[]) {
-    setCustomerPrices(nextPrices);
-    safeLocalSet(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextPrices));
-  }
-
   function buildUrl(path: string, extra?: string) {
-    const query = new URLSearchParams();
+    const q = new URLSearchParams();
 
-    if (isTrial) query.set("mode", "trial");
+    if (isTrial) q.set("mode", "trial");
 
-    query.set("lang", lang);
-    query.set("theme", themeKey);
-    query.set("refresh", String(Date.now()));
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
 
     if (extra) {
       const extraQuery = new URLSearchParams(extra);
-      extraQuery.forEach((value, key) => {
-        query.set(key, value);
-      });
+      extraQuery.forEach((value, key) => q.set(key, value));
     }
 
-    return `${path}?${query.toString()}`;
+    return `${path}?${q.toString()}`;
   }
 
   function go(path: string, extra?: string) {
     window.location.href = buildUrl(path, extra);
   }
 
-  function cleanOpenQuery() {
-    if (typeof window === "undefined") return;
-
-    const q = new URLSearchParams(window.location.search);
-    q.delete("open");
-    q.delete("fullscreen");
-
-    const nextQuery = q.toString();
-    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname;
-
-    window.history.replaceState({}, "", nextUrl);
-  }
-
   function backToDashboard() {
-    go("/dashboard");
+    window.location.href = buildUrl("/dashboard");
   }
 
   function goRelatedFeature() {
     go(relatedPath);
   }
 
-  function openInvoiceRecords(c: Customer) {
-    setInvoiceCustomer(normalizeCustomer(c));
-    setShowInvoiceModal(true);
-  }
-
-  function closeInvoiceModal() {
-    setInvoiceCustomer(null);
-    setShowInvoiceModal(false);
-  }
-
-  function goCreateInvoiceForCustomer() {
-    if (!invoiceCustomer) return;
-
-    go(
-      "/dashboard/invoices",
-      `customerId=${encodeURIComponent(invoiceCustomer.id)}&customerName=${encodeURIComponent(
-        invoiceCustomer.name
-      )}&from=customers&open=new&fullscreen=1`
-    );
-  }
-
   function switchLang(next: Lang) {
     setLang(next);
     safeLocalSet(LANG_KEY, next);
+    replaceUrlLangTheme(next, themeKey);
+  }
 
+  function shouldReturnDashboard() {
+    if (typeof window === "undefined") return false;
     const q = new URLSearchParams(window.location.search);
-    q.set("lang", next);
-    q.set("theme", themeKey);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+    return q.get("return") === "dashboard";
   }
 
-  function openNewCustomerForm(fullscreen = true) {
-    setMsg("");
-    resetForm();
-    setFullscreenForm(fullscreen);
-    setShowForm(true);
-  }
-
-  function closeForm() {
-    resetForm();
-    setShowForm(false);
-    setFullscreenForm(false);
-    cleanOpenQuery();
+  function returnDashboardNow() {
+    window.location.href = buildUrl("/dashboard");
   }
 
   function resetForm() {
-    setEditingId(null);
     setForm({
       name: "",
       phone: "",
@@ -1139,68 +1115,62 @@ export default function CustomersPage() {
       last_payment_date: today(),
       note: "",
     });
-
-    setFormPriceProductId("");
-    setFormCustomPrice("");
   }
 
-  function upsertTrialPrice(customerId: string, productId: string, price: number) {
-    const exists = customerPrices.find(
-      (p) => p.customer_id === customerId && p.product_id === productId
-    );
-
-    const next = exists
-      ? customerPrices.map((p) =>
-          p.customer_id === customerId && p.product_id === productId
-            ? { ...p, custom_price: price }
-            : p
-        )
-      : [
-          {
-            id: makeId(),
-            customer_id: customerId,
-            product_id: productId,
-            custom_price: price,
-          },
-          ...customerPrices,
-        ];
-
-    saveTrialPrices(next);
+  function openNewForm(forceFullscreen = false) {
+    setEditingId(null);
+    resetForm();
+    setFullscreen(forceFullscreen);
+    setShowForm(true);
+    setMsg("");
   }
 
-  async function upsertDbPrice(customerId: string, productId: string, price: number) {
-    if (!session) return "No session";
-
-    const existing = await supabase
-      .from("customer_prices")
-      .select("id")
-      .eq("user_id", session.user.id)
-      .eq("customer_id", customerId)
-      .eq("product_id", productId)
-      .maybeSingle();
-
-    if (existing.error && !isSchemaColumnError(existing.error)) {
-      return existing.error.message;
+  function closeForm() {
+    if (shouldReturnDashboard()) {
+      returnDashboardNow();
+      return;
     }
 
-    if (existing.data?.id) {
-      const { error } = await supabase
-        .from("customer_prices")
-        .update({ custom_price: price })
-        .eq("id", existing.data.id)
-        .eq("user_id", session.user.id);
+    setEditingId(null);
+    setFullscreen(false);
+    setShowForm(false);
+    resetForm();
 
-      return error?.message || "";
-    }
+    const q = new URLSearchParams(window.location.search);
+    q.delete("open");
+    q.delete("fullscreen");
+    q.delete("return");
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
 
-    const { error } = await supabase.from("customer_prices").insert({
-      user_id: session.user.id,
-      customer_id: customerId,
-      product_id: productId,
-      custom_price: price,
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+  }
+
+  function editCustomer(c: Customer) {
+    setEditingId(c.id);
+    setFullscreen(false);
+    setForm({
+      name: c.name || "",
+      phone: c.phone || "",
+      email: c.email || "",
+      company_name: c.company_name || "",
+      company_reg_no: c.company_reg_no || "",
+      company_phone: c.company_phone || "",
+      address: c.address || "",
+      status: (c.status || c.customer_status || "normal") as CustomerStatus,
+      debt_amount: String(c.debt_amount || ""),
+      paid_amount: String(c.paid_amount || ""),
+      last_payment_date: c.last_payment_date || today(),
+      note: c.note || "",
     });
+    setShowForm(true);
+    setMsg("");
+  }
 
-    return error?.message || "";
+  function saveTrialCustomers(nextCustomers: Customer[]) {
+    setCustomers(nextCustomers);
+    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
   }
 
   async function saveCustomer() {
@@ -1211,148 +1181,97 @@ export default function CustomersPage() {
       return;
     }
 
-    setSavingCustomer(true);
+    setLoading(true);
+
+    const payload = {
+      name: form.name.trim(),
+      phone: form.phone.trim() || null,
+      email: form.email.trim() || null,
+      company_name: form.company_name.trim() || null,
+      company_reg_no: form.company_reg_no.trim() || null,
+      company_phone: form.company_phone.trim() || null,
+      address: form.address.trim() || null,
+      status: form.status,
+      customer_status: form.status,
+      debt_amount: Number(form.debt_amount || 0),
+      paid_amount: Number(form.paid_amount || 0),
+      last_payment_date: form.last_payment_date || null,
+      note: form.note.trim() || null,
+    };
 
     try {
-      const customerId = editingId || makeId();
-      const fixedStatus = normalizeCustomerStatus(form.status);
-
-      const payload: Customer = {
-        id: customerId,
-        user_id: session?.user.id || "trial",
-        name: form.name.trim(),
-        phone: form.phone || null,
-        email: form.email || null,
-        company_name: form.company_name || null,
-        company_reg_no: form.company_reg_no || null,
-        company_phone: form.company_phone || null,
-        address: form.address || null,
-        status: fixedStatus,
-        customer_status: fixedStatus,
-        debt_amount: Number(form.debt_amount || 0),
-        paid_amount: Number(form.paid_amount || 0),
-        last_payment_date: form.last_payment_date || today(),
-        note: form.note || null,
-      };
-
       if (isTrial) {
+        const row = normalizeCustomer({
+          id: editingId || makeId(),
+          user_id: "trial",
+          ...payload,
+        });
+
         const next = editingId
-          ? customers.map((c) => (c.id === editingId ? payload : c))
-          : [payload, ...customers];
+          ? customers.map((x) => (x.id === editingId ? row : x))
+          : [row, ...customers];
 
         saveTrialCustomers(next);
+        setMsg(t.saved);
 
-        if (formPriceProductId && formCustomPrice) {
-          upsertTrialPrice(customerId, formPriceProductId, Number(formCustomPrice));
+        if (shouldReturnDashboard()) {
+          returnDashboardNow();
+          return;
         }
 
-        setMsg(t.saved);
         closeForm();
         return;
       }
 
-      if (!session) {
-        setMsg("No session");
-        return;
-      }
-
-      const dbPayload = {
-        user_id: session.user.id,
-        name: payload.name,
-        phone: payload.phone,
-        email: payload.email,
-        company_name: payload.company_name,
-        company_reg_no: payload.company_reg_no,
-        company_phone: payload.company_phone,
-        address: payload.address,
-        status: fixedStatus,
-        customer_status: fixedStatus,
-        debt_amount: payload.debt_amount,
-        paid_amount: payload.paid_amount,
-        last_payment_date: payload.last_payment_date,
-        note: payload.note,
-      };
-
-      let savedCustomerId = editingId || "";
+      if (!session) return;
 
       if (editingId) {
-        await updateAdaptive("customers", editingId, session.user.id, dbPayload);
-        savedCustomerId = editingId;
+        await updateAdaptive("customers", editingId, session.user.id, payload);
       } else {
-        const data = await insertAdaptive("customers", dbPayload);
-        savedCustomerId = String(data?.id || "");
-      }
-
-      if (formPriceProductId && formCustomPrice) {
-        const priceError = await upsertDbPrice(
-          savedCustomerId,
-          formPriceProductId,
-          Number(formCustomPrice)
-        );
-
-        if (priceError) {
-          setMsg(priceError);
-          return;
-        }
+        await insertAdaptive("customers", {
+          user_id: session.user.id,
+          ...payload,
+        });
       }
 
       setMsg(t.saved);
+
+      if (shouldReturnDashboard()) {
+        returnDashboardNow();
+        return;
+      }
+
       closeForm();
       await loadAll(session.user.id);
     } catch (error: any) {
       setMsg(t.saveFailed + (error?.message || String(error)));
     } finally {
-      setSavingCustomer(false);
+      setLoading(false);
     }
   }
 
-  function editCustomer(c: Customer) {
-    const fixed = normalizeCustomer(c);
-
-    setMsg("");
-    setEditingId(fixed.id);
-    setFullscreenForm(true);
-
-    setForm({
-      name: fixed.name || "",
-      phone: fixed.phone || "",
-      email: fixed.email || "",
-      company_name: fixed.company_name || "",
-      company_reg_no: fixed.company_reg_no || "",
-      company_phone: fixed.company_phone || "",
-      address: fixed.address || "",
-      status: fixed.status || "normal",
-      debt_amount: String(fixed.debt_amount || 0),
-      paid_amount: String(fixed.paid_amount || 0),
-      last_payment_date: fixed.last_payment_date || today(),
-      note: fixed.note || "",
-    });
-
-    setFormPriceProductId("");
-    setFormCustomPrice("");
-    setShowForm(true);
-  }
-
-  async function deleteCustomer(id: string) {
-    const yes = window.confirm(t.confirmDelete);
-    if (!yes) return;
+  async function deleteCustomer(c: Customer) {
+    if (!confirm(t.confirmDelete)) return;
 
     if (isTrial) {
-      const nextCustomers = customers.filter((c) => c.id !== id);
-      const nextPrices = customerPrices.filter((p) => p.customer_id !== id);
+      const nextCustomers = customers.filter((x) => x.id !== c.id);
+      const nextPrices = customerPrices.filter((x) => x.customer_id !== c.id);
 
       saveTrialCustomers(nextCustomers);
-      saveTrialPrices(nextPrices);
+      setCustomerPrices(nextPrices);
+      safeLocalSet(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextPrices));
+
       setMsg(t.deleted);
       return;
     }
 
     if (!session) return;
 
+    await supabase.from("customer_prices").delete().eq("customer_id", c.id);
     const { error } = await supabase
       .from("customers")
       .delete()
-      .eq("id", id)
+      .eq("id", c.id)
       .eq("user_id", session.user.id);
 
     if (error) {
@@ -1364,105 +1283,159 @@ export default function CustomersPage() {
     await loadAll(session.user.id);
   }
 
-  function openPriceModal(c: Customer) {
-    const fixed = normalizeCustomer(c);
+  function whatsappCustomer(c: Customer) {
+    const rawPhone = c.phone || c.company_phone || "";
+    const phone = normalizePhoneForWhatsapp(rawPhone);
 
-    setPriceCustomerId(fixed.id);
-    setPriceCustomerName(fixed.name);
-    setPriceProductId("");
-    setCustomPrice("");
-    setShowPriceModal(true);
-  }
-
-  function closePriceModal() {
-    setShowPriceModal(false);
-    setPriceCustomerId("");
-    setPriceCustomerName("");
-    setPriceProductId("");
-    setCustomPrice("");
-  }
-
-  async function saveCustomerPrice() {
-    setMsg("");
-
-    if (!priceCustomerId || !priceProductId || !customPrice) return;
-
-    if (isTrial) {
-      upsertTrialPrice(priceCustomerId, priceProductId, Number(customPrice));
-      setMsg(t.saved);
-      setPriceProductId("");
-      setCustomPrice("");
-      return;
-    }
-
-    const priceError = await upsertDbPrice(priceCustomerId, priceProductId, Number(customPrice));
-
-    if (priceError) {
-      setMsg(priceError);
-      return;
-    }
-
-    setMsg(t.saved);
-    setPriceProductId("");
-    setCustomPrice("");
-
-    if (session) await loadAll(session.user.id);
-  }
-
-  function openCustomerWhatsApp(c: Customer) {
-    const fixed = normalizeCustomer(c);
-    const phone = fixed.phone || fixed.company_phone || "";
-    const malaysiaPhone = normalizeWhatsAppPhone(phone);
-
-    if (!malaysiaPhone) {
+    if (!phone) {
       setMsg(t.whatsappNoPhone);
       return;
     }
 
-    const message = encodeURIComponent(`Hi ${fixed.name || ""}`);
-    const url = `https://wa.me/${malaysiaPhone}?text=${message}`;
+    const text = encodeURIComponent(`${c.name || ""} ${c.company_name || ""}`.trim());
+    window.location.href = `https://wa.me/${phone}?text=${text}`;
+  }
 
-    window.location.href = url;
+  function createInvoiceForCustomer(c: Customer) {
+    go(
+      "/dashboard/invoices",
+      `open=new&fullscreen=1&return=dashboard&customerId=${encodeURIComponent(c.id)}`
+    );
+  }
+
+  function statusText(status?: CustomerStatus | null) {
+    if (status === "vip") return t.vip;
+    if (status === "debt") return t.debt;
+    if (status === "blocked") return t.blocked;
+    return t.normal;
+  }
+
+  function statusBadgeStyle(status?: CustomerStatus | null): CSSProperties {
+    if (status === "vip") return { background: "#fef3c7", color: "#92400e" };
+    if (status === "debt") return { background: "#fee2e2", color: "#b91c1c" };
+    if (status === "blocked") return { background: "#e5e7eb", color: "#374151" };
+
+    return { background: theme.softBg, color: theme.accent };
+  }
+
+  async function saveCustomerPrice() {
+    if (!priceCustomerId || !priceProductId || !customPrice) return;
+
+    const price = Number(customPrice || 0);
+
+    if (isTrial) {
+      const existing = customerPrices.find(
+        (x) => x.customer_id === priceCustomerId && x.product_id === priceProductId
+      );
+
+      const row: CustomerPrice = {
+        id: existing?.id || makeId(),
+        user_id: "trial",
+        customer_id: priceCustomerId,
+        product_id: priceProductId,
+        custom_price: price,
+      };
+
+      const next = existing
+        ? customerPrices.map((x) => (x.id === existing.id ? row : x))
+        : [row, ...customerPrices];
+
+      setCustomerPrices(next);
+      safeLocalSet(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(next));
+      setMsg(t.saved);
+      return;
+    }
+
+    if (!session) return;
+
+    const existing = customerPrices.find(
+      (x) => x.customer_id === priceCustomerId && x.product_id === priceProductId
+    );
+
+    if (existing) {
+      const { error } = await supabase
+        .from("customer_prices")
+        .update({ custom_price: price })
+        .eq("id", existing.id)
+        .eq("user_id", session.user.id);
+
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+    } else {
+      const { error } = await supabase.from("customer_prices").insert({
+        user_id: session.user.id,
+        customer_id: priceCustomerId,
+        product_id: priceProductId,
+        custom_price: price,
+      });
+
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+    }
+
+    setMsg(t.saved);
+    await loadAll(session.user.id);
   }
 
   const filteredCustomers = useMemo(() => {
-    const s = search.toLowerCase().trim();
+    const q = search.trim().toLowerCase();
 
-    return customers.filter((raw) => {
-      const c = normalizeCustomer(raw);
-      const customerStatus = normalizeCustomerStatus(c.status || c.customer_status || "normal");
+    return customers.filter((c) => {
+      const fixedStatus = (c.status || c.customer_status || "normal") as CustomerStatus;
+      const matchStatus = statusFilter === "all" || fixedStatus === statusFilter;
 
-      const matchSearch =
-        !s ||
-        c.name?.toLowerCase().includes(s) ||
-        c.phone?.toLowerCase().includes(s) ||
-        c.company_phone?.toLowerCase().includes(s) ||
-        c.company_name?.toLowerCase().includes(s) ||
-        c.email?.toLowerCase().includes(s);
+      const text = [
+        c.name,
+        c.phone,
+        c.email,
+        c.company_name,
+        c.company_reg_no,
+        c.company_phone,
+        c.address,
+        c.note,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-      const matchStatus = filterStatus === "all" || customerStatus === filterStatus;
+      const matchSearch = !q || text.includes(q);
 
-      return matchSearch && matchStatus;
+      return matchStatus && matchSearch;
     });
-  }, [customers, search, filterStatus]);
+  }, [customers, search, statusFilter]);
 
-  const selectedProduct = products.find((p) => p.id === priceProductId);
-  const formSelectedProduct = products.find((p) => p.id === formPriceProductId);
-  const targetPrices = customerPrices.filter((p) => p.customer_id === priceCustomerId);
+  const selectedProduct = products.find((p) => p.id === priceProductId) || null;
+
+  const currentPrices = useMemo(() => {
+    return customerPrices.map((price) => {
+      const customer = customers.find((c) => c.id === price.customer_id);
+      const product = products.find((p) => p.id === price.product_id);
+
+      return {
+        ...price,
+        customerName: customer?.name || "-",
+        productName: product?.name || "-",
+        normalPrice: Number(product?.price || 0),
+      };
+    });
+  }, [customerPrices, customers, products]);
+
+  const selectedInvoiceCustomer = customers.find((c) => c.id === selectedInvoiceCustomerId) || null;
 
   const selectedCustomerInvoices = useMemo(() => {
-    if (!invoiceCustomer) return [];
+    if (!selectedInvoiceCustomer) return [];
 
     return invoices.filter((inv) => {
-      const matchById = inv.customer_id && inv.customer_id === invoiceCustomer.id;
-      const matchByName =
-        inv.customer_name &&
-        invoiceCustomer.name &&
-        inv.customer_name.toLowerCase() === invoiceCustomer.name.toLowerCase();
-
-      return matchById || matchByName;
+      return (
+        inv.customer_id === selectedInvoiceCustomer.id ||
+        inv.customer_name === selectedInvoiceCustomer.name
+      );
     });
-  }, [invoices, invoiceCustomer]);
+  }, [invoices, selectedInvoiceCustomer]);
 
   return (
     <main
@@ -1473,61 +1446,54 @@ export default function CustomersPage() {
       <style jsx global>{CUSTOMERS_PAGE_FIX_CSS}</style>
 
       <div className="sa-topbar">
-        <div className="sa-topbar-left">
+        <button
+          type="button"
+          onClick={backToDashboard}
+          className="sa-back-btn"
+          style={{
+            ...backBtnStyle,
+            borderColor: theme.border,
+            color: theme.accent,
+            background: theme.card,
+          }}
+        >
+          ← {t.back}
+        </button>
+
+        <div className="sa-lang-row">
           <button
             type="button"
-            onClick={backToDashboard}
-            className="sa-back-btn"
-            style={{
-              ...backBtnStyle,
-              color: theme.accent,
-              borderColor: theme.border,
-            }}
+            className="sa-lang-btn"
+            onClick={() => switchLang("zh")}
+            style={langBtnStyle(lang === "zh", theme)}
           >
-            ← {t.back}
+            中文
           </button>
-        </div>
 
-        <div className="sa-topbar-center" aria-hidden="true" />
+          <button
+            type="button"
+            className="sa-lang-btn"
+            onClick={() => switchLang("en")}
+            style={langBtnStyle(lang === "en", theme)}
+          >
+            EN
+          </button>
 
-        <div className="sa-topbar-right">
-          <div className="sa-lang-row">
-            <button
-              type="button"
-              onClick={() => switchLang("zh")}
-              className="sa-lang-btn"
-              style={langBtnStyle(lang === "zh", theme)}
-            >
-              中文
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchLang("en")}
-              className="sa-lang-btn"
-              style={langBtnStyle(lang === "en", theme)}
-            >
-              EN
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchLang("ms")}
-              className="sa-lang-btn"
-              style={langBtnStyle(lang === "ms", theme)}
-            >
-              BM
-            </button>
-          </div>
+          <button
+            type="button"
+            className="sa-lang-btn"
+            onClick={() => switchLang("ms")}
+            style={langBtnStyle(lang === "ms", theme)}
+          >
+            BM
+          </button>
         </div>
       </div>
 
       {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
 
       {msg ? (
-        <div style={{ ...msgStyle, background: theme.softBg, color: theme.text }}>
-          {msg}
-        </div>
+        <div style={{ ...msgStyle, background: theme.softBg, color: theme.text }}>{msg}</div>
       ) : null}
 
       <section
@@ -1539,40 +1505,31 @@ export default function CustomersPage() {
           color: theme.text,
         }}
       >
-        <div style={recordHeaderStyle}>
+        <div style={headerRowStyle}>
           <h1 style={titleStyle}>{t.pageTitle}</h1>
 
           <button
             type="button"
-            onClick={() => openNewCustomerForm(true)}
+            onClick={() => openNewForm(false)}
             aria-label={t.add}
-            style={{
-              ...plusBtnStyle,
-              background: theme.accent,
-            }}
+            style={{ ...plusBtnStyle, background: theme.accent }}
           >
             +
           </button>
         </div>
 
-        <div className="customers-search-row" style={searchGridStyle}>
+        <div className="customers-search-row" style={searchRowStyle}>
           <input
             placeholder={t.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              ...inputStyle,
-              borderColor: theme.border,
-            }}
+            style={themedInputStyle}
           />
 
           <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as "all" | CustomerStatus)}
-            style={{
-              ...inputStyle,
-              borderColor: theme.border,
-            }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as "all" | CustomerStatus)}
+            style={themedInputStyle}
           >
             <option value="all">{t.all}</option>
             <option value="normal">{t.normal}</option>
@@ -1581,144 +1538,281 @@ export default function CustomersPage() {
             <option value="blocked">{t.blocked}</option>
           </select>
         </div>
+      </section>
 
-        <div style={customerListStyle}>
-          {filteredCustomers.length === 0 ? (
-            <p style={{ color: theme.subText, fontWeight: 800 }}>{t.noCustomers}</p>
-          ) : (
-            <div className="customers-list" style={customerGridStyle}>
-              {filteredCustomers.map((raw) => {
-                const c = normalizeCustomer(raw);
-                const customerStatus = normalizeCustomerStatus(c.status || c.customer_status);
-                const statusColor = statusBadgeColors(customerStatus);
-                const debtLeft = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
-                const prices = customerPrices.filter((p) => p.customer_id === c.id);
-                const hasWhatsappPhone = Boolean(
-                  normalizeWhatsAppPhone(c.phone || c.company_phone || "")
-                );
+      <section
+        className="sa-card"
+        style={{
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+          color: theme.text,
+        }}
+      >
+        {filteredCustomers.length === 0 ? (
+          <p style={{ color: theme.subText, fontWeight: 900 }}>{t.noCustomers}</p>
+        ) : (
+          <div className="customers-list">
+            {filteredCustomers.map((c) => {
+              const fixedStatus = (c.status || c.customer_status || "normal") as CustomerStatus;
+              const balance = customerBalance(c);
+              const hasDebt = balance > 0 || fixedStatus === "debt";
 
-                return (
-                  <div
-                    key={c.id}
-                    className="customer-card"
-                    style={{
-                      ...customerCardStyle,
-                      borderColor: theme.border,
-                      background: theme.card,
-                      color: theme.text,
-                      boxShadow: theme.glow,
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <h3 style={customerNameStyle}>
-                        {c.name}{" "}
-                        <span
-                          className="customer-status-badge"
-                          style={{
-                            ...badgeStyle,
-                            background: statusColor.background,
-                            color: statusColor.color,
-                            border: `1px solid ${statusColor.borderColor}`,
-                          }}
-                        >
-                          {statusText(customerStatus, t)}
-                        </span>
-                      </h3>
-
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
-                        {t.phone}: {c.phone || "-"} ｜ {t.email}: {c.email || "-"}
-                      </p>
-
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
-                        {t.companyName}: {c.company_name || "-"}
-                      </p>
-
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
-                        {t.companyPhone}: {c.company_phone || "-"}
-                      </p>
-
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
-                        {t.debtAmount}: RM {Number(c.debt_amount || 0).toFixed(2)} ｜{" "}
-                        {t.paidAmount}: RM {Number(c.paid_amount || 0).toFixed(2)} ｜{" "}
-                        {t.balance}: RM {debtLeft.toFixed(2)}
-                      </p>
-
-                      <p style={{ ...mutedStyle, color: theme.subText }}>
-                        {t.lastPaymentDate}: {c.last_payment_date || "-"}
-                      </p>
-
-                      {prices.length > 0 ? (
-                        <p style={{ ...mutedStyle, color: theme.subText }}>
-                          {t.currentPrices}:{" "}
-                          {prices
-                            .map((cp) => {
-                              const product = products.find((p) => p.id === cp.product_id);
-                              return `${product?.name || "Product"} RM ${Number(
-                                cp.custom_price
-                              ).toFixed(2)}`;
-                            })
-                            .join(" / ")}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    <div className="customers-action-row" style={actionRowStyle}>
-                      <button
-                        type="button"
-                        onClick={() => openInvoiceRecords(c)}
-                        style={invoiceBtnStyle}
+              return (
+                <div
+                  key={c.id}
+                  className={`customer-card ${hasDebt ? "debt-customer-card" : ""}`}
+                  style={{
+                    background: hasDebt ? "#fee2e2" : theme.card,
+                    color: hasDebt ? "#7f1d1d" : theme.text,
+                    borderColor: hasDebt ? "#dc2626" : theme.border,
+                    boxShadow: hasDebt
+                      ? "0 0 0 1px rgba(220, 38, 38, 0.35), 0 12px 28px rgba(220, 38, 38, 0.22)"
+                      : theme.glow,
+                  }}
+                >
+                  <div>
+                    <h3>
+                      {c.name || "-"}
+                      <span
+                        className="customer-status-badge"
+                        style={statusBadgeStyle(fixedStatus)}
                       >
-                        {t.invoice}
-                      </button>
+                        {statusText(fixedStatus)}
+                      </span>
+                    </h3>
 
-                      <button
-                        type="button"
-                        onClick={() => openPriceModal(c)}
-                        style={{
-                          ...priceBtnStyle,
-                          background: theme.accent,
-                        }}
-                      >
-                        {t.priceTitle}
-                      </button>
+                    <p>
+                      {t.phone}: {c.phone || "-"} ｜ {t.email}: {c.email || "-"}
+                    </p>
 
-                      <button
-                        type="button"
-                        onClick={() => openCustomerWhatsApp(c)}
-                        title={hasWhatsappPhone ? t.whatsapp : t.whatsappNoPhone}
-                        style={{
-                          ...whatsappBtnStyle,
-                          opacity: hasWhatsappPhone ? 1 : 0.55,
-                        }}
-                      >
-                        {t.whatsapp}
-                      </button>
+                    <p>
+                      {t.companyName}: {c.company_name || "-"} ｜ {t.regNo}:{" "}
+                      {c.company_reg_no || "-"}
+                    </p>
 
-                      <button
-                        type="button"
-                        onClick={() => editCustomer(c)}
-                        style={{
-                          ...editBtnStyle,
-                          background: theme.accent,
-                        }}
-                      >
-                        {t.edit}
-                      </button>
+                    <p>
+                      {t.companyPhone}: {c.company_phone || "-"} ｜ {t.address}:{" "}
+                      {c.address || "-"}
+                    </p>
 
-                      <button
-                        type="button"
-                        onClick={() => deleteCustomer(c.id)}
-                        style={deleteBtnStyle}
-                      >
-                        {t.delete}
-                      </button>
-                    </div>
+                    <p>
+                      {t.debtAmount}:{" "}
+                      <strong style={{ color: hasDebt ? "#7f1d1d" : "#dc2626" }}>
+                        {formatRM(Number(c.debt_amount || 0))}
+                      </strong>{" "}
+                      ｜ {t.paidAmount}: {formatRM(Number(c.paid_amount || 0))} ｜ {t.balance}:{" "}
+                      <strong style={{ color: hasDebt ? "#7f1d1d" : theme.accent }}>
+                        {formatRM(balance)}
+                      </strong>
+                    </p>
+
+                    <p>
+                      {t.lastPaymentDate}: {c.last_payment_date || "-"}
+                    </p>
+
+                    {c.note ? <p>{t.note}: {c.note}</p> : null}
                   </div>
-                );
-              })}
+
+                  <div className="customers-action-row">
+                    <button
+                      type="button"
+                      onClick={() => editCustomer(c)}
+                      style={{ ...smallBtnStyle, background: theme.accent }}
+                    >
+                      {t.edit}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteCustomer(c)}
+                      style={deleteBtnStyle}
+                    >
+                      {t.delete}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => whatsappCustomer(c)}
+                      style={whatsappBtnStyle}
+                    >
+                      {t.whatsapp}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => createInvoiceForCustomer(c)}
+                      style={{
+                        ...outlineBtnStyle,
+                        borderColor: theme.accent,
+                        color: theme.accent,
+                        background: theme.card,
+                      }}
+                    >
+                      {t.invoice}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedInvoiceCustomerId(c.id)}
+                      style={{
+                        ...outlineBtnStyle,
+                        borderColor: theme.border,
+                        color: theme.accent,
+                        background: theme.card,
+                      }}
+                    >
+                      {t.invoiceRecords}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {selectedInvoiceCustomer ? (
+        <section
+          className="sa-card"
+          style={{
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+            color: theme.text,
+          }}
+        >
+          <div style={sectionHeaderRowStyle}>
+            <h2 style={sectionTitleStyle}>
+              {t.invoiceRecords}｜{selectedInvoiceCustomer.name}
+            </h2>
+
+            <button
+              type="button"
+              className="customers-close-btn"
+              onClick={() => setSelectedInvoiceCustomerId("")}
+            >
+              X
+            </button>
+          </div>
+
+          {selectedCustomerInvoices.length === 0 ? (
+            <p style={{ color: theme.subText, fontWeight: 900 }}>{t.noInvoice}</p>
+          ) : (
+            <div style={invoiceListStyle}>
+              {selectedCustomerInvoices.map((inv) => (
+                <div
+                  key={inv.id}
+                  style={{
+                    ...invoiceMiniCardStyle,
+                    borderColor: theme.border,
+                    background: theme.softBg,
+                    color: theme.text,
+                  }}
+                >
+                  <strong>{inv.invoice_no || inv.id}</strong>
+                  <p>
+                    {t.invoiceDate}: {inv.invoice_date || inv.created_at?.slice(0, 10) || "-"}
+                  </p>
+                  <p>
+                    {t.invoiceTotal}: {formatRM(Number(inv.total || 0))} ｜ {t.invoiceProfit}:{" "}
+                    {formatRM(Number(inv.total_profit || 0))}
+                  </p>
+                </div>
+              ))}
             </div>
           )}
+        </section>
+      ) : null}
+
+      <section
+        className="sa-card"
+        style={{
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+          color: theme.text,
+        }}
+      >
+        <h2 style={sectionTitleStyle}>{t.priceTitle}</h2>
+
+        <div style={formGridStyle}>
+          <select
+            value={priceCustomerId}
+            onChange={(e) => setPriceCustomerId(e.target.value)}
+            style={themedInputStyle}
+          >
+            <option value="">{t.chooseCustomer}</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} {c.company_name ? `｜${c.company_name}` : ""}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={priceProductId}
+            onChange={(e) => setPriceProductId(e.target.value)}
+            style={themedInputStyle}
+          >
+            <option value="">{t.chooseProduct}</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} - {formatRM(Number(p.price || 0))}
+              </option>
+            ))}
+          </select>
+
+          <input
+            placeholder={t.customPrice}
+            value={customPrice}
+            onChange={(e) => setCustomPrice(e.target.value)}
+            inputMode="decimal"
+            style={themedInputStyle}
+          />
+
+          {selectedProduct ? (
+            <p style={{ margin: 0, color: theme.subText, fontWeight: 900 }}>
+              {t.productNormalPrice}: {formatRM(Number(selectedProduct.price || 0))}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={saveCustomerPrice}
+            style={{ ...primaryBtnStyle, background: theme.accent }}
+          >
+            {t.savePrice}
+          </button>
         </div>
+
+        <h3 style={sectionTitleStyle}>{t.currentPrices}</h3>
+
+        {currentPrices.length === 0 ? (
+          <p style={{ color: theme.subText, fontWeight: 900 }}>{t.noPrice}</p>
+        ) : (
+          <div style={invoiceListStyle}>
+            {currentPrices.map((p) => (
+              <div
+                key={p.id}
+                style={{
+                  ...invoiceMiniCardStyle,
+                  borderColor: theme.border,
+                  background: theme.softBg,
+                  color: theme.text,
+                }}
+              >
+                <strong>
+                  {p.customerName}｜{p.productName}
+                </strong>
+                <p>
+                  {t.productNormalPrice}: {formatRM(p.normalPrice)} ｜ {t.customPrice}:{" "}
+                  <strong style={{ color: theme.accent }}>{formatRM(p.custom_price)}</strong>
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section
@@ -1732,14 +1826,11 @@ export default function CustomersPage() {
       >
         <h2 style={sectionTitleStyle}>{t.related}</h2>
 
-        <div style={relatedMenuRowStyle}>
+        <div style={relatedRowStyle}>
           <select
             value={relatedPath}
             onChange={(e) => setRelatedPath(e.target.value)}
-            style={{
-              ...inputStyle,
-              borderColor: theme.border,
-            }}
+            style={themedInputStyle}
           >
             <option value="/dashboard/records">{t.accounting}</option>
             <option value="/dashboard/products">{t.products}</option>
@@ -1749,11 +1840,7 @@ export default function CustomersPage() {
           <button
             type="button"
             onClick={goRelatedFeature}
-            style={{
-              ...primaryBtnStyle,
-              background: theme.accent,
-              marginTop: 0,
-            }}
+            style={{ ...primaryBtnStyle, background: theme.accent }}
           >
             {t.goFeature}
           </button>
@@ -1761,405 +1848,161 @@ export default function CustomersPage() {
       </section>
 
       {showForm ? (
-        <div
-          className={fullscreenForm ? "customers-fullscreen-overlay" : ""}
-          style={fullscreenForm ? fullscreenOverlayStyle : overlayStyle}
-        >
+        <div className={fullscreen ? "customers-fullscreen-overlay" : ""} style={fullscreen ? fullOverlayStyle : overlayStyle}>
           <section
-            className={fullscreenForm ? "sa-modal customers-fullscreen-modal" : "sa-modal"}
+            className={`sa-modal ${fullscreen ? "customers-fullscreen-modal" : ""}`}
             style={{
-              ...(fullscreenForm ? fullscreenModalStyle : modalStyle),
+              ...modalStyle,
               background: theme.card,
               borderColor: theme.border,
-              boxShadow: fullscreenForm ? "none" : theme.glow,
               color: theme.text,
+              boxShadow: theme.glow,
             }}
           >
-            <div className="sa-modal-header" style={modalHeaderStyle}>
+            <div className="sa-modal-header">
               <h2 style={modalTitleStyle}>{editingId ? t.update : t.formTitle}</h2>
 
               <button
                 type="button"
-                onClick={closeForm}
                 className="customers-close-btn"
-                style={closeTextBtnStyle}
+                onClick={closeForm}
+                aria-label={t.close}
               >
                 {t.close}
               </button>
             </div>
 
-            {msg ? (
-              <div style={{ ...modalMsgStyle, background: theme.softBg, color: theme.text }}>
-                {msg}
-              </div>
-            ) : null}
+            <h3 style={sectionTitleStyle}>{t.personal}</h3>
 
-            <h3>{t.personal}</h3>
-
-            <div style={responsiveGridStyle}>
+            <div style={formGridStyle}>
               <input
                 placeholder={t.name}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
 
               <input
                 placeholder={t.phone}
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
 
               <input
                 placeholder={t.email}
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              />
-            </div>
-
-            <h3>{t.company}</h3>
-
-            <div style={responsiveGridStyle}>
-              <input
-                placeholder={t.companyName}
-                value={form.company_name}
-                onChange={(e) => setForm({ ...form, company_name: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
 
-              <input
-                placeholder={t.regNo}
-                value={form.company_reg_no}
-                onChange={(e) => setForm({ ...form, company_reg_no: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              />
-
-              <input
-                placeholder={t.companyPhone}
-                value={form.company_phone}
-                onChange={(e) => setForm({ ...form, company_phone: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              />
-
-              <input
-                placeholder={t.address}
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              />
-            </div>
-
-            <h3>{t.status}</h3>
-
-            <div style={responsiveGridStyle}>
               <select
                 value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value as CustomerStatus })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                onChange={(e) =>
+                  setForm({ ...form, status: e.target.value as CustomerStatus })
+                }
+                style={themedInputStyle}
               >
                 <option value="normal">{t.normal}</option>
                 <option value="vip">{t.vip}</option>
                 <option value="debt">{t.debt}</option>
                 <option value="blocked">{t.blocked}</option>
               </select>
+            </div>
 
+            <h3 style={sectionTitleStyle}>{t.company}</h3>
+
+            <div style={formGridStyle}>
+              <input
+                placeholder={t.companyName}
+                value={form.company_name}
+                onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                style={themedInputStyle}
+              />
+
+              <input
+                placeholder={t.regNo}
+                value={form.company_reg_no}
+                onChange={(e) => setForm({ ...form, company_reg_no: e.target.value })}
+                style={themedInputStyle}
+              />
+
+              <input
+                placeholder={t.companyPhone}
+                value={form.company_phone}
+                onChange={(e) => setForm({ ...form, company_phone: e.target.value })}
+                style={themedInputStyle}
+              />
+
+              <input
+                placeholder={t.address}
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                style={themedInputStyle}
+              />
+            </div>
+
+            <h3 style={sectionTitleStyle}>{t.debtAmount}</h3>
+
+            <div style={formGridStyle}>
               <input
                 placeholder={t.debtAmount}
                 value={form.debt_amount}
                 onChange={(e) => setForm({ ...form, debt_amount: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                inputMode="decimal"
+                style={themedInputStyle}
               />
 
               <input
                 placeholder={t.paidAmount}
                 value={form.paid_amount}
                 onChange={(e) => setForm({ ...form, paid_amount: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                inputMode="decimal"
+                style={themedInputStyle}
               />
 
-              <div style={dateWrapStyle}>
-                <label style={{ ...dateLabelStyle, color: theme.subText }}>
-                  {t.lastPaymentDate}
-                </label>
-
-                <input
-                  className="sa-center-date-input"
-                  type="date"
-                  value={form.last_payment_date}
-                  onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })}
-                  style={{ ...dateInputStyle, borderColor: theme.border }}
-                />
-              </div>
+              <input
+                type="date"
+                className="sa-center-date-input"
+                value={form.last_payment_date}
+                onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })}
+                style={themedInputStyle}
+              />
 
               <input
                 placeholder={t.note}
                 value={form.note}
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
-                style={{ ...inputStyle, borderColor: theme.border }}
+                style={themedInputStyle}
               />
             </div>
-
-            <h3>{t.priceTitle}</h3>
-
-            <div style={responsiveGridStyle}>
-              <select
-                value={formPriceProductId}
-                onChange={(e) => setFormPriceProductId(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              >
-                <option value="">{t.chooseProduct}</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                placeholder={t.customPrice}
-                value={formCustomPrice}
-                onChange={(e) => setFormCustomPrice(e.target.value)}
-                style={{ ...inputStyle, borderColor: theme.border }}
-              />
-            </div>
-
-            {formSelectedProduct ? (
-              <p style={{ ...mutedStyle, color: theme.subText }}>
-                {t.productNormalPrice}: RM {Number(formSelectedProduct.price || 0).toFixed(2)}
-              </p>
-            ) : null}
 
             <div style={modalActionRowStyle}>
               <button
                 type="button"
                 onClick={saveCustomer}
-                disabled={savingCustomer}
+                disabled={loading}
                 style={{
                   ...primaryBtnStyle,
                   background: theme.accent,
-                  marginTop: 0,
-                  opacity: savingCustomer ? 0.65 : 1,
+                  opacity: loading ? 0.65 : 1,
                 }}
               >
-                {savingCustomer ? t.saving : editingId ? t.update : t.save}
+                {loading ? t.saving : editingId ? t.update : t.save}
               </button>
 
               <button
                 type="button"
                 onClick={closeForm}
-                disabled={savingCustomer}
                 style={{
                   ...secondaryBtnStyle,
                   borderColor: theme.border,
                   color: theme.accent,
-                  marginTop: 0,
-                  marginLeft: 0,
-                  opacity: savingCustomer ? 0.65 : 1,
+                  background: theme.card,
                 }}
               >
-                {editingId ? t.cancelEdit : t.cancel}
+                {t.cancel}
               </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {showPriceModal ? (
-        <div style={overlayStyle}>
-          <section
-            className="sa-modal"
-            style={{
-              ...modalStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div className="sa-modal-header" style={modalHeaderStyle}>
-              <div>
-                <h2 style={modalTitleStyle}>{t.priceTitle}</h2>
-
-                <p style={{ ...mutedStyle, color: theme.subText, margin: "6px 0 0" }}>
-                  {t.chooseCustomer}: {priceCustomerName || "-"}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={closePriceModal}
-                className="customers-close-btn"
-                style={closeTextBtnStyle}
-              >
-                {t.close}
-              </button>
-            </div>
-
-            <div style={responsiveGridStyle}>
-              <select
-                value={priceProductId}
-                onChange={(e) => setPriceProductId(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  borderColor: theme.border,
-                }}
-              >
-                <option value="">{t.chooseProduct}</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} - RM {Number(p.price || 0).toFixed(2)}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                placeholder={t.customPrice}
-                value={customPrice}
-                onChange={(e) => setCustomPrice(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  borderColor: theme.border,
-                }}
-              />
-            </div>
-
-            {selectedProduct ? (
-              <p style={{ ...mutedStyle, color: theme.subText }}>
-                {t.productNormalPrice}: RM {Number(selectedProduct.price || 0).toFixed(2)}
-              </p>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={saveCustomerPrice}
-              style={{
-                ...primaryBtnStyle,
-                background: theme.accent,
-              }}
-            >
-              {t.savePrice}
-            </button>
-
-            <div style={{ marginTop: 16 }}>
-              <h3>{t.currentPrices}</h3>
-
-              {targetPrices.length === 0 ? (
-                <p style={{ color: theme.subText }}>{t.noPrice}</p>
-              ) : (
-                targetPrices.map((cp) => {
-                  const product = products.find((p) => p.id === cp.product_id);
-
-                  return (
-                    <div
-                      key={cp.id}
-                      style={{
-                        ...priceItemStyle,
-                        borderColor: theme.border,
-                        background: theme.softBg,
-                        color: theme.text,
-                      }}
-                    >
-                      <strong>{product?.name || "Product"}</strong>
-                      <span>RM {Number(cp.custom_price || 0).toFixed(2)}</span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {showInvoiceModal ? (
-        <div style={overlayStyle}>
-          <section
-            className="sa-modal"
-            style={{
-              ...modalStyle,
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div className="sa-modal-header" style={modalHeaderStyle}>
-              <div>
-                <h2 style={modalTitleStyle}>{t.invoiceRecords}</h2>
-
-                <p style={{ ...mutedStyle, color: theme.subText, margin: "6px 0 0" }}>
-                  {t.selectedCustomer}: {invoiceCustomer?.name || "-"}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeInvoiceModal}
-                className="customers-close-btn"
-                style={closeTextBtnStyle}
-              >
-                {t.close}
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={goCreateInvoiceForCustomer}
-              style={{
-                ...primaryBtnStyle,
-                background: theme.accent,
-                marginTop: 0,
-              }}
-            >
-              {t.createNewInvoice}
-            </button>
-
-            <div style={{ marginTop: 16 }}>
-              {selectedCustomerInvoices.length === 0 ? (
-                <p style={{ color: theme.subText }}>{t.noInvoice}</p>
-              ) : (
-                selectedCustomerInvoices.map((inv) => {
-                  const dateText =
-                    inv.invoice_date || (inv.created_at ? inv.created_at.slice(0, 10) : "-");
-
-                  return (
-                    <div
-                      key={inv.id}
-                      style={{
-                        ...invoiceRecordCardStyle,
-                        borderColor: theme.border,
-                        background: theme.softBg,
-                        color: theme.text,
-                      }}
-                    >
-                      <div>
-                        <strong>
-                          {t.invoiceNo}: {inv.invoice_no || inv.id}
-                        </strong>
-
-                        <p style={{ ...mutedStyle, color: theme.subText }}>
-                          {t.invoiceDate}: {dateText}
-                        </p>
-
-                        {inv.note ? (
-                          <p style={{ ...mutedStyle, color: theme.subText }}>{inv.note}</p>
-                        ) : null}
-                      </div>
-
-                      <div style={invoiceAmountBoxStyle}>
-                        <strong>
-                          {t.invoiceTotal}: RM {Number(inv.total || 0).toFixed(2)}
-                        </strong>
-
-                        <span style={{ color: theme.subText }}>
-                          {t.invoiceProfit}: RM {Number(inv.total_profit || 0).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
             </div>
           </section>
         </div>
@@ -2173,46 +2016,55 @@ const pageStyle: CSSProperties = {
   width: "100%",
   maxWidth: "100vw",
   overflowX: "hidden",
-  padding: "clamp(10px, 3vw, 22px)",
-  fontSize: "var(--sa-fs-base)",
+  padding: "clamp(10px, 2vw, 24px)",
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
 };
 
 const backBtnStyle: CSSProperties = {
-  background: "#fff",
   border: "var(--sa-border-w) solid",
   borderRadius: "999px",
-  minHeight: "var(--sa-control-h)",
   padding: "0 var(--sa-control-x)",
+  minHeight: "var(--sa-control-h)",
   fontWeight: 900,
   whiteSpace: "nowrap",
 };
 
 const langBtnStyle = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
   borderColor: theme.accent,
-  background: active ? theme.accent : "#fff",
+  background: active ? theme.accent : theme.card,
   color: active ? "#fff" : theme.accent,
 });
 
-const recordHeaderStyle: CSSProperties = {
+const trialMsgStyle: CSSProperties = {
+  background: "#fef3c7",
+  color: "#92400e",
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+  fontWeight: 900,
+};
+
+const msgStyle: CSSProperties = {
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+  fontWeight: 900,
+};
+
+const headerRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
   gap: 12,
-  marginBottom: 14,
+  marginBottom: 16,
 };
 
 const titleStyle: CSSProperties = {
   margin: 0,
   fontSize: "var(--sa-fs-2xl)",
+  fontWeight: 900,
   lineHeight: 1.15,
-  fontWeight: 900,
-};
-
-const sectionTitleStyle: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 14,
-  fontSize: "var(--sa-fs-xl)",
-  fontWeight: 900,
 };
 
 const plusBtnStyle: CSSProperties = {
@@ -2221,12 +2073,19 @@ const plusBtnStyle: CSSProperties = {
   minWidth: 52,
   minHeight: 52,
   borderRadius: 999,
-  color: "#fff",
   border: "none",
+  color: "#fff",
   fontSize: 30,
   fontWeight: 900,
   lineHeight: 1,
-  flexShrink: 0,
+  padding: 0,
+};
+
+const searchRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) 180px",
+  gap: 12,
+  alignItems: "center",
 };
 
 const inputStyle: CSSProperties = {
@@ -2238,175 +2097,99 @@ const inputStyle: CSSProperties = {
   padding: "0 var(--sa-control-x)",
   borderRadius: "var(--sa-radius-control)",
   border: "var(--sa-border-w) solid",
-  fontSize: "16px",
   outline: "none",
-  background: "#ffffff",
-  color: "#111827",
+  fontSize: 16,
 };
 
-const searchGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(180px, 260px)",
-  gap: 10,
-  alignItems: "center",
+const smallBtnStyle: CSSProperties = {
+  minHeight: 44,
+  padding: "0 14px",
+  borderRadius: "var(--sa-radius-control)",
+  color: "#fff",
+  border: "none",
+  fontWeight: 900,
 };
 
-const responsiveGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 12,
+const deleteBtnStyle: CSSProperties = {
+  minHeight: 44,
+  padding: "0 14px",
+  borderRadius: "var(--sa-radius-control)",
+  color: "#b91c1c",
+  background: "#fee2e2",
+  border: "none",
+  fontWeight: 900,
 };
 
-const relatedMenuRowStyle: CSSProperties = {
+const whatsappBtnStyle: CSSProperties = {
+  minHeight: 44,
+  padding: "0 14px",
+  borderRadius: "var(--sa-radius-control)",
+  color: "#fff",
+  background: "#25D366",
+  border: "none",
+  fontWeight: 900,
+};
+
+const outlineBtnStyle: CSSProperties = {
+  minHeight: 44,
+  padding: "0 14px",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid",
+  fontWeight: 900,
+};
+
+const sectionHeaderRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   gap: 12,
   alignItems: "center",
 };
 
-const customerListStyle: CSSProperties = {
-  marginTop: 18,
-};
-
-const customerGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr",
-  gap: 18,
-  width: "100%",
-};
-
-const customerCardStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-  display: "grid",
-  gridTemplateColumns: "1fr",
-  gap: 14,
-  width: "100%",
-  minWidth: 0,
-  height: "auto",
-  minHeight: "auto",
-  overflowWrap: "anywhere",
-};
-
-const customerNameStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "var(--sa-fs-xl)",
-  lineHeight: 1.25,
-  overflowWrap: "anywhere",
-};
-
-const mutedStyle: CSSProperties = {
-  fontSize: "var(--sa-fs-base)",
-  lineHeight: 1.55,
-  overflowWrap: "anywhere",
-};
-
-const badgeStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "4px 12px",
-  borderRadius: 999,
-  fontSize: "var(--sa-fs-sm)",
+const sectionTitleStyle: CSSProperties = {
+  marginTop: 0,
+  marginBottom: 14,
   fontWeight: 900,
-  whiteSpace: "nowrap",
 };
 
-const actionRowStyle: CSSProperties = {
-  display: "flex",
+const invoiceListStyle: CSSProperties = {
+  display: "grid",
   gap: 10,
-  alignItems: "center",
-  justifyContent: "flex-start",
-  flexWrap: "wrap",
 };
 
-const actionBtnBaseStyle: CSSProperties = {
-  minWidth: 108,
-  minHeight: 44,
-  border: "none",
+const invoiceMiniCardStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-control)",
-  padding: "0 12px",
-  fontSize: "var(--sa-fs-sm)",
-  fontWeight: 900,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  textAlign: "center",
-  lineHeight: 1.2,
-  whiteSpace: "normal",
+  padding: 12,
+  overflowWrap: "anywhere",
 };
 
-const invoiceBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  background: "#0ea5e9",
-  color: "#fff",
-};
-
-const priceBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  color: "#fff",
-};
-
-const whatsappBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  background: "#25D366",
-  color: "#fff",
-};
-
-const editBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  color: "#fff",
-};
-
-const deleteBtnStyle: CSSProperties = {
-  ...actionBtnBaseStyle,
-  background: "#fee2e2",
-  color: "#b91c1c",
+const formGridStyle: CSSProperties = {
+  display: "grid",
+  gap: 12,
 };
 
 const primaryBtnStyle: CSSProperties = {
-  marginTop: 16,
-  color: "#fff",
-  border: "none",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 18px",
-  fontWeight: 900,
   minHeight: "var(--sa-control-h)",
+  padding: "0 18px",
+  borderRadius: "var(--sa-radius-control)",
+  border: "none",
+  color: "#fff",
+  fontWeight: 900,
 };
 
 const secondaryBtnStyle: CSSProperties = {
-  marginTop: 16,
-  marginLeft: 10,
-  background: "#fff",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 18px",
-  fontWeight: 900,
   minHeight: "var(--sa-control-h)",
-};
-
-const msgStyle: CSSProperties = {
-  padding: 12,
+  padding: "0 18px",
   borderRadius: "var(--sa-radius-control)",
-  marginBottom: 14,
+  border: "var(--sa-border-w) solid",
   fontWeight: 900,
 };
 
-const modalMsgStyle: CSSProperties = {
-  padding: 12,
-  borderRadius: "var(--sa-radius-control)",
-  marginBottom: 14,
-  fontWeight: 900,
-};
-
-const trialMsgStyle: CSSProperties = {
-  background: "#fef3c7",
-  color: "#92400e",
-  padding: 12,
-  borderRadius: "var(--sa-radius-control)",
-  marginBottom: 14,
-  fontWeight: 900,
+const relatedRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 12,
+  alignItems: "center",
 };
 
 const overlayStyle: CSSProperties = {
@@ -2418,11 +2201,9 @@ const overlayStyle: CSSProperties = {
   overflowY: "auto",
 };
 
-const fullscreenOverlayStyle: CSSProperties = {
+const fullOverlayStyle: CSSProperties = {
   position: "fixed",
   inset: 0,
-  width: "100vw",
-  height: "100dvh",
   background: "rgba(15, 23, 42, 0.58)",
   padding: 0,
   zIndex: 9999,
@@ -2436,101 +2217,14 @@ const modalStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
 };
 
-const fullscreenModalStyle: CSSProperties = {
-  width: "100vw",
-  maxWidth: "100vw",
-  height: "100dvh",
-  maxHeight: "100dvh",
-  minHeight: "100dvh",
-  margin: 0,
-  border: "none",
-  borderRadius: 0,
-  overflowY: "auto",
-  WebkitOverflowScrolling: "touch",
-  padding: "max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom))",
-};
-
-const modalHeaderStyle: CSSProperties = {
-  marginBottom: 12,
-};
-
 const modalTitleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "var(--sa-fs-xl)",
   fontWeight: 900,
-};
-
-const closeTextBtnStyle: CSSProperties = {
-  background: "transparent",
-  color: "#dc2626",
-  border: "none",
-  boxShadow: "none",
-  borderRadius: 0,
-  padding: "0 4px",
-  minHeight: 0,
-  width: "auto",
-  height: "auto",
-  minWidth: 0,
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-  lineHeight: 1.2,
-  whiteSpace: "nowrap",
 };
 
 const modalActionRowStyle: CSSProperties = {
   display: "flex",
   gap: 10,
+  marginTop: 18,
   flexWrap: "wrap",
-  marginTop: 16,
-};
-
-const dateWrapStyle: CSSProperties = {
-  width: "100%",
-};
-
-const dateLabelStyle: CSSProperties = {
-  display: "block",
-  fontSize: "var(--sa-fs-sm)",
-  fontWeight: 900,
-  marginBottom: 6,
-};
-
-const dateInputStyle: CSSProperties = {
-  ...inputStyle,
-  appearance: "none",
-  WebkitAppearance: "none",
-  textAlign: "center",
-  textAlignLast: "center" as any,
-  display: "block",
-  lineHeight: "normal",
-  paddingLeft: 12,
-  paddingRight: 12,
-};
-
-const priceItemStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "12px 14px",
-  marginBottom: 10,
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  flexWrap: "wrap",
-  fontWeight: 900,
-};
-
-const invoiceRecordCardStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "clamp(12px, 2vw, 16px)",
-  marginBottom: 12,
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr)",
-  gap: 10,
-};
-
-const invoiceAmountBoxStyle: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  fontSize: "var(--sa-fs-sm)",
 };
