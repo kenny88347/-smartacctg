@@ -14,326 +14,381 @@ import {
 } from "@/lib/smartacctgTheme";
 
 type Lang = "zh" | "en" | "ms";
-type DetailMetric = "stock" | "cost" | "price" | "profit" | null;
 
 type Product = {
   id: string;
   user_id?: string;
   name: string;
-  price: number;
-  cost: number;
-  discount: number | null;
-  stock_qty: number | null;
-  note: string | null;
+  price?: number | null;
+  cost?: number | null;
+  stock_qty?: number | null;
+  stock?: number | null;
+  stock_quantity?: number | null;
+  quantity?: number | null;
+  qty?: number | null;
+  category_name?: string | null;
+  category?: string | null;
+  note?: string | null;
   created_at?: string | null;
 };
 
-type Customer = {
-  id: string;
-  user_id?: string;
-  name: string;
-  company_name?: string | null;
-  phone?: string | null;
-};
-
-type CustomerPrice = {
-  id: string;
-  user_id?: string;
-  customer_id: string;
-  product_id: string;
-  custom_price: number;
-};
-
 type Profile = {
-  id: string;
-  theme: string | null;
+  id?: string;
+  theme?: string | null;
 };
 
-const LANG_KEY = "smartacctg_lang";
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
-const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
-const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
+const LANG_KEY = "smartacctg_lang";
 
-const PRODUCT_STOCK_MAP_KEY = "smartacctg_product_stock_map";
-const PRODUCT_STOCK_FALLBACK_KEY = "smartacctg_product_stock_fallback";
-
-const TEAL_VALUE = "#16a34a";
-const BLACK_LABEL = "#111827";
-const DARK_LABEL = "#ecfeff";
-const DARK_AMOUNT = "#4ade80";
+const today = () => new Date().toISOString().slice(0, 10);
 
 const TXT = {
   zh: {
     title: "产品管理",
-    subtitle: "管理产品、库存、成本、售价、客户专属价格，并联动发票系统与记账系统。",
     back: "返回控制台",
-    search: "搜索产品名称 / 编号",
     add: "新增产品",
-    edit: "编辑产品",
+    edit: "编辑",
     delete: "删除",
-    save: "保存",
+    save: "保存产品",
+    update: "保存修改",
     cancel: "取消",
     close: "关闭",
+    searchTitle: "快速搜索产品",
+    search: "搜索产品名称 / 分类 / 备注 / 价格 / 库存",
+    productTotal: "产品总数",
+    stockTotal: "库存总量",
+    stockCost: "库存成本",
+    expectedSales: "预计销售额",
+    expectedProfit: "预计利润",
     productName: "产品名称",
-    productNo: "产品编号",
     price: "售价 RM",
     cost: "成本 RM",
-    summaryPrice: "售价",
-    summaryCost: "成本",
-    discount: "折扣 RM",
     stock: "库存数量",
+    category: "分类 / 标签",
     note: "备注",
-    profit: "预计利润",
-    margin: "利润率",
-    latest: "最新产品记录",
-    details: "产品明细总览",
-    allProductDetails: "全部产品资料",
-    noProduct: "还没有产品",
-    noRecord: "暂无记录",
-    customerPrice: "客户专属价格",
-    customerPurchase: "客户购买 / 专属价",
-    noCustomerPurchase: "暂无客户购买 / 专属价记录",
-    chooseCustomer: "选择客户",
-    chooseProduct: "选择产品",
-    customPrice: "这个客户的专属价格 RM",
-    saveCustomerPrice: "保存客户专属价格",
-    customerPriceList: "已设置的客户专属价格",
-    noCustomer: "还没有客户资料，请先去客户管理新增客户。",
+    noProduct: "还没有产品资料",
+    saved: "保存成功",
+    deleted: "删除成功",
     confirmDelete: "确定要删除这个产品吗？",
-    deleteTitle: "删除产品确认",
-    deleteWarning: "请确认以下产品资料，删除后这个产品会从产品管理移除。",
-    confirmDeleteBtn: "确认删除产品",
-    deleteSuccess: "产品已删除",
-    deleteFail: "删除失败：这个产品可能已经被发票使用，不能直接删除。",
-    saveSuccess: "保存成功",
-    fillRequired: "请填写产品名称、售价和成本",
-    stockLow: "库存偏低",
-    stockEmpty: "无库存",
-    normal: "正常",
-    linkedTitle: "联动说明",
-    link1: "发票系统：选择客户后会自动读取这个产品与客户专属价格。",
-    link2: "记账系统：发票生成后会自动加入收入记录。",
-    link3: "库存系统：发票出货后会自动扣除库存，产品管理会自动显示最新库存。",
-    theme: "主题",
-    trial: "免费试用模式",
+    needName: "请填写产品名称",
+    trialMode: "免费试用模式：资料只会暂存在本机",
+    lowStock: "库存不足 / 已无库存",
+    costHigher: "成本高过售价，请检查",
+    profit: "预计利润",
+    related: "关联功能",
+    records: "记账系统",
+    customers: "客户管理",
+    invoices: "发票系统",
+    goFeature: "前往",
   },
   en: {
     title: "Product Management",
-    subtitle:
-      "Manage products, stock, cost, selling price, customer pricing, invoices and accounting links.",
-    back: "Dashboard",
-    search: "Search product name / code",
+    back: "Back to Dashboard",
     add: "Add Product",
-    edit: "Edit Product",
+    edit: "Edit",
     delete: "Delete",
-    save: "Save",
+    save: "Save Product",
+    update: "Save Changes",
     cancel: "Cancel",
     close: "Close",
+    searchTitle: "Quick Search Products",
+    search: "Search product name / category / note / price / stock",
+    productTotal: "Total Products",
+    stockTotal: "Total Stock",
+    stockCost: "Stock Cost",
+    expectedSales: "Expected Sales",
+    expectedProfit: "Expected Profit",
     productName: "Product Name",
-    productNo: "Product Code",
     price: "Selling Price RM",
     cost: "Cost RM",
-    summaryPrice: "Selling Price",
-    summaryCost: "Cost",
-    discount: "Discount RM",
     stock: "Stock Quantity",
+    category: "Category / Tag",
     note: "Note",
-    profit: "Estimated Profit",
-    margin: "Profit Margin",
-    latest: "Latest Products",
-    details: "Product Details Overview",
-    allProductDetails: "All Product Details",
     noProduct: "No products yet",
-    noRecord: "No records yet",
-    customerPrice: "Customer Special Price",
-    customerPurchase: "Customer Purchase / Special Price",
-    noCustomerPurchase: "No customer purchase / special price record",
-    chooseCustomer: "Choose Customer",
-    chooseProduct: "Choose Product",
-    customPrice: "Special Price RM",
-    saveCustomerPrice: "Save Special Price",
-    customerPriceList: "Saved Customer Prices",
-    noCustomer: "No customers yet. Please add customers first.",
+    saved: "Saved",
+    deleted: "Deleted",
     confirmDelete: "Delete this product?",
-    deleteTitle: "Confirm Product Deletion",
-    deleteWarning:
-      "Please check this product info. After deletion, it will be removed from Product Management.",
-    confirmDeleteBtn: "Delete Product",
-    deleteSuccess: "Product deleted",
-    deleteFail: "Delete failed: this product may already be used by invoices.",
-    saveSuccess: "Saved",
-    fillRequired: "Please fill product name, price and cost",
-    stockLow: "Low Stock",
-    stockEmpty: "Out of Stock",
-    normal: "Normal",
-    linkedTitle: "System Links",
-    link1: "Invoice: customer selection will read product and special customer price.",
-    link2: "Accounting: invoice income will be added to accounting records.",
-    link3: "Stock: invoice delivery will deduct stock automatically and update product management.",
-    theme: "Theme",
-    trial: "Free Trial Mode",
+    needName: "Please enter product name",
+    trialMode: "Free trial mode: data is stored locally only",
+    lowStock: "Low / No Stock",
+    costHigher: "Cost is higher than selling price. Please check.",
+    profit: "Expected Profit",
+    related: "Linked Features",
+    records: "Accounting",
+    customers: "Customers",
+    invoices: "Invoices",
+    goFeature: "Go",
   },
   ms: {
     title: "Pengurusan Produk",
-    subtitle: "Urus produk, stok, kos, harga jualan, harga khas pelanggan, invois dan akaun.",
-    back: "Dashboard",
-    search: "Cari nama produk / kod",
+    back: "Kembali ke Dashboard",
     add: "Tambah Produk",
-    edit: "Edit Produk",
+    edit: "Edit",
     delete: "Padam",
-    save: "Simpan",
+    save: "Simpan Produk",
+    update: "Simpan Perubahan",
     cancel: "Batal",
     close: "Tutup",
+    searchTitle: "Carian Pantas Produk",
+    search: "Cari nama produk / kategori / nota / harga / stok",
+    productTotal: "Jumlah Produk",
+    stockTotal: "Jumlah Stok",
+    stockCost: "Kos Stok",
+    expectedSales: "Anggaran Jualan",
+    expectedProfit: "Anggaran Untung",
     productName: "Nama Produk",
-    productNo: "Kod Produk",
     price: "Harga Jualan RM",
     cost: "Kos RM",
-    summaryPrice: "Harga Jualan",
-    summaryCost: "Kos",
-    discount: "Diskaun RM",
-    stock: "Kuantiti Stok",
-    note: "Nota",
-    profit: "Anggaran Untung",
-    margin: "Margin Untung",
-    latest: "Rekod Produk Terkini",
-    details: "Ringkasan Butiran Produk",
-    allProductDetails: "Semua Butiran Produk",
-    noProduct: "Belum ada produk",
-    noRecord: "Belum ada rekod",
-    customerPrice: "Harga Khas Pelanggan",
-    customerPurchase: "Pembelian Pelanggan / Harga Khas",
-    noCustomerPurchase: "Tiada rekod pembelian / harga khas",
-    chooseCustomer: "Pilih Pelanggan",
-    chooseProduct: "Pilih Produk",
-    customPrice: "Harga Khas RM",
-    saveCustomerPrice: "Simpan Harga Khas",
-    customerPriceList: "Harga Khas Tersimpan",
-    noCustomer: "Belum ada pelanggan. Sila tambah pelanggan dahulu.",
+    stock: "Jumlah Stok",
+    category: "Kategori / Tag",
+    note: "Catatan",
+    noProduct: "Tiada produk lagi",
+    saved: "Disimpan",
+    deleted: "Dipadam",
     confirmDelete: "Padam produk ini?",
-    deleteTitle: "Sahkan Padam Produk",
-    deleteWarning: "Sila semak maklumat produk ini. Selepas dipadam, produk akan dikeluarkan.",
-    confirmDeleteBtn: "Padam Produk",
-    deleteSuccess: "Produk dipadam",
-    deleteFail: "Gagal padam: produk ini mungkin telah digunakan dalam invois.",
-    saveSuccess: "Disimpan",
-    fillRequired: "Sila isi nama produk, harga dan kos",
-    stockLow: "Stok Rendah",
-    stockEmpty: "Tiada Stok",
-    normal: "Normal",
-    linkedTitle: "Pautan Sistem",
-    link1: "Invois: pilihan pelanggan akan membaca produk dan harga khas.",
-    link2: "Akaun: pendapatan invois akan masuk ke rekod akaun.",
-    link3: "Stok: invois akan menolak stok automatik dan mengemas kini produk.",
-    theme: "Tema",
-    trial: "Mod Percubaan Percuma",
+    needName: "Sila isi nama produk",
+    trialMode: "Mod percubaan: data hanya disimpan dalam telefon ini",
+    lowStock: "Stok Rendah / Tiada Stok",
+    costHigher: "Kos lebih tinggi daripada harga jualan. Sila semak.",
+    profit: "Anggaran Untung",
+    related: "Fungsi Berkaitan",
+    records: "Sistem Akaun",
+    customers: "Pelanggan",
+    invoices: "Invois",
+    goFeature: "Pergi",
   },
 };
 
-const PRODUCTS_PAGE_CSS = `
+const PRODUCTS_PAGE_FIX_CSS = `
+  .smartacctg-products-page .sa-back-btn {
+    border-radius: 999px !important;
+  }
+
+  .smartacctg-products-page .products-summary-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .smartacctg-products-page .products-stat-card {
+    display: grid !important;
+    gap: 8px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 112px !important;
+    border-radius: var(--sa-radius-card) !important;
+    padding: var(--sa-card-pad) !important;
+  }
+
+  .smartacctg-products-page .products-stat-card span,
+  .smartacctg-products-page .products-stat-card strong {
+    width: 100% !important;
+    display: block !important;
+    text-align: center !important;
+    font-weight: 900 !important;
+    line-height: 1.2 !important;
+  }
+
+  .smartacctg-products-page .products-stat-card span {
+    font-size: clamp(15px, 3.2vw, 20px) !important;
+  }
+
+  .smartacctg-products-page .products-stat-card strong {
+    font-size: clamp(19px, 4vw, 27px) !important;
+  }
+
+  .smartacctg-products-page .products-list {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    width: 100% !important;
+  }
+
+  .smartacctg-products-page .product-card {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    text-align: left !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .smartacctg-products-page .product-card * {
+    text-align: left !important;
+  }
+
+  .smartacctg-products-page .product-card h3 {
+    margin: 0 0 10px 0 !important;
+    font-size: var(--sa-fs-xl) !important;
+    line-height: 1.25 !important;
+    font-weight: 900 !important;
+  }
+
+  .smartacctg-products-page .product-card p {
+    margin: 8px 0 0 !important;
+    line-height: 1.55 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .smartacctg-products-page .product-card.low-stock-product {
+    background: #fee2e2 !important;
+    color: #7f1d1d !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35),
+      0 12px 28px rgba(220, 38, 38, 0.22) !important;
+  }
+
+  .smartacctg-products-page .product-card.low-stock-product * {
+    color: inherit;
+  }
+
+  .smartacctg-products-page .products-action-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    margin-top: 6px !important;
+  }
+
+  .smartacctg-products-page .products-action-row button {
+    width: auto !important;
+    min-width: 110px !important;
+    flex: 0 1 auto !important;
+    white-space: nowrap !important;
+  }
+
   .smartacctg-products-page .products-form-overlay {
     position: fixed !important;
     inset: 0 !important;
     z-index: 9999 !important;
-    background: rgba(15,23,42,0.45) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 18px !important;
-    box-sizing: border-box !important;
+    background: rgba(15, 23, 42, 0.55) !important;
+    padding: clamp(12px, 3vw, 24px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .smartacctg-products-page .products-form-modal {
+    width: 100% !important;
+    max-width: 900px !important;
+    margin: 0 auto !important;
     border-radius: var(--sa-radius-card) !important;
+    border: var(--sa-border-w) solid !important;
     padding: var(--sa-card-pad) !important;
-    background: var(--sa-card-bg) !important;
-    color: var(--sa-text) !important;
   }
 
-  .smartacctg-products-page .products-form-modal .sa-modal-header {
+  .smartacctg-products-page .products-fullscreen-overlay {
+    width: 100vw !important;
+    height: 100dvh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .smartacctg-products-page .products-fullscreen-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .smartacctg-products-page .products-modal-header {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
     align-items: center !important;
     gap: 12px !important;
+    width: 100% !important;
+    margin-bottom: 14px !important;
+  }
+
+  .smartacctg-products-page .products-fullscreen-modal .products-modal-header {
     position: sticky !important;
     top: 0 !important;
     z-index: 5 !important;
-    background: var(--sa-card-bg) !important;
-    color: var(--sa-text) !important;
+    background: inherit !important;
     padding-bottom: 12px !important;
   }
 
-  .smartacctg-products-page .products-product-info-grid > div {
-    color: inherit !important;
+  .smartacctg-products-page .products-form-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+    gap: 12px !important;
+    width: 100% !important;
   }
 
-  .smartacctg-products-page .products-product-info-grid strong {
-    color: inherit !important;
+  .smartacctg-products-page .products-form-actions {
+    display: flex !important;
+    gap: 10px !important;
+    margin-top: 18px !important;
+    flex-wrap: wrap !important;
   }
 
-  .smartacctg-products-page[data-sa-theme="futureForest"] .products-summary-grid .sa-stat-card,
-  .smartacctg-products-page[data-sa-theme="futureWorld"] .products-summary-grid .sa-stat-card,
-  .smartacctg-products-page[data-sa-theme="blackGold"] .products-summary-grid .sa-stat-card {
-    background: var(--sa-card-bg) !important;
-    color: #ecfeff !important;
+  .smartacctg-products-page .products-form-actions button {
+    min-width: 130px !important;
   }
 
-  .smartacctg-products-page[data-sa-theme="futureForest"] .products-summary-grid .sa-stat-card span,
-  .smartacctg-products-page[data-sa-theme="futureWorld"] .products-summary-grid .sa-stat-card span,
-  .smartacctg-products-page[data-sa-theme="blackGold"] .products-summary-grid .sa-stat-card span {
-    color: #ecfeff !important;
-    text-shadow: 0 1px 10px rgba(236,254,255,0.35) !important;
-  }
-
-  .smartacctg-products-page[data-sa-theme="futureForest"] .products-summary-grid .sa-stat-card strong,
-  .smartacctg-products-page[data-sa-theme="futureWorld"] .products-summary-grid .sa-stat-card strong,
-  .smartacctg-products-page[data-sa-theme="blackGold"] .products-summary-grid .sa-stat-card strong {
-    color: #4ade80 !important;
-    text-shadow: 0 1px 14px rgba(74,222,128,0.38) !important;
-  }
-
-  @media (max-width: 768px) {
-    .smartacctg-products-page .products-form-overlay {
-      width: 100vw !important;
-      height: 100dvh !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      align-items: stretch !important;
-      justify-content: stretch !important;
-      overflow: hidden !important;
+  @media (max-width: 520px) {
+    .smartacctg-products-page .products-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 10px !important;
     }
 
-    .smartacctg-products-page .products-form-modal {
-      width: 100vw !important;
-      max-width: 100vw !important;
-      height: 100dvh !important;
-      min-height: 100dvh !important;
-      max-height: 100dvh !important;
-      margin: 0 !important;
-      border-radius: 0 !important;
-      border-left: none !important;
-      border-right: none !important;
-      border-top: none !important;
-      border-bottom: none !important;
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch !important;
-      padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
-      box-sizing: border-box !important;
+    .smartacctg-products-page .products-stat-card {
+      min-height: 104px !important;
+      padding: 12px 8px !important;
     }
 
-    .smartacctg-products-page .products-form-modal input,
-    .smartacctg-products-page .products-form-modal textarea {
-      font-size: 16px !important;
+    .smartacctg-products-page .products-list {
+      gap: 16px !important;
     }
 
-    .smartacctg-products-page .products-modal-actions {
+    .smartacctg-products-page .products-action-row {
+      gap: 8px !important;
+    }
+
+    .smartacctg-products-page .products-action-row button {
+      min-width: 105px !important;
+    }
+
+    .smartacctg-products-page .products-form-actions {
       display: grid !important;
       grid-template-columns: 1fr 1fr !important;
-      gap: 10px !important;
-      padding-bottom: 20px !important;
+      width: 100% !important;
+    }
+
+    .smartacctg-products-page .products-form-actions button {
+      width: 100% !important;
+      min-width: 0 !important;
     }
   }
 `;
+
+function makeId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function safeLocalGet(key: string) {
   if (typeof window === "undefined") return null;
@@ -361,52 +416,31 @@ function safeParseArray<T>(raw: string | null): T[] {
   }
 }
 
-function readStockMapByKey(key: string): Record<string, number> {
-  try {
-    const raw = safeLocalGet(key);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function getStockMap(): Record<string, number> {
-  return {
-    ...readStockMapByKey(PRODUCT_STOCK_FALLBACK_KEY),
-    ...readStockMapByKey(PRODUCT_STOCK_MAP_KEY),
-  };
-}
-
-function writeStockMap(map: Record<string, number>) {
-  safeLocalSet(PRODUCT_STOCK_MAP_KEY, JSON.stringify(map));
-  safeLocalSet(PRODUCT_STOCK_FALLBACK_KEY, JSON.stringify(map));
-}
-
-function saveStockValue(productId: string, stock: number) {
-  if (!productId) return;
-
-  const map = getStockMap();
-  map[productId] = Number(stock || 0);
-  writeStockMap(map);
-}
-
-function removeStockValue(productId: string) {
-  const map = getStockMap();
-  delete map[productId];
-  writeStockMap(map);
-}
-
 function getInitialLang(): Lang {
   if (typeof window === "undefined") return "zh";
 
-  const query = new URLSearchParams(window.location.search);
-  const urlLang = query.get("lang") as Lang | null;
+  const q = new URLSearchParams(window.location.search);
+  const urlLang = q.get("lang") as Lang | null;
   const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
 
   if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
   if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
 
   return "zh";
+}
+
+function getIsFullscreenFromUrl() {
+  if (typeof window === "undefined") return false;
+
+  const q = new URLSearchParams(window.location.search);
+  return q.get("fullscreen") === "1";
+}
+
+function getReturnFromUrl() {
+  if (typeof window === "undefined") return "";
+
+  const q = new URLSearchParams(window.location.search);
+  return q.get("return") || "";
 }
 
 function applyThemeEverywhere(key: ThemeKey) {
@@ -423,20 +457,14 @@ function applyThemeEverywhere(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
   document.documentElement.style.setProperty("--sa-card-bg", theme.card);
   document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
-  document.documentElement.style.setProperty(
-    "--sa-item-bg",
-    theme.itemBg || theme.itemCard || theme.card
-  );
+  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
   document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
   document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
   document.documentElement.style.setProperty("--sa-border", theme.border);
   document.documentElement.style.setProperty("--sa-accent", theme.accent);
   document.documentElement.style.setProperty("--sa-text", theme.text);
   document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
-  document.documentElement.style.setProperty(
-    "--sa-muted",
-    theme.muted || theme.subText || "#64748b"
-  );
+  document.documentElement.style.setProperty("--sa-muted", theme.muted || theme.subText);
   document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.card);
   document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card);
   document.documentElement.style.setProperty("--sa-glow", theme.glow);
@@ -445,67 +473,180 @@ function applyThemeEverywhere(key: ThemeKey) {
 function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
   if (typeof window === "undefined") return;
 
-  const query = new URLSearchParams(window.location.search);
+  const q = new URLSearchParams(window.location.search);
 
-  query.set("lang", nextLang);
-  query.set("theme", nextTheme);
-  query.set("refresh", String(Date.now()));
+  q.set("lang", nextLang);
+  q.set("theme", nextTheme);
+  q.set("refresh", String(Date.now()));
 
-  window.history.replaceState({}, "", `${window.location.pathname}?${query.toString()}`);
+  window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+}
+
+function isSchemaCacheMissing(message: string) {
+  const lower = String(message || "").toLowerCase();
+
+  return (
+    lower.includes("schema cache") ||
+    lower.includes("could not find") ||
+    lower.includes("column")
+  );
+}
+
+function getMissingColumnName(error: any) {
+  const message = String(error?.message || "");
+  const match1 = message.match(/Could not find the '([^']+)' column/i);
+  const match2 = message.match(/column "([^"]+)" does not exist/i);
+  const match3 = message.match(/column '([^']+)' does not exist/i);
+
+  return match1?.[1] || match2?.[1] || match3?.[1] || "";
+}
+
+const PRODUCT_OPTIONAL_KEYS = [
+  "price",
+  "cost",
+  "stock_qty",
+  "stock",
+  "stock_quantity",
+  "quantity",
+  "qty",
+  "category_name",
+  "category",
+  "note",
+  "created_at",
+];
+
+async function insertAdaptive(table: string, inputPayload: Record<string, any>) {
+  let payload: Record<string, any> = { ...inputPayload };
+  let lastError: any = null;
+
+  for (let i = 0; i < 35; i++) {
+    const { data, error } = await supabase.from(table).insert(payload).select("*").single();
+
+    if (!error) return data;
+
+    lastError = error;
+
+    if (!isSchemaCacheMissing(error.message)) throw error;
+
+    const missing = getMissingColumnName(error);
+
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const removable = PRODUCT_OPTIONAL_KEYS.find((key) =>
+      Object.prototype.hasOwnProperty.call(payload, key)
+    );
+
+    if (!removable) throw error;
+
+    const next = { ...payload };
+    delete next[removable];
+    payload = next;
+  }
+
+  throw lastError || new Error("Insert failed");
+}
+
+async function updateAdaptive(
+  table: string,
+  id: string,
+  userId: string,
+  inputPayload: Record<string, any>
+) {
+  let payload: Record<string, any> = { ...inputPayload };
+  let lastError: any = null;
+
+  for (let i = 0; i < 35; i++) {
+    const { error } = await supabase
+      .from(table)
+      .update(payload)
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (!error) return;
+
+    lastError = error;
+
+    if (!isSchemaCacheMissing(error.message)) throw error;
+
+    const missing = getMissingColumnName(error);
+
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const removable = PRODUCT_OPTIONAL_KEYS.find((key) =>
+      Object.prototype.hasOwnProperty.call(payload, key)
+    );
+
+    if (!removable) throw error;
+
+    const next = { ...payload };
+    delete next[removable];
+    payload = next;
+  }
+
+  throw lastError || new Error("Update failed");
+}
+
+function formatRM(value: number) {
+  return `RM ${Number(value || 0).toLocaleString("en-MY", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function getProductStock(product: Product) {
+  return Number(
+    product.stock_qty ??
+      product.stock ??
+      product.stock_quantity ??
+      product.quantity ??
+      product.qty ??
+      0
+  );
+}
+
+function getProductCategory(product: Product) {
+  return product.category_name || product.category || "";
 }
 
 export default function ProductsPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
-
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [customerPrices, setCustomerPrices] = useState<CustomerPrice[]>([]);
 
   const [search, setSearch] = useState("");
-  const [detailSearch, setDetailSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [detailMetric, setDetailMetric] = useState<DetailMetric>(null);
+  const [isFullscreen, setIsFullscreen] = useState(getIsFullscreenFromUrl);
+  const [returnTo, setReturnTo] = useState(getReturnFromUrl);
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  const [productName, setProductName] = useState("");
-  const [productPrice, setProductPrice] = useState("");
-  const [productCost, setProductCost] = useState("");
-  const [productDiscount, setProductDiscount] = useState("");
-  const [productStock, setProductStock] = useState("");
-  const [productNote, setProductNote] = useState("");
-
-  const [priceCustomerId, setPriceCustomerId] = useState("");
-  const [priceProductId, setPriceProductId] = useState("");
-  const [customPrice, setCustomPrice] = useState("");
-
-  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
   const [msg, setMsg] = useState("");
+
+  const [relatedPath, setRelatedPath] = useState("/dashboard/records");
+
+  const [form, setForm] = useState({
+    name: "",
+    price: "",
+    cost: "",
+    stock_qty: "",
+    category_name: "",
+    note: "",
+  });
 
   const t = TXT[lang];
   const theme = THEMES[themeKey] || THEMES.deepTeal;
-
-  const isDarkStatsTheme =
-    String(themeKey) === "blackGold" ||
-    String(themeKey) === "futureForest" ||
-    String(themeKey) === "futureWorld";
-
-  const themeMuted = theme.muted || theme.subText || "#64748b";
-  const themeSoft = theme.softBg || theme.soft || "#f8fafc";
-  const themeItemCard = theme.itemCard || theme.itemBg || theme.card;
-  const themeItemText = theme.itemText || theme.panelText || theme.text;
-
-  const summaryCardBg = isDarkStatsTheme ? theme.card : "#ffffff";
-  const summaryCardText = isDarkStatsTheme ? DARK_LABEL : BLACK_LABEL;
-  const summaryLabelColor = isDarkStatsTheme ? DARK_LABEL : BLACK_LABEL;
-  const summaryValueColor = isDarkStatsTheme ? DARK_AMOUNT : TEAL_VALUE;
-  const summaryTextShadow = isDarkStatsTheme ? "0 1px 12px rgba(236,254,255,0.35)" : "none";
-  const summaryAmountShadow = isDarkStatsTheme ? "0 1px 14px rgba(74,222,128,0.38)" : "none";
+  const themeSubText = theme.subText || theme.muted || "#64748b";
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
@@ -536,131 +677,28 @@ export default function ProductsPage() {
     saveThemeKey(initialTheme);
     applyThemeEverywhere(initialTheme);
 
-    const query = new URLSearchParams(window.location.search);
-    const shouldOpenNew = query.get("open") === "new";
-    const shouldFullscreen = query.get("fullscreen") === "1";
-
-    if (shouldOpenNew || shouldFullscreen) {
-      setTimeout(() => {
-        openAddForm();
-      }, 80);
-    }
+    const q = new URLSearchParams(window.location.search);
+    setReturnTo(q.get("return") || "");
+    setIsFullscreen(q.get("fullscreen") === "1");
 
     init(initialLang, initialTheme);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!session || isTrial) return;
-
-    const reload = () => {
-      if (document.visibilityState === "visible") {
-        loadProducts(session.user.id);
-      }
-    };
-
-    const timer = window.setInterval(reload, 5000);
-
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === PRODUCT_STOCK_MAP_KEY || e.key === PRODUCT_STOCK_FALLBACK_KEY) {
-        reload();
-      }
-    };
-
-    window.addEventListener("focus", reload);
-    window.addEventListener("storage", handleStorage);
-    document.addEventListener("visibilitychange", reload);
-
-    const channel = supabase
-      .channel(`products-stock-${session.user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "products",
-          filter: `user_id=eq.${session.user.id}`,
-        },
-        () => reload()
-      )
-      .subscribe();
-
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener("focus", reload);
-      window.removeEventListener("storage", handleStorage);
-      document.removeEventListener("visibilitychange", reload);
-      supabase.removeChannel(channel);
-    };
-  }, [session, isTrial]);
-
-  function getCurrentThemeKey(): ThemeKey {
-    if (typeof window === "undefined") return themeKey;
-
-    const query = new URLSearchParams(window.location.search);
-    const urlTheme = query.get("theme");
-
-    if (isThemeKey(urlTheme)) return normalizeThemeKey(urlTheme);
-
-    const savedTheme = getThemeKeyFromUrlOrLocalStorage(themeKey);
-    if (isThemeKey(savedTheme)) return normalizeThemeKey(savedTheme);
-
-    return themeKey;
-  }
-
-  function isStockColumnError(error: any) {
-    const message = String(error?.message || "").toLowerCase();
-
-    return (
-      message.includes("stock_qty") &&
-      (message.includes("schema cache") ||
-        message.includes("could not find") ||
-        message.includes("column"))
-    );
-  }
-
-  function normalizeProduct(row: any): Product {
-    const stockMap = getStockMap();
-    const localStockRaw = stockMap[row?.id];
-    const localStock =
-      localStockRaw !== undefined && localStockRaw !== null
-        ? Number(localStockRaw || 0)
-        : undefined;
-
-    const dbStockRaw = row?.stock_qty;
-    const dbStock = Number(dbStockRaw || 0);
-
-    let finalStock = dbStock;
-
-    if (localStock !== undefined) {
-      if (dbStockRaw === undefined || dbStockRaw === null) {
-        finalStock = localStock;
-      } else if (localStock < dbStock) {
-        finalStock = localStock;
-      } else if (dbStock === 0 && localStock > 0) {
-        finalStock = localStock;
-      }
-    }
-
-    return {
-      ...row,
-      id: String(row?.id || ""),
-      name: String(row?.name || ""),
-      price: Number(row?.price || 0),
-      cost: Number(row?.cost || 0),
-      discount: Number(row?.discount || 0),
-      stock_qty: finalStock,
-      note: row?.note || "",
-    } as Product;
-  }
-
   async function init(currentLang: Lang, currentTheme: ThemeKey) {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
+    const openParam = q.get("open");
+    const fullscreenParam = q.get("fullscreen");
+    const returnParam = q.get("return");
+
+    const shouldOpenNew = openParam === "new";
+    const shouldFullscreen = fullscreenParam === "1";
     const trialRaw = safeLocalGet(TRIAL_KEY);
-    const urlTheme = q.get("theme");
-    const hasValidUrlTheme = isThemeKey(urlTheme);
+
+    setReturnTo(returnParam || "");
+    setIsFullscreen(shouldFullscreen);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
       try {
@@ -668,16 +706,16 @@ export default function ProductsPage() {
 
         if (Date.now() < Number(trial.expiresAt)) {
           setIsTrial(true);
+          setSession(null);
 
-          const productRows = safeParseArray<any>(safeLocalGet(TRIAL_PRODUCTS_KEY));
-
-          setProducts(productRows.map((p: any) => normalizeProduct(p)));
-          setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
-          setCustomerPrices(
-            safeParseArray<CustomerPrice>(safeLocalGet(TRIAL_CUSTOMER_PRICES_KEY))
-          );
+          setProducts(safeParseArray<Product>(safeLocalGet(TRIAL_PRODUCTS_KEY)));
 
           replaceUrlLangTheme(currentLang, currentTheme);
+
+          if (shouldOpenNew) {
+            setTimeout(() => openNewForm(shouldFullscreen), 100);
+          }
+
           return;
         }
       } catch {
@@ -686,8 +724,6 @@ export default function ProductsPage() {
 
       safeLocalRemove(TRIAL_KEY);
       safeLocalRemove(TRIAL_PRODUCTS_KEY);
-      safeLocalRemove(TRIAL_CUSTOMERS_KEY);
-      safeLocalRemove(TRIAL_CUSTOMER_PRICES_KEY);
       window.location.href = "/zh";
       return;
     }
@@ -699,21 +735,21 @@ export default function ProductsPage() {
       return;
     }
 
-    setSession(data.session);
     setIsTrial(false);
+    setSession(data.session);
 
     const userId = data.session.user.id;
 
     const { data: profileData } = await supabase
       .from("profiles")
-      .select("id, theme")
+      .select("theme")
       .eq("id", userId)
       .single();
 
-    const profile = profileData as Profile | null;
     let finalTheme = currentTheme;
+    const profile = profileData as Profile | null;
 
-    if (!hasValidUrlTheme && profile?.theme) {
+    if (profile?.theme) {
       const profileTheme = normalizeThemeKey(profile.theme);
 
       if (isThemeKey(profileTheme)) {
@@ -724,735 +760,318 @@ export default function ProductsPage() {
       }
     }
 
-    if (hasValidUrlTheme) {
-      finalTheme = normalizeThemeKey(urlTheme);
-      setThemeKey(finalTheme);
-      saveThemeKey(finalTheme);
-      applyThemeEverywhere(finalTheme);
-    }
-
     replaceUrlLangTheme(currentLang, finalTheme);
 
     await loadProducts(userId);
-    await loadCustomers(userId);
-    await loadCustomerPrices(userId);
+
+    if (shouldOpenNew) {
+      setTimeout(() => openNewForm(shouldFullscreen), 100);
+    }
   }
 
   async function loadProducts(userId: string) {
-    const { data, error } = await supabase
+    const first = await supabase
       .from("products")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
+
+    if (!first.error) {
+      setProducts((first.data || []) as Product[]);
+      return;
+    }
+
+    if (!isSchemaCacheMissing(first.error.message)) {
+      setMsg(first.error.message);
+      return;
+    }
+
+    const second = await supabase.from("products").select("*").eq("user_id", userId);
+
+    if (second.error) {
+      setMsg(second.error.message);
+      return;
+    }
+
+    setProducts((second.data || []) as Product[]);
+  }
+
+  function saveTrialProducts(nextProducts: Product[]) {
+    setProducts(nextProducts);
+    safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
+  }
+
+  function buildDashboardUrl() {
+    const q = new URLSearchParams();
+
+    if (isTrial) q.set("mode", "trial");
+
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
+    return `/dashboard?${q.toString()}`;
+  }
+
+  function buildUrl(path: string, extra?: string) {
+    const q = new URLSearchParams();
+
+    if (isTrial) q.set("mode", "trial");
+
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
+    if (extra) {
+      const extraQuery = new URLSearchParams(extra);
+      extraQuery.forEach((value, key) => q.set(key, value));
+    }
+
+    return `${path}?${q.toString()}`;
+  }
+
+  function go(path: string, extra?: string) {
+    window.location.href = buildUrl(path, extra);
+  }
+
+  function backToDashboard() {
+    window.location.href = buildDashboardUrl();
+  }
+
+  function goRelatedFeature() {
+    go(relatedPath);
+  }
+
+  function switchLang(next: Lang) {
+    setLang(next);
+    safeLocalSet(LANG_KEY, next);
+    replaceUrlLangTheme(next, themeKey);
+  }
+
+  function resetForm() {
+    setForm({
+      name: "",
+      price: "",
+      cost: "",
+      stock_qty: "",
+      category_name: "",
+      note: "",
+    });
+  }
+
+  function openNewForm(forceFullscreen = false) {
+    setEditingId(null);
+    resetForm();
+    setIsFullscreen(forceFullscreen);
+    setShowForm(true);
+    setMsg("");
+  }
+
+  function closeForm() {
+    const q = new URLSearchParams(window.location.search);
+    const returnParam = q.get("return") || returnTo;
+
+    if (returnParam === "dashboard") {
+      window.location.href = buildDashboardUrl();
+      return;
+    }
+
+    setEditingId(null);
+    setShowForm(false);
+    setIsFullscreen(false);
+    resetForm();
+
+    q.delete("open");
+    q.delete("fullscreen");
+    q.delete("return");
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
+    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+  }
+
+  function editProduct(product: Product) {
+    setEditingId(product.id);
+    setForm({
+      name: product.name || "",
+      price: String(Number(product.price || 0) || ""),
+      cost: String(Number(product.cost || 0) || ""),
+      stock_qty: String(getProductStock(product) || ""),
+      category_name: getProductCategory(product),
+      note: product.note || "",
+    });
+    setIsFullscreen(false);
+    setShowForm(true);
+    setMsg("");
+  }
+
+  async function saveProduct() {
+    setMsg("");
+
+    const name = form.name.trim();
+
+    if (!name) {
+      setMsg(t.needName);
+      return;
+    }
+
+    const price = Number(form.price || 0);
+    const cost = Number(form.cost || 0);
+    const stockQty = Number(form.stock_qty || 0);
+    const categoryName = form.category_name.trim();
+    const note = form.note.trim();
+
+    if (isTrial) {
+      const payload: Product = {
+        id: editingId || makeId(),
+        user_id: "trial",
+        name,
+        price,
+        cost,
+        stock_qty: stockQty,
+        category_name: categoryName,
+        note,
+        created_at: editingId
+          ? products.find((x) => x.id === editingId)?.created_at || new Date().toISOString()
+          : new Date().toISOString(),
+      };
+
+      const next = editingId
+        ? products.map((x) => (x.id === editingId ? payload : x))
+        : [payload, ...products];
+
+      saveTrialProducts(next);
+      setMsg(t.saved);
+      closeForm();
+      return;
+    }
+
+    if (!session) return;
+
+    const payload = {
+      user_id: session.user.id,
+      name,
+      price,
+      cost,
+      stock_qty: stockQty,
+      stock: stockQty,
+      stock_quantity: stockQty,
+      quantity: stockQty,
+      category_name: categoryName,
+      category: categoryName,
+      note,
+    };
+
+    try {
+      if (editingId) {
+        await updateAdaptive("products", editingId, session.user.id, payload);
+      } else {
+        await insertAdaptive("products", payload);
+      }
+
+      setMsg(t.saved);
+      closeForm();
+      await loadProducts(session.user.id);
+    } catch (error: any) {
+      setMsg(error?.message || String(error));
+    }
+  }
+
+  async function deleteProduct(id: string) {
+    const yes = window.confirm(t.confirmDelete);
+    if (!yes) return;
+
+    if (isTrial) {
+      const next = products.filter((x) => x.id !== id);
+      saveTrialProducts(next);
+      setMsg(t.deleted);
+      return;
+    }
+
+    if (!session) return;
+
+    const { error } = await supabase
+      .from("products")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", session.user.id);
 
     if (error) {
       setMsg(error.message);
       return;
     }
 
-    setProducts((data || []).map((p: any) => normalizeProduct(p)));
-  }
-
-  async function loadCustomers(userId: string) {
-    const { data } = await supabase
-      .from("customers")
-      .select("id,user_id,name,company_name,phone")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    setCustomers((data || []) as Customer[]);
-  }
-
-  async function loadCustomerPrices(userId: string) {
-    const { data } = await supabase.from("customer_prices").select("*").eq("user_id", userId);
-
-    setCustomerPrices((data || []) as CustomerPrice[]);
-  }
-
-  function syncTrialData(
-    nextProducts = products,
-    nextCustomers = customers,
-    nextCustomerPrices = customerPrices
-  ) {
-    safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
-    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
-    safeLocalSet(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextCustomerPrices));
-  }
-
-  function switchLang(next: Lang) {
-    const currentTheme = getCurrentThemeKey();
-
-    setLang(next);
-    safeLocalSet(LANG_KEY, next);
-    replaceUrlLangTheme(next, currentTheme);
-  }
-
-  function goBack() {
-    const currentTheme = getCurrentThemeKey();
-
-    saveThemeKey(currentTheme);
-    applyThemeEverywhere(currentTheme);
-
-    window.location.href = isTrial
-      ? `/dashboard?mode=trial&lang=${lang}&theme=${currentTheme}&refresh=${Date.now()}`
-      : `/dashboard?lang=${lang}&theme=${currentTheme}&refresh=${Date.now()}`;
-  }
-
-  function productCode(p: Product) {
-    return `P-${String(p.id).slice(0, 8).toUpperCase()}`;
-  }
-
-  function getProductProfit(p: Product) {
-    return Number(p.price || 0) - Number(p.cost || 0) - Number(p.discount || 0);
-  }
-
-  function getProductMargin(p: Product) {
-    const profit = getProductProfit(p);
-    return Number(p.price || 0) > 0 ? (profit / Number(p.price || 0)) * 100 : 0;
-  }
-
-  function resetForm() {
-    const currentTheme = getCurrentThemeKey();
-
-    setEditingId(null);
-    setProductName("");
-    setProductPrice("");
-    setProductCost("");
-    setProductDiscount("");
-    setProductStock("");
-    setProductNote("");
-    setShowForm(false);
-
-    const q = new URLSearchParams(window.location.search);
-
-    q.delete("open");
-    q.delete("fullscreen");
-    q.set("lang", lang);
-    q.set("theme", currentTheme);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-  }
-
-  function openAddForm() {
-    setEditingId(null);
-    setProductName("");
-    setProductPrice("");
-    setProductCost("");
-    setProductDiscount("");
-    setProductStock("");
-    setProductNote("");
-    setShowForm(true);
-  }
-
-  function openEditForm(p: Product) {
-    setEditingId(p.id);
-    setProductName(p.name || "");
-    setProductPrice(String(p.price || ""));
-    setProductCost(String(p.cost || ""));
-    setProductDiscount(String(p.discount || ""));
-    setProductStock(String(p.stock_qty || ""));
-    setProductNote(p.note || "");
-    setShowForm(true);
-  }
-
-  async function saveProduct() {
-    setMsg("");
-
-    if (!productName || !productPrice || !productCost) {
-      setMsg(t.fillRequired);
-      return;
-    }
-
-    const stockValue = Number(productStock || 0);
-
-    const payloadWithStock = {
-      name: productName.trim(),
-      price: Number(productPrice || 0),
-      cost: Number(productCost || 0),
-      discount: Number(productDiscount || 0),
-      stock_qty: stockValue,
-      note: productNote.trim(),
-    };
-
-    const payloadNoStock = {
-      name: productName.trim(),
-      price: Number(productPrice || 0),
-      cost: Number(productCost || 0),
-      discount: Number(productDiscount || 0),
-      note: productNote.trim(),
-    };
-
-    if (isTrial) {
-      if (editingId) {
-        const next = products.map((p) =>
-          p.id === editingId ? { ...p, ...payloadWithStock } : p
-        );
-
-        setProducts(next);
-        saveStockValue(editingId, stockValue);
-        syncTrialData(next, customers, customerPrices);
-      } else {
-        const id =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : String(Date.now());
-
-        const newProduct: Product = {
-          id,
-          ...payloadWithStock,
-          created_at: new Date().toISOString(),
-        };
-
-        const next = [newProduct, ...products];
-
-        setProducts(next);
-        saveStockValue(id, stockValue);
-        syncTrialData(next, customers, customerPrices);
-      }
-
-      setMsg(t.saveSuccess);
-      resetForm();
-      return;
-    }
-
-    if (!session) return;
-
-    if (editingId) {
-      const updateWithStock = await supabase
-        .from("products")
-        .update(payloadWithStock)
-        .eq("id", editingId)
-        .eq("user_id", session.user.id);
-
-      if (updateWithStock.error) {
-        if (isStockColumnError(updateWithStock.error)) {
-          const retry = await supabase
-            .from("products")
-            .update(payloadNoStock)
-            .eq("id", editingId)
-            .eq("user_id", session.user.id);
-
-          if (retry.error) {
-            setMsg(retry.error.message);
-            return;
-          }
-
-          saveStockValue(editingId, stockValue);
-        } else {
-          setMsg(updateWithStock.error.message);
-          return;
-        }
-      } else {
-        saveStockValue(editingId, stockValue);
-      }
-    } else {
-      const insertWithStock = await supabase
-        .from("products")
-        .insert({
-          user_id: session.user.id,
-          ...payloadWithStock,
-        })
-        .select("*")
-        .single();
-
-      if (insertWithStock.error) {
-        if (isStockColumnError(insertWithStock.error)) {
-          const retry = await supabase
-            .from("products")
-            .insert({
-              user_id: session.user.id,
-              ...payloadNoStock,
-            })
-            .select("*")
-            .single();
-
-          if (retry.error) {
-            setMsg(retry.error.message);
-            return;
-          }
-
-          const savedProduct = normalizeProduct({
-            ...(retry.data as any),
-            stock_qty: stockValue,
-          });
-
-          saveStockValue(savedProduct.id, stockValue);
-        } else {
-          setMsg(insertWithStock.error.message);
-          return;
-        }
-      } else {
-        const savedProduct = normalizeProduct(insertWithStock.data);
-        saveStockValue(savedProduct.id, Number(savedProduct.stock_qty || stockValue || 0));
-      }
-    }
-
+    setMsg(t.deleted);
     await loadProducts(session.user.id);
-    setMsg(t.saveSuccess);
-    resetForm();
-  }
-
-  function requestDeleteProduct(p: Product) {
-    setDeleteTarget(p);
-  }
-
-  function closeDeleteModal() {
-    if (deleting) return;
-    setDeleteTarget(null);
-  }
-
-  async function confirmDeleteProduct() {
-    if (!deleteTarget) return;
-
-    setDeleting(true);
-    setMsg("");
-
-    try {
-      await deleteProduct(deleteTarget);
-      setDeleteTarget(null);
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  async function deleteProduct(p: Product) {
-    if (isTrial) {
-      const nextProducts = products.filter((x) => x.id !== p.id);
-      const nextPrices = customerPrices.filter((x) => x.product_id !== p.id);
-
-      setProducts(nextProducts);
-      setCustomerPrices(nextPrices);
-      removeStockValue(p.id);
-      syncTrialData(nextProducts, customers, nextPrices);
-      setMsg(t.deleteSuccess);
-      return;
-    }
-
-    if (!session) return;
-
-    await supabase
-      .from("customer_prices")
-      .delete()
-      .eq("product_id", p.id)
-      .eq("user_id", session.user.id);
-
-    const { error } = await supabase
-      .from("products")
-      .delete()
-      .eq("id", p.id)
-      .eq("user_id", session.user.id);
-
-    if (error) {
-      setMsg(t.deleteFail + " " + error.message);
-      return;
-    }
-
-    removeStockValue(p.id);
-    await loadProducts(session.user.id);
-    await loadCustomerPrices(session.user.id);
-    setMsg(t.deleteSuccess);
-  }
-
-  async function saveCustomerPrice() {
-    setMsg("");
-
-    if (!priceCustomerId || !priceProductId || !customPrice) return;
-
-    const price = Number(customPrice || 0);
-
-    if (isTrial) {
-      const existing = customerPrices.find(
-        (x) => x.customer_id === priceCustomerId && x.product_id === priceProductId
-      );
-
-      let next: CustomerPrice[];
-
-      if (existing) {
-        next = customerPrices.map((x) =>
-          x.id === existing.id ? { ...x, custom_price: price } : x
-        );
-      } else {
-        next = [
-          {
-            id:
-              typeof crypto !== "undefined" && crypto.randomUUID
-                ? crypto.randomUUID()
-                : String(Date.now()),
-            customer_id: priceCustomerId,
-            product_id: priceProductId,
-            custom_price: price,
-          },
-          ...customerPrices,
-        ];
-      }
-
-      setCustomerPrices(next);
-      syncTrialData(products, customers, next);
-      setCustomPrice("");
-      setMsg(t.saveSuccess);
-      return;
-    }
-
-    if (!session) return;
-
-    const existing = customerPrices.find(
-      (x) => x.customer_id === priceCustomerId && x.product_id === priceProductId
-    );
-
-    if (existing) {
-      const { error } = await supabase
-        .from("customer_prices")
-        .update({ custom_price: price })
-        .eq("id", existing.id)
-        .eq("user_id", session.user.id);
-
-      if (error) {
-        setMsg(error.message);
-        return;
-      }
-    } else {
-      const { error } = await supabase.from("customer_prices").insert({
-        user_id: session.user.id,
-        customer_id: priceCustomerId,
-        product_id: priceProductId,
-        custom_price: price,
-      });
-
-      if (error) {
-        setMsg(error.message);
-        return;
-      }
-    }
-
-    await loadCustomerPrices(session.user.id);
-    setCustomPrice("");
-    setMsg(t.saveSuccess);
   }
 
   const filteredProducts = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+    const s = search.trim().toLowerCase();
 
-    if (!keyword) return products;
+    if (!s) return products;
 
-    return products.filter((p) => {
-      const code = productCode(p).toLowerCase();
-      const name = (p.name || "").toLowerCase();
+    return products.filter((product) => {
+      const searchText = [
+        product.name,
+        product.price,
+        product.cost,
+        getProductStock(product),
+        getProductCategory(product),
+        product.note,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-      return name.includes(keyword) || code.includes(keyword);
+      return searchText.includes(s);
     });
-  }, [search, products]);
+  }, [products, search]);
 
-  const detailFilteredProducts = useMemo(() => {
-    const keyword = detailSearch.trim().toLowerCase();
+  const summary = useMemo(() => {
+    return products.reduce(
+      (acc, product) => {
+        const stock = getProductStock(product);
+        const price = Number(product.price || 0);
+        const cost = Number(product.cost || 0);
 
-    if (!keyword) return products;
+        acc.productTotal += 1;
+        acc.stockTotal += stock;
+        acc.stockCost += cost * stock;
+        acc.expectedSales += price * stock;
+        acc.expectedProfit += (price - cost) * stock;
 
-    return products.filter((p) => {
-      const code = productCode(p).toLowerCase();
-      const name = (p.name || "").toLowerCase();
-      const note = (p.note || "").toLowerCase();
-
-      return name.includes(keyword) || code.includes(keyword) || note.includes(keyword);
-    });
-  }, [detailSearch, products]);
-
-  const productSummary = useMemo(() => {
-    const totalStock = products.reduce((s, p) => s + Number(p.stock_qty || 0), 0);
-
-    const totalCost = products.reduce(
-      (s, p) => s + Number(p.cost || 0) * Number(p.stock_qty || 0),
-      0
+        return acc;
+      },
+      {
+        productTotal: 0,
+        stockTotal: 0,
+        stockCost: 0,
+        expectedSales: 0,
+        expectedProfit: 0,
+      }
     );
-
-    const totalValue = products.reduce(
-      (s, p) => s + Number(p.price || 0) * Number(p.stock_qty || 0),
-      0
-    );
-
-    return {
-      totalStock,
-      totalCost,
-      totalValue,
-      totalProfit: totalValue - totalCost,
-    };
   }, [products]);
-
-  function getStockStatus(p: Product) {
-    const stock = Number(p.stock_qty || 0);
-
-    if (stock <= 0) return { label: t.stockEmpty, color: "#dc2626" };
-    if (stock <= 5) return { label: t.stockLow, color: "#f97316" };
-
-    return { label: t.normal, color: "#16a34a" };
-  }
-
-  function getCustomerName(id: string) {
-    return customers.find((c) => c.id === id)?.name || "-";
-  }
-
-  function getProductName(id: string) {
-    return products.find((p) => p.id === id)?.name || "-";
-  }
-
-  function getCustomerPurchaseList(productId: string) {
-    return customerPrices.filter((cp) => cp.product_id === productId);
-  }
-
-  function openDetailModal(metric: DetailMetric) {
-    setDetailSearch("");
-    setDetailMetric(metric);
-  }
-
-  function getDetailTitle() {
-    if (detailMetric === "stock") return t.stock;
-    if (detailMetric === "cost") return t.summaryCost;
-    if (detailMetric === "price") return t.summaryPrice;
-    if (detailMetric === "profit") return t.profit;
-    return t.allProductDetails;
-  }
-
-  function renderProductDetailCard(p: Product) {
-    const profit = getProductProfit(p);
-    const margin = getProductMargin(p);
-    const purchaseList = getCustomerPurchaseList(p.id);
-    const stockStatus = getStockStatus(p);
-
-    return (
-      <div
-        key={p.id}
-        className="sa-item-card"
-        style={{
-          background: themeItemCard,
-          color: themeItemText,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-        }}
-      >
-        <div>
-          <div style={productTitleRowStyle}>
-            <strong style={productNameStyle}>{p.name}</strong>
-            <span style={{ ...stockBadgeStyle, background: stockStatus.color }}>
-              {stockStatus.label}
-            </span>
-          </div>
-
-          <div style={{ ...mutedStyle, color: themeMuted }}>
-            {t.productNo}: {productCode(p)}
-          </div>
-
-          <div className="products-product-info-grid" style={productInfoGridStyle}>
-            <div>
-              {t.productName}: <strong>{p.name}</strong>
-            </div>
-            <div>
-              {t.stock}: <strong>{Number(p.stock_qty || 0)}</strong>
-            </div>
-            <div>
-              {t.summaryCost}: <strong>RM {Number(p.cost || 0).toFixed(2)}</strong>
-            </div>
-            <div>
-              {t.summaryPrice}: <strong>RM {Number(p.price || 0).toFixed(2)}</strong>
-            </div>
-            <div>
-              {t.discount}: <strong>RM {Number(p.discount || 0).toFixed(2)}</strong>
-            </div>
-            <div>
-              {t.profit}: <strong>RM {profit.toFixed(2)}</strong>
-            </div>
-            <div>
-              {t.margin}: <strong>{margin.toFixed(1)}%</strong>
-            </div>
-          </div>
-
-          <div
-            style={{
-              ...customerPurchaseBoxStyle,
-              background: theme.panelBg || themeSoft,
-              color: theme.panelText || theme.text,
-              borderColor: theme.border,
-            }}
-          >
-            <strong>{t.customerPurchase}</strong>
-
-            {purchaseList.length === 0 ? (
-              <div style={{ ...mutedStyle, color: themeMuted }}>{t.noCustomerPurchase}</div>
-            ) : (
-              <div style={purchaseListStyle}>
-                {purchaseList.map((cp) => (
-                  <div key={cp.id} style={purchaseItemStyle}>
-                    <span>{getCustomerName(cp.customer_id)}</span>
-                    <strong>RM {Number(cp.custom_price || 0).toFixed(2)}</strong>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {p.note ? (
-            <div
-              style={{
-                ...noteStyle,
-                background: theme.panelBg || themeSoft,
-                color: theme.panelText || theme.text,
-                borderColor: theme.border,
-              }}
-            >
-              {p.note}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="products-action-row" style={actionRowStyle}>
-          <button
-            type="button"
-            onClick={() => openEditForm(p)}
-            style={{
-              ...editBtnStyle,
-              borderColor: theme.border,
-              color: theme.accent,
-              background: theme.inputBg || "#fff",
-            }}
-          >
-            {t.edit}
-          </button>
-
-          <button type="button" onClick={() => requestDeleteProduct(p)} style={deleteBtnStyle}>
-            {t.delete}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  function renderDeleteModal() {
-    if (!deleteTarget) return null;
-
-    const stockStatus = getStockStatus(deleteTarget);
-    const profit = getProductProfit(deleteTarget);
-    const margin = getProductMargin(deleteTarget);
-
-    return (
-      <div style={overlayStyle}>
-        <div
-          className="sa-modal"
-          style={{
-            ...deleteModalStyle,
-            background: theme.card,
-            color: theme.text,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-          }}
-        >
-          <div style={deleteHeaderStyle}>
-            <div>
-              <h2 style={deleteTitleStyle}>{t.deleteTitle}</h2>
-              <p style={{ ...deleteWarningTextStyle, color: themeMuted }}>{t.deleteWarning}</p>
-            </div>
-
-            <button type="button" onClick={closeDeleteModal} style={deleteCloseBtnStyle}>
-              {t.close}
-            </button>
-          </div>
-
-          <div style={deleteProductTopStyle}>
-            <div>
-              <div style={deleteProductNameStyle}>{deleteTarget.name}</div>
-              <div style={deleteProductCodeStyle}>
-                {t.productNo}: {productCode(deleteTarget)}
-              </div>
-            </div>
-
-            <span style={{ ...stockBadgeStyle, background: stockStatus.color }}>
-              {stockStatus.label}
-            </span>
-          </div>
-
-          <div style={deleteInfoGridStyle}>
-            <div style={deleteInfoItemStyle}>
-              <span>{t.stock}</span>
-              <strong>{Number(deleteTarget.stock_qty || 0)}</strong>
-            </div>
-
-            <div style={deleteInfoItemStyle}>
-              <span>{t.summaryCost}</span>
-              <strong>RM {Number(deleteTarget.cost || 0).toFixed(2)}</strong>
-            </div>
-
-            <div style={deleteInfoItemStyle}>
-              <span>{t.summaryPrice}</span>
-              <strong>RM {Number(deleteTarget.price || 0).toFixed(2)}</strong>
-            </div>
-
-            <div style={deleteInfoItemStyle}>
-              <span>{t.discount}</span>
-              <strong>RM {Number(deleteTarget.discount || 0).toFixed(2)}</strong>
-            </div>
-
-            <div style={deleteInfoItemStyle}>
-              <span>{t.profit}</span>
-              <strong style={{ color: profit < 0 ? "#dc2626" : "#16a34a" }}>
-                RM {profit.toFixed(2)}
-              </strong>
-            </div>
-
-            <div style={deleteInfoItemStyle}>
-              <span>{t.margin}</span>
-              <strong style={{ color: margin < 0 ? "#dc2626" : "#16a34a" }}>
-                {margin.toFixed(1)}%
-              </strong>
-            </div>
-          </div>
-
-          {deleteTarget.note ? (
-            <div style={deleteNoteStyle}>
-              <strong>{t.note}</strong>
-              <p>{deleteTarget.note}</p>
-            </div>
-          ) : null}
-
-          <div style={deleteActionRowStyle}>
-            <button
-              type="button"
-              onClick={closeDeleteModal}
-              disabled={deleting}
-              style={cancelDeleteBtnStyle}
-            >
-              {t.cancel}
-            </button>
-
-            <button
-              type="button"
-              onClick={confirmDeleteProduct}
-              disabled={deleting}
-              style={confirmDeleteBtnStyle}
-            >
-              {deleting ? "..." : t.confirmDeleteBtn}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <main
       className="smartacctg-page smartacctg-products-page"
       data-sa-theme={themeKey}
+      data-smartacctg-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
-      <style jsx global>{PRODUCTS_PAGE_CSS}</style>
+      <style jsx global>{PRODUCTS_PAGE_FIX_CSS}</style>
 
-      <div className="sa-topbar">
+      <div className="sa-topbar" style={topbarStyle}>
         <div className="sa-topbar-left">
           <button
             type="button"
-            onClick={goBack}
+            onClick={backToDashboard}
             className="sa-back-btn"
             style={{
               ...backBtnStyle,
-              borderColor: theme.border,
               color: theme.accent,
+              borderColor: theme.border,
               background: theme.inputBg || "#fff",
             }}
           >
@@ -1460,10 +1079,8 @@ export default function ProductsPage() {
           </button>
         </div>
 
-        <div className="sa-topbar-center" aria-hidden="true" />
-
         <div className="sa-topbar-right">
-          <div className="sa-lang-row">
+          <div className="sa-lang-row" style={langRowStyle}>
             <button
               type="button"
               onClick={() => switchLang("zh")}
@@ -1472,6 +1089,7 @@ export default function ProductsPage() {
             >
               中文
             </button>
+
             <button
               type="button"
               onClick={() => switchLang("en")}
@@ -1480,6 +1098,7 @@ export default function ProductsPage() {
             >
               EN
             </button>
+
             <button
               type="button"
               onClick={() => switchLang("ms")}
@@ -1492,6 +1111,20 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
+
+      {msg ? (
+        <div
+          style={{
+            ...msgStyle,
+            background: theme.softBg || theme.soft || theme.card,
+            color: theme.text,
+          }}
+        >
+          {msg}
+        </div>
+      ) : null}
+
       <section
         className="sa-card"
         style={{
@@ -1501,433 +1134,368 @@ export default function ProductsPage() {
           color: theme.text,
         }}
       >
-        <div style={titleRowStyle}>
-          <div>
-            <h1 style={titleStyle}>{t.title}</h1>
-            <p style={{ ...subTitleStyle, color: themeMuted }}>{t.subtitle}</p>
-            {isTrial ? <div style={trialBadgeStyle}>{t.trial}</div> : null}
-          </div>
+        <div style={headerRowStyle}>
+          <h1 style={titleStyle}>{t.title}</h1>
 
           <button
             type="button"
-            onClick={openAddForm}
+            onClick={() => openNewForm(false)}
             aria-label={t.add}
-            title={t.add}
-            style={{ ...plusBtnStyle, background: theme.accent }}
+            style={{
+              ...plusBtnStyle,
+              background: theme.accent,
+            }}
           >
-            ➕
+            +
+          </button>
+        </div>
+
+        <div className="products-summary-grid" style={summaryGridStyle}>
+          <div
+            className="sa-stat-card products-stat-card"
+            style={{
+              ...statCardStyle,
+              background: theme.itemBg || theme.card,
+              borderColor: theme.border,
+              color: theme.text,
+            }}
+          >
+            <span>{t.productTotal}</span>
+            <strong style={{ color: theme.accent }}>{summary.productTotal}</strong>
+          </div>
+
+          <div
+            className="sa-stat-card products-stat-card"
+            style={{
+              ...statCardStyle,
+              background: theme.itemBg || theme.card,
+              borderColor: theme.border,
+              color: theme.text,
+            }}
+          >
+            <span>{t.stockTotal}</span>
+            <strong style={{ color: theme.accent }}>{summary.stockTotal}</strong>
+          </div>
+
+          <div
+            className="sa-stat-card products-stat-card"
+            style={{
+              ...statCardStyle,
+              background: theme.itemBg || theme.card,
+              borderColor: theme.border,
+              color: theme.text,
+            }}
+          >
+            <span>{t.stockCost}</span>
+            <strong style={{ color: "#dc2626" }}>{formatRM(summary.stockCost)}</strong>
+          </div>
+
+          <div
+            className="sa-stat-card products-stat-card"
+            style={{
+              ...statCardStyle,
+              background: theme.itemBg || theme.card,
+              borderColor: theme.border,
+              color: theme.text,
+            }}
+          >
+            <span>{t.expectedSales}</span>
+            <strong style={{ color: "#16a34a" }}>{formatRM(summary.expectedSales)}</strong>
+          </div>
+
+          <div
+            className="sa-stat-card products-stat-card"
+            style={{
+              ...statCardStyle,
+              background: theme.itemBg || theme.card,
+              borderColor: theme.border,
+              color: theme.text,
+            }}
+          >
+            <span>{t.expectedProfit}</span>
+            <strong style={{ color: summary.expectedProfit < 0 ? "#dc2626" : "#16a34a" }}>
+              {formatRM(summary.expectedProfit)}
+            </strong>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="sa-card"
+        style={{
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+          color: theme.text,
+        }}
+      >
+        <h2 style={sectionTitleStyle}>{t.searchTitle}</h2>
+
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t.search}
+          style={themedInputStyle}
+        />
+      </section>
+
+      <section
+        className="sa-card"
+        style={{
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+          color: theme.text,
+        }}
+      >
+        {filteredProducts.length === 0 ? (
+          <p style={{ color: themeSubText, fontWeight: 900 }}>{t.noProduct}</p>
+        ) : (
+          <div className="products-list" style={productListStyle}>
+            {filteredProducts.map((product) => {
+              const stock = getProductStock(product);
+              const price = Number(product.price || 0);
+              const cost = Number(product.cost || 0);
+              const profit = (price - cost) * stock;
+              const isLowStock = stock <= 0;
+              const isCostHigher = cost > price;
+
+              return (
+                <div
+                  key={product.id}
+                  className={`product-card ${isLowStock ? "low-stock-product" : ""}`}
+                  style={{
+                    ...productCardStyle,
+                    borderColor: isLowStock ? "#dc2626" : theme.border,
+                    background: isLowStock ? "#fee2e2" : theme.itemBg || theme.card,
+                    color: isLowStock ? "#7f1d1d" : theme.text,
+                    boxShadow: isLowStock
+                      ? "0 0 0 1px rgba(220, 38, 38, 0.35), 0 12px 28px rgba(220, 38, 38, 0.22)"
+                      : theme.glow,
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={productTitleStyle}>{product.name || "-"}</h3>
+
+                    <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
+                      {t.price}:{" "}
+                      <strong style={{ color: isLowStock ? "#7f1d1d" : "#16a34a" }}>
+                        {formatRM(price)}
+                      </strong>
+                    </p>
+
+                    <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
+                      {t.cost}:{" "}
+                      <strong style={{ color: isCostHigher ? "#dc2626" : theme.accent }}>
+                        {formatRM(cost)}
+                      </strong>
+                    </p>
+
+                    <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
+                      {t.stock}:{" "}
+                      <strong style={{ color: isLowStock ? "#dc2626" : theme.accent }}>
+                        {stock}
+                      </strong>
+                    </p>
+
+                    <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
+                      {t.profit}:{" "}
+                      <strong style={{ color: profit < 0 ? "#dc2626" : "#16a34a" }}>
+                        {formatRM(profit)}
+                      </strong>
+                    </p>
+
+                    {getProductCategory(product) ? (
+                      <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
+                        {t.category}: {getProductCategory(product)}
+                      </p>
+                    ) : null}
+
+                    {product.note ? (
+                      <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
+                        {t.note}: {product.note}
+                      </p>
+                    ) : null}
+
+                    {isLowStock ? (
+                      <p style={{ ...warningStyle, color: "#dc2626" }}>{t.lowStock}</p>
+                    ) : null}
+
+                    {isCostHigher ? (
+                      <p style={{ ...warningStyle, color: "#dc2626" }}>{t.costHigher}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="products-action-row" style={actionRowStyle}>
+                    <button
+                      type="button"
+                      onClick={() => editProduct(product)}
+                      style={{
+                        ...actionBtnStyle,
+                        background: theme.accent,
+                      }}
+                    >
+                      {t.edit}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteProduct(product.id)}
+                      style={deleteBtnStyle}
+                    >
+                      {t.delete}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section
+        className="sa-card"
+        style={{
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+          color: theme.text,
+        }}
+      >
+        <h2 style={sectionTitleStyle}>{t.related}</h2>
+
+        <div style={relatedMenuRowStyle}>
+          <select
+            value={relatedPath}
+            onChange={(e) => setRelatedPath(e.target.value)}
+            style={themedInputStyle}
+          >
+            <option value="/dashboard/records">{t.records}</option>
+            <option value="/dashboard/customers">{t.customers}</option>
+            <option value="/dashboard/invoices">{t.invoices}</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={goRelatedFeature}
+            style={{
+              ...primaryBtnStyle,
+              background: theme.accent,
+              marginTop: 0,
+            }}
+          >
+            {t.goFeature}
           </button>
         </div>
       </section>
 
-      <section className="sa-stats-grid products-summary-grid" style={summaryGridStyle}>
-        <button
-          type="button"
-          className="sa-stat-card sa-stat-cost"
-          onClick={() => openDetailModal("cost")}
-          style={{
-            ...summaryCardStyle,
-            order: 1,
-            background: summaryCardBg,
-            color: summaryCardText,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-          }}
+      {showForm ? (
+        <div
+          className={`products-form-overlay ${
+            isFullscreen ? "products-fullscreen-overlay" : ""
+          }`}
         >
-          <span
+          <section
+            className={`sa-modal products-form-modal ${
+              isFullscreen ? "products-fullscreen-modal" : ""
+            }`}
             style={{
-              ...summaryLabelStyle,
-              color: summaryLabelColor,
-              textShadow: summaryTextShadow,
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
             }}
           >
-            {t.summaryCost}
-          </span>
-          <strong
-            style={{
-              ...summaryValueStyle,
-              color: summaryValueColor,
-              textShadow: summaryAmountShadow,
-            }}
-          >
-            RM {productSummary.totalCost.toFixed(2)}
-          </strong>
-        </button>
+            <div className="products-modal-header">
+              <h2 style={modalTitleStyle}>{editingId ? t.update : t.add}</h2>
 
-        <button
-          type="button"
-          className="sa-stat-card sa-stat-price"
-          onClick={() => openDetailModal("price")}
-          style={{
-            ...summaryCardStyle,
-            order: 2,
-            background: summaryCardBg,
-            color: summaryCardText,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-          }}
-        >
-          <span
-            style={{
-              ...summaryLabelStyle,
-              color: summaryLabelColor,
-              textShadow: summaryTextShadow,
-            }}
-          >
-            {t.summaryPrice}
-          </span>
-          <strong
-            style={{
-              ...summaryValueStyle,
-              color: summaryValueColor,
-              textShadow: summaryAmountShadow,
-            }}
-          >
-            RM {productSummary.totalValue.toFixed(2)}
-          </strong>
-        </button>
-
-        <button
-          type="button"
-          className="sa-stat-card sa-stat-profit"
-          onClick={() => openDetailModal("profit")}
-          style={{
-            ...summaryCardStyle,
-            order: 3,
-            background: summaryCardBg,
-            color: summaryCardText,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-          }}
-        >
-          <span
-            style={{
-              ...summaryLabelStyle,
-              color: summaryLabelColor,
-              textShadow: summaryTextShadow,
-            }}
-          >
-            {t.profit}
-          </span>
-          <strong
-            style={{
-              ...summaryValueStyle,
-              color: summaryValueColor,
-              textShadow: summaryAmountShadow,
-            }}
-          >
-            RM {productSummary.totalProfit.toFixed(2)}
-          </strong>
-        </button>
-
-        <button
-          type="button"
-          className="sa-stat-card sa-stat-stock"
-          onClick={() => openDetailModal("stock")}
-          style={{
-            ...summaryCardStyle,
-            order: 4,
-            background: summaryCardBg,
-            color: summaryCardText,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-          }}
-        >
-          <span
-            style={{
-              ...summaryLabelStyle,
-              color: summaryLabelColor,
-              textShadow: summaryTextShadow,
-            }}
-          >
-            {t.stock}
-          </span>
-          <strong
-            style={{
-              ...summaryValueStyle,
-              color: summaryValueColor,
-              textShadow: summaryAmountShadow,
-            }}
-          >
-            {productSummary.totalStock}
-          </strong>
-        </button>
-      </section>
-
-      <section
-        className="sa-card"
-        id="productDetails"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
-        <div className="products-search-row" style={searchRowStyle}>
-          <input
-            placeholder={t.search}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={themedInputStyle}
-          />
-        </div>
-
-        {msg ? <div style={msgBoxStyle}>{msg}</div> : null}
-
-        <h2 style={sectionTitleStyle}>{t.details}</h2>
-
-        {filteredProducts.length === 0 ? (
-          <p>{t.noProduct}</p>
-        ) : (
-          <div style={productListStyle}>
-            {filteredProducts.map((p) => renderProductDetailCard(p))}
-          </div>
-        )}
-      </section>
-
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
-        <h2 style={sectionTitleStyle}>{t.customerPrice}</h2>
-
-        {customers.length === 0 ? (
-          <p>{t.noCustomer}</p>
-        ) : (
-          <>
-            <div style={formGridStyle}>
-              <select
-                value={priceCustomerId}
-                onChange={(e) => setPriceCustomerId(e.target.value)}
-                style={themedInputStyle}
+              <button
+                type="button"
+                className="sa-close-x"
+                onClick={closeForm}
+                aria-label={t.close}
               >
-                <option value="">{t.chooseCustomer}</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.company_name ? `｜${c.company_name}` : ""}
-                  </option>
-                ))}
-              </select>
+                {t.close}
+              </button>
+            </div>
 
-              <select
-                value={priceProductId}
-                onChange={(e) => setPriceProductId(e.target.value)}
+            <div className="products-form-grid">
+              <input
+                placeholder={t.productName}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 style={themedInputStyle}
-              >
-                <option value="">{t.chooseProduct}</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}｜{productCode(p)}
-                  </option>
-                ))}
-              </select>
+              />
 
               <input
-                placeholder={t.customPrice}
-                value={customPrice}
-                onChange={(e) => setCustomPrice(e.target.value)}
+                placeholder={t.price}
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                style={themedInputStyle}
+                inputMode="decimal"
+              />
+
+              <input
+                placeholder={t.cost}
+                value={form.cost}
+                onChange={(e) => setForm({ ...form, cost: e.target.value })}
+                style={themedInputStyle}
+                inputMode="decimal"
+              />
+
+              <input
+                placeholder={t.stock}
+                value={form.stock_qty}
+                onChange={(e) => setForm({ ...form, stock_qty: e.target.value })}
+                style={themedInputStyle}
+                inputMode="decimal"
+              />
+
+              <input
+                placeholder={t.category}
+                value={form.category_name}
+                onChange={(e) => setForm({ ...form, category_name: e.target.value })}
                 style={themedInputStyle}
               />
             </div>
 
-            <button
-              type="button"
-              onClick={saveCustomerPrice}
-              style={{ ...addBtnStyle, background: theme.accent, marginTop: 12 }}
-            >
-              {t.saveCustomerPrice}
-            </button>
-
-            <h3>{t.customerPriceList}</h3>
-
-            {customerPrices.length === 0 ? (
-              <p>{t.noRecord}</p>
-            ) : (
-              customerPrices.map((cp) => (
-                <div key={cp.id} style={customerPriceItemStyle}>
-                  <div>
-                    <strong>{getCustomerName(cp.customer_id)}</strong>
-                    <div style={{ ...mutedStyle, color: themeMuted }}>
-                      {getProductName(cp.product_id)}
-                    </div>
-                  </div>
-                  <strong>RM {Number(cp.custom_price || 0).toFixed(2)}</strong>
-                </div>
-              ))
-            )}
-          </>
-        )}
-      </section>
-
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
-        <h2 style={sectionTitleStyle}>{t.linkedTitle}</h2>
-        <p>{t.link1}</p>
-        <p>{t.link2}</p>
-        <p>{t.link3}</p>
-      </section>
-
-      {detailMetric ? (
-        <div style={overlayStyle}>
-          <div
-            className="sa-modal"
-            style={{
-              ...detailModalStyle,
-              background: theme.card,
-              color: theme.text,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-            }}
-          >
-            <div className="sa-modal-header" style={modalHeaderStyle}>
-              <h2>
-                {getDetailTitle()}｜{t.allProductDetails}
-              </h2>
-
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={() => setDetailMetric(null)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") setDetailMetric(null);
-                }}
-                style={closeTextBtnStyle}
-              >
-                {t.close}
-              </span>
-            </div>
-
-            <input
-              placeholder={t.search}
-              value={detailSearch}
-              onChange={(e) => setDetailSearch(e.target.value)}
-              style={{ ...themedInputStyle, marginBottom: 14 }}
-            />
-
-            {detailFilteredProducts.length === 0 ? (
-              <p>{t.noProduct}</p>
-            ) : (
-              <div style={detailListStyle}>
-                {detailFilteredProducts.map((p) => renderProductDetailCard(p))}
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setDetailMetric(null)}
-              style={{ ...addBtnStyle, background: theme.accent, marginTop: 14 }}
-            >
-              {t.close}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {showForm ? (
-        <div className="products-form-overlay" style={overlayStyle}>
-          <div
-            className="sa-modal products-form-modal"
-            style={{
-              ...modalStyle,
-              background: theme.card,
-              color: theme.text,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-            }}
-          >
-            <div className="sa-modal-header" style={modalHeaderStyle}>
-              <h2>{editingId ? t.edit : t.add}</h2>
-
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={resetForm}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") resetForm();
-                }}
-                style={closeTextBtnStyle}
-              >
-                {t.close}
-              </span>
-            </div>
-
-            <label style={labelStyle}>{t.productName}</label>
-            <input
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <label style={labelStyle}>{t.price}</label>
-            <input
-              value={productPrice}
-              onChange={(e) => setProductPrice(e.target.value)}
-              style={themedInputStyle}
-              inputMode="decimal"
-            />
-
-            <label style={labelStyle}>{t.cost}</label>
-            <input
-              value={productCost}
-              onChange={(e) => setProductCost(e.target.value)}
-              style={themedInputStyle}
-              inputMode="decimal"
-            />
-
-            <label style={labelStyle}>{t.discount}</label>
-            <input
-              value={productDiscount}
-              onChange={(e) => setProductDiscount(e.target.value)}
-              style={themedInputStyle}
-              inputMode="decimal"
-            />
-
-            <label style={labelStyle}>{t.stock}</label>
-            <input
-              value={productStock}
-              onChange={(e) => setProductStock(e.target.value)}
-              style={themedInputStyle}
-              inputMode="numeric"
-            />
-
-            <label style={labelStyle}>{t.note}</label>
             <textarea
-              value={productNote}
-              onChange={(e) => setProductNote(e.target.value)}
+              placeholder={t.note}
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
               style={themedTextareaStyle}
             />
 
-            <div className="products-modal-actions" style={modalActionRowStyle}>
+            <div className="products-form-actions">
               <button
                 type="button"
                 onClick={saveProduct}
-                style={{ ...addBtnStyle, background: theme.accent }}
+                style={{
+                  ...primaryBtnStyle,
+                  background: theme.accent,
+                  marginTop: 0,
+                }}
               >
-                {t.save}
+                {editingId ? t.update : t.save}
               </button>
 
-              <button type="button" onClick={resetForm} style={cancelBtnStyle}>
+              <button
+                type="button"
+                onClick={closeForm}
+                style={{
+                  ...secondaryBtnStyle,
+                  borderColor: theme.border,
+                  color: theme.accent,
+                  background: theme.inputBg || "#ffffff",
+                  marginTop: 0,
+                }}
+              >
                 {t.cancel}
               </button>
             </div>
-          </div>
+          </section>
         </div>
       ) : null}
-
-      {renderDeleteModal()}
     </main>
   );
 }
@@ -1938,18 +1506,32 @@ const pageStyle: CSSProperties = {
   maxWidth: "100vw",
   overflowX: "hidden",
   padding: "clamp(10px, 3vw, 22px)",
-  boxSizing: "border-box",
-  fontSize: "var(--sa-fs-base)",
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
+};
+
+const topbarStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 14,
 };
 
 const backBtnStyle: CSSProperties = {
   background: "#fff",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-control)",
-  minHeight: "var(--sa-control-h)",
+  border: "2px solid",
+  borderRadius: "999px",
   padding: "0 var(--sa-control-x)",
+  minHeight: "var(--sa-control-h)",
   fontWeight: 900,
   whiteSpace: "nowrap",
+};
+
+const langRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "nowrap",
 };
 
 const langBtnStyle = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
@@ -1958,112 +1540,53 @@ const langBtnStyle = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSPro
   color: active ? "#fff" : theme.accent,
 });
 
-const titleRowStyle: CSSProperties = {
+const headerRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
-  alignItems: "start",
+  alignItems: "center",
   gap: 12,
-  width: "100%",
+  marginBottom: 14,
 };
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "var(--sa-fs-2xl)",
   fontWeight: 900,
   lineHeight: 1.12,
 };
 
-const plusBtnStyle: CSSProperties = {
-  width: 58,
-  height: 58,
-  minWidth: 58,
-  minHeight: 58,
-  maxWidth: 58,
-  borderRadius: 999,
-  border: "none",
-  color: "#fff",
-  fontSize: "24px",
-  fontWeight: 900,
-  padding: 0,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-  flexShrink: 0,
-};
-
 const sectionTitleStyle: CSSProperties = {
-  fontSize: "var(--sa-fs-xl)",
-  marginTop: 20,
-  marginBottom: 16,
+  marginTop: 0,
+  marginBottom: 14,
   fontWeight: 900,
 };
 
-const subTitleStyle: CSSProperties = {
-  marginTop: 10,
-  lineHeight: 1.65,
-  fontSize: "var(--sa-fs-base)",
-  fontWeight: 700,
-};
-
-const trialBadgeStyle: CSSProperties = {
-  display: "inline-block",
-  marginTop: 8,
-  padding: "6px 10px",
+const plusBtnStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  minWidth: 52,
+  minHeight: 52,
   borderRadius: 999,
-  background: "#dcfce7",
-  color: "#166534",
+  color: "#fff",
+  border: "none",
+  fontSize: 30,
   fontWeight: 900,
+  lineHeight: 1,
+  padding: 0,
+  flexShrink: 0,
 };
 
 const summaryGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "clamp(12px, 2vw, 16px)",
-  marginBottom: 16,
+  gap: 12,
   width: "100%",
 };
 
-const summaryCardStyle: CSSProperties = {
-  background: "#fff",
-  color: BLACK_LABEL,
+const statCardStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
-  padding: "clamp(14px, 3vw, 24px)",
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
-  textAlign: "center",
-  cursor: "pointer",
-  minHeight: 150,
-  fontWeight: 900,
-  alignItems: "center",
-  justifyContent: "center",
-  width: "100%",
-  minWidth: 0,
-};
-
-const summaryLabelStyle: CSSProperties = {
-  color: BLACK_LABEL,
-  fontWeight: 900,
-  fontSize: "clamp(15px, 3.2vw, 20px)",
-  lineHeight: 1.25,
-};
-
-const summaryValueStyle: CSSProperties = {
-  color: TEAL_VALUE,
-  fontWeight: 900,
-  fontSize: "clamp(24px, 5.4vw, 42px)",
-  lineHeight: 1.08,
-  whiteSpace: "normal",
-  wordBreak: "keep-all",
-};
-
-const searchRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr)",
-  gap: 10,
-  alignItems: "center",
+  padding: "var(--sa-card-pad)",
+  minHeight: 112,
 };
 
 const inputStyle: CSSProperties = {
@@ -2074,367 +1597,133 @@ const inputStyle: CSSProperties = {
   minHeight: "var(--sa-control-h)",
   padding: "0 var(--sa-control-x)",
   borderRadius: "var(--sa-radius-control)",
-  border: "var(--sa-border-w) solid #cbd5e1",
-  fontSize: "16px",
-  outline: "none",
+  border: "var(--sa-border-w) solid",
   background: "#ffffff",
   color: "#111827",
+  outline: "none",
+  fontSize: 16,
+  marginBottom: 0,
 };
 
 const textareaStyle: CSSProperties = {
   ...inputStyle,
-  minHeight: 100,
-  resize: "vertical",
+  minHeight: 120,
   paddingTop: 14,
   paddingBottom: 14,
-};
-
-const addBtnStyle: CSSProperties = {
-  border: "none",
-  color: "#fff",
-  borderRadius: "var(--sa-radius-control)",
-  minHeight: "var(--sa-control-h)",
-  padding: "0 18px",
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-};
-
-const msgBoxStyle: CSSProperties = {
+  resize: "vertical",
   marginTop: 12,
-  background: "#fef3c7",
-  color: "#92400e",
-  padding: "12px 14px",
-  borderRadius: "var(--sa-radius-control)",
-  fontWeight: 900,
 };
 
 const productListStyle: CSSProperties = {
   display: "grid",
-  gap: 12,
+  gridTemplateColumns: "1fr",
+  gap: 18,
+  width: "100%",
 };
 
-const productTitleRowStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const productNameStyle: CSSProperties = {
-  fontSize: "var(--sa-fs-lg)",
-  lineHeight: 1.25,
-};
-
-const mutedStyle: CSSProperties = {
-  color: "#64748b",
-  fontSize: "var(--sa-fs-base)",
-  marginTop: 4,
-  lineHeight: 1.55,
-};
-
-const productInfoGridStyle: CSSProperties = {
+const productCardStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 10,
-  marginTop: 12,
-  fontSize: "var(--sa-fs-base)",
+  gridTemplateColumns: "1fr",
+  gap: 14,
+  width: "100%",
+  minWidth: 0,
+  height: "auto",
+  minHeight: "auto",
+  overflowWrap: "anywhere",
 };
 
-const stockBadgeStyle: CSSProperties = {
-  color: "#fff",
-  padding: "6px 12px",
-  borderRadius: 999,
-  fontSize: "var(--sa-fs-sm)",
+const productTitleStyle: CSSProperties = {
+  margin: 0,
+  overflowWrap: "anywhere",
   fontWeight: 900,
 };
 
-const customerPurchaseBoxStyle: CSSProperties = {
-  marginTop: 14,
-  padding: 14,
-  borderRadius: "var(--sa-radius-control)",
-  background: "#f8fafc",
-  color: "#111827",
-  border: "1px solid #e2e8f0",
-};
-
-const purchaseListStyle: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  marginTop: 8,
-};
-
-const purchaseItemStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 10,
-  padding: "10px 0",
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const noteStyle: CSSProperties = {
-  marginTop: 10,
-  padding: 12,
-  borderRadius: "var(--sa-radius-control)",
-  background: "#f8fafc",
-  color: "#475569",
+const mutedStyle: CSSProperties = {
+  overflowWrap: "anywhere",
   lineHeight: 1.55,
-  border: "1px solid #e2e8f0",
+  margin: "8px 0 0",
+};
+
+const warningStyle: CSSProperties = {
+  margin: "10px 0 0",
+  fontWeight: 900,
+  lineHeight: 1.45,
 };
 
 const actionRowStyle: CSSProperties = {
   display: "flex",
-  gap: 8,
-  justifyContent: "flex-end",
+  gap: 10,
+  alignItems: "center",
+  justifyContent: "flex-start",
   flexWrap: "wrap",
 };
 
-const editBtnStyle: CSSProperties = {
-  background: "#fff",
-  border: "var(--sa-border-w) solid",
+const actionBtnStyle: CSSProperties = {
+  minWidth: 104,
+  minHeight: 44,
+  color: "#fff",
+  border: "none",
   borderRadius: "var(--sa-radius-control)",
   padding: "0 14px",
-  minHeight: 46,
   fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
 };
 
 const deleteBtnStyle: CSSProperties = {
+  minWidth: 104,
+  minHeight: 44,
   background: "#fee2e2",
   color: "#b91c1c",
   border: "none",
   borderRadius: "var(--sa-radius-control)",
   padding: "0 14px",
-  minHeight: 46,
   fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
 };
 
-const formGridStyle: CSSProperties = {
-  display: "grid",
-  gap: 10,
-};
-
-const customerPriceItemStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-  padding: "14px 0",
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const overlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15,23,42,0.45)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 18,
-  zIndex: 999,
-};
-
-const modalStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 560,
-  maxHeight: "90vh",
-  overflowY: "auto",
-  background: "#fff",
-  color: "#111827",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-};
-
-const detailModalStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 920,
-  maxHeight: "88vh",
-  overflowY: "auto",
-  background: "#fff",
-  color: "#111827",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-};
-
-const modalHeaderStyle: CSSProperties = {
-  marginBottom: 16,
-};
-
-const closeTextBtnStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "transparent",
-  color: "#dc2626",
-  border: "none",
-  boxShadow: "none",
-  padding: "0 4px",
-  minHeight: 0,
-  width: "auto",
-  height: "auto",
-  minWidth: 0,
-  maxWidth: "none",
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-  lineHeight: 1.2,
-  whiteSpace: "nowrap",
-  cursor: "pointer",
-};
-
-const detailListStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-};
-
-const labelStyle: CSSProperties = {
-  display: "block",
-  fontWeight: 900,
-  marginTop: 12,
-  marginBottom: 6,
-  fontSize: "var(--sa-fs-base)",
-};
-
-const modalActionRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 10,
-  marginTop: 16,
-  flexWrap: "wrap",
-};
-
-const cancelBtnStyle: CSSProperties = {
-  background: "#fff",
-  color: "#0f172a",
-  border: "2px solid #cbd5e1",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 16px",
-  minHeight: "var(--sa-control-h)",
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-};
-
-const deleteModalStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 620,
-  maxHeight: "90vh",
-  overflowY: "auto",
-  background: "#fff",
-  color: "#111827",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "clamp(18px, 4vw, 28px)",
-};
-
-const deleteHeaderStyle: CSSProperties = {
+const relatedMenuRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   gap: 12,
-  alignItems: "start",
-  marginBottom: 18,
-};
-
-const deleteTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "var(--sa-fs-xl)",
-  fontWeight: 900,
-  color: "#b91c1c",
-  lineHeight: 1.2,
-};
-
-const deleteWarningTextStyle: CSSProperties = {
-  margin: "8px 0 0",
-  color: "#64748b",
-  fontWeight: 800,
-  lineHeight: 1.55,
-};
-
-const deleteCloseBtnStyle: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "#dc2626",
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-  cursor: "pointer",
-  padding: 0,
-};
-
-const deleteProductTopStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
   alignItems: "center",
-  gap: 12,
-  flexWrap: "wrap",
-  padding: 16,
-  borderRadius: "var(--sa-radius-control)",
-  background: "#fef2f2",
-  border: "2px solid #fecaca",
-  marginBottom: 14,
 };
 
-const deleteProductNameStyle: CSSProperties = {
-  fontSize: "var(--sa-fs-lg)",
-  fontWeight: 900,
-  color: "#7f1d1d",
-  lineHeight: 1.25,
-};
-
-const deleteProductCodeStyle: CSSProperties = {
-  marginTop: 4,
-  color: "#64748b",
-  fontWeight: 800,
-};
-
-const deleteInfoGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 10,
-  marginBottom: 14,
-};
-
-const deleteInfoItemStyle: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  padding: 14,
-  borderRadius: "var(--sa-radius-control)",
-  background: "#f8fafc",
-  color: "#111827",
-  border: "1px solid #e2e8f0",
-};
-
-const deleteNoteStyle: CSSProperties = {
-  padding: 14,
-  borderRadius: "var(--sa-radius-control)",
-  background: "#f8fafc",
-  color: "#111827",
-  border: "1px solid #e2e8f0",
-  marginBottom: 14,
-  lineHeight: 1.55,
-};
-
-const deleteActionRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 10,
-  marginTop: 16,
-};
-
-const cancelDeleteBtnStyle: CSSProperties = {
-  minHeight: "var(--sa-control-h)",
-  borderRadius: "var(--sa-radius-control)",
-  border: "2px solid #cbd5e1",
-  background: "#fff",
-  color: "#0f172a",
-  fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
-};
-
-const confirmDeleteBtnStyle: CSSProperties = {
-  minHeight: "var(--sa-control-h)",
-  borderRadius: "var(--sa-radius-control)",
-  border: "none",
-  background: "#dc2626",
+const primaryBtnStyle: CSSProperties = {
   color: "#fff",
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 18px",
+  minHeight: "var(--sa-control-h)",
   fontWeight: 900,
-  fontSize: "var(--sa-fs-base)",
+};
+
+const secondaryBtnStyle: CSSProperties = {
+  background: "#fff",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 18px",
+  minHeight: "var(--sa-control-h)",
+  fontWeight: 900,
+};
+
+const msgStyle: CSSProperties = {
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+  fontWeight: 900,
+};
+
+const trialMsgStyle: CSSProperties = {
+  background: "#fef3c7",
+  color: "#92400e",
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+  fontWeight: 900,
+};
+
+const modalTitleStyle: CSSProperties = {
+  margin: 0,
+  fontWeight: 900,
 };
