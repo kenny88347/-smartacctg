@@ -3,40 +3,43 @@
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import {
+  THEMES,
+  type ThemeKey,
+  applyThemeToDocument,
+  getThemeKeyFromUrlOrLocalStorage,
+  isThemeKey,
+  normalizeThemeKey,
+  saveThemeKey,
+} from "@/lib/smartacctgTheme";
 
 type Lang = "zh" | "en" | "ms";
 type CustomerStatus = "normal" | "vip" | "debt" | "blocked";
-type ThemeKey =
-  | "deepTeal"
-  | "pink"
-  | "blackGold"
-  | "lightRed"
-  | "nature"
-  | "sky"
-  | "futureForest";
 
 type Customer = {
   id: string;
   user_id?: string;
   name: string;
-  phone: string | null;
-  email: string | null;
-  company_name: string | null;
-  company_reg_no: string | null;
-  company_phone: string | null;
-  address: string | null;
-  status: CustomerStatus | null;
+  phone?: string | null;
+  email?: string | null;
+  company_name?: string | null;
+  company_reg_no?: string | null;
+  company_phone?: string | null;
+  address?: string | null;
+  status?: CustomerStatus | null;
   customer_status?: CustomerStatus | null;
-  debt_amount: number | null;
-  paid_amount: number | null;
-  last_payment_date: string | null;
-  note: string | null;
+  debt_amount?: number | null;
+  paid_amount?: number | null;
+  last_payment_date?: string | null;
+  note?: string | null;
+  created_at?: string | null;
 };
 
 type Product = {
   id: string;
+  user_id?: string;
   name: string;
-  price: number | null;
+  price?: number | null;
 };
 
 type CustomerPrice = {
@@ -45,22 +48,7 @@ type CustomerPrice = {
   customer_id: string;
   product_id: string;
   custom_price: number;
-};
-
-type Invoice = {
-  id: string;
-  user_id?: string;
-  customer_id?: string | null;
-  customer_name?: string | null;
-  invoice_no?: string | null;
-  invoice_date?: string | null;
   created_at?: string | null;
-  subtotal?: number | null;
-  total?: number | null;
-  total_cost?: number | null;
-  total_profit?: number | null;
-  note?: string | null;
-  status?: string | null;
 };
 
 type Profile = {
@@ -70,109 +58,12 @@ type Profile = {
 
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
-const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
 const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
-const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
+const TRIAL_CUSTOMER_PRICES_KEY = "smartacctg_trial_customer_prices";
 
 const LANG_KEY = "smartacctg_lang";
-const THEME_KEY = "smartacctg_theme";
 
 const today = () => new Date().toISOString().slice(0, 10);
-
-const THEMES: Record<
-  ThemeKey,
-  {
-    name: string;
-    pageBg: string;
-    card: string;
-    border: string;
-    accent: string;
-    text: string;
-    subText: string;
-    softBg: string;
-    glow: string;
-  }
-> = {
-  deepTeal: {
-    name: "深青色",
-    pageBg: "#ecfdf5",
-    card: "#ffffff",
-    border: "#14b8a6",
-    accent: "#0f766e",
-    text: "#064e3b",
-    subText: "#64748b",
-    softBg: "#ccfbf1",
-    glow: "0 0 0 1px rgba(20,184,166,0.35), 0 16px 36px rgba(20,184,166,0.22)",
-  },
-  pink: {
-    name: "可爱粉色",
-    pageBg: "#fff7fb",
-    card: "#ffffff",
-    border: "#f472b6",
-    accent: "#db2777",
-    text: "#4a044e",
-    subText: "#831843",
-    softBg: "#fce7f3",
-    glow: "0 0 0 1px rgba(244,114,182,0.32), 0 16px 36px rgba(244,114,182,0.20)",
-  },
-  blackGold: {
-    name: "黑金商务",
-    pageBg: "#111111",
-    card: "#1f1f1f",
-    border: "#facc15",
-    accent: "#d4af37",
-    text: "#fff7ed",
-    subText: "#d6c8a4",
-    softBg: "#3b2f16",
-    glow: "0 0 0 1px rgba(250,204,21,0.38), 0 16px 38px rgba(250,204,21,0.20)",
-  },
-  lightRed: {
-    name: "可爱浅红",
-    pageBg: "#fff1f2",
-    card: "#ffffff",
-    border: "#fb7185",
-    accent: "#e11d48",
-    text: "#881337",
-    subText: "#9f1239",
-    softBg: "#ffe4e6",
-    glow: "0 0 0 1px rgba(251,113,133,0.35), 0 16px 36px rgba(251,113,133,0.20)",
-  },
-  nature: {
-    name: "风景自然系",
-    pageBg: "#f0fdf4",
-    card: "#ffffff",
-    border: "#22d3ee",
-    accent: "#0f766e",
-    text: "#14532d",
-    subText: "#166534",
-    softBg: "#dcfce7",
-    glow: "0 0 0 1px rgba(34,211,238,0.32), 0 16px 36px rgba(34,211,238,0.20)",
-  },
-  sky: {
-    name: "天空蓝",
-    pageBg: "#eff6ff",
-    card: "#ffffff",
-    border: "#38bdf8",
-    accent: "#0284c7",
-    text: "#0f172a",
-    subText: "#0369a1",
-    softBg: "#dbeafe",
-    glow: "0 0 0 1px rgba(56,189,248,0.35), 0 16px 36px rgba(56,189,248,0.20)",
-  },
-  futureForest: {
-    name: "未来世界｜深林青色",
-    pageBg:
-      "radial-gradient(circle at 8% 0%, rgba(45,212,191,0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20,184,166,0.22), transparent 32%), linear-gradient(135deg,#011c1a 0%,#032b29 38%,#064e3b 100%)",
-    card: "rgba(6,47,42,0.94)",
-    border: "#2dd4bf",
-    accent: "#2dd4bf",
-    text: "#ecfeff",
-    subText: "#99f6e4",
-    softBg: "rgba(20,184,166,0.18)",
-    glow:
-      "0 0 0 1px rgba(45,212,191,0.55), 0 0 26px rgba(45,212,191,0.42), 0 22px 58px rgba(6,78,59,0.62)",
-  },
-};
 
 const TXT = {
   zh: {
@@ -206,21 +97,13 @@ const TXT = {
     status: "客户状态",
     debtAmount: "欠款金额",
     paidAmount: "已付款金额",
-    lastPaymentDate: "日期",
+    lastPaymentDate: "最后付款日期",
     note: "备注",
     edit: "编辑",
     delete: "删除",
     whatsapp: "WhatsApp",
     whatsappNoPhone: "这个客户没有填写手机号码或公司电话，请先编辑客户资料。",
     invoice: "开发票",
-    invoiceRecords: "发票记录",
-    createNewInvoice: "新增发票",
-    invoiceNo: "发票号码",
-    invoiceDate: "发票日期",
-    invoiceTotal: "发票总额",
-    invoiceProfit: "利润",
-    noInvoice: "这个客户还没有发票记录",
-    selectedCustomer: "当前客户",
     accounting: "记账系统",
     products: "产品管理",
     invoices: "发票系统",
@@ -230,6 +113,7 @@ const TXT = {
     chooseProduct: "选择产品",
     customPrice: "这个客户的专属价格",
     savePrice: "保存专属价格",
+    deletePrice: "删除专属价格",
     productNormalPrice: "产品原价",
     currentPrices: "目前已设置价格",
     noPrice: "还没有设置专属价格",
@@ -239,7 +123,11 @@ const TXT = {
     goFeature: "前往",
     trialMode: "免费试用模式：资料只会暂存在本机",
     confirmDelete: "确定要删除这个客户吗？",
+    confirmDeletePrice: "确定要删除这个专属价格吗？",
     balance: "余额",
+    totalDebt: "总欠款",
+    totalPaid: "总已付",
+    totalBalance: "欠款余额",
   },
   en: {
     pageTitle: "Customer Records",
@@ -272,21 +160,13 @@ const TXT = {
     status: "Status",
     debtAmount: "Debt Amount",
     paidAmount: "Paid Amount",
-    lastPaymentDate: "Date",
+    lastPaymentDate: "Last Payment Date",
     note: "Note",
     edit: "Edit",
     delete: "Delete",
     whatsapp: "WhatsApp",
     whatsappNoPhone: "This customer has no phone or company phone. Please edit customer info first.",
     invoice: "Invoice",
-    invoiceRecords: "Invoice Records",
-    createNewInvoice: "Create Invoice",
-    invoiceNo: "Invoice No.",
-    invoiceDate: "Invoice Date",
-    invoiceTotal: "Invoice Total",
-    invoiceProfit: "Profit",
-    noInvoice: "No invoice records for this customer yet",
-    selectedCustomer: "Selected Customer",
     accounting: "Accounting",
     products: "Products",
     invoices: "Invoices",
@@ -296,6 +176,7 @@ const TXT = {
     chooseProduct: "Choose Product",
     customPrice: "Special Price",
     savePrice: "Save Special Price",
+    deletePrice: "Delete Special Price",
     productNormalPrice: "Normal Price",
     currentPrices: "Current Special Prices",
     noPrice: "No special price yet",
@@ -305,7 +186,11 @@ const TXT = {
     goFeature: "Go",
     trialMode: "Free trial mode: data is stored locally only",
     confirmDelete: "Confirm delete this customer?",
+    confirmDeletePrice: "Delete this special price?",
     balance: "Balance",
+    totalDebt: "Total Debt",
+    totalPaid: "Total Paid",
+    totalBalance: "Debt Balance",
   },
   ms: {
     pageTitle: "Rekod Pelanggan",
@@ -338,21 +223,13 @@ const TXT = {
     status: "Status",
     debtAmount: "Jumlah Hutang",
     paidAmount: "Jumlah Dibayar",
-    lastPaymentDate: "Tarikh",
+    lastPaymentDate: "Tarikh Bayaran Akhir",
     note: "Catatan",
     edit: "Edit",
     delete: "Padam",
     whatsapp: "WhatsApp",
     whatsappNoPhone: "Pelanggan ini tiada nombor telefon. Sila edit maklumat pelanggan dahulu.",
     invoice: "Invois",
-    invoiceRecords: "Rekod Invois",
-    createNewInvoice: "Tambah Invois",
-    invoiceNo: "No. Invois",
-    invoiceDate: "Tarikh Invois",
-    invoiceTotal: "Jumlah Invois",
-    invoiceProfit: "Untung",
-    noInvoice: "Pelanggan ini belum ada rekod invois",
-    selectedCustomer: "Pelanggan Dipilih",
     accounting: "Sistem Akaun",
     products: "Produk",
     invoices: "Invois",
@@ -362,6 +239,7 @@ const TXT = {
     chooseProduct: "Pilih Produk",
     customPrice: "Harga Khas",
     savePrice: "Simpan Harga Khas",
+    deletePrice: "Padam Harga Khas",
     productNormalPrice: "Harga Asal",
     currentPrices: "Harga Khas Semasa",
     noPrice: "Belum ada harga khas",
@@ -371,11 +249,21 @@ const TXT = {
     goFeature: "Pergi",
     trialMode: "Mod percubaan: data hanya disimpan dalam telefon ini",
     confirmDelete: "Padam pelanggan ini?",
+    confirmDeletePrice: "Padam harga khas ini?",
     balance: "Baki",
+    totalDebt: "Jumlah Hutang",
+    totalPaid: "Jumlah Dibayar",
+    totalBalance: "Baki Hutang",
   },
 };
 
-const CUSTOMERS_PAGE_FIX_CSS = `
+const CUSTOMERS_PAGE_CSS = `
+  .smartacctg-customers-page {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
   .smartacctg-customers-page .customers-list {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -403,6 +291,18 @@ const CUSTOMERS_PAGE_FIX_CSS = `
     text-align: left !important;
   }
 
+  .smartacctg-customers-page .customer-card.debt-customer {
+    background: #fee2e2 !important;
+    color: #7f1d1d !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.34),
+      0 14px 34px rgba(220, 38, 38, 0.2) !important;
+  }
+
+  .smartacctg-customers-page .customer-card.debt-customer * {
+    color: inherit;
+  }
+
   .smartacctg-customers-page .customer-card h3 {
     margin: 0 0 10px 0 !important;
     font-size: var(--sa-fs-xl) !important;
@@ -414,21 +314,6 @@ const CUSTOMERS_PAGE_FIX_CSS = `
     margin: 8px 0 0 !important;
     line-height: 1.55 !important;
     overflow-wrap: anywhere !important;
-  }
-
-  .smartacctg-customers-page .customer-card.debt-customer-card {
-    background: #fee2e2 !important;
-    border-color: #dc2626 !important;
-    color: #7f1d1d !important;
-    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35),
-      0 12px 28px rgba(220, 38, 38, 0.22) !important;
-  }
-
-  .smartacctg-customers-page .customer-card.debt-customer-card h3,
-  .smartacctg-customers-page .customer-card.debt-customer-card p,
-  .smartacctg-customers-page .customer-card.debt-customer-card span,
-  .smartacctg-customers-page .customer-card.debt-customer-card strong {
-    color: #7f1d1d !important;
   }
 
   .smartacctg-customers-page .customer-status-badge {
@@ -457,82 +342,68 @@ const CUSTOMERS_PAGE_FIX_CSS = `
   }
 
   .smartacctg-customers-page .customers-action-row button {
-    flex: 0 1 calc(33.333% - 8px) !important;
-    min-width: 108px !important;
-    max-width: 190px !important;
+    flex: 0 1 calc(50% - 6px) !important;
+    min-width: 118px !important;
     width: auto !important;
     white-space: normal !important;
     text-align: center !important;
   }
 
-  .smartacctg-customers-page .sa-center-date-input {
+  .smartacctg-customers-page input[type="date"] {
     text-align: center !important;
     text-align-last: center !important;
     display: block !important;
     width: 100% !important;
+    height: var(--sa-control-h) !important;
+    line-height: var(--sa-control-h) !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
     -webkit-appearance: none !important;
     appearance: none !important;
   }
 
-  .smartacctg-customers-page .sa-center-date-input::-webkit-date-and-time-value {
+  .smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value {
     text-align: center !important;
     width: 100% !important;
     margin: 0 auto !important;
     min-height: 1.6em !important;
   }
 
-  .smartacctg-customers-page .sa-center-date-input::-webkit-datetime-edit {
+  .smartacctg-customers-page input[type="date"]::-webkit-datetime-edit {
     width: 100% !important;
     text-align: center !important;
   }
 
-  .smartacctg-customers-page .sa-center-date-input::-webkit-datetime-edit-fields-wrapper {
+  .smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
     justify-content: center !important;
     text-align: center !important;
   }
 
-  .smartacctg-customers-page .sa-modal {
-    width: 100% !important;
-    max-width: 900px !important;
-    max-height: 90vh !important;
-    overflow-y: auto !important;
-    border-radius: var(--sa-radius-card) !important;
-    padding: var(--sa-card-pad) !important;
-  }
-
-  .smartacctg-customers-page .sa-modal-header {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: center !important;
-    gap: 12px !important;
-    width: 100% !important;
-  }
-
-  .smartacctg-customers-page .customers-close-btn {
-    width: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    height: auto !important;
-    padding: 0 4px !important;
-    border: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    color: #dc2626 !important;
-    font-size: var(--sa-fs-base) !important;
-    font-weight: 900 !important;
-    line-height: 1.2 !important;
-  }
-
-  .smartacctg-customers-page .customers-fullscreen-overlay {
+  .smartacctg-customers-page .customers-overlay {
     position: fixed !important;
     inset: 0 !important;
     z-index: 9999 !important;
     width: 100vw !important;
     height: 100dvh !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
+    padding: clamp(12px, 3vw, 24px) !important;
+    overflow-y: auto !important;
     background: rgba(15, 23, 42, 0.58) !important;
+  }
+
+  .smartacctg-customers-page .customers-modal {
+    width: 100% !important;
+    max-width: 900px !important;
+    margin: 0 auto !important;
+    max-height: 92dvh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: var(--sa-radius-card) !important;
+    padding: var(--sa-card-pad) !important;
+  }
+
+  .smartacctg-customers-page .customers-fullscreen-overlay {
+    padding: 0 !important;
+    overflow: hidden !important;
   }
 
   .smartacctg-customers-page .customers-fullscreen-modal {
@@ -554,12 +425,33 @@ const CUSTOMERS_PAGE_FIX_CSS = `
     padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
   }
 
-  .smartacctg-customers-page .customers-fullscreen-modal .sa-modal-header {
+  .smartacctg-customers-page .customers-modal-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
     position: sticky !important;
     top: 0 !important;
-    z-index: 5 !important;
+    z-index: 6 !important;
     background: inherit !important;
     padding-bottom: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .smartacctg-customers-page .customers-close-btn {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 4px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #dc2626 !important;
+    font-size: var(--sa-fs-base) !important;
+    font-weight: 900 !important;
+    line-height: 1.2 !important;
   }
 
   @media (max-width: 768px) {
@@ -587,8 +479,8 @@ const CUSTOMERS_PAGE_FIX_CSS = `
     }
 
     .smartacctg-customers-page .customers-action-row button {
-      flex: 0 1 calc(33.333% - 6px) !important;
-      min-width: 96px !important;
+      flex: 0 1 calc(50% - 5px) !important;
+      min-width: 0 !important;
       max-width: none !important;
       padding-left: 8px !important;
       padding-right: 8px !important;
@@ -606,9 +498,9 @@ const CUSTOMERS_PAGE_FIX_CSS = `
   }
 `;
 
-function makeId() {
+function makeId(prefix = "id") {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function safeLocalGet(key: string) {
@@ -637,16 +529,6 @@ function safeParseArray<T>(raw: string | null): T[] {
   }
 }
 
-function isThemeKey(value: unknown): value is ThemeKey {
-  return typeof value === "string" && Object.prototype.hasOwnProperty.call(THEMES, value);
-}
-
-function normalizeThemeKey(value: unknown, fallback: ThemeKey = "deepTeal"): ThemeKey {
-  if (isThemeKey(value)) return value;
-  if (value === "futureWorld") return "futureForest";
-  return fallback;
-}
-
 function getInitialLang(): Lang {
   if (typeof window === "undefined") return "zh";
 
@@ -660,58 +542,80 @@ function getInitialLang(): Lang {
   return "zh";
 }
 
-function getInitialTheme(): ThemeKey {
-  if (typeof window === "undefined") return "deepTeal";
-
+function getReturnFromUrl() {
+  if (typeof window === "undefined") return "";
   const q = new URLSearchParams(window.location.search);
-  const urlTheme = q.get("theme");
-  const savedTheme = safeLocalGet(THEME_KEY);
-
-  return normalizeThemeKey(urlTheme || savedTheme || "deepTeal", "deepTeal");
+  return q.get("return") || "";
 }
 
-function applyThemeToDocument(key: ThemeKey) {
+function getOpenFromUrl() {
+  if (typeof window === "undefined") return "";
+  const q = new URLSearchParams(window.location.search);
+  return q.get("open") || "";
+}
+
+function getFullscreenFromUrl() {
+  if (typeof window === "undefined") return false;
+  const q = new URLSearchParams(window.location.search);
+  return q.get("fullscreen") === "1";
+}
+
+function applyThemeEverywhere(key: ThemeKey) {
   if (typeof document === "undefined") return;
 
   const fixedKey = normalizeThemeKey(key);
-  const theme = THEMES[fixedKey] || THEMES.deepTeal;
+  const theme = (THEMES[fixedKey] || THEMES.deepTeal) as any;
+
+  applyThemeToDocument(fixedKey);
 
   document.documentElement.setAttribute("data-sa-theme", fixedKey);
   document.documentElement.setAttribute("data-smartacctg-theme", fixedKey);
 
   document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
   document.documentElement.style.setProperty("--sa-card-bg", theme.card);
-  document.documentElement.style.setProperty("--sa-panel-bg", theme.card);
-  document.documentElement.style.setProperty("--sa-item-bg", theme.card);
-  document.documentElement.style.setProperty("--sa-input-bg", theme.card);
-  document.documentElement.style.setProperty("--sa-input-text", theme.text);
+  document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
+  document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
   document.documentElement.style.setProperty("--sa-border", theme.border);
   document.documentElement.style.setProperty("--sa-accent", theme.accent);
   document.documentElement.style.setProperty("--sa-text", theme.text);
-  document.documentElement.style.setProperty("--sa-panel-text", theme.text);
-  document.documentElement.style.setProperty("--sa-muted", theme.subText);
-  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg);
+  document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
+  document.documentElement.style.setProperty("--sa-muted", theme.muted || theme.subText);
+  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.card);
+  document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card);
   document.documentElement.style.setProperty("--sa-glow", theme.glow);
-
-  document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
-  document.documentElement.style.setProperty("--sa-theme-card", theme.card);
-  document.documentElement.style.setProperty("--sa-theme-border", theme.border);
-  document.documentElement.style.setProperty("--sa-theme-accent", theme.accent);
-  document.documentElement.style.setProperty("--sa-theme-text", theme.text);
-  document.documentElement.style.setProperty("--sa-theme-muted", theme.subText);
-  document.documentElement.style.setProperty("--sa-theme-soft-bg", theme.softBg);
-  document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
 }
 
 function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
   if (typeof window === "undefined") return;
 
   const q = new URLSearchParams(window.location.search);
+
   q.set("lang", nextLang);
   q.set("theme", nextTheme);
   q.set("refresh", String(Date.now()));
 
   window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+}
+
+function formatRM(value: number) {
+  return `RM ${Number(value || 0).toLocaleString("en-MY", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function getCustomerStatus(customer: Customer): CustomerStatus {
+  return (
+    customer.customer_status ||
+    customer.status ||
+    (Number(customer.debt_amount || 0) - Number(customer.paid_amount || 0) > 0 ? "debt" : "normal")
+  ) as CustomerStatus;
+}
+
+function getCustomerBalance(customer: Customer) {
+  return Number(customer.debt_amount || 0) - Number(customer.paid_amount || 0);
 }
 
 function isSchemaColumnError(error: any) {
@@ -726,6 +630,7 @@ function isSchemaColumnError(error: any) {
 
 function getMissingColumnName(error: any) {
   const message = String(error?.message || "");
+
   const match1 = message.match(/Could not find the '([^']+)' column/i);
   const match2 = message.match(/column "([^"]+)" does not exist/i);
   const match3 = message.match(/column '([^']+)' does not exist/i);
@@ -747,11 +652,13 @@ const CUSTOMER_OPTIONAL_KEYS = [
   "note",
 ];
 
-async function insertAdaptive(table: string, inputPayload: Record<string, any>) {
+const CUSTOMER_PRICE_OPTIONAL_KEYS = ["custom_price", "product_id", "customer_id"];
+
+async function insertAdaptive(table: string, inputPayload: Record<string, any>, optionalKeys: string[]) {
   let payload: Record<string, any> = { ...inputPayload };
   let lastError: any = null;
 
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 35; i++) {
     const { data, error } = await supabase.from(table).insert(payload).select("*").single();
 
     if (!error) return data;
@@ -769,9 +676,7 @@ async function insertAdaptive(table: string, inputPayload: Record<string, any>) 
       continue;
     }
 
-    const removable = CUSTOMER_OPTIONAL_KEYS.find((key) =>
-      Object.prototype.hasOwnProperty.call(payload, key)
-    );
+    const removable = optionalKeys.find((key) => Object.prototype.hasOwnProperty.call(payload, key));
 
     if (!removable) throw error;
 
@@ -787,17 +692,20 @@ async function updateAdaptive(
   table: string,
   id: string,
   userId: string,
-  inputPayload: Record<string, any>
+  inputPayload: Record<string, any>,
+  optionalKeys: string[]
 ) {
   let payload: Record<string, any> = { ...inputPayload };
   let lastError: any = null;
 
-  for (let i = 0; i < 30; i++) {
-    const { error } = await supabase
-      .from(table)
-      .update(payload)
-      .eq("id", id)
-      .eq("user_id", userId);
+  for (let i = 0; i < 35; i++) {
+    let query = supabase.from(table).update(payload).eq("id", id);
+
+    if (userId) {
+      query = query.eq("user_id", userId);
+    }
+
+    const { error } = await query;
 
     if (!error) return;
 
@@ -814,9 +722,7 @@ async function updateAdaptive(
       continue;
     }
 
-    const removable = CUSTOMER_OPTIONAL_KEYS.find((key) =>
-      Object.prototype.hasOwnProperty.call(payload, key)
-    );
+    const removable = optionalKeys.find((key) => Object.prototype.hasOwnProperty.call(payload, key));
 
     if (!removable) throw error;
 
@@ -828,45 +734,20 @@ async function updateAdaptive(
   throw lastError || new Error("Update failed");
 }
 
-function normalizeCustomer(row: any): Customer {
-  return {
-    id: String(row?.id || makeId()),
-    user_id: row?.user_id,
-    name: String(row?.name || ""),
-    phone: row?.phone || null,
-    email: row?.email || null,
-    company_name: row?.company_name || null,
-    company_reg_no: row?.company_reg_no || null,
-    company_phone: row?.company_phone || null,
-    address: row?.address || null,
-    status: (row?.status || row?.customer_status || "normal") as CustomerStatus,
-    customer_status: (row?.customer_status || row?.status || "normal") as CustomerStatus,
-    debt_amount: Number(row?.debt_amount || 0),
-    paid_amount: Number(row?.paid_amount || 0),
-    last_payment_date: row?.last_payment_date || null,
-    note: row?.note || null,
-  };
-}
+function cleanPhoneForWhatsapp(raw?: string | null) {
+  let phone = String(raw || "").replace(/[^\d]/g, "");
 
-function customerBalance(customer: Customer) {
-  return Number(customer.debt_amount || 0) - Number(customer.paid_amount || 0);
-}
+  if (!phone) return "";
 
-function formatRM(value: number) {
-  return `RM ${Number(value || 0).toLocaleString("en-MY", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+  if (phone.startsWith("0")) {
+    phone = `60${phone.slice(1)}`;
+  } else if (phone.startsWith("1")) {
+    phone = `60${phone}`;
+  } else if (!phone.startsWith("60")) {
+    phone = `60${phone}`;
+  }
 
-function normalizePhoneForWhatsapp(value: string) {
-  const only = String(value || "").replace(/[^\d]/g, "");
-
-  if (!only) return "";
-  if (only.startsWith("60")) return only;
-  if (only.startsWith("0")) return `60${only.slice(1)}`;
-
-  return only;
+  return phone;
 }
 
 export default function CustomersPage() {
@@ -878,18 +759,18 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerPrices, setCustomerPrices] = useState<CustomerPrice[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | CustomerStatus>("all");
 
   const [showForm, setShowForm] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [returnTo, setReturnTo] = useState("");
+
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const [selectedInvoiceCustomerId, setSelectedInvoiceCustomerId] = useState("");
   const [relatedPath, setRelatedPath] = useState("/dashboard/invoices");
 
   const [priceCustomerId, setPriceCustomerId] = useState("");
@@ -912,31 +793,56 @@ export default function CustomersPage() {
   });
 
   const t = TXT[lang];
-  const theme = THEMES[themeKey] || THEMES.deepTeal;
+  const theme = (THEMES[themeKey] || THEMES.deepTeal) as any;
+  const themeSubText = theme.subText || theme.muted || "#64748b";
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
     borderColor: theme.border,
-    background: themeKey === "blackGold" || themeKey === "futureForest" ? theme.softBg : "#fff",
+    background: theme.inputBg || "#ffffff",
+    color: theme.inputText || "#111827",
+  };
+
+  const themedCardStyle: CSSProperties = {
+    background: theme.card,
+    borderColor: theme.border,
+    boxShadow: theme.glow,
     color: theme.text,
   };
 
+  const themedPanelStyle: CSSProperties = {
+    background: theme.panelBg || theme.softBg || theme.card,
+    borderColor: theme.border,
+    color: theme.panelText || theme.text,
+  };
+
   useEffect(() => {
-    applyThemeToDocument(themeKey);
+    applyThemeEverywhere(themeKey);
   }, [themeKey]);
 
   useEffect(() => {
     const initialLang = getInitialLang();
-    const initialTheme = getInitialTheme();
+    const initialTheme = getThemeKeyFromUrlOrLocalStorage("deepTeal");
 
     setLang(initialLang);
     safeLocalSet(LANG_KEY, initialLang);
 
     setThemeKey(initialTheme);
-    safeLocalSet(THEME_KEY, initialTheme);
-    applyThemeToDocument(initialTheme);
+    saveThemeKey(initialTheme);
+    applyThemeEverywhere(initialTheme);
+
+    const returnParam = getReturnFromUrl();
+    const openParam = getOpenFromUrl();
+    const fullscreenParam = getFullscreenFromUrl();
+
+    setReturnTo(returnParam);
+    setIsFullscreen(fullscreenParam);
 
     init(initialLang, initialTheme);
+
+    if (openParam === "new") {
+      setTimeout(() => openNewForm(fullscreenParam), 120);
+    }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -944,12 +850,6 @@ export default function CustomersPage() {
   async function init(currentLang: Lang, currentTheme: ThemeKey) {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
-    const openParam = q.get("open");
-    const fullscreenParam = q.get("fullscreen");
-
-    const shouldOpenNew = openParam === "new";
-    const shouldFullscreen = fullscreenParam === "1" || shouldOpenNew;
-
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
@@ -960,23 +860,13 @@ export default function CustomersPage() {
           setIsTrial(true);
           setSession(null);
 
-          setCustomers(
-            safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)).map((x) =>
-              normalizeCustomer(x)
-            )
-          );
+          setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
           setProducts(safeParseArray<Product>(safeLocalGet(TRIAL_PRODUCTS_KEY)));
           setCustomerPrices(
             safeParseArray<CustomerPrice>(safeLocalGet(TRIAL_CUSTOMER_PRICES_KEY))
           );
-          setInvoices(safeParseArray<Invoice>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
           replaceUrlLangTheme(currentLang, currentTheme);
-
-          if (shouldOpenNew) {
-            setTimeout(() => openNewForm(shouldFullscreen), 100);
-          }
-
           return;
         }
       } catch {
@@ -985,9 +875,8 @@ export default function CustomersPage() {
 
       safeLocalRemove(TRIAL_KEY);
       safeLocalRemove(TRIAL_CUSTOMERS_KEY);
-      safeLocalRemove(TRIAL_CUSTOMER_PRICES_KEY);
       safeLocalRemove(TRIAL_PRODUCTS_KEY);
-      safeLocalRemove(TRIAL_INVOICES_KEY);
+      safeLocalRemove(TRIAL_CUSTOMER_PRICES_KEY);
       window.location.href = "/zh";
       return;
     }
@@ -1010,19 +899,22 @@ export default function CustomersPage() {
       .eq("id", userId)
       .single();
 
+    let finalTheme = currentTheme;
     const profile = profileData as Profile | null;
-    const profileTheme = normalizeThemeKey(profile?.theme || currentTheme, currentTheme);
 
-    setThemeKey(profileTheme);
-    safeLocalSet(THEME_KEY, profileTheme);
-    applyThemeToDocument(profileTheme);
-    replaceUrlLangTheme(currentLang, profileTheme);
+    if (profile?.theme) {
+      const profileTheme = normalizeThemeKey(profile.theme);
 
-    await loadAll(userId);
-
-    if (shouldOpenNew) {
-      setTimeout(() => openNewForm(shouldFullscreen), 100);
+      if (isThemeKey(profileTheme)) {
+        finalTheme = profileTheme;
+        setThemeKey(profileTheme);
+        saveThemeKey(profileTheme);
+        applyThemeEverywhere(profileTheme);
+      }
     }
+
+    replaceUrlLangTheme(currentLang, finalTheme);
+    await loadAll(userId);
   }
 
   async function loadAll(userId: string) {
@@ -1034,28 +926,34 @@ export default function CustomersPage() {
 
     const { data: productData } = await supabase
       .from("products")
-      .select("id,name,price")
+      .select("id,user_id,name,price")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     const { data: priceData } = await supabase
       .from("customer_prices")
       .select("*")
-      .eq("user_id", userId);
-
-    const { data: invoiceData } = await supabase
-      .from("invoices")
-      .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
-    setCustomers((customerData || []).map((x) => normalizeCustomer(x)));
+    setCustomers((customerData || []) as Customer[]);
     setProducts((productData || []) as Product[]);
     setCustomerPrices((priceData || []) as CustomerPrice[]);
-    setInvoices((invoiceData || []) as Invoice[]);
   }
 
-  function buildUrl(path: string, extra?: string) {
+  function buildDashboardUrl() {
+    const q = new URLSearchParams();
+
+    if (isTrial) q.set("mode", "trial");
+
+    q.set("lang", lang);
+    q.set("theme", themeKey);
+    q.set("refresh", String(Date.now()));
+
+    return `/dashboard?${q.toString()}`;
+  }
+
+  function buildPageUrl(path: string, extra?: string) {
     const q = new URLSearchParams();
 
     if (isTrial) q.set("mode", "trial");
@@ -1072,16 +970,12 @@ export default function CustomersPage() {
     return `${path}?${q.toString()}`;
   }
 
+  function goBack() {
+    window.location.href = buildDashboardUrl();
+  }
+
   function go(path: string, extra?: string) {
-    window.location.href = buildUrl(path, extra);
-  }
-
-  function backToDashboard() {
-    window.location.href = buildUrl("/dashboard");
-  }
-
-  function goRelatedFeature() {
-    go(relatedPath);
+    window.location.href = buildPageUrl(path, extra);
   }
 
   function switchLang(next: Lang) {
@@ -1090,17 +984,8 @@ export default function CustomersPage() {
     replaceUrlLangTheme(next, themeKey);
   }
 
-  function shouldReturnDashboard() {
-    if (typeof window === "undefined") return false;
-    const q = new URLSearchParams(window.location.search);
-    return q.get("return") === "dashboard";
-  }
-
-  function returnDashboardNow() {
-    window.location.href = buildUrl("/dashboard");
-  }
-
   function resetForm() {
+    setEditingId(null);
     setForm({
       name: "",
       phone: "",
@@ -1117,26 +1002,25 @@ export default function CustomersPage() {
     });
   }
 
-  function openNewForm(forceFullscreen = false) {
-    setEditingId(null);
+  function openNewForm(fullscreen = false) {
     resetForm();
-    setFullscreen(forceFullscreen);
+    setIsFullscreen(fullscreen);
     setShowForm(true);
-    setMsg("");
   }
 
   function closeForm() {
-    if (shouldReturnDashboard()) {
-      returnDashboardNow();
+    const q = new URLSearchParams(window.location.search);
+    const returnParam = q.get("return") || returnTo;
+
+    if (returnParam === "dashboard") {
+      window.location.href = buildDashboardUrl();
       return;
     }
 
-    setEditingId(null);
-    setFullscreen(false);
     setShowForm(false);
+    setIsFullscreen(false);
     resetForm();
 
-    const q = new URLSearchParams(window.location.search);
     q.delete("open");
     q.delete("fullscreen");
     q.delete("return");
@@ -1147,30 +1031,42 @@ export default function CustomersPage() {
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
   }
 
-  function editCustomer(c: Customer) {
-    setEditingId(c.id);
-    setFullscreen(false);
+  function editCustomer(customer: Customer) {
+    setEditingId(customer.id);
     setForm({
-      name: c.name || "",
-      phone: c.phone || "",
-      email: c.email || "",
-      company_name: c.company_name || "",
-      company_reg_no: c.company_reg_no || "",
-      company_phone: c.company_phone || "",
-      address: c.address || "",
-      status: (c.status || c.customer_status || "normal") as CustomerStatus,
-      debt_amount: String(c.debt_amount || ""),
-      paid_amount: String(c.paid_amount || ""),
-      last_payment_date: c.last_payment_date || today(),
-      note: c.note || "",
+      name: customer.name || "",
+      phone: customer.phone || "",
+      email: customer.email || "",
+      company_name: customer.company_name || "",
+      company_reg_no: customer.company_reg_no || "",
+      company_phone: customer.company_phone || "",
+      address: customer.address || "",
+      status: getCustomerStatus(customer),
+      debt_amount: String(customer.debt_amount || ""),
+      paid_amount: String(customer.paid_amount || ""),
+      last_payment_date: customer.last_payment_date || today(),
+      note: customer.note || "",
     });
+    setIsFullscreen(false);
     setShowForm(true);
-    setMsg("");
   }
 
-  function saveTrialCustomers(nextCustomers: Customer[]) {
-    setCustomers(nextCustomers);
-    safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
+  function buildCustomerPayload() {
+    return {
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      company_name: form.company_name.trim(),
+      company_reg_no: form.company_reg_no.trim(),
+      company_phone: form.company_phone.trim(),
+      address: form.address.trim(),
+      status: form.status,
+      customer_status: form.status,
+      debt_amount: Number(form.debt_amount || 0),
+      paid_amount: Number(form.paid_amount || 0),
+      last_payment_date: form.last_payment_date || null,
+      note: form.note.trim(),
+    };
   }
 
   async function saveCustomer() {
@@ -1181,84 +1077,94 @@ export default function CustomersPage() {
       return;
     }
 
-    setLoading(true);
-
-    const payload = {
-      name: form.name.trim(),
-      phone: form.phone.trim() || null,
-      email: form.email.trim() || null,
-      company_name: form.company_name.trim() || null,
-      company_reg_no: form.company_reg_no.trim() || null,
-      company_phone: form.company_phone.trim() || null,
-      address: form.address.trim() || null,
-      status: form.status,
-      customer_status: form.status,
-      debt_amount: Number(form.debt_amount || 0),
-      paid_amount: Number(form.paid_amount || 0),
-      last_payment_date: form.last_payment_date || null,
-      note: form.note.trim() || null,
-    };
+    setIsSaving(true);
 
     try {
+      const payload = buildCustomerPayload();
+
       if (isTrial) {
-        const row = normalizeCustomer({
-          id: editingId || makeId(),
+        const trialPayload: Customer = {
+          id: editingId || makeId("customer"),
           user_id: "trial",
           ...payload,
-        });
+          created_at: new Date().toISOString(),
+        };
 
-        const next = editingId
-          ? customers.map((x) => (x.id === editingId ? row : x))
-          : [row, ...customers];
+        const nextCustomers = editingId
+          ? customers.map((c) => (c.id === editingId ? trialPayload : c))
+          : [trialPayload, ...customers];
 
-        saveTrialCustomers(next);
+        setCustomers(nextCustomers);
+        safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
+
         setMsg(t.saved);
-
-        if (shouldReturnDashboard()) {
-          returnDashboardNow();
-          return;
-        }
-
+        setIsSaving(false);
         closeForm();
         return;
       }
 
-      if (!session) return;
-
-      if (editingId) {
-        await updateAdaptive("customers", editingId, session.user.id, payload);
-      } else {
-        await insertAdaptive("customers", {
-          user_id: session.user.id,
-          ...payload,
-        });
-      }
-
-      setMsg(t.saved);
-
-      if (shouldReturnDashboard()) {
-        returnDashboardNow();
+      if (!session) {
+        setIsSaving(false);
         return;
       }
 
+      if (editingId) {
+        await updateAdaptive(
+          "customers",
+          editingId,
+          session.user.id,
+          payload,
+          CUSTOMER_OPTIONAL_KEYS
+        );
+
+        setCustomers((prev) =>
+          prev.map((c) =>
+            c.id === editingId
+              ? {
+                  ...c,
+                  ...payload,
+                }
+              : c
+          )
+        );
+      } else {
+        const saved = (await insertAdaptive(
+          "customers",
+          {
+            user_id: session.user.id,
+            ...payload,
+          },
+          CUSTOMER_OPTIONAL_KEYS
+        )) as Customer;
+
+        setCustomers((prev) => [saved, ...prev]);
+      }
+
+      setMsg(t.saved);
+      setIsSaving(false);
       closeForm();
-      await loadAll(session.user.id);
+
+      if (session?.user.id) {
+        await loadAll(session.user.id);
+      }
     } catch (error: any) {
+      setIsSaving(false);
       setMsg(t.saveFailed + (error?.message || String(error)));
-    } finally {
-      setLoading(false);
     }
   }
 
-  async function deleteCustomer(c: Customer) {
-    if (!confirm(t.confirmDelete)) return;
+  async function deleteCustomer(customer: Customer) {
+    const yes = window.confirm(t.confirmDelete);
+    if (!yes) return;
 
     if (isTrial) {
-      const nextCustomers = customers.filter((x) => x.id !== c.id);
-      const nextPrices = customerPrices.filter((x) => x.customer_id !== c.id);
+      const nextCustomers = customers.filter((c) => c.id !== customer.id);
+      const nextPrices = customerPrices.filter((p) => p.customer_id !== customer.id);
 
-      saveTrialCustomers(nextCustomers);
+      setCustomers(nextCustomers);
       setCustomerPrices(nextPrices);
+
+      safeLocalSet(TRIAL_CUSTOMERS_KEY, JSON.stringify(nextCustomers));
       safeLocalSet(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(nextPrices));
 
       setMsg(t.deleted);
@@ -1267,11 +1173,12 @@ export default function CustomersPage() {
 
     if (!session) return;
 
-    await supabase.from("customer_prices").delete().eq("customer_id", c.id);
+    await supabase.from("customer_prices").delete().eq("customer_id", customer.id);
+
     const { error } = await supabase
       .from("customers")
       .delete()
-      .eq("id", c.id)
+      .eq("id", customer.id)
       .eq("user_id", session.user.id);
 
     if (error) {
@@ -1279,66 +1186,59 @@ export default function CustomersPage() {
       return;
     }
 
+    setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+    setCustomerPrices((prev) => prev.filter((p) => p.customer_id !== customer.id));
     setMsg(t.deleted);
-    await loadAll(session.user.id);
   }
 
-  function whatsappCustomer(c: Customer) {
-    const rawPhone = c.phone || c.company_phone || "";
-    const phone = normalizePhoneForWhatsapp(rawPhone);
+  function openWhatsapp(customer: Customer) {
+    const phone = cleanPhoneForWhatsapp(customer.phone || customer.company_phone);
 
     if (!phone) {
-      setMsg(t.whatsappNoPhone);
+      window.alert(t.whatsappNoPhone);
       return;
     }
 
-    const text = encodeURIComponent(`${c.name || ""} ${c.company_name || ""}`.trim());
-    window.location.href = `https://wa.me/${phone}?text=${text}`;
+    window.location.href = `https://wa.me/${phone}`;
   }
 
-  function createInvoiceForCustomer(c: Customer) {
-    go(
-      "/dashboard/invoices",
-      `open=new&fullscreen=1&return=dashboard&customerId=${encodeURIComponent(c.id)}`
-    );
-  }
+  function createInvoiceForCustomer(customer: Customer) {
+    const extra = new URLSearchParams();
 
-  function statusText(status?: CustomerStatus | null) {
-    if (status === "vip") return t.vip;
-    if (status === "debt") return t.debt;
-    if (status === "blocked") return t.blocked;
-    return t.normal;
-  }
+    extra.set("customer_id", customer.id);
+    extra.set("open", "new");
+    extra.set("fullscreen", "1");
+    extra.set("return", "customers");
 
-  function statusBadgeStyle(status?: CustomerStatus | null): CSSProperties {
-    if (status === "vip") return { background: "#fef3c7", color: "#92400e" };
-    if (status === "debt") return { background: "#fee2e2", color: "#b91c1c" };
-    if (status === "blocked") return { background: "#e5e7eb", color: "#374151" };
-
-    return { background: theme.softBg, color: theme.accent };
+    go("/dashboard/invoices", extra.toString());
   }
 
   async function saveCustomerPrice() {
-    if (!priceCustomerId || !priceProductId || !customPrice) return;
+    setMsg("");
 
-    const price = Number(customPrice || 0);
+    if (!priceCustomerId || !priceProductId || !customPrice) {
+      return;
+    }
+
+    const priceValue = Number(customPrice || 0);
 
     if (isTrial) {
       const existing = customerPrices.find(
-        (x) => x.customer_id === priceCustomerId && x.product_id === priceProductId
+        (p) => p.customer_id === priceCustomerId && p.product_id === priceProductId
       );
 
-      const row: CustomerPrice = {
-        id: existing?.id || makeId(),
+      const nextPrice: CustomerPrice = {
+        id: existing?.id || makeId("price"),
         user_id: "trial",
         customer_id: priceCustomerId,
         product_id: priceProductId,
-        custom_price: price,
+        custom_price: priceValue,
+        created_at: existing?.created_at || new Date().toISOString(),
       };
 
       const next = existing
-        ? customerPrices.map((x) => (x.id === existing.id ? row : x))
-        : [row, ...customerPrices];
+        ? customerPrices.map((p) => (p.id === existing.id ? nextPrice : p))
+        : [nextPrice, ...customerPrices];
 
       setCustomerPrices(next);
       safeLocalSet(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(next));
@@ -1348,123 +1248,197 @@ export default function CustomersPage() {
 
     if (!session) return;
 
-    const existing = customerPrices.find(
-      (x) => x.customer_id === priceCustomerId && x.product_id === priceProductId
-    );
+    try {
+      const existing = customerPrices.find(
+        (p) => p.customer_id === priceCustomerId && p.product_id === priceProductId
+      );
 
-    if (existing) {
-      const { error } = await supabase
-        .from("customer_prices")
-        .update({ custom_price: price })
-        .eq("id", existing.id)
-        .eq("user_id", session.user.id);
+      if (existing) {
+        await updateAdaptive(
+          "customer_prices",
+          existing.id,
+          session.user.id,
+          { custom_price: priceValue },
+          CUSTOMER_PRICE_OPTIONAL_KEYS
+        );
 
-      if (error) {
-        setMsg(error.message);
-        return;
+        setCustomerPrices((prev) =>
+          prev.map((p) => (p.id === existing.id ? { ...p, custom_price: priceValue } : p))
+        );
+      } else {
+        const saved = (await insertAdaptive(
+          "customer_prices",
+          {
+            user_id: session.user.id,
+            customer_id: priceCustomerId,
+            product_id: priceProductId,
+            custom_price: priceValue,
+          },
+          CUSTOMER_PRICE_OPTIONAL_KEYS
+        )) as CustomerPrice;
+
+        setCustomerPrices((prev) => [saved, ...prev]);
       }
-    } else {
-      const { error } = await supabase.from("customer_prices").insert({
-        user_id: session.user.id,
-        customer_id: priceCustomerId,
-        product_id: priceProductId,
-        custom_price: price,
-      });
 
-      if (error) {
-        setMsg(error.message);
-        return;
-      }
+      setMsg(t.saved);
+    } catch (error: any) {
+      setMsg(t.saveFailed + (error?.message || String(error)));
+    }
+  }
+
+  async function deleteCustomerPrice(price: CustomerPrice) {
+    const yes = window.confirm(t.confirmDeletePrice);
+    if (!yes) return;
+
+    if (isTrial) {
+      const next = customerPrices.filter((p) => p.id !== price.id);
+      setCustomerPrices(next);
+      safeLocalSet(TRIAL_CUSTOMER_PRICES_KEY, JSON.stringify(next));
+      setMsg(t.deleted);
+      return;
     }
 
-    setMsg(t.saved);
-    await loadAll(session.user.id);
+    if (!session) return;
+
+    const { error } = await supabase
+      .from("customer_prices")
+      .delete()
+      .eq("id", price.id)
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      setMsg(error.message);
+      return;
+    }
+
+    setCustomerPrices((prev) => prev.filter((p) => p.id !== price.id));
+    setMsg(t.deleted);
   }
 
   const filteredCustomers = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const s = search.trim().toLowerCase();
 
-    return customers.filter((c) => {
-      const fixedStatus = (c.status || c.customer_status || "normal") as CustomerStatus;
-      const matchStatus = statusFilter === "all" || fixedStatus === statusFilter;
+    return customers.filter((customer) => {
+      const status = getCustomerStatus(customer);
 
-      const text = [
-        c.name,
-        c.phone,
-        c.email,
-        c.company_name,
-        c.company_reg_no,
-        c.company_phone,
-        c.address,
-        c.note,
+      const matchStatus = statusFilter === "all" || status === statusFilter;
+
+      const searchText = [
+        customer.name,
+        customer.phone,
+        customer.email,
+        customer.company_name,
+        customer.company_reg_no,
+        customer.company_phone,
+        customer.address,
+        customer.note,
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
 
-      const matchSearch = !q || text.includes(q);
+      const matchSearch = !s || searchText.includes(s);
 
       return matchStatus && matchSearch;
     });
   }, [customers, search, statusFilter]);
 
-  const selectedProduct = products.find((p) => p.id === priceProductId) || null;
+  const summary = useMemo(() => {
+    return customers.reduce(
+      (acc, customer) => {
+        acc.totalDebt += Number(customer.debt_amount || 0);
+        acc.totalPaid += Number(customer.paid_amount || 0);
+        acc.totalBalance += getCustomerBalance(customer);
+        return acc;
+      },
+      {
+        totalDebt: 0,
+        totalPaid: 0,
+        totalBalance: 0,
+      }
+    );
+  }, [customers]);
 
-  const currentPrices = useMemo(() => {
-    return customerPrices.map((price) => {
-      const customer = customers.find((c) => c.id === price.customer_id);
-      const product = products.find((p) => p.id === price.product_id);
+  function statusLabel(status: CustomerStatus) {
+    if (status === "vip") return t.vip;
+    if (status === "debt") return t.debt;
+    if (status === "blocked") return t.blocked;
+    return t.normal;
+  }
 
+  function statusBadgeStyle(status: CustomerStatus): CSSProperties {
+    if (status === "debt") {
       return {
-        ...price,
-        customerName: customer?.name || "-",
-        productName: product?.name || "-",
-        normalPrice: Number(product?.price || 0),
+        background: "#fee2e2",
+        color: "#dc2626",
+        border: "1px solid #fecaca",
       };
-    });
-  }, [customerPrices, customers, products]);
+    }
 
-  const selectedInvoiceCustomer = customers.find((c) => c.id === selectedInvoiceCustomerId) || null;
+    if (status === "vip") {
+      return {
+        background: "#fef3c7",
+        color: "#92400e",
+        border: "1px solid #fde68a",
+      };
+    }
 
-  const selectedCustomerInvoices = useMemo(() => {
-    if (!selectedInvoiceCustomer) return [];
+    if (status === "blocked") {
+      return {
+        background: "#e5e7eb",
+        color: "#374151",
+        border: "1px solid #d1d5db",
+      };
+    }
 
-    return invoices.filter((inv) => {
-      return (
-        inv.customer_id === selectedInvoiceCustomer.id ||
-        inv.customer_name === selectedInvoiceCustomer.name
-      );
-    });
-  }, [invoices, selectedInvoiceCustomer]);
+    return {
+      background: theme.softBg || "#ccfbf1",
+      color: theme.accent,
+      border: `1px solid ${theme.border}`,
+    };
+  }
+
+  function getProductName(productId: string) {
+    return products.find((p) => p.id === productId)?.name || "-";
+  }
+
+  function getCustomerName(customerId: string) {
+    return customers.find((c) => c.id === customerId)?.name || "-";
+  }
+
+  function getProductNormalPrice(productId: string) {
+    return Number(products.find((p) => p.id === productId)?.price || 0);
+  }
 
   return (
     <main
       className="smartacctg-page smartacctg-customers-page"
       data-sa-theme={themeKey}
+      data-smartacctg-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
-      <style jsx global>{CUSTOMERS_PAGE_FIX_CSS}</style>
+      <style jsx global>{CUSTOMERS_PAGE_CSS}</style>
 
-      <div className="sa-topbar">
+      <div className="sa-topbar" style={topbarStyle}>
         <button
           type="button"
-          onClick={backToDashboard}
+          onClick={goBack}
           className="sa-back-btn"
           style={{
             ...backBtnStyle,
             borderColor: theme.border,
             color: theme.accent,
-            background: theme.card,
+            background: theme.inputBg || "#ffffff",
           }}
         >
           ← {t.back}
         </button>
 
-        <div className="sa-lang-row">
+        <div className="sa-lang-row" style={langRowStyle}>
           <button
             type="button"
-            className="sa-lang-btn"
             onClick={() => switchLang("zh")}
+            className="sa-lang-btn"
             style={langBtnStyle(lang === "zh", theme)}
           >
             中文
@@ -1472,8 +1446,8 @@ export default function CustomersPage() {
 
           <button
             type="button"
-            className="sa-lang-btn"
             onClick={() => switchLang("en")}
+            className="sa-lang-btn"
             style={langBtnStyle(lang === "en", theme)}
           >
             EN
@@ -1481,8 +1455,8 @@ export default function CustomersPage() {
 
           <button
             type="button"
-            className="sa-lang-btn"
             onClick={() => switchLang("ms")}
+            className="sa-lang-btn"
             style={langBtnStyle(lang === "ms", theme)}
           >
             BM
@@ -1493,20 +1467,20 @@ export default function CustomersPage() {
       {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
 
       {msg ? (
-        <div style={{ ...msgStyle, background: theme.softBg, color: theme.text }}>{msg}</div>
+        <div
+          style={{
+            ...msgBoxStyle,
+            background: theme.softBg || theme.soft || theme.card,
+            color: theme.text,
+          }}
+        >
+          {msg}
+        </div>
       ) : null}
 
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
-        <div style={headerRowStyle}>
-          <h1 style={titleStyle}>{t.pageTitle}</h1>
+      <section className="sa-card" style={{ ...cardStyle, ...themedCardStyle }}>
+        <div style={titleRowStyle}>
+          <h1 style={{ ...titleStyle, color: theme.accent }}>{t.pageTitle}</h1>
 
           <button
             type="button"
@@ -1518,11 +1492,32 @@ export default function CustomersPage() {
           </button>
         </div>
 
-        <div className="customers-search-row" style={searchRowStyle}>
+        <div style={summaryGridStyle}>
+          <div className="sa-panel" style={{ ...summaryBoxStyle, ...themedPanelStyle }}>
+            <span>{t.totalDebt}</span>
+            <strong style={{ color: "#dc2626" }}>{formatRM(summary.totalDebt)}</strong>
+          </div>
+
+          <div className="sa-panel" style={{ ...summaryBoxStyle, ...themedPanelStyle }}>
+            <span>{t.totalPaid}</span>
+            <strong style={{ color: "#16a34a" }}>{formatRM(summary.totalPaid)}</strong>
+          </div>
+
+          <div className="sa-panel" style={{ ...summaryBoxStyle, ...themedPanelStyle }}>
+            <span>{t.totalBalance}</span>
+            <strong style={{ color: summary.totalBalance > 0 ? "#dc2626" : theme.accent }}>
+              {formatRM(summary.totalBalance)}
+            </strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="sa-card" style={{ ...cardStyle, ...themedCardStyle }}>
+        <div className="customers-search-row" style={searchGridStyle}>
           <input
-            placeholder={t.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            placeholder={t.search}
             style={themedInputStyle}
           />
 
@@ -1540,92 +1535,108 @@ export default function CustomersPage() {
         </div>
       </section>
 
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
+      <section className="sa-card" style={{ ...cardStyle, ...themedCardStyle }}>
         {filteredCustomers.length === 0 ? (
-          <p style={{ color: theme.subText, fontWeight: 900 }}>{t.noCustomers}</p>
+          <p style={{ color: themeSubText, fontWeight: 900 }}>{t.noCustomers}</p>
         ) : (
           <div className="customers-list">
-            {filteredCustomers.map((c) => {
-              const fixedStatus = (c.status || c.customer_status || "normal") as CustomerStatus;
-              const balance = customerBalance(c);
-              const hasDebt = balance > 0 || fixedStatus === "debt";
+            {filteredCustomers.map((customer) => {
+              const balance = getCustomerBalance(customer);
+              const status = getCustomerStatus(customer);
+              const hasDebt = balance > 0 || status === "debt";
 
               return (
                 <div
-                  key={c.id}
-                  className={`customer-card ${hasDebt ? "debt-customer-card" : ""}`}
+                  key={customer.id}
+                  className={`customer-card ${hasDebt ? "debt-customer" : ""}`}
                   style={{
-                    background: hasDebt ? "#fee2e2" : theme.card,
-                    color: hasDebt ? "#7f1d1d" : theme.text,
                     borderColor: hasDebt ? "#dc2626" : theme.border,
+                    background: hasDebt ? "#fee2e2" : theme.itemBg || theme.card,
+                    color: hasDebt ? "#7f1d1d" : theme.text,
                     boxShadow: hasDebt
-                      ? "0 0 0 1px rgba(220, 38, 38, 0.35), 0 12px 28px rgba(220, 38, 38, 0.22)"
+                      ? "0 0 0 1px rgba(220, 38, 38, 0.34), 0 14px 34px rgba(220, 38, 38, 0.2)"
                       : theme.glow,
                   }}
                 >
-                  <div>
-                    <h3>
-                      {c.name || "-"}
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={customerTitleStyle}>
+                      {customer.name || "-"}
                       <span
                         className="customer-status-badge"
-                        style={statusBadgeStyle(fixedStatus)}
+                        style={statusBadgeStyle(status)}
                       >
-                        {statusText(fixedStatus)}
+                        {statusLabel(status)}
                       </span>
                     </h3>
 
                     <p>
-                      {t.phone}: {c.phone || "-"} ｜ {t.email}: {c.email || "-"}
+                      {t.phone}: <strong>{customer.phone || "-"}</strong>
                     </p>
 
                     <p>
-                      {t.companyName}: {c.company_name || "-"} ｜ {t.regNo}:{" "}
-                      {c.company_reg_no || "-"}
+                      {t.email}: <strong>{customer.email || "-"}</strong>
                     </p>
 
                     <p>
-                      {t.companyPhone}: {c.company_phone || "-"} ｜ {t.address}:{" "}
-                      {c.address || "-"}
+                      {t.companyName}: <strong>{customer.company_name || "-"}</strong>
+                    </p>
+
+                    <p>
+                      {t.regNo}: <strong>{customer.company_reg_no || "-"}</strong>
+                    </p>
+
+                    <p>
+                      {t.companyPhone}: <strong>{customer.company_phone || "-"}</strong>
+                    </p>
+
+                    <p>
+                      {t.address}: <strong>{customer.address || "-"}</strong>
                     </p>
 
                     <p>
                       {t.debtAmount}:{" "}
-                      <strong style={{ color: hasDebt ? "#7f1d1d" : "#dc2626" }}>
-                        {formatRM(Number(c.debt_amount || 0))}
-                      </strong>{" "}
-                      ｜ {t.paidAmount}: {formatRM(Number(c.paid_amount || 0))} ｜ {t.balance}:{" "}
-                      <strong style={{ color: hasDebt ? "#7f1d1d" : theme.accent }}>
+                      <strong style={{ color: "#dc2626" }}>
+                        {formatRM(Number(customer.debt_amount || 0))}
+                      </strong>
+                    </p>
+
+                    <p>
+                      {t.paidAmount}:{" "}
+                      <strong style={{ color: "#16a34a" }}>
+                        {formatRM(Number(customer.paid_amount || 0))}
+                      </strong>
+                    </p>
+
+                    <p>
+                      {t.balance}:{" "}
+                      <strong style={{ color: balance > 0 ? "#dc2626" : theme.accent }}>
                         {formatRM(balance)}
                       </strong>
                     </p>
 
                     <p>
-                      {t.lastPaymentDate}: {c.last_payment_date || "-"}
+                      {t.lastPaymentDate}: <strong>{customer.last_payment_date || "-"}</strong>
                     </p>
 
-                    {c.note ? <p>{t.note}: {c.note}</p> : null}
+                    {customer.note ? (
+                      <p>
+                        {t.note}: <strong>{customer.note}</strong>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="customers-action-row">
                     <button
                       type="button"
-                      onClick={() => editCustomer(c)}
-                      style={{ ...smallBtnStyle, background: theme.accent }}
+                      onClick={() => editCustomer(customer)}
+                      style={{ ...actionBtnStyle, background: theme.accent }}
                     >
                       {t.edit}
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => deleteCustomer(c)}
+                      onClick={() => deleteCustomer(customer)}
                       style={deleteBtnStyle}
                     >
                       {t.delete}
@@ -1633,7 +1644,7 @@ export default function CustomersPage() {
 
                     <button
                       type="button"
-                      onClick={() => whatsappCustomer(c)}
+                      onClick={() => openWhatsapp(customer)}
                       style={whatsappBtnStyle}
                     >
                       {t.whatsapp}
@@ -1641,28 +1652,15 @@ export default function CustomersPage() {
 
                     <button
                       type="button"
-                      onClick={() => createInvoiceForCustomer(c)}
+                      onClick={() => createInvoiceForCustomer(customer)}
                       style={{
                         ...outlineBtnStyle,
-                        borderColor: theme.accent,
-                        color: theme.accent,
-                        background: theme.card,
+                        borderColor: hasDebt ? "#dc2626" : theme.border,
+                        color: hasDebt ? "#dc2626" : theme.accent,
+                        background: theme.inputBg || "#ffffff",
                       }}
                     >
                       {t.invoice}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedInvoiceCustomerId(c.id)}
-                      style={{
-                        ...outlineBtnStyle,
-                        borderColor: theme.border,
-                        color: theme.accent,
-                        background: theme.card,
-                      }}
-                    >
-                      {t.invoiceRecords}
                     </button>
                   </div>
                 </div>
@@ -1672,80 +1670,19 @@ export default function CustomersPage() {
         )}
       </section>
 
-      {selectedInvoiceCustomer ? (
-        <section
-          className="sa-card"
-          style={{
-            background: theme.card,
-            borderColor: theme.border,
-            boxShadow: theme.glow,
-            color: theme.text,
-          }}
-        >
-          <div style={sectionHeaderRowStyle}>
-            <h2 style={sectionTitleStyle}>
-              {t.invoiceRecords}｜{selectedInvoiceCustomer.name}
-            </h2>
-
-            <button
-              type="button"
-              className="customers-close-btn"
-              onClick={() => setSelectedInvoiceCustomerId("")}
-            >
-              X
-            </button>
-          </div>
-
-          {selectedCustomerInvoices.length === 0 ? (
-            <p style={{ color: theme.subText, fontWeight: 900 }}>{t.noInvoice}</p>
-          ) : (
-            <div style={invoiceListStyle}>
-              {selectedCustomerInvoices.map((inv) => (
-                <div
-                  key={inv.id}
-                  style={{
-                    ...invoiceMiniCardStyle,
-                    borderColor: theme.border,
-                    background: theme.softBg,
-                    color: theme.text,
-                  }}
-                >
-                  <strong>{inv.invoice_no || inv.id}</strong>
-                  <p>
-                    {t.invoiceDate}: {inv.invoice_date || inv.created_at?.slice(0, 10) || "-"}
-                  </p>
-                  <p>
-                    {t.invoiceTotal}: {formatRM(Number(inv.total || 0))} ｜ {t.invoiceProfit}:{" "}
-                    {formatRM(Number(inv.total_profit || 0))}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      ) : null}
-
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
+      <section className="sa-card" style={{ ...cardStyle, ...themedCardStyle }}>
         <h2 style={sectionTitleStyle}>{t.priceTitle}</h2>
 
-        <div style={formGridStyle}>
+        <div style={priceGridStyle}>
           <select
             value={priceCustomerId}
             onChange={(e) => setPriceCustomerId(e.target.value)}
             style={themedInputStyle}
           >
             <option value="">{t.chooseCustomer}</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} {c.company_name ? `｜${c.company_name}` : ""}
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.name || "-"}
               </option>
             ))}
           </select>
@@ -1756,26 +1693,21 @@ export default function CustomersPage() {
             style={themedInputStyle}
           >
             <option value="">{t.chooseProduct}</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} - {formatRM(Number(p.price || 0))}
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name || "-"} - {t.productNormalPrice}{" "}
+                {formatRM(Number(product.price || 0))}
               </option>
             ))}
           </select>
 
           <input
-            placeholder={t.customPrice}
             value={customPrice}
             onChange={(e) => setCustomPrice(e.target.value)}
+            placeholder={t.customPrice}
             inputMode="decimal"
             style={themedInputStyle}
           />
-
-          {selectedProduct ? (
-            <p style={{ margin: 0, color: theme.subText, fontWeight: 900 }}>
-              {t.productNormalPrice}: {formatRM(Number(selectedProduct.price || 0))}
-            </p>
-          ) : null}
 
           <button
             type="button"
@@ -1786,44 +1718,51 @@ export default function CustomersPage() {
           </button>
         </div>
 
-        <h3 style={sectionTitleStyle}>{t.currentPrices}</h3>
+        <h3 style={smallTitleStyle}>{t.currentPrices}</h3>
 
-        {currentPrices.length === 0 ? (
-          <p style={{ color: theme.subText, fontWeight: 900 }}>{t.noPrice}</p>
+        {customerPrices.length === 0 ? (
+          <p style={{ color: themeSubText, fontWeight: 900 }}>{t.noPrice}</p>
         ) : (
-          <div style={invoiceListStyle}>
-            {currentPrices.map((p) => (
+          <div style={priceListStyle}>
+            {customerPrices.map((price) => (
               <div
-                key={p.id}
+                key={price.id}
+                className="sa-panel"
                 style={{
-                  ...invoiceMiniCardStyle,
+                  ...priceItemStyle,
                   borderColor: theme.border,
-                  background: theme.softBg,
-                  color: theme.text,
+                  background: theme.panelBg || theme.softBg || theme.card,
+                  color: theme.panelText || theme.text,
                 }}
               >
-                <strong>
-                  {p.customerName}｜{p.productName}
-                </strong>
-                <p>
-                  {t.productNormalPrice}: {formatRM(p.normalPrice)} ｜ {t.customPrice}:{" "}
-                  <strong style={{ color: theme.accent }}>{formatRM(p.custom_price)}</strong>
-                </p>
+                <div style={{ minWidth: 0 }}>
+                  <strong>{getCustomerName(price.customer_id)}</strong>
+                  <p style={{ margin: "6px 0 0", color: themeSubText, fontWeight: 900 }}>
+                    {getProductName(price.product_id)}｜{t.productNormalPrice}:{" "}
+                    {formatRM(getProductNormalPrice(price.product_id))}
+                  </p>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <strong style={{ color: theme.accent }}>
+                    {formatRM(Number(price.custom_price || 0))}
+                  </strong>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteCustomerPrice(price)}
+                    style={miniDeleteBtnStyle}
+                  >
+                    {t.deletePrice}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </section>
 
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
+      <section className="sa-card" style={{ ...cardStyle, ...themedCardStyle }}>
         <h2 style={sectionTitleStyle}>{t.related}</h2>
 
         <div style={relatedRowStyle}>
@@ -1839,7 +1778,7 @@ export default function CustomersPage() {
 
           <button
             type="button"
-            onClick={goRelatedFeature}
+            onClick={() => go(relatedPath)}
             style={{ ...primaryBtnStyle, background: theme.accent }}
           >
             {t.goFeature}
@@ -1848,19 +1787,26 @@ export default function CustomersPage() {
       </section>
 
       {showForm ? (
-        <div className={fullscreen ? "customers-fullscreen-overlay" : ""} style={fullscreen ? fullOverlayStyle : overlayStyle}>
+        <div
+          className={`customers-overlay ${
+            isFullscreen ? "customers-fullscreen-overlay" : ""
+          }`}
+        >
           <section
-            className={`sa-modal ${fullscreen ? "customers-fullscreen-modal" : ""}`}
+            className={`customers-modal ${
+              isFullscreen ? "customers-fullscreen-modal" : ""
+            }`}
             style={{
-              ...modalStyle,
               background: theme.card,
-              borderColor: theme.border,
-              color: theme.text,
+              border: `var(--sa-border-w) solid ${theme.border}`,
               boxShadow: theme.glow,
+              color: theme.text,
             }}
           >
-            <div className="sa-modal-header">
-              <h2 style={modalTitleStyle}>{editingId ? t.update : t.formTitle}</h2>
+            <div className="customers-modal-header">
+              <h2 style={{ margin: 0, color: theme.accent }}>
+                {editingId ? t.update : t.formTitle}
+              </h2>
 
               <button
                 type="button"
@@ -1876,24 +1822,26 @@ export default function CustomersPage() {
 
             <div style={formGridStyle}>
               <input
-                placeholder={t.name}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder={t.name}
                 style={themedInputStyle}
               />
 
               <input
-                placeholder={t.phone}
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder={t.phone}
                 style={themedInputStyle}
+                inputMode="tel"
               />
 
               <input
-                placeholder={t.email}
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder={t.email}
                 style={themedInputStyle}
+                inputMode="email"
               />
 
               <select
@@ -1914,65 +1862,73 @@ export default function CustomersPage() {
 
             <div style={formGridStyle}>
               <input
-                placeholder={t.companyName}
                 value={form.company_name}
                 onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                placeholder={t.companyName}
                 style={themedInputStyle}
               />
 
               <input
-                placeholder={t.regNo}
                 value={form.company_reg_no}
                 onChange={(e) => setForm({ ...form, company_reg_no: e.target.value })}
+                placeholder={t.regNo}
                 style={themedInputStyle}
               />
 
               <input
-                placeholder={t.companyPhone}
                 value={form.company_phone}
                 onChange={(e) => setForm({ ...form, company_phone: e.target.value })}
+                placeholder={t.companyPhone}
                 style={themedInputStyle}
+                inputMode="tel"
               />
 
               <input
-                placeholder={t.address}
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
+                placeholder={t.address}
                 style={themedInputStyle}
               />
             </div>
 
-            <h3 style={sectionTitleStyle}>{t.debtAmount}</h3>
+            <h3 style={sectionTitleStyle}>{t.debt}</h3>
 
             <div style={formGridStyle}>
               <input
-                placeholder={t.debtAmount}
                 value={form.debt_amount}
                 onChange={(e) => setForm({ ...form, debt_amount: e.target.value })}
-                inputMode="decimal"
+                placeholder={t.debtAmount}
                 style={themedInputStyle}
+                inputMode="decimal"
               />
 
               <input
-                placeholder={t.paidAmount}
                 value={form.paid_amount}
                 onChange={(e) => setForm({ ...form, paid_amount: e.target.value })}
+                placeholder={t.paidAmount}
+                style={themedInputStyle}
                 inputMode="decimal"
-                style={themedInputStyle}
               />
 
-              <input
-                type="date"
-                className="sa-center-date-input"
-                value={form.last_payment_date}
-                onChange={(e) => setForm({ ...form, last_payment_date: e.target.value })}
-                style={themedInputStyle}
-              />
+              <div>
+                <label style={{ ...labelStyle, color: theme.accent }}>
+                  {t.lastPaymentDate}
+                </label>
+
+                <input
+                  type="date"
+                  value={form.last_payment_date}
+                  onChange={(e) =>
+                    setForm({ ...form, last_payment_date: e.target.value })
+                  }
+                  style={themedInputStyle}
+                />
+              </div>
 
               <input
-                placeholder={t.note}
                 value={form.note}
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
+                placeholder={t.note}
                 style={themedInputStyle}
               />
             </div>
@@ -1981,14 +1937,14 @@ export default function CustomersPage() {
               <button
                 type="button"
                 onClick={saveCustomer}
-                disabled={loading}
+                disabled={isSaving}
                 style={{
                   ...primaryBtnStyle,
                   background: theme.accent,
-                  opacity: loading ? 0.65 : 1,
+                  opacity: isSaving ? 0.65 : 1,
                 }}
               >
-                {loading ? t.saving : editingId ? t.update : t.save}
+                {isSaving ? t.saving : editingId ? t.update : t.save}
               </button>
 
               <button
@@ -1998,7 +1954,7 @@ export default function CustomersPage() {
                   ...secondaryBtnStyle,
                   borderColor: theme.border,
                   color: theme.accent,
-                  background: theme.card,
+                  background: theme.inputBg || "#ffffff",
                 }}
               >
                 {t.cancel}
@@ -2016,9 +1972,17 @@ const pageStyle: CSSProperties = {
   width: "100%",
   maxWidth: "100vw",
   overflowX: "hidden",
-  padding: "clamp(10px, 2vw, 24px)",
+  padding: "clamp(10px, 3vw, 22px)",
   fontFamily:
     '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
+};
+
+const topbarStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 14,
 };
 
 const backBtnStyle: CSSProperties = {
@@ -2030,11 +1994,59 @@ const backBtnStyle: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const langBtnStyle = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
-  borderColor: theme.accent,
-  background: active ? theme.accent : theme.card,
-  color: active ? "#fff" : theme.accent,
+const langRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 8,
+  alignItems: "center",
+  justifyContent: "flex-end",
+  flexWrap: "wrap",
+};
+
+const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
+  minHeight: 44,
+  padding: "0 13px",
+  borderRadius: 999,
+  border: `var(--sa-border-w) solid ${theme.accent}`,
+  background: active ? theme.accent : theme.inputBg || "#ffffff",
+  color: active ? "#ffffff" : theme.accent,
+  fontWeight: 900,
 });
+
+const cardStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+  marginBottom: 14,
+};
+
+const titleRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+};
+
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-2xl)",
+  lineHeight: 1.15,
+  fontWeight: 900,
+};
+
+const plusBtnStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  minWidth: 52,
+  minHeight: 52,
+  borderRadius: 999,
+  border: "none",
+  color: "#ffffff",
+  fontSize: 30,
+  fontWeight: 900,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
 
 const trialMsgStyle: CSSProperties = {
   background: "#fef3c7",
@@ -2045,47 +2057,33 @@ const trialMsgStyle: CSSProperties = {
   fontWeight: 900,
 };
 
-const msgStyle: CSSProperties = {
+const msgBoxStyle: CSSProperties = {
   padding: 12,
   borderRadius: "var(--sa-radius-control)",
   marginBottom: 14,
   fontWeight: 900,
 };
 
-const headerRowStyle: CSSProperties = {
+const summaryGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 16,
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: 10,
+  marginTop: 16,
 };
 
-const titleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "var(--sa-fs-2xl)",
-  fontWeight: 900,
-  lineHeight: 1.15,
-};
-
-const plusBtnStyle: CSSProperties = {
-  width: 52,
-  height: 52,
-  minWidth: 52,
-  minHeight: 52,
-  borderRadius: 999,
-  border: "none",
-  color: "#fff",
-  fontSize: 30,
-  fontWeight: 900,
-  lineHeight: 1,
-  padding: 0,
-};
-
-const searchRowStyle: CSSProperties = {
+const summaryBoxStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) 180px",
+  gap: 8,
+  fontWeight: 900,
+};
+
+const searchGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(170px, 240px)",
   gap: 12,
-  alignItems: "center",
 };
 
 const inputStyle: CSSProperties = {
@@ -2097,134 +2095,142 @@ const inputStyle: CSSProperties = {
   padding: "0 var(--sa-control-x)",
   borderRadius: "var(--sa-radius-control)",
   border: "var(--sa-border-w) solid",
+  background: "#ffffff",
+  color: "#111827",
   outline: "none",
   fontSize: 16,
 };
 
-const smallBtnStyle: CSSProperties = {
-  minHeight: 44,
-  padding: "0 14px",
-  borderRadius: "var(--sa-radius-control)",
-  color: "#fff",
+const customerTitleStyle: CSSProperties = {
+  margin: 0,
+  lineHeight: 1.25,
+  fontWeight: 900,
+  overflowWrap: "anywhere",
+};
+
+const actionBtnStyle: CSSProperties = {
+  minHeight: 46,
   border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 14px",
+  color: "#ffffff",
   fontWeight: 900,
 };
 
 const deleteBtnStyle: CSSProperties = {
-  minHeight: 44,
-  padding: "0 14px",
-  borderRadius: "var(--sa-radius-control)",
-  color: "#b91c1c",
-  background: "#fee2e2",
+  minHeight: 46,
   border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 14px",
+  background: "#fee2e2",
+  color: "#b91c1c",
   fontWeight: 900,
 };
 
 const whatsappBtnStyle: CSSProperties = {
-  minHeight: 44,
-  padding: "0 14px",
-  borderRadius: "var(--sa-radius-control)",
-  color: "#fff",
-  background: "#25D366",
+  minHeight: 46,
   border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 14px",
+  background: "#25D366",
+  color: "#ffffff",
   fontWeight: 900,
 };
 
 const outlineBtnStyle: CSSProperties = {
-  minHeight: 44,
-  padding: "0 14px",
-  borderRadius: "var(--sa-radius-control)",
+  minHeight: 46,
   border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 14px",
   fontWeight: 900,
-};
-
-const sectionHeaderRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 12,
-  alignItems: "center",
 };
 
 const sectionTitleStyle: CSSProperties = {
   marginTop: 0,
-  marginBottom: 14,
+  marginBottom: 12,
   fontWeight: 900,
 };
 
-const invoiceListStyle: CSSProperties = {
+const smallTitleStyle: CSSProperties = {
+  marginTop: 18,
+  marginBottom: 12,
+  fontWeight: 900,
+};
+
+const priceGridStyle: CSSProperties = {
   display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
   gap: 10,
-};
-
-const invoiceMiniCardStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-control)",
-  padding: 12,
-  overflowWrap: "anywhere",
-};
-
-const formGridStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
+  alignItems: "center",
 };
 
 const primaryBtnStyle: CSSProperties = {
   minHeight: "var(--sa-control-h)",
-  padding: "0 18px",
-  borderRadius: "var(--sa-radius-control)",
   border: "none",
-  color: "#fff",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 18px",
+  color: "#ffffff",
   fontWeight: 900,
 };
 
 const secondaryBtnStyle: CSSProperties = {
   minHeight: "var(--sa-control-h)",
-  padding: "0 18px",
-  borderRadius: "var(--sa-radius-control)",
   border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 18px",
+  fontWeight: 900,
+};
+
+const priceListStyle: CSSProperties = {
+  display: "grid",
+  gap: 10,
+};
+
+const priceItemStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 12,
+  alignItems: "center",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+};
+
+const miniDeleteBtnStyle: CSSProperties = {
+  display: "block",
+  marginTop: 8,
+  minHeight: 36,
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 10px",
+  background: "#fee2e2",
+  color: "#b91c1c",
   fontWeight: 900,
 };
 
 const relatedRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 12,
+  gap: 10,
   alignItems: "center",
 };
 
-const overlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15, 23, 42, 0.52)",
-  padding: "clamp(12px, 3vw, 24px)",
-  zIndex: 999,
-  overflowY: "auto",
+const formGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 10,
+  marginBottom: 16,
 };
 
-const fullOverlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15, 23, 42, 0.58)",
-  padding: 0,
-  zIndex: 9999,
-  overflow: "hidden",
-};
-
-const modalStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 900,
-  margin: "0 auto",
-  border: "var(--sa-border-w) solid",
-};
-
-const modalTitleStyle: CSSProperties = {
-  margin: 0,
+const labelStyle: CSSProperties = {
+  display: "block",
   fontWeight: 900,
+  marginBottom: 6,
 };
 
 const modalActionRowStyle: CSSProperties = {
   display: "flex",
   gap: 10,
-  marginTop: 18,
   flexWrap: "wrap",
+  marginTop: 20,
 };
