@@ -36,6 +36,9 @@ type Customer = {
   name?: string | null;
   phone?: string | null;
   company_name?: string | null;
+  debt_amount?: number | null;
+  paid_amount?: number | null;
+  last_payment_date?: string | null;
 };
 
 type Product = {
@@ -73,11 +76,14 @@ type Profile = {
 };
 
 type DebtItem = {
-  invoice: Invoice;
+  id: string;
+  source: "invoice" | "customer";
   customerLabel: string;
   amount: number;
   dueDate: string;
   sortTime: number;
+  invoice?: Invoice;
+  customer?: Customer;
 };
 
 const TRIAL_KEY = "smartacctg_trial";
@@ -135,8 +141,11 @@ const TXT = {
     type: "类型",
     amount: "金额",
     category: "分类 / 标签",
+    chooseCategory: "选择分类 / 标签",
     addCategory: "新增分类 / 标签",
+    categoryPlaceholder: "输入新的分类 / 标签",
     savedCategory: "已保存分类",
+    deleteCategory: "删除分类",
     debtAmount: "欠款金额",
     note: "备注",
     customer: "客户",
@@ -165,6 +174,7 @@ const TXT = {
     sourceInvoice: "来自发票",
     manualRecord: "手动记录",
     needRequired: "请填写日期、金额和分类",
+    saving: "保存中...",
   },
   en: {
     title: "Accounting Records",
@@ -196,8 +206,11 @@ const TXT = {
     type: "Type",
     amount: "Amount",
     category: "Category / Tag",
+    chooseCategory: "Choose Category / Tag",
     addCategory: "Add Category / Tag",
+    categoryPlaceholder: "Enter new category / tag",
     savedCategory: "Saved Categories",
+    deleteCategory: "Delete Category",
     debtAmount: "Debt Amount",
     note: "Note",
     customer: "Customer",
@@ -226,6 +239,7 @@ const TXT = {
     sourceInvoice: "From Invoice",
     manualRecord: "Manual Record",
     needRequired: "Please fill in date, amount and category",
+    saving: "Saving...",
   },
   ms: {
     title: "Rekod Akaun",
@@ -257,8 +271,11 @@ const TXT = {
     type: "Jenis",
     amount: "Jumlah",
     category: "Kategori / Tag",
+    chooseCategory: "Pilih Kategori / Tag",
     addCategory: "Tambah Kategori / Tag",
+    categoryPlaceholder: "Masukkan kategori / tag baru",
     savedCategory: "Kategori Disimpan",
+    deleteCategory: "Padam Kategori",
     debtAmount: "Jumlah Hutang",
     note: "Catatan",
     customer: "Pelanggan",
@@ -287,16 +304,15 @@ const TXT = {
     sourceInvoice: "Daripada Invois",
     manualRecord: "Rekod Manual",
     needRequired: "Sila isi tarikh, jumlah dan kategori",
+    saving: "Sedang simpan...",
   },
 };
 
 const ACCOUNTING_PAGE_FIX_CSS = `
-  .smartacctg-accounting-page .sa-back-btn,
   .smartacctg-records-page .sa-back-btn {
     border-radius: 999px !important;
   }
 
-  .smartacctg-accounting-page .records-summary-box,
   .smartacctg-records-page .records-summary-box {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -304,7 +320,6 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     width: 100% !important;
   }
 
-  .smartacctg-accounting-page .records-month-row,
   .smartacctg-records-page .records-month-row {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -313,7 +328,6 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     width: 100% !important;
   }
 
-  .smartacctg-accounting-page .records-month-select-grid,
   .smartacctg-records-page .records-month-select-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -321,7 +335,6 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     width: 100% !important;
   }
 
-  .smartacctg-accounting-page .records-summary-line,
   .smartacctg-records-page .records-summary-line {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
@@ -332,20 +345,17 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     line-height: 1.25 !important;
   }
 
-  .smartacctg-accounting-page .records-summary-line span,
   .smartacctg-records-page .records-summary-line span {
     font-size: clamp(17px, 3.6vw, 22px) !important;
     font-weight: 900 !important;
   }
 
-  .smartacctg-accounting-page .records-summary-line strong,
   .smartacctg-records-page .records-summary-line strong {
     font-size: clamp(19px, 4vw, 26px) !important;
     font-weight: 900 !important;
     white-space: nowrap !important;
   }
 
-  .smartacctg-accounting-page .records-debt-detail,
   .smartacctg-records-page .records-debt-detail {
     margin-top: 2px !important;
     padding-top: 4px !important;
@@ -355,7 +365,6 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     line-height: 1.35 !important;
   }
 
-  .smartacctg-accounting-page .records-list,
   .smartacctg-records-page .records-list {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -363,7 +372,6 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     width: 100% !important;
   }
 
-  .smartacctg-accounting-page .record-card,
   .smartacctg-records-page .record-card {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -376,12 +384,10 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     overflow-wrap: anywhere !important;
   }
 
-  .smartacctg-accounting-page .record-card *,
   .smartacctg-records-page .record-card * {
     text-align: left !important;
   }
 
-  .smartacctg-accounting-page .record-card h3,
   .smartacctg-records-page .record-card h3 {
     margin: 0 0 10px 0 !important;
     font-size: var(--sa-fs-xl) !important;
@@ -389,14 +395,12 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     font-weight: 900 !important;
   }
 
-  .smartacctg-accounting-page .record-card p,
   .smartacctg-records-page .record-card p {
     margin: 8px 0 0 !important;
     line-height: 1.55 !important;
     overflow-wrap: anywhere !important;
   }
 
-  .smartacctg-accounting-page .record-card.debt-record,
   .smartacctg-records-page .record-card.debt-record {
     background: #fee2e2 !important;
     color: #7f1d1d !important;
@@ -405,18 +409,12 @@ const ACCOUNTING_PAGE_FIX_CSS = `
       0 12px 28px rgba(220, 38, 38, 0.22) !important;
   }
 
-  .smartacctg-accounting-page .record-card.debt-record h3,
-  .smartacctg-accounting-page .record-card.debt-record p,
-  .smartacctg-accounting-page .record-card.debt-record span,
-  .smartacctg-accounting-page .record-card.debt-record strong,
-  .smartacctg-records-page .record-card.debt-record h3,
   .smartacctg-records-page .record-card.debt-record p,
-  .smartacctg-records-page .record-card.debt-record span,
-  .smartacctg-records-page .record-card.debt-record strong {
+  .smartacctg-records-page .record-card.debt-record h3,
+  .smartacctg-records-page .record-card.debt-record span {
     color: #7f1d1d !important;
   }
 
-  .smartacctg-accounting-page .records-action-row,
   .smartacctg-records-page .records-action-row {
     display: flex !important;
     flex-direction: row !important;
@@ -428,7 +426,6 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     margin-top: 6px !important;
   }
 
-  .smartacctg-accounting-page .records-action-row button,
   .smartacctg-records-page .records-action-row button {
     width: auto !important;
     min-width: 110px !important;
@@ -436,7 +433,6 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     white-space: nowrap !important;
   }
 
-  .smartacctg-accounting-page .category-add-row,
   .smartacctg-records-page .category-add-row {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
@@ -444,47 +440,37 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     align-items: center !important;
   }
 
-  .smartacctg-accounting-page .fullscreen-record-modal,
-  .smartacctg-records-page .fullscreen-record-modal {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 9999 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100dvh !important;
-    min-height: 100dvh !important;
-    max-height: 100dvh !important;
-    margin: 0 !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    border-radius: 0 !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-top: none !important;
-    border-bottom: none !important;
-    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
-    box-sizing: border-box !important;
+  .smartacctg-records-page .category-chip-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
   }
 
-  .smartacctg-accounting-page .fullscreen-record-modal .sa-modal-header,
-  .smartacctg-records-page .fullscreen-record-modal .sa-modal-header {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 10 !important;
-    background: var(--sa-card-bg) !important;
-    padding-bottom: 12px !important;
+  .smartacctg-records-page .category-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    border-radius: 999px !important;
+    padding: 7px 10px !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
   }
 
-  .smartacctg-accounting-page input[type="date"],
   .smartacctg-records-page input[type="date"] {
     text-align: center !important;
+    text-align-last: center !important;
     display: block !important;
     width: 100% !important;
+    height: var(--sa-control-h, 54px) !important;
+    min-height: var(--sa-control-h, 54px) !important;
+    line-height: var(--sa-control-h, 54px) !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
     -webkit-appearance: none !important;
     appearance: none !important;
   }
 
-  .smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value,
   .smartacctg-records-page input[type="date"]::-webkit-date-and-time-value {
     text-align: center !important;
     width: 100% !important;
@@ -492,48 +478,79 @@ const ACCOUNTING_PAGE_FIX_CSS = `
     min-height: 1.6em !important;
   }
 
-  .smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit,
   .smartacctg-records-page input[type="date"]::-webkit-datetime-edit {
     width: 100% !important;
     text-align: center !important;
   }
 
-  .smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
   .smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper {
     justify-content: center !important;
   }
 
+  .smartacctg-records-page .records-fullscreen-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    background: rgba(15, 23, 42, 0.58) !important;
+  }
+
+  .smartacctg-records-page .records-fullscreen-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .smartacctg-records-page .records-fullscreen-modal .sa-modal-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+    background: inherit !important;
+    padding-bottom: 12px !important;
+  }
+
   @media (max-width: 520px) {
-    .smartacctg-accounting-page .records-month-select-grid,
     .smartacctg-records-page .records-month-select-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
       gap: 8px !important;
     }
 
-    .smartacctg-accounting-page .records-list,
     .smartacctg-records-page .records-list {
       gap: 16px !important;
     }
 
-    .smartacctg-accounting-page .record-card,
     .smartacctg-records-page .record-card {
       gap: 12px !important;
     }
 
-    .smartacctg-accounting-page .records-action-row,
     .smartacctg-records-page .records-action-row {
       flex-direction: row !important;
       justify-content: flex-start !important;
       gap: 8px !important;
     }
 
-    .smartacctg-accounting-page .records-action-row button,
     .smartacctg-records-page .records-action-row button {
       min-width: 105px !important;
       flex: 0 1 auto !important;
     }
 
-    .smartacctg-accounting-page .category-add-row,
     .smartacctg-records-page .category-add-row {
       grid-template-columns: 1fr !important;
     }
@@ -588,6 +605,18 @@ function getInitialLang(): Lang {
   return "zh";
 }
 
+function getInitialFullscreen() {
+  if (typeof window === "undefined") return false;
+  const q = new URLSearchParams(window.location.search);
+  return q.get("fullscreen") === "1";
+}
+
+function getInitialReturnTo() {
+  if (typeof window === "undefined") return "";
+  const q = new URLSearchParams(window.location.search);
+  return q.get("return") || "";
+}
+
 function applyThemeEverywhere(key: ThemeKey) {
   if (typeof document === "undefined") return;
 
@@ -626,7 +655,7 @@ function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
   window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
 }
 
-function isSchemaCacheMissingSource(message: string) {
+function isSchemaCacheMissing(message: string) {
   const lower = String(message || "").toLowerCase();
 
   return (
@@ -636,6 +665,118 @@ function isSchemaCacheMissingSource(message: string) {
     lower.includes("could not find") ||
     lower.includes("column")
   );
+}
+
+function getMissingColumnName(message: string) {
+  const text = String(message || "");
+  const match1 = text.match(/Could not find the '([^']+)' column/i);
+  const match2 = text.match(/column "([^"]+)" does not exist/i);
+  const match3 = text.match(/column '([^']+)' does not exist/i);
+
+  return match1?.[1] || match2?.[1] || match3?.[1] || "";
+}
+
+async function insertAdaptive(table: string, inputPayload: Record<string, any>) {
+  let payload: Record<string, any> = { ...inputPayload };
+  let lastError: any = null;
+
+  const optionalKeys = [
+    "source_type",
+    "source_id",
+    "debt_amount",
+    "category_name",
+    "note",
+    "customer_id",
+    "product_id",
+    "invoice_id",
+  ];
+
+  for (let i = 0; i < 25; i++) {
+    const { error } = await supabase.from(table).insert(payload);
+
+    if (!error) return;
+
+    lastError = error;
+
+    if (!isSchemaCacheMissing(error.message)) throw error;
+
+    const missing = getMissingColumnName(error.message);
+
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const removable = optionalKeys.find((key) =>
+      Object.prototype.hasOwnProperty.call(payload, key)
+    );
+
+    if (!removable) throw error;
+
+    const next = { ...payload };
+    delete next[removable];
+    payload = next;
+  }
+
+  throw lastError || new Error("Insert failed");
+}
+
+async function updateAdaptive(
+  table: string,
+  id: string,
+  userId: string,
+  inputPayload: Record<string, any>
+) {
+  let payload: Record<string, any> = { ...inputPayload };
+  let lastError: any = null;
+
+  const optionalKeys = [
+    "source_type",
+    "source_id",
+    "debt_amount",
+    "category_name",
+    "note",
+    "customer_id",
+    "product_id",
+    "invoice_id",
+  ];
+
+  for (let i = 0; i < 25; i++) {
+    const { error } = await supabase
+      .from(table)
+      .update(payload)
+      .eq("id", id)
+      .eq("user_id", userId);
+
+    if (!error) return;
+
+    lastError = error;
+
+    if (!isSchemaCacheMissing(error.message)) throw error;
+
+    const missing = getMissingColumnName(error.message);
+
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const removable = optionalKeys.find((key) =>
+      Object.prototype.hasOwnProperty.call(payload, key)
+    );
+
+    if (!removable) throw error;
+
+    const next = { ...payload };
+    delete next[removable];
+    payload = next;
+  }
+
+  throw lastError || new Error("Update failed");
 }
 
 function formatRM(value: number) {
@@ -661,7 +802,7 @@ function isInvoiceUnpaid(inv: Invoice) {
 }
 
 function getDueTime(dueDate: string) {
-  if (!dueDate) return Number.MAX_SAFE_INTEGER;
+  if (!dueDate || dueDate === "-") return Number.MAX_SAFE_INTEGER;
   const time = new Date(`${dueDate}T00:00:00`).getTime();
   return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
 }
@@ -678,7 +819,6 @@ export default function RecordsPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const [summaryMonth, setSummaryMonth] = useState("");
-
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [newCategory, setNewCategory] = useState("");
 
@@ -689,9 +829,11 @@ export default function RecordsPage() {
   const [filterEndDate, setFilterEndDate] = useState("");
 
   const [showForm, setShowForm] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(getInitialFullscreen);
+  const [returnTo, setReturnTo] = useState(getInitialReturnTo);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const [relatedPath, setRelatedPath] = useState("/dashboard/customers");
 
@@ -709,12 +851,9 @@ export default function RecordsPage() {
 
   const t = TXT[lang];
   const theme = THEMES[themeKey] || THEMES.deepTeal;
-
   const themeSubText = theme.subText || theme.muted || "#64748b";
 
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 9 }, (_, i) => String(currentYear - 4 + i));
-  const monthOptions = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
@@ -735,18 +874,11 @@ export default function RecordsPage() {
   }, [themeKey]);
 
   useEffect(() => {
+    const savedCategories = safeParseArray<string>(safeLocalGet(CATEGORY_KEY));
+    setCategories(uniqueCleanList([...DEFAULT_CATEGORIES, ...savedCategories]));
+
     const initialLang = getInitialLang();
     const initialTheme = getThemeKeyFromUrlOrLocalStorage("deepTeal");
-
-    const savedCategoryRaw = safeLocalGet(CATEGORY_KEY);
-    const savedCategories = safeParseArray<string>(savedCategoryRaw);
-
-    if (savedCategoryRaw && savedCategories.length > 0) {
-      setCategories(uniqueCleanList(savedCategories));
-    } else {
-      setCategories(DEFAULT_CATEGORIES);
-      safeLocalSet(CATEGORY_KEY, JSON.stringify(DEFAULT_CATEGORIES));
-    }
 
     setLang(initialLang);
     safeLocalSet(LANG_KEY, initialLang);
@@ -754,6 +886,10 @@ export default function RecordsPage() {
     setThemeKey(initialTheme);
     saveThemeKey(initialTheme);
     applyThemeEverywhere(initialTheme);
+
+    const q = new URLSearchParams(window.location.search);
+    setReturnTo(q.get("return") || "");
+    setIsFullscreen(q.get("fullscreen") === "1");
 
     init(initialLang, initialTheme);
 
@@ -765,13 +901,14 @@ export default function RecordsPage() {
     const mode = q.get("mode");
     const openParam = q.get("open");
     const fullscreenParam = q.get("fullscreen");
+    const returnParam = q.get("return");
     const view = q.get("view");
 
     if (view === "income") setFilterType("income");
     if (view === "expense") setFilterType("expense");
 
     const shouldOpenNew = openParam === "new";
-    const shouldFullscreen = fullscreenParam === "1" || shouldOpenNew;
+    const shouldFullscreen = fullscreenParam === "1";
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
@@ -790,6 +927,8 @@ export default function RecordsPage() {
           replaceUrlLangTheme(currentLang, currentTheme);
 
           if (shouldOpenNew) {
+            setIsFullscreen(shouldFullscreen);
+            setReturnTo(returnParam || "");
             setTimeout(() => openNewForm(shouldFullscreen), 100);
           }
 
@@ -845,6 +984,8 @@ export default function RecordsPage() {
     await loadAll(userId);
 
     if (shouldOpenNew) {
+      setIsFullscreen(shouldFullscreen);
+      setReturnTo(returnParam || "");
       setTimeout(() => openNewForm(shouldFullscreen), 100);
     }
   }
@@ -885,8 +1026,9 @@ export default function RecordsPage() {
     safeLocalSet(TRIAL_TX_KEY, JSON.stringify(nextTx));
   }
 
-  function saveCategories(next: string[]) {
-    const fixed = uniqueCleanList(next);
+  function saveCategories(nextCategories: string[]) {
+    const fixed = uniqueCleanList(nextCategories);
+
     setCategories(fixed);
     safeLocalSet(CATEGORY_KEY, JSON.stringify(fixed));
   }
@@ -896,20 +1038,32 @@ export default function RecordsPage() {
     if (!value) return;
 
     const next = uniqueCleanList([...categories, value]);
+
     saveCategories(next);
     setForm((prev) => ({ ...prev, category_name: value }));
     setNewCategory("");
   }
 
-  function deleteCategory(name: string) {
-    const next = categories.filter((x) => x !== name);
-    const fixed = next.length > 0 ? next : DEFAULT_CATEGORIES;
+  function deleteCategory(value: string) {
+    const next = categories.filter((x) => x !== value);
 
-    saveCategories(fixed);
+    saveCategories(next.length > 0 ? next : DEFAULT_CATEGORIES);
 
-    if (form.category_name === name) {
+    if (form.category_name === value) {
       setForm((prev) => ({ ...prev, category_name: "" }));
     }
+  }
+
+  function buildDashboardUrl() {
+    const query = new URLSearchParams();
+
+    if (isTrial) query.set("mode", "trial");
+
+    query.set("lang", lang);
+    query.set("theme", themeKey);
+    query.set("refresh", String(Date.now()));
+
+    return `/dashboard?${query.toString()}`;
   }
 
   function buildUrl(path: string, extra?: string) {
@@ -936,7 +1090,7 @@ export default function RecordsPage() {
   }
 
   function backToDashboard() {
-    window.location.href = buildUrl("/dashboard");
+    window.location.href = buildDashboardUrl();
   }
 
   function goRelatedFeature() {
@@ -947,17 +1101,6 @@ export default function RecordsPage() {
     setLang(next);
     safeLocalSet(LANG_KEY, next);
     replaceUrlLangTheme(next, themeKey);
-  }
-
-  function closeToDashboardIfNeeded(q: URLSearchParams) {
-    const returnTo = q.get("return");
-
-    if (returnTo === "dashboard") {
-      window.location.href = buildUrl("/dashboard");
-      return true;
-    }
-
-    return false;
   }
 
   function openNewForm(forceFullscreen = false) {
@@ -973,18 +1116,22 @@ export default function RecordsPage() {
       product_id: "",
       invoice_id: "",
     });
-    setFullscreen(forceFullscreen);
+    setIsFullscreen(forceFullscreen);
     setShowForm(true);
   }
 
   function closeForm() {
     const q = new URLSearchParams(window.location.search);
+    const returnParam = q.get("return") || returnTo;
 
-    if (closeToDashboardIfNeeded(q)) return true;
+    if (returnParam === "dashboard") {
+      window.location.href = buildDashboardUrl();
+      return;
+    }
 
     setEditingId(null);
     setShowForm(false);
-    setFullscreen(false);
+    setIsFullscreen(false);
     setForm({
       txn_date: today(),
       txn_type: "income",
@@ -1005,12 +1152,15 @@ export default function RecordsPage() {
     q.set("refresh", String(Date.now()));
 
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-    return false;
   }
 
   function editTransaction(tx: Txn) {
+    const linkedInvoice =
+      tx.source_type === "invoice" && tx.source_id
+        ? invoices.find((x) => x.id === tx.source_id)
+        : null;
+
     setEditingId(tx.id);
-    setFullscreen(false);
     setForm({
       txn_date: tx.txn_date || today(),
       txn_type: tx.txn_type || "income",
@@ -1018,16 +1168,19 @@ export default function RecordsPage() {
       category_name: tx.category_name || "",
       debt_amount: String(tx.debt_amount || ""),
       note: tx.note || "",
-      customer_id: "",
+      customer_id: linkedInvoice?.customer_id || "",
       product_id: "",
       invoice_id: tx.source_type === "invoice" && tx.source_id ? tx.source_id : "",
     });
+    setIsFullscreen(false);
     setShowForm(true);
   }
 
-  function selectedCustomerName() {
+  function selectedCustomerLabel() {
     const c = customers.find((x) => x.id === form.customer_id);
-    return c?.name || "";
+    if (!c) return "";
+
+    return c.company_name ? `${c.name || "-"} / ${c.company_name}` : c.name || "";
   }
 
   function selectedProductName() {
@@ -1039,13 +1192,17 @@ export default function RecordsPage() {
     const inv = invoices.find((x) => x.id === form.invoice_id);
     if (!inv) return "";
 
-    return `${inv.invoice_no || inv.id}${inv.customer_name ? `｜${inv.customer_name}` : ""}`;
+    const customerLabel = inv.customer_company
+      ? `${inv.customer_name || "-"} / ${inv.customer_company}`
+      : inv.customer_name || "";
+
+    return `${inv.invoice_no || inv.id}${customerLabel ? `｜${customerLabel}` : ""}`;
   }
 
   function buildFinalNote() {
     const parts: string[] = [];
 
-    if (form.customer_id) parts.push(`${t.customer}: ${selectedCustomerName()}`);
+    if (form.customer_id) parts.push(`${t.customer}: ${selectedCustomerLabel()}`);
     if (form.product_id) parts.push(`${t.product}: ${selectedProductName()}`);
     if (form.invoice_id) parts.push(`${t.invoice}: ${selectedInvoiceText()}`);
     if (form.note.trim()) parts.push(form.note.trim());
@@ -1056,109 +1213,84 @@ export default function RecordsPage() {
   async function saveTransaction() {
     setMsg("");
 
+    if (isSaving) return;
+
     if (!form.txn_date || !form.amount || !form.category_name.trim()) {
       setMsg(t.needRequired);
       return;
     }
 
+    setIsSaving(true);
+
     const amount = Number(form.amount || 0);
     const debt = Number(form.debt_amount || 0);
     const finalNote = buildFinalNote();
 
-    if (isTrial) {
-      const payload: Txn = {
-        id: editingId || makeId(),
-        user_id: "trial",
+    const categoryName = form.category_name.trim();
+    if (categoryName) {
+      saveCategories(uniqueCleanList([...categories, categoryName]));
+    }
+
+    try {
+      if (isTrial) {
+        const payload: Txn = {
+          id: editingId || makeId(),
+          user_id: "trial",
+          txn_date: form.txn_date,
+          txn_type: form.txn_type,
+          amount,
+          category_name: categoryName,
+          debt_amount: debt,
+          note: finalNote,
+          source_type: form.invoice_id ? "invoice" : null,
+          source_id: form.invoice_id || null,
+          created_at: editingId
+            ? transactions.find((x) => x.id === editingId)?.created_at || new Date().toISOString()
+            : new Date().toISOString(),
+        };
+
+        const next = editingId
+          ? transactions.map((x) => (x.id === editingId ? payload : x))
+          : [payload, ...transactions];
+
+        saveTrialTransactions(next);
+        setMsg(t.saved);
+        setIsSaving(false);
+        closeForm();
+        return;
+      }
+
+      if (!session) {
+        setIsSaving(false);
+        return;
+      }
+
+      const payload = {
+        user_id: session.user.id,
         txn_date: form.txn_date,
         txn_type: form.txn_type,
         amount,
-        category_name: form.category_name.trim(),
+        category_name: categoryName,
         debt_amount: debt,
         note: finalNote,
         source_type: form.invoice_id ? "invoice" : null,
         source_id: form.invoice_id || null,
-        created_at: new Date().toISOString(),
       };
 
-      const next = editingId
-        ? transactions.map((x) => (x.id === editingId ? payload : x))
-        : [payload, ...transactions];
+      if (editingId) {
+        await updateAdaptive("transactions", editingId, session.user.id, payload);
+      } else {
+        await insertAdaptive("transactions", payload);
+      }
 
-      saveTrialTransactions(next);
       setMsg(t.saved);
-
-      const redirected = closeForm();
-      if (redirected) return;
-
-      return;
+      await loadAll(session.user.id);
+      setIsSaving(false);
+      closeForm();
+    } catch (error: any) {
+      setMsg(error?.message || String(error));
+      setIsSaving(false);
     }
-
-    if (!session) return;
-
-    const basicPayload = {
-      user_id: session.user.id,
-      txn_date: form.txn_date,
-      txn_type: form.txn_type,
-      amount,
-      category_name: form.category_name.trim(),
-      debt_amount: debt,
-      note: finalNote,
-    };
-
-    const fullPayload = {
-      ...basicPayload,
-      source_type: form.invoice_id ? "invoice" : null,
-      source_id: form.invoice_id || null,
-    };
-
-    if (editingId) {
-      const { error } = await supabase
-        .from("transactions")
-        .update(fullPayload)
-        .eq("id", editingId)
-        .eq("user_id", session.user.id);
-
-      if (error) {
-        if (isSchemaCacheMissingSource(error.message)) {
-          const retry = await supabase
-            .from("transactions")
-            .update(basicPayload)
-            .eq("id", editingId)
-            .eq("user_id", session.user.id);
-
-          if (retry.error) {
-            setMsg(retry.error.message);
-            return;
-          }
-        } else {
-          setMsg(error.message);
-          return;
-        }
-      }
-    } else {
-      const { error } = await supabase.from("transactions").insert(fullPayload);
-
-      if (error) {
-        if (isSchemaCacheMissingSource(error.message)) {
-          const retry = await supabase.from("transactions").insert(basicPayload);
-
-          if (retry.error) {
-            setMsg(retry.error.message);
-            return;
-          }
-        } else {
-          setMsg(error.message);
-          return;
-        }
-      }
-    }
-
-    setMsg(t.saved);
-
-    const redirected = closeForm();
-    if (redirected) return;
-
-    await loadAll(session.user.id);
   }
 
   async function deleteTransaction(id: string) {
@@ -1202,6 +1334,32 @@ export default function RecordsPage() {
 
   const activeMonthKey = summaryMonth || latestMonthKey;
 
+  const yearOptions = useMemo(() => {
+    const years = new Set<string>();
+
+    for (let i = -4; i <= 4; i++) {
+      years.add(String(currentYear + i));
+    }
+
+    transactions.forEach((tx) => {
+      const year = getMonthKeyFromDate(tx.txn_date).slice(0, 4);
+      if (year) years.add(year);
+    });
+
+    invoices.forEach((inv) => {
+      const year = getMonthKeyFromDate(getInvoiceEffectiveDate(inv)).slice(0, 4);
+      if (year) years.add(year);
+    });
+
+    if (activeMonthKey.slice(0, 4)) years.add(activeMonthKey.slice(0, 4));
+
+    return Array.from(years).sort();
+  }, [transactions, invoices, currentYear, activeMonthKey]);
+
+  const monthOptions = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
+  }, []);
+
   const monthRecords = useMemo(() => {
     return transactions.filter((tx) => tx.txn_date?.startsWith(activeMonthKey));
   }, [transactions, activeMonthKey]);
@@ -1231,7 +1389,7 @@ export default function RecordsPage() {
   }, [monthRecords]);
 
   const customerDebtItems = useMemo<DebtItem[]>(() => {
-    return invoices
+    const invoiceDebts: DebtItem[] = invoices
       .filter((inv) => isInvoiceUnpaid(inv))
       .map((inv) => {
         const customer = customers.find((c) => c.id === inv.customer_id);
@@ -1239,21 +1397,38 @@ export default function RecordsPage() {
         const customerName = inv.customer_name || customer?.name || "-";
         const companyName = inv.customer_company || customer?.company_name || "";
 
-        const customerLabel = companyName
-          ? `${customerName} / ${companyName}`
-          : customerName;
+        const customerLabel = companyName ? `${customerName} / ${companyName}` : customerName;
 
         const dueDate = inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10) || "-";
 
         return {
+          id: `invoice-${inv.id}`,
+          source: "invoice",
           invoice: inv,
           customerLabel,
           amount: Number(inv.total || 0),
           dueDate,
           sortTime: getDueTime(dueDate),
         };
+      });
+
+    const customerDebts: DebtItem[] = customers
+      .map((c) => {
+        const balance = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
+
+        return {
+          id: `customer-${c.id}`,
+          source: "customer" as const,
+          customer: c,
+          customerLabel: c.company_name ? `${c.name || "-"} / ${c.company_name}` : c.name || "-",
+          amount: balance,
+          dueDate: c.last_payment_date || "-",
+          sortTime: getDueTime(c.last_payment_date || ""),
+        };
       })
-      .sort((a, b) => a.sortTime - b.sortTime);
+      .filter((x) => x.amount > 0);
+
+    return [...invoiceDebts, ...customerDebts].sort((a, b) => a.sortTime - b.sortTime);
   }, [invoices, customers]);
 
   const totalCustomerDebt = useMemo(() => {
@@ -1264,22 +1439,27 @@ export default function RecordsPage() {
 
   const filteredRecords = useMemo(() => {
     const s = search.toLowerCase().trim();
+    const hasManualDateFilter = Boolean(filterStartDate || filterEndDate);
 
     return transactions.filter((tx) => {
       const invoice =
         tx.source_type === "invoice" ? invoices.find((x) => x.id === tx.source_id) : null;
 
-      const selectedFilterCustomerName =
-        customers.find((c) => c.id === filterCustomerId)?.name?.toLowerCase() || "";
+      const selectedCustomer = customers.find((c) => c.id === filterCustomerId);
+      const selectedFilterCustomerName = selectedCustomer?.name?.toLowerCase() || "";
+      const selectedFilterCompanyName = selectedCustomer?.company_name?.toLowerCase() || "";
 
-      const matchSummaryMonth =
-        filterStartDate || filterEndDate ? true : tx.txn_date?.startsWith(activeMonthKey);
+      const matchMonth = hasManualDateFilter || tx.txn_date?.startsWith(activeMonthKey);
 
       const matchType = filterType === "all" || tx.txn_type === filterType;
 
       const matchCustomer =
         !filterCustomerId ||
         Boolean(tx.note?.toLowerCase().includes(selectedFilterCustomerName)) ||
+        Boolean(
+          selectedFilterCompanyName &&
+            tx.note?.toLowerCase().includes(selectedFilterCompanyName)
+        ) ||
         invoice?.customer_id === filterCustomerId;
 
       const matchStart = !filterStartDate || tx.txn_date >= filterStartDate;
@@ -1290,6 +1470,7 @@ export default function RecordsPage() {
         tx.txn_type,
         tx.amount,
         tx.category_name,
+        tx.debt_amount,
         tx.note,
         invoice?.invoice_no,
         invoice?.customer_name,
@@ -1302,7 +1483,7 @@ export default function RecordsPage() {
 
       const matchSearch = !s || searchText.includes(s);
 
-      return matchSummaryMonth && matchType && matchCustomer && matchStart && matchEnd && matchSearch;
+      return matchMonth && matchType && matchCustomer && matchStart && matchEnd && matchSearch;
     });
   }, [
     transactions,
@@ -1316,21 +1497,29 @@ export default function RecordsPage() {
     activeMonthKey,
   ]);
 
+  const formCategoryOptions = useMemo(() => {
+    return uniqueCleanList([...categories, form.category_name]);
+  }, [categories, form.category_name]);
+
   function getInvoice(tx: Txn) {
     if (tx.source_type !== "invoice" || !tx.source_id) return null;
     return invoices.find((x) => x.id === tx.source_id) || null;
   }
 
-  function isDebtRecord(tx: Txn, invoice: Invoice | null) {
+  function isDebtRecord(tx: Txn) {
     if (Number(tx.debt_amount || 0) > 0) return true;
-    if (invoice && isInvoiceUnpaid(invoice)) return true;
+
+    const inv = getInvoice(tx);
+    if (inv && isInvoiceUnpaid(inv)) return true;
+
     return false;
   }
 
   return (
     <main
-      className="smartacctg-page smartacctg-accounting-page smartacctg-records-page"
+      className="smartacctg-page smartacctg-records-page"
       data-sa-theme={themeKey}
+      data-smartacctg-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
       <style jsx global>{ACCOUNTING_PAGE_FIX_CSS}</style>
@@ -1552,7 +1741,7 @@ export default function RecordsPage() {
             <option value="">{t.filterCustomer}</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name || "-"} {c.company_name ? `｜${c.company_name}` : ""}
+                {c.company_name ? `${c.name || "-"} / ${c.company_name}` : c.name || "-"}
               </option>
             ))}
           </select>
@@ -1595,7 +1784,7 @@ export default function RecordsPage() {
             {filteredRecords.map((tx) => {
               const invoice = getInvoice(tx);
               const isIncome = tx.txn_type === "income";
-              const debtRecord = isDebtRecord(tx, invoice);
+              const debtRecord = isDebtRecord(tx);
 
               return (
                 <div
@@ -1603,12 +1792,10 @@ export default function RecordsPage() {
                   className={`record-card ${debtRecord ? "debt-record" : ""}`}
                   style={{
                     ...recordCardStyle,
-                    borderColor: debtRecord ? "#dc2626" : theme.border,
-                    background: debtRecord ? "#fee2e2" : theme.itemBg || theme.card,
-                    color: debtRecord ? "#7f1d1d" : theme.text,
-                    boxShadow: debtRecord
-                      ? "0 0 0 1px rgba(220, 38, 38, 0.35), 0 12px 28px rgba(220, 38, 38, 0.22)"
-                      : theme.glow,
+                    borderColor: theme.border,
+                    background: theme.itemBg || theme.card,
+                    color: theme.text,
+                    boxShadow: theme.glow,
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
@@ -1618,14 +1805,14 @@ export default function RecordsPage() {
 
                     <p style={{ ...mutedStyle, color: debtRecord ? "#7f1d1d" : themeSubText }}>
                       {t.date}: {tx.txn_date} ｜ {t.amount}:{" "}
-                      <strong style={{ color: debtRecord ? "#7f1d1d" : isIncome ? "#16a34a" : "#dc2626" }}>
-                        RM {Number(tx.amount || 0).toFixed(2)}
+                      <strong style={{ color: isIncome ? "#16a34a" : "#dc2626" }}>
+                        {formatRM(Number(tx.amount || 0))}
                       </strong>
                     </p>
 
                     {Number(tx.debt_amount || 0) > 0 ? (
-                      <p style={{ ...mutedStyle, color: "#7f1d1d" }}>
-                        {t.debtAmount}: RM {Number(tx.debt_amount || 0).toFixed(2)}
+                      <p style={{ ...mutedStyle, color: "#dc2626", fontWeight: 900 }}>
+                        {t.debtAmount}: {formatRM(Number(tx.debt_amount || 0))}
                       </p>
                     ) : null}
 
@@ -1633,6 +1820,7 @@ export default function RecordsPage() {
                       <p style={{ ...mutedStyle, color: debtRecord ? "#7f1d1d" : themeSubText }}>
                         {t.sourceInvoice}: {invoice.invoice_no || invoice.id}{" "}
                         {invoice.customer_name ? `｜${invoice.customer_name}` : ""}
+                        {invoice.customer_company ? ` / ${invoice.customer_company}` : ""}
                       </p>
                     ) : (
                       <p style={{ ...mutedStyle, color: debtRecord ? "#7f1d1d" : themeSubText }}>
@@ -1711,9 +1899,12 @@ export default function RecordsPage() {
       </section>
 
       {showForm ? (
-        <div style={fullscreen ? fullOverlayStyle : overlayStyle}>
+        <div
+          className={isFullscreen ? "records-fullscreen-overlay" : ""}
+          style={isFullscreen ? undefined : overlayStyle}
+        >
           <section
-            className={`sa-modal ${fullscreen ? "fullscreen-record-modal" : ""}`}
+            className={`sa-modal ${isFullscreen ? "records-fullscreen-modal" : ""}`}
             style={{
               ...modalStyle,
               background: theme.card,
@@ -1722,7 +1913,7 @@ export default function RecordsPage() {
               color: theme.text,
             }}
           >
-            <div className="sa-modal-header">
+            <div className="sa-modal-header" style={modalHeaderStyle}>
               <h2 style={modalTitleStyle}>{editingId ? t.update : t.add}</h2>
 
               <button
@@ -1730,6 +1921,7 @@ export default function RecordsPage() {
                 className="sa-close-x"
                 onClick={closeForm}
                 aria-label={t.close}
+                style={closeXStyle}
               >
                 {t.close}
               </button>
@@ -1746,14 +1938,17 @@ export default function RecordsPage() {
                 />
               </div>
 
-              <select
-                value={form.txn_type}
-                onChange={(e) => setForm({ ...form, txn_type: e.target.value as TxnType })}
-                style={themedInputStyle}
-              >
-                <option value="income">{t.income}</option>
-                <option value="expense">{t.expense}</option>
-              </select>
+              <div style={dateWrapStyle}>
+                <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.type}</label>
+                <select
+                  value={form.txn_type}
+                  onChange={(e) => setForm({ ...form, txn_type: e.target.value as TxnType })}
+                  style={themedInputStyle}
+                >
+                  <option value="income">{t.income}</option>
+                  <option value="expense">{t.expense}</option>
+                </select>
+              </div>
 
               <input
                 placeholder={t.amount}
@@ -1768,10 +1963,10 @@ export default function RecordsPage() {
                 onChange={(e) => setForm({ ...form, category_name: e.target.value })}
                 style={themedInputStyle}
               >
-                <option value="">{t.category}</option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                <option value="">{t.chooseCategory}</option>
+                {formCategoryOptions.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
                   </option>
                 ))}
               </select>
@@ -1792,14 +1987,14 @@ export default function RecordsPage() {
               />
             </div>
 
-            <h3 style={sectionTitleStyle}>{t.savedCategory}</h3>
+            <h3 style={sectionTitleStyle}>{t.addCategory}</h3>
 
             <div className="category-add-row" style={categoryAddRowStyle}>
               <input
-                placeholder={t.addCategory}
+                placeholder={t.categoryPlaceholder}
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                style={themedInputStyle}
+                style={{ ...themedInputStyle, marginBottom: 0 }}
               />
 
               <button
@@ -1809,47 +2004,38 @@ export default function RecordsPage() {
                   ...primaryBtnStyle,
                   background: theme.accent,
                   marginTop: 0,
-                  marginBottom: 0,
                 }}
               >
                 +
               </button>
             </div>
 
-            <div style={categoryChipRowStyle}>
-              {categories.map((category) => (
-                <div
-                  key={category}
-                  style={{
-                    ...categoryChipStyle,
-                    borderColor: theme.border,
-                    background:
-                      form.category_name === category
-                        ? theme.accent
-                        : theme.inputBg || "#ffffff",
-                    color: form.category_name === category ? "#ffffff" : theme.accent,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, category_name: category })}
-                    style={categoryChipNameStyle}
-                  >
-                    {category}
-                  </button>
+            <div style={{ marginTop: 12 }}>
+              <strong style={{ display: "block", marginBottom: 8 }}>{t.savedCategory}</strong>
 
-                  <button
-                    type="button"
-                    onClick={() => deleteCategory(category)}
+              <div className="category-chip-row">
+                {categories.map((cat) => (
+                  <span
+                    key={cat}
+                    className="category-chip"
                     style={{
-                      ...categoryChipDeleteStyle,
-                      color: form.category_name === category ? "#ffffff" : "#dc2626",
+                      background: theme.softBg || theme.soft || "#ccfbf1",
+                      color: theme.accent,
+                      border: `1px solid ${theme.border}`,
                     }}
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
+                    {cat}
+                    <button
+                      type="button"
+                      onClick={() => deleteCategory(cat)}
+                      title={t.deleteCategory}
+                      style={chipDeleteBtnStyle}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
 
             <h3 style={sectionTitleStyle}>{t.linkedInfo}</h3>
@@ -1863,7 +2049,7 @@ export default function RecordsPage() {
                 <option value="">{t.noCustomer}</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name || "-"} {c.company_name ? `｜${c.company_name}` : ""}
+                    {c.company_name ? `${c.name || "-"} / ${c.company_name}` : c.name || "-"}
                   </option>
                 ))}
               </select>
@@ -1876,7 +2062,7 @@ export default function RecordsPage() {
                 <option value="">{t.noProduct}</option>
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name || "-"} - RM {Number(p.price || 0).toFixed(2)}
+                    {p.name || "-"} - {formatRM(Number(p.price || 0))}
                   </option>
                 ))}
               </select>
@@ -1890,8 +2076,9 @@ export default function RecordsPage() {
                 {invoices.map((inv) => (
                   <option key={inv.id} value={inv.id}>
                     {inv.invoice_no || inv.id}{" "}
-                    {inv.customer_name ? `- ${inv.customer_name}` : ""} - RM{" "}
-                    {Number(inv.total || 0).toFixed(2)}
+                    {inv.customer_name ? `- ${inv.customer_name}` : ""}
+                    {inv.customer_company ? ` / ${inv.customer_company}` : ""} -{" "}
+                    {formatRM(Number(inv.total || 0))}
                   </option>
                 ))}
               </select>
@@ -1901,13 +2088,15 @@ export default function RecordsPage() {
               <button
                 type="button"
                 onClick={saveTransaction}
+                disabled={isSaving}
                 style={{
                   ...primaryBtnStyle,
                   background: theme.accent,
                   marginTop: 0,
+                  opacity: isSaving ? 0.65 : 1,
                 }}
               >
-                {editingId ? t.update : t.save}
+                {isSaving ? t.saving : editingId ? t.update : t.save}
               </button>
 
               <button
@@ -2039,6 +2228,7 @@ const dateInputStyle: CSSProperties = {
   appearance: "none",
   WebkitAppearance: "none",
   textAlign: "center",
+  textAlignLast: "center" as any,
   display: "block",
   lineHeight: "normal",
 };
@@ -2047,6 +2237,27 @@ const responsiveGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
   gap: 12,
+};
+
+const categoryAddRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 10,
+  alignItems: "center",
+};
+
+const chipDeleteBtnStyle: CSSProperties = {
+  width: 22,
+  height: 22,
+  minWidth: 22,
+  minHeight: 22,
+  borderRadius: 999,
+  border: "none",
+  background: "#fee2e2",
+  color: "#b91c1c",
+  fontWeight: 900,
+  lineHeight: 1,
+  padding: 0,
 };
 
 const relatedMenuRowStyle: CSSProperties = {
@@ -2161,25 +2372,34 @@ const overlayStyle: CSSProperties = {
   overflowY: "auto",
 };
 
-const fullOverlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15, 23, 42, 0.52)",
-  padding: 0,
-  zIndex: 9999,
-  overflow: "hidden",
-};
-
 const modalStyle: CSSProperties = {
   width: "100%",
   maxWidth: 900,
   margin: "0 auto",
   border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+};
+
+const modalHeaderStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 14,
 };
 
 const modalTitleStyle: CSSProperties = {
   margin: 0,
   fontWeight: 900,
+};
+
+const closeXStyle: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "#dc2626",
+  fontWeight: 900,
+  padding: "4px 8px",
 };
 
 const dateWrapStyle: CSSProperties = {
@@ -2197,48 +2417,4 @@ const modalActionRowStyle: CSSProperties = {
   gap: 10,
   marginTop: 18,
   flexWrap: "wrap",
-};
-
-const categoryAddRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 10,
-  alignItems: "center",
-  marginBottom: 12,
-};
-
-const categoryChipRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-  marginBottom: 16,
-};
-
-const categoryChipStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  border: "var(--sa-border-w) solid",
-  borderRadius: 999,
-  minHeight: 40,
-  padding: "0 8px 0 12px",
-  fontWeight: 900,
-};
-
-const categoryChipNameStyle: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "inherit",
-  padding: 0,
-  minHeight: 0,
-  fontWeight: 900,
-};
-
-const categoryChipDeleteStyle: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  padding: "0 4px",
-  minHeight: 0,
-  fontWeight: 900,
-  fontSize: 18,
 };
