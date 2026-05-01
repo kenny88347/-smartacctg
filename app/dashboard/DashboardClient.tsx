@@ -5,6 +5,7 @@ import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import {
   THEMES,
+  THEME_KEY as SMARTACCTG_THEME_KEY,
   type ThemeKey,
   getThemeKeyFromUrlOrLocalStorage,
   isThemeKey,
@@ -36,7 +37,6 @@ type Txn = {
   amount: number;
   category_name?: string | null;
   note?: string | null;
-  created_at?: string | null;
 };
 
 type Customer = {
@@ -53,23 +53,24 @@ type Customer = {
 type Invoice = {
   id: string;
   user_id?: string;
-  invoice_no?: string | null;
   customer_id?: string | null;
   customer_name?: string | null;
   customer_company?: string | null;
-  total?: number | null;
-  status?: string | null;
-  due_date?: string | null;
+  invoice_no?: string | null;
   invoice_date?: string | null;
+  due_date?: string | null;
+  status?: string | null;
+  total?: number | null;
   created_at?: string | null;
 };
 
-type DebtRow = {
+type DebtItem = {
   id: string;
-  name: string;
+  label: string;
   amount: number;
-  dueDate?: string;
+  dueDate: string;
   source: "customer" | "invoice";
+  sortTime: number;
 };
 
 const TRIAL_KEY = "smartacctg_trial";
@@ -83,25 +84,26 @@ const TXT = {
     dashboard: "控制台",
     notice: "通知：这里显示系统通知……",
     recordsOverview: "记录总览",
+    summaryMonth: "统计月份",
     customerDebt: "客户欠款",
     estimatedProfit: "预计利润",
     balance: "当前余额",
     monthIncome: "本月收入",
     monthExpense: "本月支出",
-    latestMonth: "最新月份",
     accounting: "记账系统",
     customers: "客户管理",
     products: "产品管理",
     invoices: "发票系统",
+    extension: "扩展功能",
+    nkShop: "NK网店",
+    eCard: "电子名片",
+    shopSystem: "网店系统",
+    comingSoon: "这个功能入口已准备好，之后可以接订阅和功能页面。",
     quick: "快速记录 / 开发票",
     quickAccounting: "记账",
     quickInvoice: "发票",
     quickCustomer: "客户",
     quickProduct: "产品",
-    extension: "扩展功能",
-    nkShop: "NK网店",
-    digitalCard: "电子名片",
-    onlineShop: "网店系统",
     expiry: "订阅期限",
     noSub: "未订阅",
     trial: "免费试用",
@@ -125,31 +127,34 @@ const TXT = {
     noRecord: "暂无记录",
     noDebt: "暂无欠款",
     dueDate: "到期日",
+    sourceCustomer: "客户资料",
+    sourceInvoice: "发票",
     back: "返回",
   },
   en: {
     dashboard: "Dashboard",
     notice: "Notice: system notifications will appear here...",
     recordsOverview: "Records Overview",
+    summaryMonth: "Summary Month",
     customerDebt: "Customer Debt",
     estimatedProfit: "Estimated Profit",
     balance: "Balance",
     monthIncome: "Monthly Income",
     monthExpense: "Monthly Expense",
-    latestMonth: "Latest Month",
     accounting: "Accounting",
     customers: "Customers",
     products: "Products",
     invoices: "Invoices",
+    extension: "Extensions",
+    nkShop: "NK Shop",
+    eCard: "E-Business Card",
+    shopSystem: "Online Store System",
+    comingSoon: "This feature entry is ready. You can connect subscription and feature pages later.",
     quick: "Quick Record / Invoice",
     quickAccounting: "Record",
     quickInvoice: "Invoice",
     quickCustomer: "Customer",
     quickProduct: "Product",
-    extension: "Extensions",
-    nkShop: "NK Shop",
-    digitalCard: "Digital Name Card",
-    onlineShop: "Online Shop",
     expiry: "Expiry",
     noSub: "Not Subscribed",
     trial: "Free Trial",
@@ -173,31 +178,34 @@ const TXT = {
     noRecord: "No records",
     noDebt: "No debt",
     dueDate: "Due Date",
+    sourceCustomer: "Customer",
+    sourceInvoice: "Invoice",
     back: "Back",
   },
   ms: {
     dashboard: "Papan Pemuka",
     notice: "Notis: pemberitahuan sistem akan dipaparkan di sini...",
     recordsOverview: "Ringkasan Rekod",
+    summaryMonth: "Bulan Ringkasan",
     customerDebt: "Hutang Pelanggan",
     estimatedProfit: "Anggaran Untung",
     balance: "Baki",
     monthIncome: "Pendapatan Bulan Ini",
     monthExpense: "Perbelanjaan Bulan Ini",
-    latestMonth: "Bulan Terkini",
     accounting: "Sistem Akaun",
     customers: "Pelanggan",
     products: "Produk",
     invoices: "Invois",
+    extension: "Fungsi Tambahan",
+    nkShop: "Kedai NK",
+    eCard: "Kad Perniagaan Digital",
+    shopSystem: "Sistem Kedai Online",
+    comingSoon: "Pintu fungsi ini sudah disediakan. Langganan dan halaman fungsi boleh disambung kemudian.",
     quick: "Rekod Pantas / Invois",
     quickAccounting: "Rekod",
     quickInvoice: "Invois",
     quickCustomer: "Pelanggan",
     quickProduct: "Produk",
-    extension: "Fungsi Tambahan",
-    nkShop: "NK Kedai",
-    digitalCard: "Kad Nama Digital",
-    onlineShop: "Sistem Kedai Online",
     expiry: "Tarikh Tamat",
     noSub: "Belum Langgan",
     trial: "Percubaan Percuma",
@@ -221,6 +229,8 @@ const TXT = {
     noRecord: "Tiada rekod",
     noDebt: "Tiada hutang",
     dueDate: "Tarikh Tamat",
+    sourceCustomer: "Pelanggan",
+    sourceInvoice: "Invois",
     back: "Kembali",
   },
 };
@@ -251,16 +261,7 @@ function safeParseArray<T>(raw: string | null): T[] {
   }
 }
 
-function todayMonth() {
-  return new Date().toISOString().slice(0, 7);
-}
-
-function getMonthKey(date?: string | null) {
-  if (!date) return "";
-  return String(date).slice(0, 7);
-}
-
-function normalizeThemeKey(value: unknown, fallback: ThemeKey = "deepTeal"): ThemeKey {
+function normalizeDashboardThemeKey(value: unknown, fallback: ThemeKey = "deepTeal"): ThemeKey {
   if (isThemeKey(value)) return value;
 
   if (value === "futureWorld" && isThemeKey("futureForest")) {
@@ -273,27 +274,40 @@ function normalizeThemeKey(value: unknown, fallback: ThemeKey = "deepTeal"): The
 function applyThemeToDocumentLocal(key: ThemeKey) {
   if (typeof document === "undefined") return;
 
-  const fixedKey = normalizeThemeKey(key);
+  const fixedKey = normalizeDashboardThemeKey(key);
   const theme: any = THEMES[fixedKey] || THEMES.deepTeal;
 
   document.documentElement.setAttribute("data-sa-theme", fixedKey);
   document.documentElement.setAttribute("data-smartacctg-theme", fixedKey);
 
-  document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg || "#ecfdf5");
-  document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card || "#ffffff");
-  document.documentElement.style.setProperty("--sa-card-bg", theme.card || "#ffffff");
-  document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card || "#ffffff");
-  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card || "#ffffff");
+  document.documentElement.style.setProperty("--sa-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card);
+  document.documentElement.style.setProperty("--sa-card-bg", theme.card);
+  document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-card", theme.itemCard || theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-text", theme.itemText || theme.panelText || theme.text);
   document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
   document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
-  document.documentElement.style.setProperty("--sa-border", theme.border || "#14b8a6");
-  document.documentElement.style.setProperty("--sa-accent", theme.accent || "#0f766e");
-  document.documentElement.style.setProperty("--sa-text", theme.text || "#064e3b");
-  document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text || "#111827");
+  document.documentElement.style.setProperty("--sa-border", theme.border);
+  document.documentElement.style.setProperty("--sa-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-text", theme.text);
+  document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
   document.documentElement.style.setProperty("--sa-muted", theme.muted || theme.subText || "#64748b");
   document.documentElement.style.setProperty("--sa-sub-text", theme.subText || theme.muted || "#64748b");
-  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || "#ccfbf1");
-  document.documentElement.style.setProperty("--sa-glow", theme.glow || "none");
+  document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.card);
+  document.documentElement.style.setProperty("--sa-glow", theme.glow);
+
+  document.documentElement.style.setProperty("--sa-theme-page-bg", theme.pageBg);
+  document.documentElement.style.setProperty("--sa-theme-banner", theme.banner || theme.card);
+  document.documentElement.style.setProperty("--sa-theme-card", theme.card);
+  document.documentElement.style.setProperty("--sa-theme-border", theme.border);
+  document.documentElement.style.setProperty("--sa-theme-accent", theme.accent);
+  document.documentElement.style.setProperty("--sa-theme-text", theme.text);
+  document.documentElement.style.setProperty("--sa-theme-muted", theme.muted || theme.subText || "#64748b");
+  document.documentElement.style.setProperty("--sa-theme-glow", theme.glow);
+  document.documentElement.style.setProperty("--sa-theme-input-bg", theme.inputBg || "#ffffff");
+  document.documentElement.style.setProperty("--sa-theme-input-text", theme.inputText || "#111827");
 }
 
 function getInitialLang(): Lang {
@@ -309,6 +323,26 @@ function getInitialLang(): Lang {
   return "zh";
 }
 
+function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
+  if (typeof window === "undefined") return;
+
+  const q = new URLSearchParams(window.location.search);
+  q.set("lang", nextLang);
+  q.set("theme", nextTheme);
+  q.set("refresh", String(Date.now()));
+
+  window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
+}
+
+function todayMonthKey() {
+  return new Date().toISOString().slice(0, 7);
+}
+
+function getMonthKey(date?: string | null) {
+  if (!date) return "";
+  return String(date).slice(0, 7);
+}
+
 function formatRM(value: number) {
   return `RM ${Number(value || 0).toLocaleString("en-MY", {
     minimumFractionDigits: 2,
@@ -316,24 +350,16 @@ function formatRM(value: number) {
   })}`;
 }
 
-function isInvoiceUnpaid(inv: Invoice) {
-  const status = String(inv.status || "").toLowerCase();
-
-  if (status === "paid") return false;
-  if (status === "cancelled") return false;
-  if (status === "canceled") return false;
-
-  return Number(inv.total || 0) > 0;
+function getDueTime(date?: string | null) {
+  if (!date) return Number.MAX_SAFE_INTEGER;
+  const time = new Date(`${date}T00:00:00`).getTime();
+  return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
 }
 
-function cleanPhoneForWhatsapp(raw?: string | null) {
-  const digits = String(raw || "").replace(/\D/g, "");
-
-  if (!digits) return "";
-  if (digits.startsWith("60")) return digits;
-  if (digits.startsWith("0")) return `6${digits}`;
-
-  return `60${digits}`;
+function isInvoiceUnpaid(inv: Invoice) {
+  const status = String(inv.status || "").toLowerCase();
+  if (status === "paid" || status === "cancelled" || status === "canceled") return false;
+  return Number(inv.total || 0) > 0;
 }
 
 export default function DashboardClient({ page }: { page: PageKey }) {
@@ -353,7 +379,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [showRecordSummary, setShowRecordSummary] = useState(false);
   const [showDebtSummary, setShowDebtSummary] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
-  const [showExtensions, setShowExtensions] = useState(false);
+  const [showExtensionMenu, setShowExtensionMenu] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -365,14 +391,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [msg, setMsg] = useState("");
 
   const t = TXT[lang];
-  const theme = THEMES[themeKey] || THEMES.deepTeal;
-  const themeAny: any = theme;
+  const theme: any = THEMES[themeKey] || THEMES.deepTeal;
+  const themeMuted = theme.muted || theme.subText || "#64748b";
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
-    borderColor: themeAny.border || "#14b8a6",
-    background: themeAny.inputBg || "#ffffff",
-    color: themeAny.inputText || "#111827",
+    borderColor: theme.border,
+    background: theme.inputBg || "#ffffff",
+    color: theme.inputText || "#111827",
   };
 
   useEffect(() => {
@@ -383,10 +409,11 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const initialLang = getInitialLang();
     const initialTheme = getThemeKeyFromUrlOrLocalStorage("deepTeal");
 
+    const fixedTheme = normalizeDashboardThemeKey(initialTheme);
+
     setLang(initialLang);
     safeLocalSet(LANG_KEY, initialLang);
 
-    const fixedTheme = normalizeThemeKey(initialTheme, "deepTeal");
     setThemeKey(fixedTheme);
     saveThemeKey(fixedTheme);
     applyThemeToDocumentLocal(fixedTheme);
@@ -406,19 +433,25 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         const trial = JSON.parse(trialRaw);
 
         if (Date.now() < Number(trial.expiresAt)) {
+          const trialTheme = normalizeDashboardThemeKey(currentTheme);
+
           setIsTrial(true);
           setSession(null);
           setProfile(null);
+          setThemeKey(trialTheme);
+
+          saveThemeKey(trialTheme);
+          applyThemeToDocumentLocal(trialTheme);
 
           setTransactions(safeParseArray<Txn>(safeLocalGet(TRIAL_TX_KEY)));
           setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
           setInvoices(safeParseArray<Invoice>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
-          replaceUrlLangTheme(currentLang, currentTheme);
+          replaceUrlLangTheme(currentLang, trialTheme);
           return;
         }
       } catch {
-        // ignore bad trial data
+        // Bad trial data, clear below.
       }
 
       safeLocalRemove(TRIAL_KEY);
@@ -447,7 +480,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .eq("id", userId)
       .single();
 
-    let finalTheme = currentTheme;
+    let finalTheme: ThemeKey = currentTheme;
 
     if (profileData) {
       const p = profileData as Profile;
@@ -460,17 +493,19 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       setCompanyPhone(p.company_phone || "");
       setCompanyAddress(p.company_address || "");
 
-      finalTheme = normalizeThemeKey(p.theme, "deepTeal");
-      setThemeKey(finalTheme);
-      saveThemeKey(finalTheme);
-      applyThemeToDocumentLocal(finalTheme);
+      finalTheme = normalizeDashboardThemeKey(p.theme || currentTheme);
     }
 
+    safeLocalRemove(SMARTACCTG_THEME_KEY);
+    setThemeKey(finalTheme);
+    saveThemeKey(finalTheme);
+    applyThemeToDocumentLocal(finalTheme);
     replaceUrlLangTheme(currentLang, finalTheme);
-    await loadDashboardData(userId);
+
+    await loadAll(userId);
   }
 
-  async function loadDashboardData(userId: string) {
+  async function loadAll(userId: string) {
     const { data: txData } = await supabase
       .from("transactions")
       .select("*")
@@ -494,25 +529,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     setInvoices((invoiceData || []) as Invoice[]);
   }
 
-  function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
-    if (typeof window === "undefined") return;
-
-    const q = new URLSearchParams(window.location.search);
-
-    q.set("lang", nextLang);
-    q.set("theme", nextTheme);
-    q.set("refresh", String(Date.now()));
-
-    window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-  }
-
   function buildUrl(path: string, extra?: string) {
     const q = new URLSearchParams();
+    const currentTheme = normalizeDashboardThemeKey(themeKey);
 
     if (isTrial) q.set("mode", "trial");
 
     q.set("lang", lang);
-    q.set("theme", themeKey);
+    q.set("theme", currentTheme);
     q.set("refresh", String(Date.now()));
 
     if (extra) {
@@ -543,7 +567,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     safeLocalRemove(TRIAL_CUSTOMERS_KEY);
     safeLocalRemove(TRIAL_INVOICES_KEY);
 
-    await supabase.auth.signOut();
+    if (!isTrial) {
+      await supabase.auth.signOut();
+    }
+
     window.location.href = "/zh";
   }
 
@@ -571,15 +598,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     const { data } = supabase.storage.from("company-assets").getPublicUrl(path);
 
-    const update = await supabase
+    await supabase
       .from("profiles")
       .update({ avatar_url: data.publicUrl })
       .eq("id", session.user.id);
-
-    if (update.error) {
-      setMsg(update.error.message);
-      return;
-    }
 
     setProfile((p) => (p ? { ...p, avatar_url: data.publicUrl } : p));
     setMsg(t.saved);
@@ -650,7 +672,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function changeTheme(key: ThemeKey) {
-    const fixedTheme = normalizeThemeKey(key, "deepTeal");
+    const fixedTheme = normalizeDashboardThemeKey(key);
 
     setThemeKey(fixedTheme);
     saveThemeKey(fixedTheme);
@@ -662,7 +684,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
-    if (!session) return;
+    if (!session) {
+      setMsg("请先登录");
+      return;
+    }
+
+    safeLocalRemove(SMARTACCTG_THEME_KEY);
 
     const { error } = await supabase
       .from("profiles")
@@ -680,9 +707,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
   const latestMonthKey = useMemo(() => {
     const months = transactions.map((x) => getMonthKey(x.txn_date)).filter(Boolean);
-
-    if (months.length === 0) return todayMonth();
-
+    if (months.length === 0) return todayMonthKey();
     return months.sort().reverse()[0];
   }, [transactions]);
 
@@ -710,47 +735,54 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     return monthIncome;
   }, [monthIncome]);
 
-  const debtRows = useMemo<DebtRow[]>(() => {
-    const customerDebtRows: DebtRow[] = customers
+  const debtItems = useMemo<DebtItem[]>(() => {
+    const customerDebtItems: DebtItem[] = customers
       .map((c) => {
         const amount = Number(c.debt_amount || 0) - Number(c.paid_amount || 0);
 
         return {
           id: `customer-${c.id}`,
-          name: c.company_name ? `${c.name || "-"} / ${c.company_name}` : c.name || "-",
+          label: c.company_name ? `${c.name || "-"} / ${c.company_name}` : c.name || "-",
           amount,
-          dueDate: c.last_payment_date || "",
+          dueDate: c.last_payment_date || "-",
           source: "customer" as const,
+          sortTime: getDueTime(c.last_payment_date),
         };
       })
       .filter((x) => x.amount > 0);
 
-    const invoiceDebtRows: DebtRow[] = invoices
+    const invoiceDebtItems: DebtItem[] = invoices
       .filter((inv) => isInvoiceUnpaid(inv))
-      .map((inv) => ({
-        id: `invoice-${inv.id}`,
-        name: inv.customer_company
+      .map((inv) => {
+        const label = inv.customer_company
           ? `${inv.customer_name || "-"} / ${inv.customer_company}`
-          : inv.customer_name || "-",
-        amount: Number(inv.total || 0),
-        dueDate: inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10) || "",
-        source: "invoice" as const,
-      }))
-      .filter((x) => x.amount > 0);
+          : inv.customer_name || "-";
 
-    return [...customerDebtRows, ...invoiceDebtRows].sort((a, b) => b.amount - a.amount);
+        const dueDate = inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10) || "-";
+
+        return {
+          id: `invoice-${inv.id}`,
+          label,
+          amount: Number(inv.total || 0),
+          dueDate,
+          source: "invoice" as const,
+          sortTime: getDueTime(dueDate),
+        };
+      });
+
+    return [...customerDebtItems, ...invoiceDebtItems].sort((a, b) => a.sortTime - b.sortTime);
   }, [customers, invoices]);
 
   const totalDebt = useMemo(() => {
-    return debtRows.reduce((s, x) => s + Number(x.amount || 0), 0);
-  }, [debtRows]);
+    return debtItems.reduce((s, x) => s + Number(x.amount || 0), 0);
+  }, [debtItems]);
 
-  const topDebt = debtRows[0] || null;
+  const topDebtItem = debtItems[0] || null;
 
   const expiryText = isTrial
     ? t.trial
     : profile?.plan_expiry
-      ? new Date(profile.plan_expiry).toLocaleDateString("en-MY")
+      ? new Date(profile.plan_expiry).toLocaleDateString()
       : t.noSub;
 
   return (
@@ -758,22 +790,16 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       className="smartacctg-page smartacctg-dashboard-page"
       data-sa-theme={themeKey}
       data-smartacctg-theme={themeKey}
-      style={{
-        ...pageStyle,
-        background: themeAny.pageBg || "var(--sa-page-bg)",
-        color: themeAny.text || "var(--sa-text)",
-      }}
+      style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
-      <style jsx global>{DASHBOARD_PAGE_CSS}</style>
-
       <header
-        className="sa-card dashboard-top-card"
+        className="sa-card"
         style={{
           ...topCardStyle,
-          background: themeAny.card || "var(--sa-card-bg)",
-          borderColor: themeAny.border || "var(--sa-border)",
-          boxShadow: themeAny.glow || "var(--sa-glow)",
-          color: themeAny.text || "var(--sa-text)",
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+          color: theme.text,
         }}
       >
         <div style={leftTopStyle}>
@@ -782,7 +808,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               type="button"
               onClick={() => setShowAvatarMenu((v) => !v)}
               style={avatarBtnStyle}
-              aria-label="Avatar menu"
             >
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} />
@@ -839,58 +864,58 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </div>
         </div>
 
-        <div className="dashboard-top-right">
-          <button
-            type="button"
-            onClick={logout}
-            style={{ ...logoutBtnStyle, background: themeAny.accent || "#0f766e" }}
-          >
-            {t.logout}
-          </button>
-
-          <div className="sa-lang-row" style={langRowStyle}>
-            <button
-              type="button"
-              onClick={() => switchLang("zh")}
-              className="sa-lang-btn"
-              style={langBtnStyle(lang === "zh", themeAny)}
-            >
-              中文
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchLang("en")}
-              className="sa-lang-btn"
-              style={langBtnStyle(lang === "en", themeAny)}
-            >
-              EN
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchLang("ms")}
-              className="sa-lang-btn"
-              style={langBtnStyle(lang === "ms", themeAny)}
-            >
-              BM
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={logout}
+          style={{ ...logoutBtnStyle, background: theme.accent }}
+        >
+          {t.logout}
+        </button>
       </header>
 
       {page === "home" ? (
         <>
           <section
-            className="sa-card dashboard-banner"
+            className="sa-card"
             style={{
-              background: themeAny.banner || themeAny.card || "var(--sa-banner-bg)",
-              borderColor: themeAny.border || "var(--sa-border)",
-              boxShadow: themeAny.glow || "var(--sa-glow)",
-              color: themeAny.text || "var(--sa-text)",
+              background: theme.banner || theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
             }}
           >
-            <h1 style={titleStyle}>{t.dashboard}</h1>
+            <div style={bannerTopRowStyle}>
+              <h1 style={titleStyle}>{t.dashboard}</h1>
+
+              <div className="sa-lang-row" style={langRowStyle}>
+                <button
+                  type="button"
+                  onClick={() => switchLang("zh")}
+                  className="sa-lang-btn"
+                  style={langBtnStyle(lang === "zh", theme)}
+                >
+                  中文
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => switchLang("en")}
+                  className="sa-lang-btn"
+                  style={langBtnStyle(lang === "en", theme)}
+                >
+                  EN
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => switchLang("ms")}
+                  className="sa-lang-btn"
+                  style={langBtnStyle(lang === "ms", theme)}
+                >
+                  BM
+                </button>
+              </div>
+            </div>
 
             <div style={noticeWrapStyle}>
               <div style={noticeMarqueeStyle}>{t.notice}</div>
@@ -902,10 +927,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               className="sa-card dashboard-stat-card"
               style={{
                 ...summaryBoxStyle,
-                background: themeAny.card || "var(--sa-card-bg)",
-                borderColor: themeAny.border || "var(--sa-border)",
-                boxShadow: themeAny.glow || "var(--sa-glow)",
-                color: themeAny.text || "var(--sa-text)",
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+                color: theme.text,
               }}
             >
               <button
@@ -919,15 +944,13 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
               {showRecordSummary ? (
                 <div style={summaryDetailListStyle}>
-                  <div style={monthBadgeStyle}>
-                    {t.latestMonth}: {latestMonthKey}
+                  <div style={{ ...summaryMonthStyle, color: themeMuted }}>
+                    {t.summaryMonth}: {latestMonthKey}
                   </div>
 
                   <div style={summaryRowStyle}>
                     <span>{t.balance}</span>
-                    <strong style={{ color: themeAny.accent || "#0f766e" }}>
-                      {formatRM(balance)}
-                    </strong>
+                    <strong style={{ color: theme.accent }}>{formatRM(balance)}</strong>
                   </div>
 
                   <div style={summaryRowStyle}>
@@ -942,17 +965,13 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
                   <div style={summaryRowStyle}>
                     <span>{t.estimatedProfit}</span>
-                    <strong style={{ color: themeAny.accent || "#0f766e" }}>
-                      {formatRM(estimatedProfit)}
-                    </strong>
+                    <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
                   </div>
                 </div>
               ) : (
                 <div style={summaryRowStyle}>
                   <span>{t.estimatedProfit}</span>
-                  <strong style={{ color: themeAny.accent || "#0f766e" }}>
-                    {formatRM(estimatedProfit)}
-                  </strong>
+                  <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
                 </div>
               )}
             </div>
@@ -961,10 +980,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               className="sa-card dashboard-stat-card"
               style={{
                 ...summaryBoxStyle,
-                background: themeAny.card || "var(--sa-card-bg)",
-                borderColor: themeAny.border || "var(--sa-border)",
-                boxShadow: themeAny.glow || "var(--sa-glow)",
-                color: themeAny.text || "var(--sa-text)",
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+                color: theme.text,
               }}
             >
               <button
@@ -972,146 +991,57 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 onClick={() => setShowDebtSummary((v) => !v)}
                 style={summaryHeaderBtnStyle}
               >
-                <span>{t.customerDebt}</span>
+                <span style={{ color: "#dc2626" }}>{t.customerDebt}</span>
                 <strong>{showDebtSummary ? "▲" : "▼"}</strong>
               </button>
 
               {showDebtSummary ? (
                 <div style={summaryDetailListStyle}>
-                  {debtRows.length === 0 ? (
+                  <div style={summaryRowStyle}>
+                    <span style={{ color: "#dc2626" }}>{t.customerDebt}</span>
+                    <strong style={{ color: "#dc2626" }}>{formatRM(totalDebt)}</strong>
+                  </div>
+
+                  {debtItems.length === 0 ? (
                     <div style={summaryRowStyle}>
                       <span>{t.noDebt}</span>
-                      <strong>{formatRM(0)}</strong>
+                      <strong>RM 0.00</strong>
                     </div>
                   ) : (
-                    debtRows.map((row) => (
-                      <div key={row.id} style={debtDetailBoxStyle}>
-                        <div style={{ fontWeight: 900 }}>{row.name}</div>
+                    debtItems.map((item) => (
+                      <div key={item.id} style={debtItemStyle}>
+                        <div style={{ fontWeight: 900 }}>{item.label}</div>
                         <div style={{ color: "#dc2626", fontWeight: 900 }}>
-                          {formatRM(row.amount)}
+                          {formatRM(item.amount)}
                         </div>
-                        {row.dueDate ? (
-                          <div style={{ color: "#dc2626", fontWeight: 900 }}>
-                            {t.dueDate}: {row.dueDate}
-                          </div>
-                        ) : null}
+                        <div style={{ color: "#dc2626", fontWeight: 900 }}>
+                          {t.dueDate}: {item.dueDate}
+                        </div>
+                        <div style={{ color: themeMuted, fontWeight: 800 }}>
+                          {item.source === "invoice" ? t.sourceInvoice : t.sourceCustomer}
+                        </div>
                       </div>
                     ))
                   )}
-
-                  <div style={summaryRowStyle}>
-                    <span>{t.customerDebt}</span>
-                    <strong style={{ color: "#dc2626" }}>{formatRM(totalDebt)}</strong>
-                  </div>
                 </div>
               ) : (
                 <div style={summaryRowStyle}>
-                  <span>{topDebt?.name || t.noDebt}</span>
-                  <strong style={{ color: topDebt ? "#dc2626" : themeAny.accent || "#0f766e" }}>
-                    {formatRM(topDebt?.amount || 0)}
+                  <span>{topDebtItem?.label || t.noDebt}</span>
+                  <strong style={{ color: topDebtItem ? "#dc2626" : theme.accent }}>
+                    {formatRM(topDebtItem?.amount || 0)}
                   </strong>
                 </div>
               )}
             </div>
           </section>
 
-          <section style={featureGridStyle}>
-            <button
-              type="button"
-              onClick={() => go("/dashboard/records")}
-              className="sa-card"
-              style={featureBtnStyleLocal(themeAny)}
-            >
-              {t.accounting}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => go("/dashboard/customers")}
-              className="sa-card"
-              style={featureBtnStyleLocal(themeAny)}
-            >
-              {t.customers}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => go("/dashboard/products")}
-              className="sa-card"
-              style={featureBtnStyleLocal(themeAny)}
-            >
-              {t.products}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => go("/dashboard/invoices")}
-              className="sa-card"
-              style={featureBtnStyleLocal(themeAny)}
-            >
-              {t.invoices}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowExtensions((v) => !v)}
-              className="sa-card"
-              style={featureBtnStyleLocal(themeAny)}
-            >
-              {t.extension}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => go("/dashboard/nkshop")}
-              className="sa-card"
-              style={featureBtnStyleLocal(themeAny)}
-            >
-              {t.nkShop}
-            </button>
-          </section>
-
-          {showExtensions ? (
-            <section
-              className="sa-card"
-              style={{
-                background: themeAny.card || "var(--sa-card-bg)",
-                borderColor: themeAny.border || "var(--sa-border)",
-                boxShadow: themeAny.glow || "var(--sa-glow)",
-                color: themeAny.text || "var(--sa-text)",
-              }}
-            >
-              <h2 style={sectionTitleStyle}>{t.extension}</h2>
-
-              <div style={featureGridStyle}>
-                <button
-                  type="button"
-                  onClick={() => go("/dashboard/extensions/digital-card")}
-                  className="sa-card"
-                  style={featureBtnStyleLocal(themeAny)}
-                >
-                  {t.digitalCard}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => go("/dashboard/extensions/online-shop")}
-                  className="sa-card"
-                  style={featureBtnStyleLocal(themeAny)}
-                >
-                  {t.onlineShop}
-                </button>
-              </div>
-            </section>
-          ) : null}
-
           <section
             className="sa-card"
             style={{
-              background: themeAny.card || "var(--sa-card-bg)",
-              borderColor: themeAny.border || "var(--sa-border)",
-              boxShadow: themeAny.glow || "var(--sa-glow)",
-              color: themeAny.text || "var(--sa-text)",
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
             }}
           >
             <button
@@ -1125,40 +1055,97 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
             {showQuickMenu ? (
               <div style={quickGridStyle}>
-                <button
-                  type="button"
-                  onClick={() => goQuick("/dashboard/records")}
-                  style={quickBtnStyleLocal(themeAny)}
-                >
+                <button type="button" onClick={() => goQuick("/dashboard/records")} style={quickBtnStyleLocal(theme)}>
                   {t.quickAccounting}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => goQuick("/dashboard/invoices")}
-                  style={quickBtnStyleLocal(themeAny)}
-                >
+                <button type="button" onClick={() => goQuick("/dashboard/invoices")} style={quickBtnStyleLocal(theme)}>
                   {t.quickInvoice}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => goQuick("/dashboard/customers")}
-                  style={quickBtnStyleLocal(themeAny)}
-                >
+                <button type="button" onClick={() => goQuick("/dashboard/customers")} style={quickBtnStyleLocal(theme)}>
                   {t.quickCustomer}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => goQuick("/dashboard/products")}
-                  style={quickBtnStyleLocal(themeAny)}
-                >
+                <button type="button" onClick={() => goQuick("/dashboard/products")} style={quickBtnStyleLocal(theme)}>
                   {t.quickProduct}
                 </button>
               </div>
             ) : null}
           </section>
+
+          <section style={featureGridStyle}>
+            <button type="button" onClick={() => go("/dashboard/records")} className="sa-card" style={featureBtnStyleLocal(theme)}>
+              {t.accounting}
+            </button>
+
+            <button type="button" onClick={() => go("/dashboard/customers")} className="sa-card" style={featureBtnStyleLocal(theme)}>
+              {t.customers}
+            </button>
+
+            <button type="button" onClick={() => go("/dashboard/products")} className="sa-card" style={featureBtnStyleLocal(theme)}>
+              {t.products}
+            </button>
+
+            <button type="button" onClick={() => go("/dashboard/invoices")} className="sa-card" style={featureBtnStyleLocal(theme)}>
+              {t.invoices}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowExtensionMenu((v) => !v)}
+              className="sa-card"
+              style={featureBtnStyleLocal(theme)}
+            >
+              {t.extension}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowExtensionMenu(true);
+                setMsg(t.comingSoon);
+              }}
+              className="sa-card"
+              style={featureBtnStyleLocal(theme)}
+            >
+              {t.nkShop}
+            </button>
+          </section>
+
+          {showExtensionMenu ? (
+            <section
+              className="sa-card"
+              style={{
+                background: theme.card,
+                borderColor: theme.border,
+                boxShadow: theme.glow,
+                color: theme.text,
+              }}
+            >
+              <h2 style={sectionTitleStyle}>{t.extension}</h2>
+
+              <div style={quickGridStyle}>
+                <button
+                  type="button"
+                  onClick={() => setMsg(t.comingSoon)}
+                  style={quickBtnStyleLocal(theme)}
+                >
+                  {t.eCard}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMsg(t.comingSoon)}
+                  style={quickBtnStyleLocal(theme)}
+                >
+                  {t.shopSystem}
+                </button>
+              </div>
+
+              {msg ? <p style={{ color: theme.accent, fontWeight: 900 }}>{msg}</p> : null}
+            </section>
+          ) : null}
         </>
       ) : null}
 
@@ -1166,10 +1153,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         <section
           className="sa-card"
           style={{
-            background: themeAny.card || "var(--sa-card-bg)",
-            borderColor: themeAny.border || "var(--sa-border)",
-            boxShadow: themeAny.glow || "var(--sa-glow)",
-            color: themeAny.text || "var(--sa-text)",
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+            color: theme.text,
           }}
         >
           <button
@@ -1177,9 +1164,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             onClick={() => go("/dashboard")}
             style={{
               ...backBtnStyle,
-              borderColor: themeAny.border || "#14b8a6",
-              color: themeAny.accent || "#0f766e",
-              background: themeAny.inputBg || "#ffffff",
+              borderColor: theme.border,
+              color: theme.accent,
+              background: theme.inputBg || "#ffffff",
             }}
           >
             ← {t.back}
@@ -1199,23 +1186,13 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         <section
           className="sa-card"
           style={{
-            background: themeAny.card || "var(--sa-card-bg)",
-            borderColor: themeAny.border || "var(--sa-border)",
-            boxShadow: themeAny.glow || "var(--sa-glow)",
-            color: themeAny.text || "var(--sa-text)",
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+            color: theme.text,
           }}
         >
-          <div style={settingsTitleRowStyle}>
-            <h2 style={sectionTitleStyle}>{t.settings}</h2>
-
-            <button
-              type="button"
-              onClick={() => setShowSettings(false)}
-              style={closeBtnStyle}
-            >
-              ×
-            </button>
-          </div>
+          <h2 style={sectionTitleStyle}>{t.settings}</h2>
 
           <h3>{t.personal}</h3>
 
@@ -1266,7 +1243,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           <button
             type="button"
             onClick={saveSettings}
-            style={{ ...primaryBtnStyle, background: themeAny.accent || "#0f766e" }}
+            style={{ ...primaryBtnStyle, background: theme.accent }}
           >
             {t.save}
           </button>
@@ -1284,12 +1261,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           <button
             type="button"
             onClick={changePassword}
-            style={{ ...primaryBtnStyle, background: themeAny.accent || "#0f766e" }}
+            style={{ ...primaryBtnStyle, background: theme.accent }}
           >
             {t.updatePassword}
           </button>
 
-          {msg ? <p style={{ color: themeAny.accent || "#0f766e", fontWeight: 900 }}>{msg}</p> : null}
+          {msg ? <p style={{ color: theme.accent, fontWeight: 900 }}>{msg}</p> : null}
         </section>
       ) : null}
 
@@ -1297,27 +1274,17 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         <section
           className="sa-card"
           style={{
-            background: themeAny.card || "var(--sa-card-bg)",
-            borderColor: themeAny.border || "var(--sa-border)",
-            boxShadow: themeAny.glow || "var(--sa-glow)",
-            color: themeAny.text || "var(--sa-text)",
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+            color: theme.text,
           }}
         >
-          <div style={settingsTitleRowStyle}>
-            <h2 style={sectionTitleStyle}>{t.theme}</h2>
-
-            <button
-              type="button"
-              onClick={() => setShowThemes(false)}
-              style={closeBtnStyle}
-            >
-              ×
-            </button>
-          </div>
+          <h2 style={sectionTitleStyle}>{t.theme}</h2>
 
           <div style={themeGridStyle}>
             {(Object.keys(THEMES) as ThemeKey[]).map((key) => {
-              const themeItem: any = THEMES[key];
+              const itemTheme: any = THEMES[key];
 
               return (
                 <button
@@ -1326,67 +1293,24 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   onClick={() => changeTheme(key)}
                   style={{
                     ...themeBtnStyle,
-                    borderColor: themeItem.border || "#14b8a6",
-                    background: themeItem.banner || themeItem.card || "#ffffff",
-                    color: themeItem.text || "#111827",
-                    boxShadow: themeItem.glow || "none",
+                    borderColor: itemTheme.border,
+                    background: itemTheme.banner || itemTheme.card,
+                    color: itemTheme.text,
+                    boxShadow: itemTheme.glow,
                   }}
                 >
-                  {themeItem.name || key}
+                  {itemTheme.name || key}
                 </button>
               );
             })}
           </div>
 
-          {msg ? <p style={{ color: themeAny.accent || "#0f766e", fontWeight: 900 }}>{msg}</p> : null}
+          {msg ? <p style={{ color: theme.accent, fontWeight: 900 }}>{msg}</p> : null}
         </section>
       ) : null}
     </main>
   );
 }
-
-const DASHBOARD_PAGE_CSS = `
-  @keyframes saNoticeMarquee {
-    0% {
-      transform: translateX(0%);
-    }
-    100% {
-      transform: translateX(-100%);
-    }
-  }
-
-  .smartacctg-dashboard-page .dashboard-top-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .smartacctg-dashboard-page .dashboard-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .smartacctg-dashboard-page button {
-    cursor: pointer;
-  }
-
-  @media (max-width: 680px) {
-    .smartacctg-dashboard-page .dashboard-top-card {
-      display: grid !important;
-      grid-template-columns: 1fr !important;
-    }
-
-    .smartacctg-dashboard-page .dashboard-top-right {
-      justify-content: flex-start;
-    }
-
-    .smartacctg-dashboard-page .dashboard-summary-grid {
-      grid-template-columns: 1fr !important;
-    }
-  }
-`;
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
@@ -1477,21 +1401,12 @@ const logoutBtnStyle: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 6,
-  flexWrap: "nowrap",
+const bannerTopRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
 };
-
-const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
-  border: `var(--sa-border-w) solid ${theme.accent || "#0f766e"}`,
-  borderRadius: "999px",
-  minHeight: 44,
-  padding: "0 14px",
-  fontWeight: 900,
-  background: active ? theme.accent || "#0f766e" : theme.inputBg || "#fff",
-  color: active ? "#fff" : theme.accent || "#0f766e",
-});
 
 const titleStyle: CSSProperties = {
   margin: 0,
@@ -1501,9 +1416,22 @@ const titleStyle: CSSProperties = {
 };
 
 const sectionTitleStyle: CSSProperties = {
-  margin: 0,
+  marginTop: 0,
+  marginBottom: 14,
   fontWeight: 900,
 };
+
+const langRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "nowrap",
+};
+
+const langBtnStyle = (active: boolean, theme: any): CSSProperties => ({
+  borderColor: theme.accent,
+  background: active ? theme.accent : theme.inputBg || "#fff",
+  color: active ? "#fff" : theme.accent,
+});
 
 const noticeWrapStyle: CSSProperties = {
   marginTop: 12,
@@ -1521,6 +1449,7 @@ const noticeMarqueeStyle: CSSProperties = {
 
 const summaryGridStyle: CSSProperties = {
   display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
   marginTop: 14,
   marginBottom: 14,
@@ -1529,8 +1458,6 @@ const summaryGridStyle: CSSProperties = {
 const summaryBoxStyle: CSSProperties = {
   minHeight: 0,
   padding: "clamp(14px, 3vw, 22px)",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
 };
 
 const summaryHeaderBtnStyle: CSSProperties = {
@@ -1545,13 +1472,17 @@ const summaryHeaderBtnStyle: CSSProperties = {
   padding: 0,
   minHeight: 0,
   fontWeight: 900,
-  fontSize: "var(--sa-fs-lg)",
 };
 
 const summaryDetailListStyle: CSSProperties = {
   display: "grid",
   gap: 12,
   marginTop: 14,
+};
+
+const summaryMonthStyle: CSSProperties = {
+  fontWeight: 900,
+  lineHeight: 1.25,
 };
 
 const summaryRowStyle: CSSProperties = {
@@ -1563,28 +1494,19 @@ const summaryRowStyle: CSSProperties = {
   lineHeight: 1.25,
 };
 
-const monthBadgeStyle: CSSProperties = {
-  display: "inline-flex",
-  width: "fit-content",
-  padding: "6px 12px",
-  borderRadius: 999,
-  background: "rgba(20,184,166,0.16)",
-  fontWeight: 900,
-};
-
-const debtDetailBoxStyle: CSSProperties = {
+const debtItemStyle: CSSProperties = {
   display: "grid",
   gap: 4,
-  padding: 12,
-  borderRadius: 16,
-  background: "#fee2e2",
-  color: "#991b1b",
+  paddingTop: 10,
+  borderTop: "1px solid rgba(148,163,184,0.45)",
+  overflowWrap: "anywhere",
 };
 
 const featureGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
+  marginTop: 14,
   marginBottom: 14,
 };
 
@@ -1593,13 +1515,13 @@ const featureBtnStyleLocal = (theme: any): CSSProperties => ({
   fontWeight: 900,
   fontSize: "var(--sa-fs-lg)",
   textAlign: "center",
+  background: theme.card,
+  borderColor: theme.border,
+  boxShadow: theme.glow,
+  color: theme.text,
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
-  background: theme.card || "var(--sa-card-bg)",
-  borderColor: theme.border || "var(--sa-border)",
-  boxShadow: theme.glow || "var(--sa-glow)",
-  color: theme.text || "var(--sa-text)",
 });
 
 const quickHeaderBtnStyle: CSSProperties = {
@@ -1614,7 +1536,7 @@ const quickHeaderBtnStyle: CSSProperties = {
   padding: 0,
   minHeight: 0,
   fontWeight: 900,
-  fontSize: "var(--sa-fs-lg)",
+  fontSize: "var(--sa-fs-base)",
 };
 
 const quickGridStyle: CSSProperties = {
@@ -1626,8 +1548,8 @@ const quickGridStyle: CSSProperties = {
 
 const quickBtnStyleLocal = (theme: any): CSSProperties => ({
   background: theme.inputBg || "#fff",
-  border: `var(--sa-border-w) solid ${theme.border || "#14b8a6"}`,
-  color: theme.accent || "#0f766e",
+  border: `var(--sa-border-w) solid ${theme.border}`,
+  color: theme.accent,
   borderRadius: "var(--sa-radius-control)",
   minHeight: 56,
   padding: "0 12px",
@@ -1667,26 +1589,6 @@ const primaryBtnStyle: CSSProperties = {
   marginBottom: 16,
 };
 
-const settingsTitleRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 12,
-  alignItems: "center",
-  marginBottom: 14,
-};
-
-const closeBtnStyle: CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 999,
-  border: "none",
-  background: "#fee2e2",
-  color: "#dc2626",
-  fontWeight: 900,
-  fontSize: 28,
-  lineHeight: 1,
-};
-
 const themeGridStyle: CSSProperties = {
   display: "grid",
   gap: 12,
@@ -1698,3 +1600,8 @@ const themeBtnStyle: CSSProperties = {
   padding: "var(--sa-card-pad)",
   fontWeight: 900,
 };
+
+@mediaStyle();
+function @mediaStyle() {
+  return null;
+}
