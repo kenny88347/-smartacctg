@@ -8,7 +8,6 @@ import {
   type ThemeKey,
   applyThemeToDocument,
   getThemeKeyFromUrlOrLocalStorage,
-  isThemeKey,
   normalizeThemeKey,
   saveThemeKey,
 } from "@/lib/smartacctgTheme";
@@ -21,13 +20,9 @@ type Product = {
   name: string;
   price?: number | null;
   cost?: number | null;
+  discount?: number | null;
   stock_qty?: number | null;
-  stock?: number | null;
-  stock_quantity?: number | null;
-  quantity?: number | null;
-  qty?: number | null;
-  category_name?: string | null;
-  category?: string | null;
+  image_url?: string | null;
   note?: string | null;
   created_at?: string | null;
 };
@@ -41,8 +36,6 @@ const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_PRODUCTS_KEY = "smartacctg_trial_products";
 const LANG_KEY = "smartacctg_lang";
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 const TXT = {
   zh: {
     title: "产品管理",
@@ -50,37 +43,31 @@ const TXT = {
     add: "新增产品",
     edit: "编辑",
     delete: "删除",
+    confirm: "确定",
+    cancelDelete: "取消",
+    deletePreview: "删除前确认资料",
+    confirmDelete: "确定要删除这个产品吗？",
     save: "保存产品",
     update: "保存修改",
     cancel: "取消",
     close: "关闭",
-    searchTitle: "快速搜索产品",
-    search: "搜索产品名称 / 分类 / 备注 / 价格 / 库存",
-    productTotal: "产品总数",
-    stockTotal: "库存总量",
-    stockCost: "库存成本",
-    expectedSales: "预计销售额",
-    expectedProfit: "预计利润",
-    productName: "产品名称",
+    search: "搜索产品名称 / 备注 / 价格",
+    noProduct: "还没有产品资料",
+    name: "产品名称",
     price: "售价 RM",
     cost: "成本 RM",
+    discount: "折扣 RM",
     stock: "库存数量",
-    category: "分类 / 标签",
+    imageUrl: "产品图片 URL",
     note: "备注",
-    noProduct: "还没有产品资料",
+    totalCost: "总成本",
+    totalSelling: "总售价",
+    expectedProfit: "预计利润",
+    stockQty: "库存数量",
     saved: "保存成功",
     deleted: "删除成功",
-    confirmDelete: "确定要删除这个产品吗？",
-    needName: "请填写产品名称",
     trialMode: "免费试用模式：资料只会暂存在本机",
-    lowStock: "库存不足 / 已无库存",
-    costHigher: "成本高过售价，请检查",
-    profit: "预计利润",
-    related: "关联功能",
-    records: "记账系统",
-    customers: "客户管理",
-    invoices: "发票系统",
-    goFeature: "前往",
+    needName: "请填写产品名称",
   },
   en: {
     title: "Product Management",
@@ -88,37 +75,31 @@ const TXT = {
     add: "Add Product",
     edit: "Edit",
     delete: "Delete",
+    confirm: "Confirm",
+    cancelDelete: "Cancel",
+    deletePreview: "Delete Confirmation",
+    confirmDelete: "Confirm delete this product?",
     save: "Save Product",
     update: "Save Changes",
     cancel: "Cancel",
     close: "Close",
-    searchTitle: "Quick Search Products",
-    search: "Search product name / category / note / price / stock",
-    productTotal: "Total Products",
-    stockTotal: "Total Stock",
-    stockCost: "Stock Cost",
-    expectedSales: "Expected Sales",
-    expectedProfit: "Expected Profit",
-    productName: "Product Name",
+    search: "Search product name / note / price",
+    noProduct: "No product records yet",
+    name: "Product Name",
     price: "Selling Price RM",
     cost: "Cost RM",
+    discount: "Discount RM",
     stock: "Stock Quantity",
-    category: "Category / Tag",
+    imageUrl: "Product Image URL",
     note: "Note",
-    noProduct: "No products yet",
+    totalCost: "Total Cost",
+    totalSelling: "Total Selling Price",
+    expectedProfit: "Expected Profit",
+    stockQty: "Stock Quantity",
     saved: "Saved",
     deleted: "Deleted",
-    confirmDelete: "Delete this product?",
-    needName: "Please enter product name",
     trialMode: "Free trial mode: data is stored locally only",
-    lowStock: "Low / No Stock",
-    costHigher: "Cost is higher than selling price. Please check.",
-    profit: "Expected Profit",
-    related: "Linked Features",
-    records: "Accounting",
-    customers: "Customers",
-    invoices: "Invoices",
-    goFeature: "Go",
+    needName: "Please enter product name",
   },
   ms: {
     title: "Pengurusan Produk",
@@ -126,176 +107,65 @@ const TXT = {
     add: "Tambah Produk",
     edit: "Edit",
     delete: "Padam",
+    confirm: "Sahkan",
+    cancelDelete: "Batal",
+    deletePreview: "Sahkan Padam",
+    confirmDelete: "Padam produk ini?",
     save: "Simpan Produk",
     update: "Simpan Perubahan",
     cancel: "Batal",
     close: "Tutup",
-    searchTitle: "Carian Pantas Produk",
-    search: "Cari nama produk / kategori / nota / harga / stok",
-    productTotal: "Jumlah Produk",
-    stockTotal: "Jumlah Stok",
-    stockCost: "Kos Stok",
-    expectedSales: "Anggaran Jualan",
-    expectedProfit: "Anggaran Untung",
-    productName: "Nama Produk",
+    search: "Cari nama produk / catatan / harga",
+    noProduct: "Tiada rekod produk",
+    name: "Nama Produk",
     price: "Harga Jualan RM",
     cost: "Kos RM",
+    discount: "Diskaun RM",
     stock: "Jumlah Stok",
-    category: "Kategori / Tag",
+    imageUrl: "URL Gambar Produk",
     note: "Catatan",
-    noProduct: "Tiada produk lagi",
+    totalCost: "Jumlah Kos",
+    totalSelling: "Jumlah Harga Jualan",
+    expectedProfit: "Anggaran Untung",
+    stockQty: "Jumlah Stok",
     saved: "Disimpan",
     deleted: "Dipadam",
-    confirmDelete: "Padam produk ini?",
-    needName: "Sila isi nama produk",
     trialMode: "Mod percubaan: data hanya disimpan dalam telefon ini",
-    lowStock: "Stok Rendah / Tiada Stok",
-    costHigher: "Kos lebih tinggi daripada harga jualan. Sila semak.",
-    profit: "Anggaran Untung",
-    related: "Fungsi Berkaitan",
-    records: "Sistem Akaun",
-    customers: "Pelanggan",
-    invoices: "Invois",
-    goFeature: "Pergi",
+    needName: "Sila isi nama produk",
   },
 };
 
-const PRODUCTS_PAGE_FIX_CSS = `
-  .smartacctg-products-page .sa-back-btn {
-    border-radius: 999px !important;
-  }
-
-  .smartacctg-products-page .products-summary-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 12px !important;
-    width: 100% !important;
-  }
-
-  .smartacctg-products-page .products-stat-card {
-    display: grid !important;
-    gap: 8px !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    min-height: 112px !important;
-    border-radius: var(--sa-radius-card) !important;
-    padding: var(--sa-card-pad) !important;
-  }
-
-  .smartacctg-products-page .products-stat-card span,
-  .smartacctg-products-page .products-stat-card strong {
-    width: 100% !important;
-    display: block !important;
-    text-align: center !important;
-    font-weight: 900 !important;
-    line-height: 1.2 !important;
-  }
-
-  .smartacctg-products-page .products-stat-card span {
-    font-size: clamp(15px, 3.2vw, 20px) !important;
-  }
-
-  .smartacctg-products-page .products-stat-card strong {
-    font-size: clamp(19px, 4vw, 27px) !important;
-  }
-
-  .smartacctg-products-page .products-list {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 18px !important;
-    width: 100% !important;
-  }
-
-  .smartacctg-products-page .product-card {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 14px !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    height: auto !important;
-    min-height: auto !important;
-    text-align: left !important;
-    overflow-wrap: anywhere !important;
-  }
-
-  .smartacctg-products-page .product-card * {
-    text-align: left !important;
-  }
-
-  .smartacctg-products-page .product-card h3 {
-    margin: 0 0 10px 0 !important;
-    font-size: var(--sa-fs-xl) !important;
-    line-height: 1.25 !important;
+const PRODUCTS_CSS = `
+  .smartacctg-products-page h1,
+  .smartacctg-products-page h2,
+  .smartacctg-products-page h3,
+  .smartacctg-products-page button,
+  .smartacctg-products-page strong {
     font-weight: 900 !important;
   }
 
-  .smartacctg-products-page .product-card p {
-    margin: 8px 0 0 !important;
-    line-height: 1.55 !important;
-    overflow-wrap: anywhere !important;
+  .smartacctg-products-page p,
+  .smartacctg-products-page div,
+  .smartacctg-products-page span,
+  .smartacctg-products-page label,
+  .smartacctg-products-page input,
+  .smartacctg-products-page select,
+  .smartacctg-products-page textarea {
+    font-weight: 400 !important;
   }
 
-  .smartacctg-products-page .product-card.low-stock-product {
-    background: #fee2e2 !important;
-    color: #7f1d1d !important;
-    border-color: #dc2626 !important;
-    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35),
-      0 12px 28px rgba(220, 38, 38, 0.22) !important;
-  }
-
-  .smartacctg-products-page .product-card.low-stock-product * {
-    color: inherit;
-  }
-
-  .smartacctg-products-page .products-action-row {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 10px !important;
-    flex-wrap: wrap !important;
-    width: 100% !important;
-    margin-top: 6px !important;
-  }
-
-  .smartacctg-products-page .products-action-row button {
-    width: auto !important;
-    min-width: 110px !important;
-    flex: 0 1 auto !important;
-    white-space: nowrap !important;
-  }
-
-  .smartacctg-products-page .products-form-overlay {
+  .smartacctg-products-page .fullscreen-overlay {
     position: fixed !important;
     inset: 0 !important;
     z-index: 9999 !important;
-    background: rgba(15, 23, 42, 0.55) !important;
-    padding: clamp(12px, 3vw, 24px) !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  .smartacctg-products-page .products-form-modal {
-    width: 100% !important;
-    max-width: 900px !important;
-    margin: 0 auto !important;
-    border-radius: var(--sa-radius-card) !important;
-    border: var(--sa-border-w) solid !important;
-    padding: var(--sa-card-pad) !important;
-  }
-
-  .smartacctg-products-page .products-fullscreen-overlay {
     width: 100vw !important;
     height: 100dvh !important;
     padding: 0 !important;
-    margin: 0 !important;
     overflow: hidden !important;
+    background: rgba(15, 23, 42, 0.58) !important;
   }
 
-  .smartacctg-products-page .products-fullscreen-modal {
+  .smartacctg-products-page .fullscreen-modal {
     position: fixed !important;
     inset: 0 !important;
     width: 100vw !important;
@@ -305,83 +175,22 @@ const PRODUCTS_PAGE_FIX_CSS = `
     min-height: 100dvh !important;
     margin: 0 !important;
     border-radius: 0 !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-top: none !important;
-    border-bottom: none !important;
+    border: none !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
   }
 
-  .smartacctg-products-page .products-modal-header {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: center !important;
-    gap: 12px !important;
-    width: 100% !important;
-    margin-bottom: 14px !important;
-  }
-
-  .smartacctg-products-page .products-fullscreen-modal .products-modal-header {
+  .smartacctg-products-page .modal-header {
     position: sticky !important;
     top: 0 !important;
-    z-index: 5 !important;
+    z-index: 10 !important;
     background: inherit !important;
-    padding-bottom: 12px !important;
-  }
-
-  .smartacctg-products-page .products-form-grid {
     display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
     gap: 12px !important;
-    width: 100% !important;
-  }
-
-  .smartacctg-products-page .products-form-actions {
-    display: flex !important;
-    gap: 10px !important;
-    margin-top: 18px !important;
-    flex-wrap: wrap !important;
-  }
-
-  .smartacctg-products-page .products-form-actions button {
-    min-width: 130px !important;
-  }
-
-  @media (max-width: 520px) {
-    .smartacctg-products-page .products-summary-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 10px !important;
-    }
-
-    .smartacctg-products-page .products-stat-card {
-      min-height: 104px !important;
-      padding: 12px 8px !important;
-    }
-
-    .smartacctg-products-page .products-list {
-      gap: 16px !important;
-    }
-
-    .smartacctg-products-page .products-action-row {
-      gap: 8px !important;
-    }
-
-    .smartacctg-products-page .products-action-row button {
-      min-width: 105px !important;
-    }
-
-    .smartacctg-products-page .products-form-actions {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr !important;
-      width: 100% !important;
-    }
-
-    .smartacctg-products-page .products-form-actions button {
-      width: 100% !important;
-      min-width: 0 !important;
-    }
+    align-items: center !important;
+    padding-bottom: 12px !important;
   }
 `;
 
@@ -407,7 +216,6 @@ function safeLocalRemove(key: string) {
 
 function safeParseArray<T>(raw: string | null): T[] {
   if (!raw) return [];
-
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -418,29 +226,18 @@ function safeParseArray<T>(raw: string | null): T[] {
 
 function getInitialLang(): Lang {
   if (typeof window === "undefined") return "zh";
-
   const q = new URLSearchParams(window.location.search);
   const urlLang = q.get("lang") as Lang | null;
   const savedLang = safeLocalGet(LANG_KEY) as Lang | null;
-
   if (urlLang === "zh" || urlLang === "en" || urlLang === "ms") return urlLang;
   if (savedLang === "zh" || savedLang === "en" || savedLang === "ms") return savedLang;
-
   return "zh";
 }
 
-function getIsFullscreenFromUrl() {
-  if (typeof window === "undefined") return false;
-
-  const q = new URLSearchParams(window.location.search);
-  return q.get("fullscreen") === "1";
-}
-
-function getReturnFromUrl() {
+function getUrlFlag(key: string) {
   if (typeof window === "undefined") return "";
-
   const q = new URLSearchParams(window.location.search);
-  return q.get("return") || "";
+  return q.get(key) || "";
 }
 
 function applyThemeEverywhere(key: ThemeKey) {
@@ -450,7 +247,6 @@ function applyThemeEverywhere(key: ThemeKey) {
   const theme = THEMES[fixedKey] || THEMES.deepTeal;
 
   applyThemeToDocument(fixedKey);
-
   document.documentElement.setAttribute("data-sa-theme", fixedKey);
   document.documentElement.setAttribute("data-smartacctg-theme", fixedKey);
 
@@ -463,137 +259,9 @@ function applyThemeEverywhere(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-border", theme.border);
   document.documentElement.style.setProperty("--sa-accent", theme.accent);
   document.documentElement.style.setProperty("--sa-text", theme.text);
-  document.documentElement.style.setProperty("--sa-panel-text", theme.panelText || theme.text);
   document.documentElement.style.setProperty("--sa-muted", theme.muted || theme.subText);
   document.documentElement.style.setProperty("--sa-soft-bg", theme.softBg || theme.soft || theme.card);
-  document.documentElement.style.setProperty("--sa-banner-bg", theme.banner || theme.card);
   document.documentElement.style.setProperty("--sa-glow", theme.glow);
-}
-
-function replaceUrlLangTheme(nextLang: Lang, nextTheme: ThemeKey) {
-  if (typeof window === "undefined") return;
-
-  const q = new URLSearchParams(window.location.search);
-
-  q.set("lang", nextLang);
-  q.set("theme", nextTheme);
-  q.set("refresh", String(Date.now()));
-
-  window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-}
-
-function isSchemaCacheMissing(message: string) {
-  const lower = String(message || "").toLowerCase();
-
-  return (
-    lower.includes("schema cache") ||
-    lower.includes("could not find") ||
-    lower.includes("column")
-  );
-}
-
-function getMissingColumnName(error: any) {
-  const message = String(error?.message || "");
-  const match1 = message.match(/Could not find the '([^']+)' column/i);
-  const match2 = message.match(/column "([^"]+)" does not exist/i);
-  const match3 = message.match(/column '([^']+)' does not exist/i);
-
-  return match1?.[1] || match2?.[1] || match3?.[1] || "";
-}
-
-const PRODUCT_OPTIONAL_KEYS = [
-  "price",
-  "cost",
-  "stock_qty",
-  "stock",
-  "stock_quantity",
-  "quantity",
-  "qty",
-  "category_name",
-  "category",
-  "note",
-  "created_at",
-];
-
-async function insertAdaptive(table: string, inputPayload: Record<string, any>) {
-  let payload: Record<string, any> = { ...inputPayload };
-  let lastError: any = null;
-
-  for (let i = 0; i < 35; i++) {
-    const { data, error } = await supabase.from(table).insert(payload).select("*").single();
-
-    if (!error) return data;
-
-    lastError = error;
-
-    if (!isSchemaCacheMissing(error.message)) throw error;
-
-    const missing = getMissingColumnName(error);
-
-    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
-      const next = { ...payload };
-      delete next[missing];
-      payload = next;
-      continue;
-    }
-
-    const removable = PRODUCT_OPTIONAL_KEYS.find((key) =>
-      Object.prototype.hasOwnProperty.call(payload, key)
-    );
-
-    if (!removable) throw error;
-
-    const next = { ...payload };
-    delete next[removable];
-    payload = next;
-  }
-
-  throw lastError || new Error("Insert failed");
-}
-
-async function updateAdaptive(
-  table: string,
-  id: string,
-  userId: string,
-  inputPayload: Record<string, any>
-) {
-  let payload: Record<string, any> = { ...inputPayload };
-  let lastError: any = null;
-
-  for (let i = 0; i < 35; i++) {
-    const { error } = await supabase
-      .from(table)
-      .update(payload)
-      .eq("id", id)
-      .eq("user_id", userId);
-
-    if (!error) return;
-
-    lastError = error;
-
-    if (!isSchemaCacheMissing(error.message)) throw error;
-
-    const missing = getMissingColumnName(error);
-
-    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
-      const next = { ...payload };
-      delete next[missing];
-      payload = next;
-      continue;
-    }
-
-    const removable = PRODUCT_OPTIONAL_KEYS.find((key) =>
-      Object.prototype.hasOwnProperty.call(payload, key)
-    );
-
-    if (!removable) throw error;
-
-    const next = { ...payload };
-    delete next[removable];
-    payload = next;
-  }
-
-  throw lastError || new Error("Update failed");
 }
 
 function formatRM(value: number) {
@@ -603,19 +271,81 @@ function formatRM(value: number) {
   })}`;
 }
 
-function getProductStock(product: Product) {
-  return Number(
-    product.stock_qty ??
-      product.stock ??
-      product.stock_quantity ??
-      product.quantity ??
-      product.qty ??
-      0
-  );
+function isSchemaColumnError(error: any) {
+  const msg = String(error?.message || "").toLowerCase();
+  return msg.includes("schema cache") || msg.includes("could not find") || msg.includes("column");
 }
 
-function getProductCategory(product: Product) {
-  return product.category_name || product.category || "";
+function getMissingColumnName(error: any) {
+  const msg = String(error?.message || "");
+  const match =
+    msg.match(/Could not find the '([^']+)' column/i) ||
+    msg.match(/column "([^"]+)" does not exist/i);
+  return match?.[1] || "";
+}
+
+async function insertAdaptive(table: string, inputPayload: Record<string, any>) {
+  let payload = { ...inputPayload };
+  let lastError: any = null;
+
+  for (let i = 0; i < 30; i++) {
+    const { data, error } = await supabase.from(table).insert(payload).select("*").single();
+    if (!error) return data;
+
+    lastError = error;
+    if (!isSchemaColumnError(error)) throw error;
+
+    const missing = getMissingColumnName(error);
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const optional = ["cost", "discount", "stock_qty", "stock", "quantity", "image_url", "note"].find((x) =>
+      Object.prototype.hasOwnProperty.call(payload, x)
+    );
+
+    if (!optional) throw error;
+    const next = { ...payload };
+    delete next[optional];
+    payload = next;
+  }
+
+  throw lastError || new Error("Insert failed");
+}
+
+async function updateAdaptive(table: string, id: string, userId: string, inputPayload: Record<string, any>) {
+  let payload = { ...inputPayload };
+  let lastError: any = null;
+
+  for (let i = 0; i < 30; i++) {
+    const { error } = await supabase.from(table).update(payload).eq("id", id).eq("user_id", userId);
+    if (!error) return;
+
+    lastError = error;
+    if (!isSchemaColumnError(error)) throw error;
+
+    const missing = getMissingColumnName(error);
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      const next = { ...payload };
+      delete next[missing];
+      payload = next;
+      continue;
+    }
+
+    const optional = ["cost", "discount", "stock_qty", "stock", "quantity", "image_url", "note"].find((x) =>
+      Object.prototype.hasOwnProperty.call(payload, x)
+    );
+
+    if (!optional) throw error;
+    const next = { ...payload };
+    delete next[optional];
+    payload = next;
+  }
+
+  throw lastError || new Error("Update failed");
 }
 
 export default function ProductsPage() {
@@ -625,22 +355,22 @@ export default function ProductsPage() {
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
   const [products, setProducts] = useState<Product[]>([]);
-
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(getIsFullscreenFromUrl);
-  const [returnTo, setReturnTo] = useState(getReturnFromUrl);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [msg, setMsg] = useState("");
 
-  const [relatedPath, setRelatedPath] = useState("/dashboard/records");
+  const [showForm, setShowForm] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [returnTo, setReturnTo] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [msg, setMsg] = useState("");
 
   const [form, setForm] = useState({
     name: "",
     price: "",
     cost: "",
+    discount: "",
     stock_qty: "",
-    category_name: "",
+    image_url: "",
     note: "",
   });
 
@@ -650,13 +380,6 @@ export default function ProductsPage() {
 
   const themedInputStyle: CSSProperties = {
     ...inputStyle,
-    borderColor: theme.border,
-    background: theme.inputBg || "#ffffff",
-    color: theme.inputText || "#111827",
-  };
-
-  const themedTextareaStyle: CSSProperties = {
-    ...textareaStyle,
     borderColor: theme.border,
     background: theme.inputBg || "#ffffff",
     color: theme.inputText || "#111827",
@@ -672,14 +395,12 @@ export default function ProductsPage() {
 
     setLang(initialLang);
     safeLocalSet(LANG_KEY, initialLang);
-
     setThemeKey(initialTheme);
     saveThemeKey(initialTheme);
     applyThemeEverywhere(initialTheme);
 
-    const q = new URLSearchParams(window.location.search);
-    setReturnTo(q.get("return") || "");
-    setIsFullscreen(q.get("fullscreen") === "1");
+    setReturnTo(getUrlFlag("return"));
+    setIsFullscreen(getUrlFlag("fullscreen") === "1");
 
     init(initialLang, initialTheme);
 
@@ -687,39 +408,23 @@ export default function ProductsPage() {
   }, []);
 
   async function init(currentLang: Lang, currentTheme: ThemeKey) {
-    const q = new URLSearchParams(window.location.search);
-    const mode = q.get("mode");
-    const openParam = q.get("open");
-    const fullscreenParam = q.get("fullscreen");
-    const returnParam = q.get("return");
-
-    const shouldOpenNew = openParam === "new";
-    const shouldFullscreen = fullscreenParam === "1";
+    const mode = getUrlFlag("mode");
+    const open = getUrlFlag("open");
+    const fullscreen = getUrlFlag("fullscreen") === "1";
     const trialRaw = safeLocalGet(TRIAL_KEY);
-
-    setReturnTo(returnParam || "");
-    setIsFullscreen(shouldFullscreen);
 
     if ((mode === "trial" || trialRaw) && trialRaw) {
       try {
         const trial = JSON.parse(trialRaw);
-
         if (Date.now() < Number(trial.expiresAt)) {
           setIsTrial(true);
           setSession(null);
-
           setProducts(safeParseArray<Product>(safeLocalGet(TRIAL_PRODUCTS_KEY)));
-
-          replaceUrlLangTheme(currentLang, currentTheme);
-
-          if (shouldOpenNew) {
-            setTimeout(() => openNewForm(shouldFullscreen), 100);
-          }
-
+          if (open === "new") setTimeout(() => openForm(null, fullscreen), 100);
           return;
         }
       } catch {
-        // Bad trial data, clear below.
+        // ignore
       }
 
       safeLocalRemove(TRIAL_KEY);
@@ -746,222 +451,129 @@ export default function ProductsPage() {
       .eq("id", userId)
       .single();
 
-    let finalTheme = currentTheme;
     const profile = profileData as Profile | null;
+    const finalTheme = normalizeThemeKey(profile?.theme || currentTheme);
 
-    if (profile?.theme) {
-      const profileTheme = normalizeThemeKey(profile.theme);
-
-      if (isThemeKey(profileTheme)) {
-        finalTheme = profileTheme;
-        setThemeKey(profileTheme);
-        saveThemeKey(profileTheme);
-        applyThemeEverywhere(profileTheme);
-      }
-    }
-
-    replaceUrlLangTheme(currentLang, finalTheme);
+    setThemeKey(finalTheme);
+    saveThemeKey(finalTheme);
+    applyThemeEverywhere(finalTheme);
 
     await loadProducts(userId);
 
-    if (shouldOpenNew) {
-      setTimeout(() => openNewForm(shouldFullscreen), 100);
-    }
+    if (open === "new") setTimeout(() => openForm(null, fullscreen), 100);
   }
 
   async function loadProducts(userId: string) {
-    const first = await supabase
+    const { data } = await supabase
       .from("products")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
-    if (!first.error) {
-      setProducts((first.data || []) as Product[]);
-      return;
-    }
-
-    if (!isSchemaCacheMissing(first.error.message)) {
-      setMsg(first.error.message);
-      return;
-    }
-
-    const second = await supabase.from("products").select("*").eq("user_id", userId);
-
-    if (second.error) {
-      setMsg(second.error.message);
-      return;
-    }
-
-    setProducts((second.data || []) as Product[]);
-  }
-
-  function saveTrialProducts(nextProducts: Product[]) {
-    setProducts(nextProducts);
-    safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(nextProducts));
+    setProducts((data || []) as Product[]);
   }
 
   function buildDashboardUrl() {
     const q = new URLSearchParams();
-
     if (isTrial) q.set("mode", "trial");
-
     q.set("lang", lang);
     q.set("theme", themeKey);
     q.set("refresh", String(Date.now()));
-
     return `/dashboard?${q.toString()}`;
   }
 
-  function buildUrl(path: string, extra?: string) {
-    const q = new URLSearchParams();
-
-    if (isTrial) q.set("mode", "trial");
-
-    q.set("lang", lang);
-    q.set("theme", themeKey);
-    q.set("refresh", String(Date.now()));
-
-    if (extra) {
-      const extraQuery = new URLSearchParams(extra);
-      extraQuery.forEach((value, key) => q.set(key, value));
-    }
-
-    return `${path}?${q.toString()}`;
-  }
-
-  function go(path: string, extra?: string) {
-    window.location.href = buildUrl(path, extra);
-  }
-
-  function backToDashboard() {
+  function goDashboard() {
     window.location.href = buildDashboardUrl();
   }
 
-  function goRelatedFeature() {
-    go(relatedPath);
-  }
-
-  function switchLang(next: Lang) {
-    setLang(next);
-    safeLocalSet(LANG_KEY, next);
-    replaceUrlLangTheme(next, themeKey);
-  }
-
-  function resetForm() {
-    setForm({
-      name: "",
-      price: "",
-      cost: "",
-      stock_qty: "",
-      category_name: "",
-      note: "",
-    });
-  }
-
-  function openNewForm(forceFullscreen = false) {
-    setEditingId(null);
-    resetForm();
-    setIsFullscreen(forceFullscreen);
-    setShowForm(true);
+  function openForm(product?: Product | null, fullscreen = false) {
     setMsg("");
+    setIsFullscreen(fullscreen);
+
+    if (product) {
+      setEditingId(product.id);
+      setForm({
+        name: product.name || "",
+        price: String(product.price || ""),
+        cost: String(product.cost || ""),
+        discount: String(product.discount || ""),
+        stock_qty: String(product.stock_qty || ""),
+        image_url: product.image_url || "",
+        note: product.note || "",
+      });
+    } else {
+      setEditingId(null);
+      setForm({
+        name: "",
+        price: "",
+        cost: "",
+        discount: "",
+        stock_qty: "",
+        image_url: "",
+        note: "",
+      });
+    }
+
+    setShowForm(true);
   }
 
   function closeForm() {
-    const q = new URLSearchParams(window.location.search);
-    const returnParam = q.get("return") || returnTo;
-
-    if (returnParam === "dashboard") {
+    if (returnTo === "dashboard") {
       window.location.href = buildDashboardUrl();
       return;
     }
 
-    setEditingId(null);
     setShowForm(false);
     setIsFullscreen(false);
-    resetForm();
+    setEditingId(null);
 
+    const q = new URLSearchParams(window.location.search);
     q.delete("open");
     q.delete("fullscreen");
     q.delete("return");
     q.set("lang", lang);
     q.set("theme", themeKey);
     q.set("refresh", String(Date.now()));
-
     window.history.replaceState({}, "", `${window.location.pathname}?${q.toString()}`);
-  }
-
-  function editProduct(product: Product) {
-    setEditingId(product.id);
-    setForm({
-      name: product.name || "",
-      price: String(Number(product.price || 0) || ""),
-      cost: String(Number(product.cost || 0) || ""),
-      stock_qty: String(getProductStock(product) || ""),
-      category_name: getProductCategory(product),
-      note: product.note || "",
-    });
-    setIsFullscreen(false);
-    setShowForm(true);
-    setMsg("");
   }
 
   async function saveProduct() {
     setMsg("");
 
-    const name = form.name.trim();
-
-    if (!name) {
+    if (!form.name.trim()) {
       setMsg(t.needName);
       return;
     }
 
-    const price = Number(form.price || 0);
-    const cost = Number(form.cost || 0);
-    const stockQty = Number(form.stock_qty || 0);
-    const categoryName = form.category_name.trim();
-    const note = form.note.trim();
+    const payload = {
+      user_id: session?.user.id || "trial",
+      name: form.name.trim(),
+      price: Number(form.price || 0),
+      cost: Number(form.cost || 0),
+      discount: Number(form.discount || 0),
+      stock_qty: Number(form.stock_qty || 0),
+      image_url: form.image_url.trim(),
+      note: form.note.trim(),
+    };
 
     if (isTrial) {
-      const payload: Product = {
+      const record: Product = {
         id: editingId || makeId(),
-        user_id: "trial",
-        name,
-        price,
-        cost,
-        stock_qty: stockQty,
-        category_name: categoryName,
-        note,
-        created_at: editingId
-          ? products.find((x) => x.id === editingId)?.created_at || new Date().toISOString()
-          : new Date().toISOString(),
+        ...payload,
       };
 
       const next = editingId
-        ? products.map((x) => (x.id === editingId ? payload : x))
-        : [payload, ...products];
+        ? products.map((x) => (x.id === editingId ? record : x))
+        : [record, ...products];
 
-      saveTrialProducts(next);
+      setProducts(next);
+      safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(next));
       setMsg(t.saved);
       closeForm();
       return;
     }
 
     if (!session) return;
-
-    const payload = {
-      user_id: session.user.id,
-      name,
-      price,
-      cost,
-      stock_qty: stockQty,
-      stock: stockQty,
-      stock_quantity: stockQty,
-      quantity: stockQty,
-      category_name: categoryName,
-      category: categoryName,
-      note,
-    };
 
     try {
       if (editingId) {
@@ -978,13 +590,14 @@ export default function ProductsPage() {
     }
   }
 
-  async function deleteProduct(id: string) {
-    const yes = window.confirm(t.confirmDelete);
-    if (!yes) return;
+  async function confirmDeleteProduct() {
+    if (!deleteTarget) return;
 
     if (isTrial) {
-      const next = products.filter((x) => x.id !== id);
-      saveTrialProducts(next);
+      const next = products.filter((x) => x.id !== deleteTarget.id);
+      setProducts(next);
+      safeLocalSet(TRIAL_PRODUCTS_KEY, JSON.stringify(next));
+      setDeleteTarget(null);
       setMsg(t.deleted);
       return;
     }
@@ -994,7 +607,7 @@ export default function ProductsPage() {
     const { error } = await supabase
       .from("products")
       .delete()
-      .eq("id", id)
+      .eq("id", deleteTarget.id)
       .eq("user_id", session.user.id);
 
     if (error) {
@@ -1002,6 +615,7 @@ export default function ProductsPage() {
       return;
     }
 
+    setDeleteTarget(null);
     setMsg(t.deleted);
     await loadProducts(session.user.id);
   }
@@ -1009,48 +623,28 @@ export default function ProductsPage() {
   const filteredProducts = useMemo(() => {
     const s = search.trim().toLowerCase();
 
-    if (!s) return products;
-
-    return products.filter((product) => {
-      const searchText = [
-        product.name,
-        product.price,
-        product.cost,
-        getProductStock(product),
-        getProductCategory(product),
-        product.note,
-      ]
+    return products.filter((p) => {
+      const text = [p.name, p.price, p.cost, p.stock_qty, p.note]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
 
-      return searchText.includes(s);
+      return !s || text.includes(s);
     });
   }, [products, search]);
 
-  const summary = useMemo(() => {
-    return products.reduce(
-      (acc, product) => {
-        const stock = getProductStock(product);
-        const price = Number(product.price || 0);
-        const cost = Number(product.cost || 0);
+  const totalCost = useMemo(() => {
+    return products.reduce((sum, p) => sum + Number(p.cost || 0) * Number(p.stock_qty || 0), 0);
+  }, [products]);
 
-        acc.productTotal += 1;
-        acc.stockTotal += stock;
-        acc.stockCost += cost * stock;
-        acc.expectedSales += price * stock;
-        acc.expectedProfit += (price - cost) * stock;
+  const totalSelling = useMemo(() => {
+    return products.reduce((sum, p) => sum + Number(p.price || 0) * Number(p.stock_qty || 0), 0);
+  }, [products]);
 
-        return acc;
-      },
-      {
-        productTotal: 0,
-        stockTotal: 0,
-        stockCost: 0,
-        expectedSales: 0,
-        expectedProfit: 0,
-      }
-    );
+  const expectedProfit = totalSelling - totalCost;
+
+  const totalStock = useMemo(() => {
+    return products.reduce((sum, p) => sum + Number(p.stock_qty || 0), 0);
   }, [products]);
 
   return (
@@ -1060,289 +654,122 @@ export default function ProductsPage() {
       data-smartacctg-theme={themeKey}
       style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
-      <style jsx global>{PRODUCTS_PAGE_FIX_CSS}</style>
+      <style jsx global>{PRODUCTS_CSS}</style>
 
-      <div className="sa-topbar" style={topbarStyle}>
-        <div className="sa-topbar-left">
-          <button
-            type="button"
-            onClick={backToDashboard}
-            className="sa-back-btn"
-            style={{
-              ...backBtnStyle,
-              color: theme.accent,
-              borderColor: theme.border,
-              background: theme.inputBg || "#fff",
-            }}
-          >
-            ← {t.back}
-          </button>
-        </div>
-
-        <div className="sa-topbar-right">
-          <div className="sa-lang-row" style={langRowStyle}>
-            <button
-              type="button"
-              onClick={() => switchLang("zh")}
-              className="sa-lang-btn"
-              style={langBtnStyle(lang === "zh", theme)}
-            >
-              中文
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchLang("en")}
-              className="sa-lang-btn"
-              style={langBtnStyle(lang === "en", theme)}
-            >
-              EN
-            </button>
-
-            <button
-              type="button"
-              onClick={() => switchLang("ms")}
-              className="sa-lang-btn"
-              style={langBtnStyle(lang === "ms", theme)}
-            >
-              BM
-            </button>
-          </div>
-        </div>
+      <div style={topbarStyle}>
+        <button
+          type="button"
+          onClick={goDashboard}
+          style={{
+            ...backBtnStyle,
+            borderColor: theme.border,
+            color: theme.accent,
+            background: theme.inputBg || "#fff",
+          }}
+        >
+          ← {t.back}
+        </button>
       </div>
 
       {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
 
       {msg ? (
-        <div
-          style={{
-            ...msgStyle,
-            background: theme.softBg || theme.soft || theme.card,
-            color: theme.text,
-          }}
-        >
+        <div style={{ ...msgStyle, background: theme.softBg || theme.card, color: theme.text }}>
           {msg}
         </div>
       ) : null}
 
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
-        <div style={headerRowStyle}>
-          <h1 style={titleStyle}>{t.title}</h1>
+      <section className="sa-card" style={{ ...cardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
+        <div style={titleRowStyle}>
+          <h1 style={{ ...titleStyle, color: theme.accent }}>{t.title}</h1>
 
           <button
             type="button"
-            onClick={() => openNewForm(false)}
-            aria-label={t.add}
-            style={{
-              ...plusBtnStyle,
-              background: theme.accent,
-            }}
+            onClick={() => openForm(null, false)}
+            style={{ ...plusBtnStyle, background: theme.accent }}
           >
             +
           </button>
         </div>
 
-        <div className="products-summary-grid" style={summaryGridStyle}>
-          <div
-            className="sa-stat-card products-stat-card"
-            style={{
-              ...statCardStyle,
-              background: theme.itemBg || theme.card,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <span>{t.productTotal}</span>
-            <strong style={{ color: theme.accent }}>{summary.productTotal}</strong>
-          </div>
-
-          <div
-            className="sa-stat-card products-stat-card"
-            style={{
-              ...statCardStyle,
-              background: theme.itemBg || theme.card,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <span>{t.stockTotal}</span>
-            <strong style={{ color: theme.accent }}>{summary.stockTotal}</strong>
-          </div>
-
-          <div
-            className="sa-stat-card products-stat-card"
-            style={{
-              ...statCardStyle,
-              background: theme.itemBg || theme.card,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <span>{t.stockCost}</span>
-            <strong style={{ color: "#dc2626" }}>{formatRM(summary.stockCost)}</strong>
-          </div>
-
-          <div
-            className="sa-stat-card products-stat-card"
-            style={{
-              ...statCardStyle,
-              background: theme.itemBg || theme.card,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <span>{t.expectedSales}</span>
-            <strong style={{ color: "#16a34a" }}>{formatRM(summary.expectedSales)}</strong>
-          </div>
-
-          <div
-            className="sa-stat-card products-stat-card"
-            style={{
-              ...statCardStyle,
-              background: theme.itemBg || theme.card,
-              borderColor: theme.border,
-              color: theme.text,
-            }}
-          >
-            <span>{t.expectedProfit}</span>
-            <strong style={{ color: summary.expectedProfit < 0 ? "#dc2626" : "#16a34a" }}>
-              {formatRM(summary.expectedProfit)}
-            </strong>
-          </div>
-        </div>
-      </section>
-
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
-        <h2 style={sectionTitleStyle}>{t.searchTitle}</h2>
-
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t.search}
-          style={themedInputStyle}
+          style={{ ...themedInputStyle, marginTop: 16 }}
         />
       </section>
 
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
+      <section style={statsGridStyle}>
+        <div className="sa-card" style={{ ...statCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
+          <span>{t.totalCost}</span>
+          <strong>{formatRM(totalCost)}</strong>
+        </div>
+
+        <div className="sa-card" style={{ ...statCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
+          <span>{t.totalSelling}</span>
+          <strong style={{ color: theme.accent }}>{formatRM(totalSelling)}</strong>
+        </div>
+
+        <div className="sa-card" style={{ ...statCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
+          <span>{t.expectedProfit}</span>
+          <strong style={{ color: expectedProfit < 0 ? "#dc2626" : "#16a34a" }}>
+            {formatRM(expectedProfit)}
+          </strong>
+        </div>
+
+        <div className="sa-card" style={{ ...statCardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
+          <span>{t.stockQty}</span>
+          <strong>{Number(totalStock || 0).toLocaleString("en-MY")}</strong>
+        </div>
+      </section>
+
+      <section className="sa-card" style={{ ...cardStyle, background: theme.card, borderColor: theme.border, boxShadow: theme.glow }}>
         {filteredProducts.length === 0 ? (
-          <p style={{ color: themeSubText, fontWeight: 900 }}>{t.noProduct}</p>
+          <p style={{ color: themeSubText }}>{t.noProduct}</p>
         ) : (
-          <div className="products-list" style={productListStyle}>
-            {filteredProducts.map((product) => {
-              const stock = getProductStock(product);
-              const price = Number(product.price || 0);
-              const cost = Number(product.cost || 0);
-              const profit = (price - cost) * stock;
-              const isLowStock = stock <= 0;
-              const isCostHigher = cost > price;
+          <div style={listStyle}>
+            {filteredProducts.map((p) => {
+              const profit = Number(p.price || 0) - Number(p.cost || 0);
 
               return (
                 <div
-                  key={product.id}
-                  className={`product-card ${isLowStock ? "low-stock-product" : ""}`}
+                  key={p.id}
                   style={{
-                    ...productCardStyle,
-                    borderColor: isLowStock ? "#dc2626" : theme.border,
-                    background: isLowStock ? "#fee2e2" : theme.itemBg || theme.card,
-                    color: isLowStock ? "#7f1d1d" : theme.text,
-                    boxShadow: isLowStock
-                      ? "0 0 0 1px rgba(220, 38, 38, 0.35), 0 12px 28px rgba(220, 38, 38, 0.22)"
-                      : theme.glow,
+                    ...itemCardStyle,
+                    background: theme.itemBg || theme.card,
+                    borderColor: theme.border,
+                    color: theme.text,
                   }}
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <h3 style={productTitleStyle}>{product.name || "-"}</h3>
+                  <div style={productTopStyle}>
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name} style={productImageStyle} />
+                    ) : (
+                      <div style={{ ...productImagePlaceholderStyle, background: theme.softBg || "#ccfbf1", color: theme.accent }}>
+                        IMG
+                      </div>
+                    )}
 
-                    <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
-                      {t.price}:{" "}
-                      <strong style={{ color: isLowStock ? "#7f1d1d" : "#16a34a" }}>
-                        {formatRM(price)}
-                      </strong>
-                    </p>
-
-                    <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
-                      {t.cost}:{" "}
-                      <strong style={{ color: isCostHigher ? "#dc2626" : theme.accent }}>
-                        {formatRM(cost)}
-                      </strong>
-                    </p>
-
-                    <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
-                      {t.stock}:{" "}
-                      <strong style={{ color: isLowStock ? "#dc2626" : theme.accent }}>
-                        {stock}
-                      </strong>
-                    </p>
-
-                    <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
-                      {t.profit}:{" "}
-                      <strong style={{ color: profit < 0 ? "#dc2626" : "#16a34a" }}>
-                        {formatRM(profit)}
-                      </strong>
-                    </p>
-
-                    {getProductCategory(product) ? (
-                      <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
-                        {t.category}: {getProductCategory(product)}
+                    <div style={{ minWidth: 0 }}>
+                      <h3 style={itemTitleStyle}>{p.name || "-"}</h3>
+                      <p style={pStyle}>{t.price}: {formatRM(Number(p.price || 0))}</p>
+                      <p style={pStyle}>{t.cost}: {formatRM(Number(p.cost || 0))}</p>
+                      <p style={pStyle}>{t.discount}: {formatRM(Number(p.discount || 0))}</p>
+                      <p style={pStyle}>{t.stock}: {Number(p.stock_qty || 0)}</p>
+                      <p style={{ ...pStyle, color: profit < 0 ? "#dc2626" : "#16a34a" }}>
+                        {t.expectedProfit}: {formatRM(profit)}
                       </p>
-                    ) : null}
-
-                    {product.note ? (
-                      <p style={{ ...mutedStyle, color: isLowStock ? "#7f1d1d" : themeSubText }}>
-                        {t.note}: {product.note}
-                      </p>
-                    ) : null}
-
-                    {isLowStock ? (
-                      <p style={{ ...warningStyle, color: "#dc2626" }}>{t.lowStock}</p>
-                    ) : null}
-
-                    {isCostHigher ? (
-                      <p style={{ ...warningStyle, color: "#dc2626" }}>{t.costHigher}</p>
-                    ) : null}
+                      {p.note ? <p style={pStyle}>{t.note}: {p.note}</p> : null}
+                    </div>
                   </div>
 
-                  <div className="products-action-row" style={actionRowStyle}>
-                    <button
-                      type="button"
-                      onClick={() => editProduct(product)}
-                      style={{
-                        ...actionBtnStyle,
-                        background: theme.accent,
-                      }}
-                    >
+                  <div style={actionRowStyle}>
+                    <button type="button" onClick={() => openForm(p, false)} style={{ ...primaryBtnStyle, background: theme.accent }}>
                       {t.edit}
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => deleteProduct(product.id)}
-                      style={deleteBtnStyle}
-                    >
+                    <button type="button" onClick={() => setDeleteTarget(p)} style={dangerBtnStyle}>
                       {t.delete}
                     </button>
                   </div>
@@ -1353,145 +780,63 @@ export default function ProductsPage() {
         )}
       </section>
 
-      <section
-        className="sa-card"
-        style={{
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
-        <h2 style={sectionTitleStyle}>{t.related}</h2>
-
-        <div style={relatedMenuRowStyle}>
-          <select
-            value={relatedPath}
-            onChange={(e) => setRelatedPath(e.target.value)}
-            style={themedInputStyle}
-          >
-            <option value="/dashboard/records">{t.records}</option>
-            <option value="/dashboard/customers">{t.customers}</option>
-            <option value="/dashboard/invoices">{t.invoices}</option>
-          </select>
-
-          <button
-            type="button"
-            onClick={goRelatedFeature}
-            style={{
-              ...primaryBtnStyle,
-              background: theme.accent,
-              marginTop: 0,
-            }}
-          >
-            {t.goFeature}
-          </button>
-        </div>
-      </section>
-
       {showForm ? (
-        <div
-          className={`products-form-overlay ${
-            isFullscreen ? "products-fullscreen-overlay" : ""
-          }`}
-        >
+        <div className={isFullscreen ? "fullscreen-overlay" : ""} style={isFullscreen ? {} : overlayStyle}>
           <section
-            className={`sa-modal products-form-modal ${
-              isFullscreen ? "products-fullscreen-modal" : ""
-            }`}
+            className={`sa-modal ${isFullscreen ? "fullscreen-modal" : ""}`}
             style={{
+              ...modalStyle,
               background: theme.card,
               borderColor: theme.border,
               boxShadow: theme.glow,
               color: theme.text,
             }}
           >
-            <div className="products-modal-header">
+            <div className="modal-header">
               <h2 style={modalTitleStyle}>{editingId ? t.update : t.add}</h2>
-
-              <button
-                type="button"
-                className="sa-close-x"
-                onClick={closeForm}
-                aria-label={t.close}
-              >
-                {t.close}
-              </button>
+              <button type="button" onClick={closeForm} style={closeBtnStyle}>{t.close}</button>
             </div>
 
-            <div className="products-form-grid">
-              <input
-                placeholder={t.productName}
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                style={themedInputStyle}
-              />
-
-              <input
-                placeholder={t.price}
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-                style={themedInputStyle}
-                inputMode="decimal"
-              />
-
-              <input
-                placeholder={t.cost}
-                value={form.cost}
-                onChange={(e) => setForm({ ...form, cost: e.target.value })}
-                style={themedInputStyle}
-                inputMode="decimal"
-              />
-
-              <input
-                placeholder={t.stock}
-                value={form.stock_qty}
-                onChange={(e) => setForm({ ...form, stock_qty: e.target.value })}
-                style={themedInputStyle}
-                inputMode="decimal"
-              />
-
-              <input
-                placeholder={t.category}
-                value={form.category_name}
-                onChange={(e) => setForm({ ...form, category_name: e.target.value })}
-                style={themedInputStyle}
-              />
+            <div style={formGridStyle}>
+              <input placeholder={t.name} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={themedInputStyle} />
+              <input placeholder={t.price} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} style={themedInputStyle} inputMode="decimal" />
+              <input placeholder={t.cost} value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} style={themedInputStyle} inputMode="decimal" />
+              <input placeholder={t.discount} value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} style={themedInputStyle} inputMode="decimal" />
+              <input placeholder={t.stock} value={form.stock_qty} onChange={(e) => setForm({ ...form, stock_qty: e.target.value })} style={themedInputStyle} inputMode="decimal" />
+              <input placeholder={t.imageUrl} value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} style={themedInputStyle} />
+              <textarea placeholder={t.note} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} style={{ ...themedInputStyle, paddingTop: 12, minHeight: 110 }} />
             </div>
 
-            <textarea
-              placeholder={t.note}
-              value={form.note}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-              style={themedTextareaStyle}
-            />
-
-            <div className="products-form-actions">
-              <button
-                type="button"
-                onClick={saveProduct}
-                style={{
-                  ...primaryBtnStyle,
-                  background: theme.accent,
-                  marginTop: 0,
-                }}
-              >
+            <div style={modalActionRowStyle}>
+              <button type="button" onClick={saveProduct} style={{ ...primaryBtnStyle, background: theme.accent }}>
                 {editingId ? t.update : t.save}
               </button>
 
-              <button
-                type="button"
-                onClick={closeForm}
-                style={{
-                  ...secondaryBtnStyle,
-                  borderColor: theme.border,
-                  color: theme.accent,
-                  background: theme.inputBg || "#ffffff",
-                  marginTop: 0,
-                }}
-              >
+              <button type="button" onClick={closeForm} style={{ ...outlineBtnStyle, borderColor: theme.border, color: theme.accent, background: theme.inputBg || "#fff" }}>
                 {t.cancel}
               </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div style={overlayStyle}>
+          <section style={{ ...modalStyle, maxWidth: 680, background: theme.card, borderColor: theme.border, boxShadow: theme.glow, color: theme.text }}>
+            <h2 style={modalTitleStyle}>{t.deletePreview}</h2>
+
+            <div style={deleteInfoBoxStyle}>
+              <p><strong>{t.name}:</strong> {deleteTarget.name || "-"}</p>
+              <p><strong>{t.price}:</strong> {formatRM(Number(deleteTarget.price || 0))}</p>
+              <p><strong>{t.cost}:</strong> {formatRM(Number(deleteTarget.cost || 0))}</p>
+              <p><strong>{t.stock}:</strong> {Number(deleteTarget.stock_qty || 0)}</p>
+            </div>
+
+            <p style={{ color: "#dc2626", fontWeight: 900 }}>{t.confirmDelete}</p>
+
+            <div style={deleteConfirmRowStyle}>
+              <button type="button" onClick={confirmDeleteProduct} style={confirmDeleteBtnStyle}>{t.confirm}</button>
+              <button type="button" onClick={() => setDeleteTarget(null)} style={cancelDeleteBtnStyle}>{t.cancelDelete}</button>
             </div>
           </section>
         </div>
@@ -1506,58 +851,42 @@ const pageStyle: CSSProperties = {
   maxWidth: "100vw",
   overflowX: "hidden",
   padding: "clamp(10px, 3vw, 22px)",
-  fontFamily:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
 };
 
 const topbarStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
+  display: "flex",
   alignItems: "center",
+  justifyContent: "space-between",
   gap: 12,
   marginBottom: 14,
 };
 
 const backBtnStyle: CSSProperties = {
-  background: "#fff",
-  border: "2px solid",
-  borderRadius: "999px",
-  padding: "0 var(--sa-control-x)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: 999,
   minHeight: "var(--sa-control-h)",
-  fontWeight: 900,
-  whiteSpace: "nowrap",
+  padding: "0 var(--sa-control-x)",
 };
 
-const langRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 6,
-  flexWrap: "nowrap",
+const cardStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+  marginBottom: 14,
 };
 
-const langBtnStyle = (active: boolean, theme: (typeof THEMES)[ThemeKey]): CSSProperties => ({
-  borderColor: theme.accent,
-  background: active ? theme.accent : theme.inputBg || "#fff",
-  color: active ? "#fff" : theme.accent,
-});
-
-const headerRowStyle: CSSProperties = {
+const titleRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
   gap: 12,
-  marginBottom: 14,
 };
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontWeight: 900,
+  fontSize: "var(--sa-fs-2xl)",
   lineHeight: 1.12,
-};
-
-const sectionTitleStyle: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 14,
-  fontWeight: 900,
 };
 
 const plusBtnStyle: CSSProperties = {
@@ -1566,152 +895,113 @@ const plusBtnStyle: CSSProperties = {
   minWidth: 52,
   minHeight: 52,
   borderRadius: 999,
-  color: "#fff",
   border: "none",
+  color: "#fff",
   fontSize: 30,
-  fontWeight: 900,
-  lineHeight: 1,
-  padding: 0,
-  flexShrink: 0,
 };
 
-const summaryGridStyle: CSSProperties = {
+const inputStyle: CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  minHeight: "var(--sa-control-h)",
+  padding: "0 var(--sa-control-x)",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid",
+  fontSize: 16,
+  outline: "none",
+};
+
+const statsGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
-  width: "100%",
+  marginBottom: 14,
 };
 
 const statCardStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
-  minHeight: 112,
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: "100%",
-  minWidth: 0,
-  boxSizing: "border-box",
-  minHeight: "var(--sa-control-h)",
-  padding: "0 var(--sa-control-x)",
-  borderRadius: "var(--sa-radius-control)",
-  border: "var(--sa-border-w) solid",
-  background: "#ffffff",
-  color: "#111827",
-  outline: "none",
-  fontSize: 16,
-  marginBottom: 0,
-};
-
-const textareaStyle: CSSProperties = {
-  ...inputStyle,
-  minHeight: 120,
-  paddingTop: 14,
-  paddingBottom: 14,
-  resize: "vertical",
-  marginTop: 12,
-};
-
-const productListStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1fr",
-  gap: 18,
-  width: "100%",
+  gap: 8,
 };
 
-const productCardStyle: CSSProperties = {
+const listStyle: CSSProperties = {
+  display: "grid",
+  gap: 16,
+};
+
+const itemCardStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
   display: "grid",
-  gridTemplateColumns: "1fr",
-  gap: 14,
-  width: "100%",
-  minWidth: 0,
-  height: "auto",
-  minHeight: "auto",
-  overflowWrap: "anywhere",
+  gap: 12,
 };
 
-const productTitleStyle: CSSProperties = {
+const productTopStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "82px minmax(0, 1fr)",
+  gap: 12,
+  alignItems: "start",
+};
+
+const productImageStyle: CSSProperties = {
+  width: 82,
+  height: 82,
+  borderRadius: 16,
+  objectFit: "cover",
+  background: "#fff",
+};
+
+const productImagePlaceholderStyle: CSSProperties = {
+  width: 82,
+  height: 82,
+  borderRadius: 16,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const itemTitleStyle: CSSProperties = {
   margin: 0,
-  overflowWrap: "anywhere",
-  fontWeight: 900,
+  fontSize: "var(--sa-fs-lg)",
 };
 
-const mutedStyle: CSSProperties = {
+const pStyle: CSSProperties = {
+  margin: "7px 0 0",
+  lineHeight: 1.5,
   overflowWrap: "anywhere",
-  lineHeight: 1.55,
-  margin: "8px 0 0",
-};
-
-const warningStyle: CSSProperties = {
-  margin: "10px 0 0",
-  fontWeight: 900,
-  lineHeight: 1.45,
 };
 
 const actionRowStyle: CSSProperties = {
   display: "flex",
-  gap: 10,
-  alignItems: "center",
-  justifyContent: "flex-start",
   flexWrap: "wrap",
-};
-
-const actionBtnStyle: CSSProperties = {
-  minWidth: 104,
-  minHeight: 44,
-  color: "#fff",
-  border: "none",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 14px",
-  fontWeight: 900,
-};
-
-const deleteBtnStyle: CSSProperties = {
-  minWidth: 104,
-  minHeight: 44,
-  background: "#fee2e2",
-  color: "#b91c1c",
-  border: "none",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 14px",
-  fontWeight: 900,
-};
-
-const relatedMenuRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 12,
-  alignItems: "center",
+  gap: 10,
 };
 
 const primaryBtnStyle: CSSProperties = {
-  color: "#fff",
+  minHeight: "var(--sa-control-h)",
   border: "none",
   borderRadius: "var(--sa-radius-control)",
-  padding: "0 18px",
-  minHeight: "var(--sa-control-h)",
-  fontWeight: 900,
+  color: "#fff",
+  padding: "0 16px",
 };
 
-const secondaryBtnStyle: CSSProperties = {
-  background: "#fff",
+const dangerBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  background: "#fee2e2",
+  color: "#b91c1c",
+  padding: "0 16px",
+};
+
+const outlineBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-control)",
-  padding: "0 18px",
-  minHeight: "var(--sa-control-h)",
-  fontWeight: 900,
-};
-
-const msgStyle: CSSProperties = {
-  padding: 12,
-  borderRadius: "var(--sa-radius-control)",
-  marginBottom: 14,
-  fontWeight: 900,
+  padding: "0 16px",
 };
 
 const trialMsgStyle: CSSProperties = {
@@ -1720,10 +1010,85 @@ const trialMsgStyle: CSSProperties = {
   padding: 12,
   borderRadius: "var(--sa-radius-control)",
   marginBottom: 14,
-  fontWeight: 900,
+};
+
+const msgStyle: CSSProperties = {
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+};
+
+const overlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15, 23, 42, 0.52)",
+  padding: "clamp(12px, 3vw, 24px)",
+  zIndex: 999,
+  overflowY: "auto",
+};
+
+const modalStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 900,
+  margin: "0 auto",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
 };
 
 const modalTitleStyle: CSSProperties = {
   margin: 0,
-  fontWeight: 900,
+  fontSize: "var(--sa-fs-xl)",
+};
+
+const closeBtnStyle: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "#dc2626",
+  fontSize: "var(--sa-fs-base)",
+  padding: 8,
+};
+
+const formGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 12,
+};
+
+const modalActionRowStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 10,
+  marginTop: 18,
+};
+
+const deleteInfoBoxStyle: CSSProperties = {
+  border: "1px solid rgba(148, 163, 184, 0.55)",
+  borderRadius: 18,
+  padding: 14,
+  marginTop: 14,
+  marginBottom: 14,
+};
+
+const deleteConfirmRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 10,
+  marginTop: 16,
+};
+
+const confirmDeleteBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  background: "#dc2626",
+  color: "#fff",
+};
+
+const cancelDeleteBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  border: "var(--sa-border-w) solid #cbd5e1",
+  borderRadius: "var(--sa-radius-control)",
+  background: "#fff",
+  color: "#111827",
 };
