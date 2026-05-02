@@ -3,7 +3,6 @@
 import { ChangeEvent, CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import FullScreenPanel from "./components/FullScreenPanel";
 import {
   THEMES,
   THEME_KEY as SMARTACCTG_THEME_KEY,
@@ -17,21 +16,6 @@ import {
 
 type PageKey = "home" | "accounting" | "customers" | "products" | "invoices" | "records";
 type Lang = "zh" | "en" | "ms";
-
-type ActivePanel =
-  | null
-  | "records"
-  | "recordCreate"
-  | "customers"
-  | "customerCreate"
-  | "products"
-  | "productCreate"
-  | "invoices"
-  | "invoiceCreate"
-  | "extensions"
-  | "nkShop"
-  | "settings"
-  | "themes";
 
 type Profile = {
   id: string;
@@ -67,6 +51,7 @@ type Customer = {
   debt_amount?: number | null;
   paid_amount?: number | null;
   last_payment_date?: string | null;
+  note?: string | null;
 };
 
 type Invoice = {
@@ -81,6 +66,30 @@ type Invoice = {
   due_date?: string | null;
   invoice_date?: string | null;
   created_at?: string | null;
+};
+
+type AppRegistry = {
+  id: string;
+  title_zh: string;
+  title_en: string;
+  title_ms: string;
+  description_zh?: string | null;
+  description_en?: string | null;
+  description_ms?: string | null;
+  icon?: string | null;
+  app_path?: string | null;
+  component_key?: string | null;
+  enabled?: boolean | null;
+  is_system?: boolean | null;
+  sort_order?: number | null;
+};
+
+type UserDashboardApp = {
+  id: string;
+  user_id: string;
+  app_id: string;
+  pinned: boolean;
+  sort_order: number | null;
 };
 
 type DebtItem = {
@@ -109,13 +118,14 @@ const TXT = {
     balance: "当前余额",
     monthIncome: "本月收入",
     monthExpense: "本月支出",
-    accounting: "记账系统",
-    customers: "客户管理",
-    products: "产品管理",
-    invoices: "发票系统",
-    extension: "扩展功能",
-    nkShop: "NK网店",
-    quick: "快速记录 / 开发票",
+    appCenter: "App Center",
+    appCenterDesc: "这里可以管理控制台显示的 App。移除后只是从控制台隐藏，App Center 里还会保留。",
+    addToDashboard: "加到控制台",
+    removeFromDashboard: "从控制台移除",
+    added: "已显示",
+    hidden: "已隐藏",
+    open: "打开",
+    quick: "快速新增",
     quickAccounting: "记账",
     quickInvoice: "发票",
     quickCustomer: "客户",
@@ -141,28 +151,20 @@ const TXT = {
     save: "保存资料",
     updatePassword: "更新密码",
     saved: "保存成功",
-    noDebt: "暂无欠款",
+    back: "返回",
     close: "关闭",
     freeTrialCannotUpload: "免费试用不能上传头像",
     trialNoCloud: "免费试用资料不会保存到云端",
     trialNoPassword: "免费试用没有账号密码",
     passwordTooShort: "密码至少 6 位",
     pleaseLogin: "请先登录",
-    electronicCard: "电子名片",
-    shopSystem: "网店系统",
-    comingSoon: "即将开放",
-    extensionDesc: "这里以后可以放新功能，用户可订阅后加入控制台。",
-    shopDesc: "未来可做自己的网店、订单系统、产品展示和客户下单入口。",
-    panelTip: "这个入口已经改成全屏弹窗。下一步把对应功能 file 接进这里即可。",
-    recordCreateTitle: "新增记账",
-    invoiceCreateTitle: "开发票",
-    customerCreateTitle: "新增客户",
-    productCreateTitle: "新增产品",
+    noApp: "还没有显示的 App，请打开 App Center 加入。",
+    loading: "加载中...",
+    appNotReady: "这个 App 还没有设置路径。",
   },
   en: {
     dashboard: "Dashboard",
-    notice:
-      "Notice: Welcome to SmartAcctg. Please check records, customer debts, stock and subscription expiry regularly.",
+    notice: "Notice: Welcome to SmartAcctg. Please check records, customer debts, stock and subscription expiry regularly.",
     recordsOverview: "Records Overview",
     latestMonth: "Latest Month",
     customerDebt: "Customer Debt",
@@ -170,13 +172,14 @@ const TXT = {
     balance: "Balance",
     monthIncome: "Monthly Income",
     monthExpense: "Monthly Expense",
-    accounting: "Accounting",
-    customers: "Customers",
-    products: "Products",
-    invoices: "Invoices",
-    extension: "Extensions",
-    nkShop: "NK Shop",
-    quick: "Quick Record / Invoice",
+    appCenter: "App Center",
+    appCenterDesc: "Manage apps shown on your dashboard. Removing an app only hides it from the dashboard. It remains in App Center.",
+    addToDashboard: "Add to Dashboard",
+    removeFromDashboard: "Remove from Dashboard",
+    added: "Shown",
+    hidden: "Hidden",
+    open: "Open",
+    quick: "Quick Add",
     quickAccounting: "Record",
     quickInvoice: "Invoice",
     quickCustomer: "Customer",
@@ -202,28 +205,20 @@ const TXT = {
     save: "Save",
     updatePassword: "Update Password",
     saved: "Saved",
-    noDebt: "No debt",
+    back: "Back",
     close: "Close",
     freeTrialCannotUpload: "Free trial cannot upload avatar",
     trialNoCloud: "Trial data will not be saved to cloud",
     trialNoPassword: "Trial mode has no account password",
     passwordTooShort: "Password must be at least 6 characters",
     pleaseLogin: "Please login first",
-    electronicCard: "Digital Name Card",
-    shopSystem: "Online Store System",
-    comingSoon: "Coming Soon",
-    extensionDesc: "Future features can be placed here. Users can subscribe and add them to dashboard.",
-    shopDesc: "Future online store, order system, product display and customer ordering entrance.",
-    panelTip: "This entrance now opens as a full-screen panel. Next, connect the related feature file here.",
-    recordCreateTitle: "Add Record",
-    invoiceCreateTitle: "Create Invoice",
-    customerCreateTitle: "Add Customer",
-    productCreateTitle: "Add Product",
+    noApp: "No apps shown yet. Open App Center to add apps.",
+    loading: "Loading...",
+    appNotReady: "This app has no path yet.",
   },
   ms: {
     dashboard: "Papan Pemuka",
-    notice:
-      "Notis: Selamat menggunakan SmartAcctg. Sila semak rekod, hutang pelanggan, stok dan tarikh langganan secara berkala.",
+    notice: "Notis: Selamat menggunakan SmartAcctg. Sila semak rekod, hutang pelanggan, stok dan tarikh langganan secara berkala.",
     recordsOverview: "Ringkasan Rekod",
     latestMonth: "Bulan Terkini",
     customerDebt: "Hutang Pelanggan",
@@ -231,13 +226,14 @@ const TXT = {
     balance: "Baki",
     monthIncome: "Pendapatan Bulan Ini",
     monthExpense: "Perbelanjaan Bulan Ini",
-    accounting: "Sistem Akaun",
-    customers: "Pelanggan",
-    products: "Produk",
-    invoices: "Invois",
-    extension: "Fungsi Tambahan",
-    nkShop: "NK Kedai",
-    quick: "Rekod Pantas / Invois",
+    appCenter: "App Center",
+    appCenterDesc: "Urus App yang dipaparkan di dashboard. Jika dibuang, ia hanya disembunyikan dari dashboard. App masih ada di App Center.",
+    addToDashboard: "Tambah ke Dashboard",
+    removeFromDashboard: "Buang dari Dashboard",
+    added: "Dipaparkan",
+    hidden: "Disembunyikan",
+    open: "Buka",
+    quick: "Tambah Pantas",
     quickAccounting: "Rekod",
     quickInvoice: "Invois",
     quickCustomer: "Pelanggan",
@@ -263,23 +259,16 @@ const TXT = {
     save: "Simpan",
     updatePassword: "Kemas Kini Kata Laluan",
     saved: "Disimpan",
-    noDebt: "Tiada hutang",
+    back: "Kembali",
     close: "Tutup",
     freeTrialCannotUpload: "Percubaan percuma tidak boleh muat naik avatar",
     trialNoCloud: "Data percubaan tidak disimpan ke cloud",
     trialNoPassword: "Mod percubaan tiada kata laluan akaun",
     passwordTooShort: "Kata laluan sekurang-kurangnya 6 aksara",
     pleaseLogin: "Sila log masuk dahulu",
-    electronicCard: "Kad Nama Digital",
-    shopSystem: "Sistem Kedai Online",
-    comingSoon: "Akan Datang",
-    extensionDesc: "Fungsi baru boleh diletakkan di sini. Pengguna boleh langgan dan tambah ke dashboard.",
-    shopDesc: "Kedai online, sistem pesanan, paparan produk dan pintu masuk pesanan pelanggan.",
-    panelTip: "Pintu masuk ini kini dibuka sebagai panel skrin penuh. Selepas ini sambungkan fail fungsi berkaitan di sini.",
-    recordCreateTitle: "Tambah Rekod",
-    invoiceCreateTitle: "Buat Invois",
-    customerCreateTitle: "Tambah Pelanggan",
-    productCreateTitle: "Tambah Produk",
+    noApp: "Tiada app dipaparkan. Buka App Center untuk tambah app.",
+    loading: "Sedang memuatkan...",
+    appNotReady: "App ini belum ada path.",
   },
 };
 
@@ -316,9 +305,40 @@ const DASHBOARD_FIX_CSS = `
     font-weight: 700 !important;
   }
 
+  .smartacctg-dashboard-page input[type="date"],
+  .smartacctg-dashboard-page input[type="month"],
+  .smartacctg-dashboard-page input[type="time"],
+  .smartacctg-dashboard-page input[type="datetime-local"] {
+    text-align: center !important;
+    text-align-last: center !important;
+    display: block !important;
+    width: 100% !important;
+    height: var(--sa-control-h, 54px) !important;
+    min-height: var(--sa-control-h, 54px) !important;
+    line-height: var(--sa-control-h, 54px) !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+
+  .smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
+  .smartacctg-dashboard-page input[type="month"]::-webkit-date-and-time-value,
+  .smartacctg-dashboard-page input[type="time"]::-webkit-date-and-time-value,
+  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-date-and-time-value {
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    line-height: normal !important;
+  }
+
   @keyframes saNoticeMarquee {
-    0% { transform: translateX(0%); }
-    100% { transform: translateX(-120%); }
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-120%);
+    }
   }
 
   .smartacctg-dashboard-page .sa-dashboard-notice {
@@ -336,10 +356,57 @@ const DASHBOARD_FIX_CSS = `
     font-weight: 700 !important;
   }
 
+  .smartacctg-dashboard-page .sa-fullscreen-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+    background: rgba(15, 23, 42, 0.58) !important;
+    padding: 0 !important;
+  }
+
+  .smartacctg-dashboard-page .sa-fullscreen-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 0 !important;
+    border: none !important;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .smartacctg-dashboard-page .sa-modal-top {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    background: inherit !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .smartacctg-dashboard-page .sa-app-frame {
+    width: 100% !important;
+    height: calc(100dvh - 92px) !important;
+    border: 0 !important;
+    border-radius: 18px !important;
+    background: white !important;
+  }
+
   @media (max-width: 680px) {
-    .smartacctg-dashboard-page .dashboard-summary-grid,
-    .smartacctg-dashboard-page .dashboard-feature-grid {
+    .smartacctg-dashboard-page .dashboard-summary-grid {
       grid-template-columns: 1fr !important;
+    }
+
+    .smartacctg-dashboard-page .dashboard-app-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     }
 
     .smartacctg-dashboard-page .dashboard-quick-grid {
@@ -347,13 +414,18 @@ const DASHBOARD_FIX_CSS = `
     }
   }
 
-  @media (max-width: 430px) {
-    .smartacctg-dashboard-page .dashboard-top-card {
-      grid-template-columns: minmax(0, 1fr) auto !important;
-      gap: 8px !important;
+  @media (max-width: 390px) {
+    .smartacctg-dashboard-page .dashboard-app-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 14px !important;
     }
 
-    .smartacctg-dashboard-page .dashboard-plan-text {
+    .smartacctg-dashboard-page .dashboard-app-icon {
+      width: 64px !important;
+      height: 64px !important;
+    }
+
+    .smartacctg-dashboard-page .dashboard-app-label {
       font-size: 13px !important;
     }
   }
@@ -413,6 +485,8 @@ function applyThemeEverywhere(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-card-bg", theme.card);
   document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
   document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-card", theme.itemCard || theme.itemBg || theme.card);
+  document.documentElement.style.setProperty("--sa-item-text", theme.itemText || theme.panelText || theme.text);
   document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
   document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
   document.documentElement.style.setProperty("--sa-border", theme.border);
@@ -451,7 +525,6 @@ function getMonthKey(date?: string | null) {
 
 function getDueTime(date?: string | null) {
   if (!date) return Number.MAX_SAFE_INTEGER;
-
   const time = new Date(`${date}T00:00:00`).getTime();
   return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
 }
@@ -462,22 +535,48 @@ function isInvoiceUnpaid(inv: Invoice) {
   return Number(inv.total || 0) > 0;
 }
 
+function appTitle(app: AppRegistry, lang: Lang) {
+  if (lang === "en") return app.title_en || app.title_zh || app.id;
+  if (lang === "ms") return app.title_ms || app.title_zh || app.id;
+  return app.title_zh || app.id;
+}
+
+function appDesc(app: AppRegistry, lang: Lang) {
+  if (lang === "en") return app.description_en || app.description_zh || "";
+  if (lang === "ms") return app.description_ms || app.description_zh || "";
+  return app.description_zh || "";
+}
+
+function isImageIcon(icon?: string | null) {
+  if (!icon) return false;
+  return icon.startsWith("http") || icon.startsWith("/") || icon.startsWith("data:image");
+}
+
 export default function DashboardClient({ page }: { page: PageKey }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
-  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Txn[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
+  const [apps, setApps] = useState<AppRegistry[]>([]);
+  const [userApps, setUserApps] = useState<UserDashboardApp[]>([]);
+  const [appsLoading, setAppsLoading] = useState(false);
+
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showThemes, setShowThemes] = useState(false);
   const [showRecordSummary, setShowRecordSummary] = useState(false);
   const [showDebtSummary, setShowDebtSummary] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const [showAppCenter, setShowAppCenter] = useState(false);
+
+  const [openApp, setOpenApp] = useState<AppRegistry | null>(null);
+  const [openAppUrl, setOpenAppUrl] = useState("");
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -516,7 +615,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         const name = item.name || key;
 
         if (seen.has(name)) return false;
-
         seen.add(name);
         return true;
       }) as ThemeKey[];
@@ -561,6 +659,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           setInvoices(safeParseArray<Invoice>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
           replaceUrlLangTheme(currentLang, currentTheme);
+          await loadApps(null);
           return;
         }
       } catch {
@@ -615,7 +714,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     applyThemeEverywhere(finalTheme);
     replaceUrlLangTheme(currentLang, finalTheme);
 
-    await loadAll(userId);
+    await Promise.all([loadAll(userId), loadApps(userId)]);
   }
 
   async function loadAll(userId: string) {
@@ -642,15 +741,52 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     setInvoices((invoiceData || []) as Invoice[]);
   }
 
-  function openPanel(panel: ActivePanel) {
-    setShowAvatarMenu(false);
-    setMsg("");
-    setActivePanel(panel);
+  async function loadApps(userId: string | null) {
+    setAppsLoading(true);
+
+    const { data: appData } = await supabase
+      .from("app_registry")
+      .select("*")
+      .eq("enabled", true)
+      .order("sort_order", { ascending: true });
+
+    const registry = (appData || []) as AppRegistry[];
+    setApps(registry);
+
+    if (!userId) {
+      setUserApps([]);
+      setAppsLoading(false);
+      return;
+    }
+
+    await supabase.rpc("ensure_default_dashboard_apps");
+
+    const { data: userAppData } = await supabase
+      .from("user_dashboard_apps")
+      .select("*")
+      .eq("user_id", userId)
+      .order("sort_order", { ascending: true });
+
+    setUserApps((userAppData || []) as UserDashboardApp[]);
+    setAppsLoading(false);
   }
 
-  function closePanel() {
-    setActivePanel(null);
-    setMsg("");
+  function buildUrl(path: string, extra?: string) {
+    const q = new URLSearchParams();
+    const fixedTheme = normalizeThemeKey(themeKey);
+
+    if (isTrial) q.set("mode", "trial");
+
+    q.set("lang", lang);
+    q.set("theme", fixedTheme);
+    q.set("refresh", String(Date.now()));
+
+    if (extra) {
+      const extraQuery = new URLSearchParams(extra);
+      extraQuery.forEach((value, key) => q.set(key, value));
+    }
+
+    return `${path}?${q.toString()}`;
   }
 
   function switchLang(next: Lang) {
@@ -692,7 +828,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     const { data } = supabase.storage.from("company-assets").getPublicUrl(path);
 
-    await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", session.user.id);
+    await supabase
+      .from("profiles")
+      .update({ avatar_url: data.publicUrl })
+      .eq("id", session.user.id);
 
     setProfile((p) => (p ? { ...p, avatar_url: data.publicUrl } : p));
     setMsg(t.saved);
@@ -796,6 +935,84 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     setMsg(t.saved);
   }
 
+  function isPinned(appId: string) {
+    const row = userApps.find((x) => x.app_id === appId);
+    return Boolean(row?.pinned);
+  }
+
+  async function setAppPinned(app: AppRegistry, pinned: boolean) {
+    if (isTrial) {
+      setUserApps((prev) => {
+        const existing = prev.find((x) => x.app_id === app.id);
+
+        if (existing) {
+          return prev.map((x) => (x.app_id === app.id ? { ...x, pinned } : x));
+        }
+
+        return [
+          ...prev,
+          {
+            id: `trial-${app.id}`,
+            user_id: "trial",
+            app_id: app.id,
+            pinned,
+            sort_order: app.sort_order || 100,
+          },
+        ];
+      });
+
+      return;
+    }
+
+    if (!session) return;
+
+    const existing = userApps.find((x) => x.app_id === app.id);
+
+    if (existing) {
+      const { error } = await supabase
+        .from("user_dashboard_apps")
+        .update({ pinned })
+        .eq("id", existing.id)
+        .eq("user_id", session.user.id);
+
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+    } else {
+      const { error } = await supabase.from("user_dashboard_apps").insert({
+        user_id: session.user.id,
+        app_id: app.id,
+        pinned,
+        sort_order: app.sort_order || 100,
+      });
+
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+    }
+
+    await loadApps(session.user.id);
+  }
+
+  function openAppModal(app: AppRegistry, extra?: string) {
+    if (!app.app_path) {
+      setMsg(t.appNotReady);
+      return;
+    }
+
+    setOpenApp(app);
+    setOpenAppUrl(buildUrl(app.app_path, extra));
+  }
+
+  function openQuick(appId: string) {
+    const app = apps.find((x) => x.id === appId);
+    if (!app) return;
+
+    openAppModal(app, "open=new&fullscreen=1&return=dashboard");
+  }
+
   const latestMonthKey = useMemo(() => {
     const months = transactions.map((tx) => getMonthKey(tx.txn_date)).filter(Boolean);
     if (months.length === 0) return new Date().toISOString().slice(0, 7);
@@ -818,8 +1035,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .reduce((s, x) => s + Number(x.amount || 0), 0);
   }, [latestMonthRecords]);
 
-  const balance = monthIncome - monthExpense;
-  const estimatedProfit = monthIncome;
+  const balance = useMemo(() => monthIncome - monthExpense, [monthIncome, monthExpense]);
+  const estimatedProfit = useMemo(() => monthIncome, [monthIncome]);
 
   const debtItems = useMemo<DebtItem[]>(() => {
     const customerDebtItems: DebtItem[] = customers
@@ -862,168 +1079,25 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     });
   }, [customers, invoices]);
 
-  const totalCustomerDebt = debtItems.reduce((s, x) => s + Number(x.amount || 0), 0);
+  const totalCustomerDebt = useMemo(() => {
+    return debtItems.reduce((s, x) => s + Number(x.amount || 0), 0);
+  }, [debtItems]);
+
   const topDebtItem = debtItems[0] || null;
+
+  const visibleApps = useMemo(() => {
+    const pinnedIds = new Set(userApps.filter((x) => x.pinned).map((x) => x.app_id));
+
+    return apps
+      .filter((app) => pinnedIds.has(app.id))
+      .sort((a, b) => Number(a.sort_order || 100) - Number(b.sort_order || 100));
+  }, [apps, userApps]);
 
   const expiryText = isTrial
     ? t.trial
     : profile?.plan_expiry
       ? new Date(profile.plan_expiry).toLocaleDateString()
       : t.noSub;
-
-  function getPanelTitle(panel: ActivePanel) {
-    if (panel === "records") return t.accounting;
-    if (panel === "recordCreate") return t.recordCreateTitle;
-    if (panel === "customers") return t.customers;
-    if (panel === "customerCreate") return t.customerCreateTitle;
-    if (panel === "products") return t.products;
-    if (panel === "productCreate") return t.productCreateTitle;
-    if (panel === "invoices") return t.invoices;
-    if (panel === "invoiceCreate") return t.invoiceCreateTitle;
-    if (panel === "extensions") return t.extension;
-    if (panel === "nkShop") return t.nkShop;
-    if (panel === "settings") return t.settings;
-    if (panel === "themes") return t.theme;
-    return "";
-  }
-
-  function renderPlaceholder(title: string, desc?: string) {
-    return (
-      <div style={placeholderWrapStyle}>
-        <h2 style={sectionTitleStyle}>{title}</h2>
-        <p style={{ color: themeMuted, lineHeight: 1.6 }}>{desc || t.panelTip}</p>
-      </div>
-    );
-  }
-
-  function renderSettings() {
-    return (
-      <>
-        <h2 style={sectionTitleStyle}>{t.language}</h2>
-
-        <div style={modalLangRowStyle}>
-          <button type="button" onClick={() => switchLang("zh")} style={modalLangBtnStyle(lang === "zh", theme)}>
-            中文
-          </button>
-
-          <button type="button" onClick={() => switchLang("en")} style={modalLangBtnStyle(lang === "en", theme)}>
-            EN
-          </button>
-
-          <button type="button" onClick={() => switchLang("ms")} style={modalLangBtnStyle(lang === "ms", theme)}>
-            BM
-          </button>
-        </div>
-
-        <h2 style={sectionTitleStyle}>{t.personal}</h2>
-
-        <input placeholder={t.name} value={fullName} onChange={(e) => setFullName(e.target.value)} style={themedInputStyle} />
-
-        <input placeholder={t.phone} value={phone} onChange={(e) => setPhone(e.target.value)} style={themedInputStyle} />
-
-        <h2 style={sectionTitleStyle}>{t.company}</h2>
-
-        <input placeholder={t.companyName} value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={themedInputStyle} />
-
-        <input placeholder={t.ssm} value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={themedInputStyle} />
-
-        <input placeholder={t.companyPhone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={themedInputStyle} />
-
-        <input placeholder={t.companyAddress} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={themedInputStyle} />
-
-        <button type="button" onClick={saveSettings} style={{ ...primaryBtnStyle, background: theme.accent }}>
-          {t.save}
-        </button>
-
-        <h2 style={sectionTitleStyle}>{t.password}</h2>
-
-        <input
-          type="password"
-          placeholder={t.newPassword}
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          style={themedInputStyle}
-        />
-
-        <button type="button" onClick={changePassword} style={{ ...primaryBtnStyle, background: theme.accent }}>
-          {t.updatePassword}
-        </button>
-
-        {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
-      </>
-    );
-  }
-
-  function renderThemes() {
-    return (
-      <>
-        <div style={themeGridStyle}>
-          {themeChoices.map((key) => {
-            const item = (THEMES[key] || THEMES.deepTeal) as any;
-
-            return (
-              <button
-                type="button"
-                key={key}
-                onClick={() => changeTheme(key)}
-                style={{
-                  ...themeBtnStyle,
-                  borderColor: item.border,
-                  background: item.banner || item.card,
-                  color: item.text,
-                  boxShadow: item.glow,
-                }}
-              >
-                {item.name || key}
-              </button>
-            );
-          })}
-        </div>
-
-        {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
-      </>
-    );
-  }
-
-  function renderActivePanel() {
-    if (activePanel === "settings") return renderSettings();
-    if (activePanel === "themes") return renderThemes();
-
-    if (activePanel === "extensions") {
-      return (
-        <>
-          <p style={{ color: themeMuted }}>{t.extensionDesc}</p>
-
-          <div style={extensionGridStyle}>
-            <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
-              <h2 style={sectionTitleStyle}>{t.electronicCard}</h2>
-              <p style={{ color: themeMuted }}>{t.comingSoon}</p>
-            </div>
-
-            <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
-              <h2 style={sectionTitleStyle}>{t.shopSystem}</h2>
-              <p style={{ color: themeMuted }}>{t.shopDesc}</p>
-            </div>
-          </div>
-        </>
-      );
-    }
-
-    if (activePanel === "nkShop") {
-      return renderPlaceholder(t.shopSystem, t.shopDesc);
-    }
-
-    if (activePanel === "records") return renderPlaceholder(t.accounting);
-    if (activePanel === "recordCreate") return renderPlaceholder(t.recordCreateTitle);
-    if (activePanel === "customers") return renderPlaceholder(t.customers);
-    if (activePanel === "customerCreate") return renderPlaceholder(t.customerCreateTitle);
-    if (activePanel === "products") return renderPlaceholder(t.products);
-    if (activePanel === "productCreate") return renderPlaceholder(t.productCreateTitle);
-    if (activePanel === "invoices") return renderPlaceholder(t.invoices);
-    if (activePanel === "invoiceCreate") return renderPlaceholder(t.invoiceCreateTitle);
-
-    return null;
-  }
 
   return (
     <main
@@ -1034,25 +1108,63 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     >
       <style jsx global>{DASHBOARD_FIX_CSS}</style>
 
-      <header className="sa-card dashboard-top-card" style={{ ...topCardStyle, ...themedCardStyle }}>
+      <header
+        className="sa-card dashboard-top-card"
+        style={{
+          ...topCardStyle,
+          background: theme.card,
+          borderColor: theme.border,
+          boxShadow: theme.glow,
+          color: theme.text,
+        }}
+      >
         <div style={leftTopStyle}>
           <div style={{ position: "relative" }}>
-            <button type="button" onClick={() => setShowAvatarMenu(!showAvatarMenu)} style={avatarBtnStyle}>
-              {profile?.avatar_url ? <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} /> : "👤"}
+            <button
+              type="button"
+              onClick={() => setShowAvatarMenu(!showAvatarMenu)}
+              style={avatarBtnStyle}
+            >
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} />
+              ) : (
+                "👤"
+              )}
             </button>
 
             {showAvatarMenu ? (
               <div style={avatarMenuStyle}>
                 <label style={menuItemStyle}>
                   {t.changeAvatar}
-                  <input type="file" accept="image/*" onChange={uploadAvatar} style={{ display: "none" }} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={uploadAvatar}
+                    style={{ display: "none" }}
+                  />
                 </label>
 
-                <button type="button" style={menuItemStyle} onClick={() => openPanel("settings")}>
+                <button
+                  type="button"
+                  style={menuItemStyle}
+                  onClick={() => {
+                    setShowSettings(true);
+                    setShowThemes(false);
+                    setShowAvatarMenu(false);
+                  }}
+                >
                   {t.settings}
                 </button>
 
-                <button type="button" style={menuItemStyle} onClick={() => openPanel("themes")}>
+                <button
+                  type="button"
+                  style={menuItemStyle}
+                  onClick={() => {
+                    setShowThemes(true);
+                    setShowSettings(false);
+                    setShowAvatarMenu(false);
+                  }}
+                >
                   {t.theme}
                 </button>
               </div>
@@ -1064,75 +1176,92 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </div>
         </div>
 
-        <button type="button" onClick={logout} style={{ ...logoutBtnStyle, background: theme.accent }}>
+        <button
+          type="button"
+          onClick={logout}
+          style={{ ...logoutBtnStyle, background: theme.accent }}
+        >
           {t.logout}
         </button>
       </header>
 
-      <section className="sa-card" style={{ ...themedCardStyle, background: theme.banner || theme.card }}>
-        <h1 style={titleStyle}>{t.dashboard}</h1>
+      {page === "home" ? (
+        <>
+          <section
+            className="sa-card"
+            style={{
+              background: theme.banner || theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <h1 style={titleStyle}>{t.dashboard}</h1>
 
-        <div className="sa-dashboard-notice" style={noticeWrapStyle}>
-          <div className="sa-dashboard-notice-text">{t.notice}</div>
-        </div>
-      </section>
-
-      <section className="dashboard-summary-grid" style={summaryGridStyle}>
-        <div className="sa-card dashboard-stat-card" style={{ ...summaryBoxStyle, ...themedCardStyle }}>
-          <button type="button" onClick={() => setShowRecordSummary(!showRecordSummary)} style={summaryHeaderBtnStyle}>
-            <span className="sa-title-bold">{t.recordsOverview}</span>
-            <strong>{showRecordSummary ? "▲" : "▼"}</strong>
-          </button>
-
-          <div style={{ ...smallMutedStyle, color: themeMuted }}>
-            {t.latestMonth}: {latestMonthKey}
-          </div>
-
-          {showRecordSummary ? (
-            <div style={summaryDetailListStyle}>
-              <div style={summaryRowStyle}>
-                <span>{t.balance}</span>
-                <strong style={{ color: theme.accent }}>{formatRM(balance)}</strong>
-              </div>
-
-              <div style={summaryRowStyle}>
-                <span>{t.monthIncome}</span>
-                <strong style={{ color: "#16a34a" }}>{formatRM(monthIncome)}</strong>
-              </div>
-
-              <div style={summaryRowStyle}>
-                <span>{t.monthExpense}</span>
-                <strong style={{ color: "#dc2626" }}>{formatRM(monthExpense)}</strong>
-              </div>
-
-              <div style={summaryRowStyle}>
-                <span>{t.estimatedProfit}</span>
-                <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
+            <div className="sa-dashboard-notice" style={noticeWrapStyle}>
+              <div className="sa-dashboard-notice-text" style={noticeMarqueeStyle}>
+                {t.notice}
               </div>
             </div>
-          ) : (
-            <div style={summaryRowStyle}>
-              <span>{t.estimatedProfit}</span>
-              <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
-            </div>
-          )}
-        </div>
+          </section>
 
-        <div className="sa-card dashboard-stat-card" style={{ ...summaryBoxStyle, ...themedCardStyle }}>
-          <button type="button" onClick={() => setShowDebtSummary(!showDebtSummary)} style={summaryHeaderBtnStyle}>
-            <span className="sa-title-bold">{t.customerDebt}</span>
-            <strong>{showDebtSummary ? "▲" : "▼"}</strong>
-          </button>
+          <section className="dashboard-summary-grid" style={summaryGridStyle}>
+            <div className="sa-card dashboard-stat-card" style={{ ...summaryBoxStyle, ...themedCardStyle }}>
+              <button
+                type="button"
+                onClick={() => setShowRecordSummary(!showRecordSummary)}
+                style={summaryHeaderBtnStyle}
+              >
+                <span className="sa-title-bold">{t.recordsOverview}</span>
+                <strong>{showRecordSummary ? "▲" : "▼"}</strong>
+              </button>
 
-          {showDebtSummary ? (
-            <div style={summaryDetailListStyle}>
-              {debtItems.length === 0 ? (
-                <div style={summaryRowStyle}>
-                  <span>{t.noDebt}</span>
-                  <strong>{formatRM(0)}</strong>
+              <div style={{ ...smallMutedStyle, color: themeMuted }}>
+                {t.latestMonth}: {latestMonthKey}
+              </div>
+
+              {showRecordSummary ? (
+                <div style={summaryDetailListStyle}>
+                  <div style={summaryRowStyle}>
+                    <span>{t.balance}</span>
+                    <strong style={{ color: theme.accent }}>{formatRM(balance)}</strong>
+                  </div>
+
+                  <div style={summaryRowStyle}>
+                    <span>{t.monthIncome}</span>
+                    <strong style={{ color: "#16a34a" }}>{formatRM(monthIncome)}</strong>
+                  </div>
+
+                  <div style={summaryRowStyle}>
+                    <span>{t.monthExpense}</span>
+                    <strong style={{ color: "#dc2626" }}>{formatRM(monthExpense)}</strong>
+                  </div>
+
+                  <div style={summaryRowStyle}>
+                    <span>{t.estimatedProfit}</span>
+                    <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
+                  </div>
                 </div>
               ) : (
-                <>
+                <div style={summaryRowStyle}>
+                  <span>{t.estimatedProfit}</span>
+                  <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
+                </div>
+              )}
+            </div>
+
+            <div className="sa-card dashboard-stat-card" style={{ ...summaryBoxStyle, ...themedCardStyle }}>
+              <button
+                type="button"
+                onClick={() => setShowDebtSummary(!showDebtSummary)}
+                style={summaryHeaderBtnStyle}
+              >
+                <span className="sa-title-bold">{t.customerDebt}</span>
+                <strong>{showDebtSummary ? "▲" : "▼"}</strong>
+              </button>
+
+              {showDebtSummary ? (
+                <div style={summaryDetailListStyle}>
                   <div style={summaryRowStyle}>
                     <span>{t.customerDebt}</span>
                     <strong style={{ color: "#dc2626" }}>{formatRM(totalCustomerDebt)}</strong>
@@ -1142,88 +1271,331 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                     <div key={item.id} style={debtRowStyle}>
                       <div>
                         <div>{item.name}</div>
-                        {item.dueDate ? <small style={{ color: themeMuted }}>{item.dueDate}</small> : null}
+                        {item.dueDate ? (
+                          <small style={{ color: themeMuted }}>
+                            {item.source === "invoice" ? "Invoice" : "Customer"} · {item.dueDate}
+                          </small>
+                        ) : null}
                       </div>
 
                       <strong style={{ color: "#dc2626" }}>{formatRM(item.amount)}</strong>
                     </div>
                   ))}
-                </>
+                </div>
+              ) : (
+                <div style={summaryRowStyle}>
+                  <span>{topDebtItem?.name || "-"}</span>
+                  <strong style={{ color: topDebtItem ? "#dc2626" : theme.accent }}>
+                    {formatRM(topDebtItem?.amount || 0)}
+                  </strong>
+                </div>
               )}
             </div>
-          ) : (
-            <div style={summaryRowStyle}>
-              <span>{topDebtItem?.name || t.noDebt}</span>
-              <strong style={{ color: topDebtItem ? "#dc2626" : theme.accent }}>
-                {formatRM(topDebtItem?.amount || 0)}
-              </strong>
+          </section>
+
+          <section className="sa-card" style={{ ...quickCardStyle, ...themedCardStyle }}>
+            <button
+              type="button"
+              onClick={() => setShowQuickMenu(!showQuickMenu)}
+              style={quickHeaderBtnStyle}
+            >
+              <span className="sa-title-bold">{t.quick}</span>
+              <strong>{showQuickMenu ? "▲" : "▼"}</strong>
+            </button>
+
+            {showQuickMenu ? (
+              <div className="dashboard-quick-grid" style={quickGridStyle}>
+                <button type="button" onClick={() => openQuick("records")} style={quickBtnStyle(theme)}>
+                  {t.quickAccounting}
+                </button>
+
+                <button type="button" onClick={() => openQuick("invoices")} style={quickBtnStyle(theme)}>
+                  {t.quickInvoice}
+                </button>
+
+                <button type="button" onClick={() => openQuick("customers")} style={quickBtnStyle(theme)}>
+                  {t.quickCustomer}
+                </button>
+
+                <button type="button" onClick={() => openQuick("products")} style={quickBtnStyle(theme)}>
+                  {t.quickProduct}
+                </button>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="sa-card" style={{ ...appSectionStyle, ...themedCardStyle }}>
+            <div style={appSectionTopStyle}>
+              <h2 style={sectionTitleStyle}>{t.appCenter}</h2>
+
+              <button
+                type="button"
+                onClick={() => setShowAppCenter(true)}
+                style={appCenterMiniBtnStyle(theme)}
+              >
+                +
+              </button>
             </div>
-          )}
+
+            {appsLoading ? (
+              <p style={{ color: themeMuted }}>{t.loading}</p>
+            ) : visibleApps.length === 0 ? (
+              <p style={{ color: themeMuted }}>{t.noApp}</p>
+            ) : (
+              <div className="dashboard-app-grid" style={appGridStyle}>
+                {visibleApps.map((app) => (
+                  <div key={app.id} style={appIconWrapStyle}>
+                    <button
+                      type="button"
+                      onClick={() => openAppModal(app)}
+                      className="dashboard-app-icon"
+                      style={phoneAppIconStyle(theme)}
+                    >
+                      {isImageIcon(app.icon) ? (
+                        <img src={app.icon || ""} alt={appTitle(app, lang)} style={appImgStyle} />
+                      ) : (
+                        <span style={appEmojiStyle}>{app.icon || "📱"}</span>
+                      )}
+                    </button>
+
+                    <div className="dashboard-app-label" style={appLabelStyle}>
+                      {appTitle(app, lang)}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setAppPinned(app, false)}
+                      style={removeSmallBtnStyle}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                <div style={appIconWrapStyle}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAppCenter(true)}
+                    className="dashboard-app-icon"
+                    style={nkAppCenterIconStyle}
+                  >
+                    NK
+                  </button>
+
+                  <div className="dashboard-app-label" style={appLabelStyle}>
+                    {t.appCenter}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        </>
+      ) : null}
+
+      {showSettings ? (
+        <div className="sa-fullscreen-overlay">
+          <section className="sa-card sa-fullscreen-modal" style={themedCardStyle}>
+            <div className="sa-modal-top" style={modalTopStyle}>
+              <h1 style={modalTitleStyle}>{t.settings}</h1>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSettings(false);
+                  setMsg("");
+                }}
+                style={closeBtnStyle}
+              >
+                {t.close}
+              </button>
+            </div>
+
+            <h2 style={sectionTitleStyle}>{t.language}</h2>
+
+            <div style={modalLangRowStyle}>
+              <button type="button" onClick={() => switchLang("zh")} style={modalLangBtnStyle(lang === "zh", theme)}>
+                中文
+              </button>
+
+              <button type="button" onClick={() => switchLang("en")} style={modalLangBtnStyle(lang === "en", theme)}>
+                EN
+              </button>
+
+              <button type="button" onClick={() => switchLang("ms")} style={modalLangBtnStyle(lang === "ms", theme)}>
+                BM
+              </button>
+            </div>
+
+            <h2 style={sectionTitleStyle}>{t.personal}</h2>
+
+            <input placeholder={t.name} value={fullName} onChange={(e) => setFullName(e.target.value)} style={themedInputStyle} />
+            <input placeholder={t.phone} value={phone} onChange={(e) => setPhone(e.target.value)} style={themedInputStyle} />
+
+            <h2 style={sectionTitleStyle}>{t.company}</h2>
+
+            <input placeholder={t.companyName} value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={themedInputStyle} />
+            <input placeholder={t.ssm} value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={themedInputStyle} />
+            <input placeholder={t.companyPhone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={themedInputStyle} />
+            <input placeholder={t.companyAddress} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={themedInputStyle} />
+
+            <button type="button" onClick={saveSettings} style={{ ...primaryBtnStyle, background: theme.accent }}>
+              {t.save}
+            </button>
+
+            <h2 style={sectionTitleStyle}>{t.password}</h2>
+
+            <input
+              type="password"
+              placeholder={t.newPassword}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <button type="button" onClick={changePassword} style={{ ...primaryBtnStyle, background: theme.accent }}>
+              {t.updatePassword}
+            </button>
+
+            {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
+          </section>
         </div>
-      </section>
+      ) : null}
 
-      <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 14 }}>
-        <button type="button" onClick={() => setShowQuickMenu(!showQuickMenu)} style={quickHeaderBtnStyle}>
-          <span className="sa-title-bold">{t.quick}</span>
-          <strong>{showQuickMenu ? "▲" : "▼"}</strong>
-        </button>
+      {showThemes ? (
+        <div className="sa-fullscreen-overlay">
+          <section className="sa-card sa-fullscreen-modal" style={themedCardStyle}>
+            <div className="sa-modal-top" style={modalTopStyle}>
+              <h1 style={modalTitleStyle}>{t.theme}</h1>
 
-        {showQuickMenu ? (
-          <div className="dashboard-quick-grid" style={quickGridStyle}>
-            <button type="button" onClick={() => openPanel("recordCreate")} style={quickBtnStyle(theme)}>
-              {t.quickAccounting}
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowThemes(false);
+                  setMsg("");
+                }}
+                style={closeBtnStyle}
+              >
+                {t.close}
+              </button>
+            </div>
 
-            <button type="button" onClick={() => openPanel("invoiceCreate")} style={quickBtnStyle(theme)}>
-              {t.quickInvoice}
-            </button>
+            <div style={themeGridStyle}>
+              {themeChoices.map((key) => {
+                const item = (THEMES[key] || THEMES.deepTeal) as any;
 
-            <button type="button" onClick={() => openPanel("customerCreate")} style={quickBtnStyle(theme)}>
-              {t.quickCustomer}
-            </button>
+                return (
+                  <button
+                    type="button"
+                    key={key}
+                    onClick={() => changeTheme(key)}
+                    style={{
+                      ...themeBtnStyle,
+                      borderColor: item.border,
+                      background: item.banner || item.card,
+                      color: item.text,
+                      boxShadow: item.glow,
+                    }}
+                  >
+                    {item.name || key}
+                  </button>
+                );
+              })}
+            </div>
 
-            <button type="button" onClick={() => openPanel("productCreate")} style={quickBtnStyle(theme)}>
-              {t.quickProduct}
-            </button>
-          </div>
-        ) : null}
-      </section>
+            {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
+          </section>
+        </div>
+      ) : null}
 
-      <section className="dashboard-feature-grid" style={featureGridStyle}>
-        <button type="button" onClick={() => openPanel("records")} className="sa-card" style={featureBtnStyle(theme)}>
-          {t.accounting}
-        </button>
+      {showAppCenter ? (
+        <div className="sa-fullscreen-overlay">
+          <section className="sa-card sa-fullscreen-modal" style={themedCardStyle}>
+            <div className="sa-modal-top" style={modalTopStyle}>
+              <h1 style={modalTitleStyle}>{t.appCenter}</h1>
 
-        <button type="button" onClick={() => openPanel("customers")} className="sa-card" style={featureBtnStyle(theme)}>
-          {t.customers}
-        </button>
+              <button type="button" onClick={() => setShowAppCenter(false)} style={closeBtnStyle}>
+                {t.close}
+              </button>
+            </div>
 
-        <button type="button" onClick={() => openPanel("products")} className="sa-card" style={featureBtnStyle(theme)}>
-          {t.products}
-        </button>
+            <p style={{ color: themeMuted }}>{t.appCenterDesc}</p>
 
-        <button type="button" onClick={() => openPanel("invoices")} className="sa-card" style={featureBtnStyle(theme)}>
-          {t.invoices}
-        </button>
+            <div style={appCenterListStyle}>
+              {apps.map((app) => {
+                const pinned = isPinned(app.id);
 
-        <button type="button" onClick={() => openPanel("extensions")} className="sa-card" style={featureBtnStyle(theme)}>
-          {t.extension}
-        </button>
+                return (
+                  <div key={app.id} style={{ ...appCenterCardStyle, borderColor: theme.border }}>
+                    <button
+                      type="button"
+                      onClick={() => openAppModal(app)}
+                      style={phoneAppIconStyle(theme)}
+                    >
+                      {isImageIcon(app.icon) ? (
+                        <img src={app.icon || ""} alt={appTitle(app, lang)} style={appImgStyle} />
+                      ) : (
+                        <span style={appEmojiStyle}>{app.icon || "📱"}</span>
+                      )}
+                    </button>
 
-        <button type="button" onClick={() => openPanel("nkShop")} className="sa-card" style={featureBtnStyle(theme)}>
-          {t.nkShop}
-        </button>
-      </section>
+                    <div style={{ minWidth: 0 }}>
+                      <h2 style={appCenterTitleStyle}>{appTitle(app, lang)}</h2>
+                      <p style={{ color: themeMuted, margin: "4px 0 10px" }}>{appDesc(app, lang)}</p>
 
-      <FullScreenPanel
-        open={activePanel !== null}
-        title={getPanelTitle(activePanel)}
-        closeText={t.close}
-        onClose={closePanel}
-        theme={theme}
-      >
-        {renderActivePanel()}
-      </FullScreenPanel>
+                      <div style={appCenterActionRowStyle}>
+                        <button
+                          type="button"
+                          onClick={() => openAppModal(app)}
+                          style={{ ...smallPrimaryBtnStyle, background: theme.accent }}
+                        >
+                          {t.open}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setAppPinned(app, !pinned)}
+                          style={pinned ? smallDangerBtnStyle : smallOutlineBtnStyle(theme)}
+                        >
+                          {pinned ? t.removeFromDashboard : t.addToDashboard}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {openApp ? (
+        <div className="sa-fullscreen-overlay">
+          <section className="sa-card sa-fullscreen-modal" style={themedCardStyle}>
+            <div className="sa-modal-top" style={modalTopStyle}>
+              <h1 style={modalTitleStyle}>{appTitle(openApp, lang)}</h1>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenApp(null);
+                  setOpenAppUrl("");
+                  if (session?.user?.id) loadAll(session.user.id);
+                }}
+                style={closeBtnStyle}
+              >
+                {t.close}
+              </button>
+            </div>
+
+            <iframe
+              title={appTitle(openApp, lang)}
+              src={openAppUrl}
+              className="sa-app-frame"
+              style={appFrameStyle}
+            />
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -1326,6 +1698,10 @@ const noticeWrapStyle: CSSProperties = {
   marginTop: 12,
 };
 
+const noticeMarqueeStyle: CSSProperties = {
+  display: "inline-block",
+};
+
 const summaryGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
@@ -1382,6 +1758,10 @@ const debtRowStyle: CSSProperties = {
   lineHeight: 1.35,
 };
 
+const quickCardStyle: CSSProperties = {
+  marginBottom: 14,
+};
+
 const quickHeaderBtnStyle: CSSProperties = {
   width: "100%",
   display: "flex",
@@ -1412,25 +1792,114 @@ const quickBtnStyle = (theme: any): CSSProperties => ({
   padding: "0 12px",
 });
 
-const featureGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 12,
+const appSectionStyle: CSSProperties = {
   marginBottom: 14,
 };
 
-const featureBtnStyle = (theme: any): CSSProperties => ({
-  minHeight: 72,
-  fontSize: "var(--sa-fs-lg)",
-  textAlign: "center",
-  background: theme.card,
-  borderColor: theme.border,
-  boxShadow: theme.glow,
-  color: theme.text,
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
+const appSectionTopStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 12,
+};
+
+const sectionTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-xl)",
+  fontWeight: 900,
+};
+
+const appCenterMiniBtnStyle = (theme: any): CSSProperties => ({
+  width: 46,
+  height: 46,
+  borderRadius: 999,
+  border: "none",
+  background: theme.accent,
+  color: "#fff",
+  fontSize: 28,
+  lineHeight: 1,
 });
+
+const appGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: 18,
+  alignItems: "start",
+};
+
+const appIconWrapStyle: CSSProperties = {
+  position: "relative",
+  display: "grid",
+  justifyItems: "center",
+  gap: 8,
+  minWidth: 0,
+};
+
+const phoneAppIconStyle = (theme: any): CSSProperties => ({
+  width: 76,
+  height: 76,
+  borderRadius: "28%",
+  border: `2px solid ${theme.border}`,
+  background: `linear-gradient(145deg, ${theme.softBg || "#ccfbf1"}, ${theme.card || "#ffffff"})`,
+  color: theme.accent,
+  boxShadow:
+    "inset 0 2px 5px rgba(255,255,255,0.65), inset 0 -8px 18px rgba(0,0,0,0.12), 0 12px 26px rgba(0,0,0,0.2)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+  padding: 0,
+});
+
+const nkAppCenterIconStyle: CSSProperties = {
+  width: 76,
+  height: 76,
+  borderRadius: "50%",
+  border: "4px solid #d4af37",
+  background: "linear-gradient(145deg, #ffffff, #fef3c7)",
+  color: "#6d28d9",
+  fontWeight: 900,
+  fontSize: 26,
+  boxShadow:
+    "inset 0 2px 8px rgba(255,255,255,0.85), inset 0 -8px 18px rgba(0,0,0,0.16), 0 12px 28px rgba(0,0,0,0.22)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const appEmojiStyle: CSSProperties = {
+  fontSize: 34,
+  lineHeight: 1,
+};
+
+const appImgStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+};
+
+const appLabelStyle: CSSProperties = {
+  textAlign: "center",
+  lineHeight: 1.2,
+  fontSize: "var(--sa-fs-sm)",
+  maxWidth: 90,
+  overflowWrap: "anywhere",
+};
+
+const removeSmallBtnStyle: CSSProperties = {
+  position: "absolute",
+  top: -8,
+  right: "calc(50% - 45px)",
+  width: 24,
+  height: 24,
+  borderRadius: 999,
+  border: "none",
+  background: "#fee2e2",
+  color: "#dc2626",
+  lineHeight: "24px",
+  padding: 0,
+};
 
 const inputStyle: CSSProperties = {
   width: "100%",
@@ -1455,11 +1924,25 @@ const primaryBtnStyle: CSSProperties = {
   marginBottom: 16,
 };
 
-const sectionTitleStyle: CSSProperties = {
-  marginTop: 18,
-  marginBottom: 12,
-  fontSize: "var(--sa-fs-xl)",
+const modalTopStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+};
+
+const modalTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-2xl)",
   fontWeight: 900,
+};
+
+const closeBtnStyle: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "#dc2626",
+  fontSize: "var(--sa-fs-base)",
+  padding: 8,
 };
 
 const modalLangRowStyle: CSSProperties = {
@@ -1490,21 +1973,64 @@ const themeBtnStyle: CSSProperties = {
   textAlign: "left",
 };
 
-const extensionGridStyle: CSSProperties = {
+const appCenterListStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 12,
+  gap: 14,
   marginTop: 16,
 };
 
-const extensionCardStyle: CSSProperties = {
+const appCenterCardStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr)",
+  gap: 14,
+  alignItems: "center",
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
 };
 
-const placeholderWrapStyle: CSSProperties = {
-  border: "var(--sa-border-w) dashed rgba(148, 163, 184, 0.65)",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
+const appCenterTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-lg)",
+  fontWeight: 900,
+};
+
+const appCenterActionRowStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 10,
+};
+
+const smallPrimaryBtnStyle: CSSProperties = {
+  minHeight: 42,
+  borderRadius: "var(--sa-radius-control)",
+  border: "none",
+  color: "#fff",
+  padding: "0 14px",
+};
+
+const smallDangerBtnStyle: CSSProperties = {
+  minHeight: 42,
+  borderRadius: "var(--sa-radius-control)",
+  border: "none",
+  background: "#fee2e2",
+  color: "#dc2626",
+  padding: "0 14px",
+};
+
+const smallOutlineBtnStyle = (theme: any): CSSProperties => ({
+  minHeight: 42,
+  borderRadius: "var(--sa-radius-control)",
+  border: `var(--sa-border-w) solid ${theme.border}`,
+  background: theme.inputBg || "#fff",
+  color: theme.accent,
+  padding: "0 14px",
+});
+
+const appFrameStyle: CSSProperties = {
+  width: "100%",
+  height: "calc(100dvh - 92px)",
+  border: 0,
+  borderRadius: 18,
+  background: "#fff",
 };
