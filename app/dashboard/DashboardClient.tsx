@@ -21,7 +21,16 @@ import {
   saveThemeKey,
 } from "@/lib/smartacctgTheme";
 
-type PageKey = "home" | "accounting" | "customers" | "products" | "invoices" | "records";
+type PageKey =
+  | "home"
+  | "accounting"
+  | "customers"
+  | "products"
+  | "invoices"
+  | "records"
+  | "extensions"
+  | "nkshop";
+
 type Lang = "zh" | "en" | "ms";
 
 type Profile = {
@@ -93,10 +102,12 @@ type AppRegistry = {
   name?: string | null;
   icon?: string | null;
   app_path?: string | null;
+  component_key?: string | null;
   description_zh?: string | null;
   description_en?: string | null;
   description_ms?: string | null;
   sort_order?: number | null;
+  enabled?: boolean | null;
   is_active?: boolean | null;
   is_system?: boolean | null;
 };
@@ -106,6 +117,7 @@ type UserDashboardApp = {
   user_id?: string;
   app_key?: string | null;
   app_id?: string | null;
+  pinned?: boolean | null;
   created_at?: string | null;
 };
 
@@ -115,7 +127,8 @@ const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 const LANG_KEY = "smartacctg_lang";
 
-const NK_LOGO_SRC = "/app-icons/nk-digital-hub-logo.png";
+const NK_LOGO_SRC = "/app-icons/nk-digital-hub-logo.png.PNG";
+const NK_LOGO_FALLBACK_SRC = "/app-icons/nk-digital-hub-logo.png";
 
 const DASHBOARD_APP_KEYS_LOCAL = "smartacctg_dashboard_app_keys";
 const DASHBOARD_APPS_INIT_LOCAL = "smartacctg_dashboard_apps_initialized";
@@ -138,6 +151,7 @@ const DEFAULT_APPS: AppRegistry[] = [
     icon: "🧾",
     app_path: "/dashboard/records",
     sort_order: 10,
+    enabled: true,
     is_active: true,
   },
   {
@@ -148,6 +162,7 @@ const DEFAULT_APPS: AppRegistry[] = [
     icon: "👥",
     app_path: "/dashboard/customers",
     sort_order: 20,
+    enabled: true,
     is_active: true,
   },
   {
@@ -158,6 +173,7 @@ const DEFAULT_APPS: AppRegistry[] = [
     icon: "📦",
     app_path: "/dashboard/products",
     sort_order: 30,
+    enabled: true,
     is_active: true,
   },
   {
@@ -168,6 +184,7 @@ const DEFAULT_APPS: AppRegistry[] = [
     icon: "🧾",
     app_path: "/dashboard/invoices",
     sort_order: 40,
+    enabled: true,
     is_active: true,
   },
   {
@@ -176,8 +193,9 @@ const DEFAULT_APPS: AppRegistry[] = [
     title_en: "Extensions",
     title_ms: "Fungsi Tambahan",
     icon: "🧩",
-    app_path: "__extension__",
+    app_path: "/dashboard/extensions",
     sort_order: 50,
+    enabled: true,
     is_active: true,
   },
   {
@@ -186,8 +204,9 @@ const DEFAULT_APPS: AppRegistry[] = [
     title_en: "NK Shop",
     title_ms: "NK Kedai",
     icon: "🛒",
-    app_path: "__shop__",
+    app_path: "/dashboard/nkshop",
     sort_order: 60,
+    enabled: true,
     is_active: true,
   },
 ];
@@ -249,11 +268,6 @@ const TXT = {
     trialNoPassword: "免费试用没有账号密码",
     passwordTooShort: "密码至少 6 位",
     pleaseLogin: "请先登录",
-    electronicCard: "电子名片",
-    shopSystem: "网店系统",
-    comingSoon: "即将开放",
-    extensionDesc: "这里以后可以放新功能，用户可订阅后加入控制台。",
-    shopDesc: "未来可做自己的网店、订单系统、产品展示和客户下单入口。",
     loadingApp: "正在打开 App...",
     noApps: "控制台还没有 App，请到 App Center 添加。",
   },
@@ -315,11 +329,6 @@ const TXT = {
     trialNoPassword: "Trial mode has no account password",
     passwordTooShort: "Password must be at least 6 characters",
     pleaseLogin: "Please login first",
-    electronicCard: "Digital Name Card",
-    shopSystem: "Online Store System",
-    comingSoon: "Coming Soon",
-    extensionDesc: "Future features can be placed here. Users can subscribe and add them to dashboard.",
-    shopDesc: "Future online store, order system, product display and customer ordering entrance.",
     loadingApp: "Opening app...",
     noApps: "No dashboard apps yet. Add apps from App Center.",
   },
@@ -381,12 +390,6 @@ const TXT = {
     trialNoPassword: "Mod percubaan tiada kata laluan akaun",
     passwordTooShort: "Kata laluan sekurang-kurangnya 6 aksara",
     pleaseLogin: "Sila log masuk dahulu",
-    electronicCard: "Kad Nama Digital",
-    shopSystem: "Sistem Kedai Online",
-    comingSoon: "Akan Datang",
-    extensionDesc:
-      "Fungsi baru boleh diletakkan di sini. Pengguna boleh langgan dan tambah ke dashboard.",
-    shopDesc: "Kedai online, sistem pesanan, paparan produk dan pintu masuk pesanan pelanggan.",
     loadingApp: "Sedang buka app...",
     noApps: "Belum ada app dashboard. Tambah app dari App Center.",
   },
@@ -572,8 +575,7 @@ const DASHBOARD_FIX_CSS = `
   }
 
   @media (max-width: 680px) {
-    .smartacctg-dashboard-page .dashboard-summary-grid,
-    .smartacctg-dashboard-page .dashboard-feature-grid {
+    .smartacctg-dashboard-page .dashboard-summary-grid {
       grid-template-columns: 1fr !important;
     }
 
@@ -708,6 +710,7 @@ function isInvoiceUnpaid(inv: Invoice) {
 
 function isImageIcon(icon?: string | null) {
   const raw = String(icon || "").trim();
+
   return (
     raw.startsWith("http://") ||
     raw.startsWith("https://") ||
@@ -717,20 +720,24 @@ function isImageIcon(icon?: string | null) {
 }
 
 function normalizeApp(row: any): AppRegistry {
+  const appKey = String(row?.app_key || row?.app_id || row?.key || row?.slug || row?.id || "").trim();
+
   return {
     id: row?.id,
-    app_key: row?.app_key || row?.app_id || row?.key || row?.slug || row?.id || "",
+    app_key: appKey,
     title_zh: row?.title_zh || row?.name_zh || row?.title || row?.name || "",
     title_en: row?.title_en || row?.name_en || row?.title || row?.name || "",
     title_ms: row?.title_ms || row?.name_ms || row?.title || row?.name || "",
     name: row?.name || row?.title || "",
     icon: row?.icon || row?.icon_url || row?.emoji || "📱",
     app_path: row?.app_path || row?.path || row?.url || "",
+    component_key: row?.component_key || "",
     description_zh: row?.description_zh || row?.description || "",
     description_en: row?.description_en || row?.description || "",
     description_ms: row?.description_ms || row?.description || "",
     sort_order: Number(row?.sort_order || 999),
-    is_active: row?.is_active !== false,
+    enabled: row?.enabled !== false,
+    is_active: row?.enabled !== false && row?.is_active !== false,
     is_system: Boolean(row?.is_system),
   };
 }
@@ -783,8 +790,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [showDebtSummary, setShowDebtSummary] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showAppCenter, setShowAppCenter] = useState(false);
-  const [showExtensionModal, setShowExtensionModal] = useState(false);
-  const [showShopModal, setShowShopModal] = useState(false);
 
   const [openApp, setOpenApp] = useState<AppRegistry | null>(null);
   const [openAppUrl, setOpenAppUrl] = useState("");
@@ -836,12 +841,21 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }, []);
 
   const dashboardApps = useMemo(() => {
-    const activeApps = allApps.filter((app) => app.is_active !== false);
+    const activeApps = allApps.filter(
+      (app) => app.is_active !== false && app.enabled !== false && app.app_key !== "app_center"
+    );
 
     return dashboardAppKeys
+      .filter((key) => key !== "app_center")
       .map((key) => activeApps.find((app) => app.app_key === key))
       .filter(Boolean) as AppRegistry[];
   }, [allApps, dashboardAppKeys]);
+
+  const appCenterApps = useMemo(() => {
+    return allApps.filter(
+      (app) => app.app_key !== "app_center" && app.is_active !== false && app.enabled !== false
+    );
+  }, [allApps]);
 
   const dashboardKeySet = useMemo(() => {
     return new Set(dashboardAppKeys);
@@ -986,13 +1000,13 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       const { data: registryData, error } = await supabase
         .from("app_registry")
         .select("*")
-        .eq("is_active", true)
         .order("sort_order", { ascending: true });
 
       if (!error && registryData && registryData.length > 0) {
         registry = registryData
           .map(normalizeApp)
           .filter((app) => app.app_key)
+          .filter((app) => app.enabled !== false && app.is_active !== false)
           .sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
       }
     }
@@ -1029,7 +1043,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     safeLocalSet(initKey, "1");
 
-    const keys = rows.map(getDashboardRowKey).filter(Boolean);
+    const keys = rows
+      .filter((row) => row.pinned !== false)
+      .map(getDashboardRowKey)
+      .filter(Boolean);
 
     setDashboardAppKeys(keys.length > 0 ? keys : DEFAULT_DASHBOARD_APP_KEYS);
   }
@@ -1038,6 +1055,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const rowsWithAppKey = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
       user_id: userId,
       app_key: key,
+      pinned: true,
     }));
 
     const first = await supabase.from("user_dashboard_apps").insert(rowsWithAppKey);
@@ -1049,6 +1067,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const rowsWithAppId = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
       user_id: userId,
       app_id: key,
+      pinned: true,
     }));
 
     await supabase.from("user_dashboard_apps").insert(rowsWithAppId);
@@ -1058,6 +1077,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const first = await supabase.from("user_dashboard_apps").insert({
       user_id: userId,
       app_key: appKey,
+      pinned: true,
     });
 
     if (!first.error) return first;
@@ -1067,6 +1087,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     return supabase.from("user_dashboard_apps").insert({
       user_id: userId,
       app_id: appKey,
+      pinned: true,
     });
   }
 
@@ -1253,21 +1274,29 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   function openAppModal(app: AppRegistry, extra?: string) {
-    if (app.app_path === "__extension__") {
-      setShowExtensionModal(true);
+    const key = String(app.app_key || "").trim();
+    const path = String(app.app_path || "").trim();
+
+    if (key === "app_center" || path === "__app_center__") {
+      setShowAppCenter(true);
       return;
     }
 
-    if (app.app_path === "__shop__") {
-      setShowShopModal(true);
-      return;
-    }
-
-    const path = app.app_path || "";
     if (!path) return;
 
-    setOpenApp(app);
-    setOpenAppUrl(buildUrl(path, extra || "embed=1"));
+    const fixedPath =
+      path === "__extension__"
+        ? "/dashboard/extensions"
+        : path === "__shop__"
+          ? "/dashboard/nkshop"
+          : path;
+
+    setOpenApp({
+      ...app,
+      app_path: fixedPath,
+    });
+
+    setOpenAppUrl(buildUrl(fixedPath, extra || "embed=1"));
   }
 
   function openQuick(path: string) {
@@ -1285,6 +1314,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       title_ms: path,
       icon: "📱",
       app_path: path,
+      enabled: true,
+      is_active: true,
     });
 
     setOpenAppUrl(buildUrl(path, "open=new&fullscreen=1&return=dashboard&embed=1"));
@@ -1742,56 +1773,62 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
             {dashboardApps.length === 0 ? (
               <p style={{ color: themeMuted }}>{t.noApps}</p>
-            ) : (
-              <div className="dashboard-app-grid" style={appGridStyle}>
-                {dashboardApps.map((app) => (
-                  <div key={app.app_key} className="dashboard-app-icon-wrap">
-                    <button
-                      type="button"
-                      onClick={() => handleAppIconClick(app)}
-                      onPointerDown={() => startAppLongPress(app)}
-                      onPointerUp={cancelAppLongPress}
-                      onPointerLeave={cancelAppLongPress}
-                      onPointerCancel={cancelAppLongPress}
-                      onContextMenu={(e) => e.preventDefault()}
-                      className="dashboard-app-icon"
-                      style={phoneAppIconStyle(theme)}
-                    >
-                      {isImageIcon(app.icon) ? (
-                        <img src={app.icon || ""} alt={appTitle(app, lang)} style={appImgStyle} />
-                      ) : (
-                        <span style={appEmojiStyle}>{app.icon || "📱"}</span>
-                      )}
-                    </button>
+            ) : null}
 
-                    <div className="dashboard-app-name" style={{ color: theme.text }}>
-                      {appTitle(app, lang)}
-                    </div>
-                  </div>
-                ))}
-
-                <div className="dashboard-app-icon-wrap">
+            <div className="dashboard-app-grid" style={appGridStyle}>
+              {dashboardApps.map((app) => (
+                <div key={app.app_key} className="dashboard-app-icon-wrap">
                   <button
                     type="button"
-                    onClick={openAppCenter}
+                    onClick={() => handleAppIconClick(app)}
+                    onPointerDown={() => startAppLongPress(app)}
+                    onPointerUp={cancelAppLongPress}
+                    onPointerLeave={cancelAppLongPress}
+                    onPointerCancel={cancelAppLongPress}
+                    onContextMenu={(e) => e.preventDefault()}
                     className="dashboard-app-icon"
-                    style={appCenterIconStyle}
+                    style={phoneAppIconStyle(theme)}
                   >
-                    <div style={appCenterLogoCircleStyle}>
-                      <img
-                        src={NK_LOGO_SRC}
-                        alt="NK DIGITAL HUB"
-                        style={appCenterLogoImgStyle}
-                      />
-                    </div>
+                    {isImageIcon(app.icon) ? (
+                      <img src={app.icon || ""} alt={appTitle(app, lang)} style={appImgStyle} />
+                    ) : (
+                      <span style={appEmojiStyle}>{app.icon || "📱"}</span>
+                    )}
                   </button>
 
                   <div className="dashboard-app-name" style={{ color: theme.text }}>
-                    {t.appCenter}
+                    {appTitle(app, lang)}
                   </div>
                 </div>
+              ))}
+
+              <div className="dashboard-app-icon-wrap">
+                <button
+                  type="button"
+                  onClick={openAppCenter}
+                  className="dashboard-app-icon"
+                  style={appCenterIconStyle}
+                >
+                  <div style={appCenterLogoCircleStyle}>
+                    <img
+                      src={NK_LOGO_SRC}
+                      alt="NK DIGITAL HUB"
+                      style={appCenterLogoImgStyle}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        if (img.src.includes("png.PNG")) {
+                          img.src = NK_LOGO_FALLBACK_SRC;
+                        }
+                      }}
+                    />
+                  </div>
+                </button>
+
+                <div className="dashboard-app-name" style={{ color: theme.text }}>
+                  {t.appCenter}
+                </div>
               </div>
-            )}
+            </div>
           </section>
         </>
       ) : null}
@@ -1817,6 +1854,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             {page === "customers" && appTitle(DEFAULT_APPS[1], lang)}
             {page === "products" && appTitle(DEFAULT_APPS[2], lang)}
             {page === "invoices" && appTitle(DEFAULT_APPS[3], lang)}
+            {page === "extensions" && appTitle(DEFAULT_APPS[4], lang)}
+            {page === "nkshop" && appTitle(DEFAULT_APPS[5], lang)}
           </h1>
         </section>
       ) : null}
@@ -2008,7 +2047,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             <p style={{ color: themeMuted }}>{t.appCenterDesc}</p>
 
             <div style={appCenterListStyle}>
-              {allApps.map((app) => {
+              {appCenterApps.map((app) => {
                 const pinned = dashboardKeySet.has(app.app_key);
                 const desc = appDescription(app, lang);
 
@@ -2157,72 +2196,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             ) : (
               <p style={{ padding: 16 }}>{t.loadingApp}</p>
             )}
-          </section>
-        </div>
-      ) : null}
-
-      {showExtensionModal ? (
-        <div className="sa-fullscreen-overlay">
-          <section
-            className="sa-card sa-fullscreen-modal"
-            style={{
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div className="sa-modal-top" style={modalTopStyle}>
-              <h1 style={modalTitleStyle}>{appTitle(DEFAULT_APPS[4], lang)}</h1>
-
-              <button type="button" onClick={() => setShowExtensionModal(false)} style={closeBtnStyle}>
-                {t.close}
-              </button>
-            </div>
-
-            <p style={{ color: themeMuted }}>{t.extensionDesc}</p>
-
-            <div style={extensionGridStyle}>
-              <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
-                <h2 style={sectionTitleStyle}>{t.electronicCard}</h2>
-                <p style={{ color: themeMuted }}>{t.comingSoon}</p>
-              </div>
-
-              <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
-                <h2 style={sectionTitleStyle}>{t.shopSystem}</h2>
-                <p style={{ color: themeMuted }}>{t.shopDesc}</p>
-              </div>
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {showShopModal ? (
-        <div className="sa-fullscreen-overlay">
-          <section
-            className="sa-card sa-fullscreen-modal"
-            style={{
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div className="sa-modal-top" style={modalTopStyle}>
-              <h1 style={modalTitleStyle}>{appTitle(DEFAULT_APPS[5], lang)}</h1>
-
-              <button type="button" onClick={() => setShowShopModal(false)} style={closeBtnStyle}>
-                {t.close}
-              </button>
-            </div>
-
-            <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
-              <h2 style={sectionTitleStyle}>{t.shopSystem}</h2>
-              <p style={{ color: themeMuted }}>{t.shopDesc}</p>
-              <button type="button" onClick={() => setShowShopModal(false)} style={{ ...primaryBtnStyle, background: theme.accent }}>
-                {t.comingSoon}
-              </button>
-            </div>
           </section>
         </div>
       ) : null}
@@ -2700,17 +2673,4 @@ const appIframeStyle: CSSProperties = {
   height: "calc(100dvh - 88px)",
   border: 0,
   background: "#fff",
-};
-
-const extensionGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 12,
-  marginTop: 16,
-};
-
-const extensionCardStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
 };
