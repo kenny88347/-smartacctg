@@ -1,6 +1,13 @@
 "use client";
 
-import { ChangeEvent, CSSProperties, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  CSSProperties,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import {
@@ -68,30 +75,6 @@ type Invoice = {
   created_at?: string | null;
 };
 
-type AppRegistry = {
-  id: string;
-  title_zh: string;
-  title_en: string;
-  title_ms: string;
-  description_zh?: string | null;
-  description_en?: string | null;
-  description_ms?: string | null;
-  icon?: string | null;
-  app_path?: string | null;
-  component_key?: string | null;
-  enabled?: boolean | null;
-  is_system?: boolean | null;
-  sort_order?: number | null;
-};
-
-type UserDashboardApp = {
-  id: string;
-  user_id: string;
-  app_id: string;
-  pinned: boolean;
-  sort_order: number | null;
-};
-
 type DebtItem = {
   id: string;
   name: string;
@@ -101,11 +84,110 @@ type DebtItem = {
   sortTime: number;
 };
 
+type AppRegistry = {
+  id?: string;
+  app_key: string;
+  title_zh?: string | null;
+  title_en?: string | null;
+  title_ms?: string | null;
+  name?: string | null;
+  icon?: string | null;
+  app_path?: string | null;
+  description_zh?: string | null;
+  description_en?: string | null;
+  description_ms?: string | null;
+  sort_order?: number | null;
+  is_active?: boolean | null;
+  is_system?: boolean | null;
+};
+
+type UserDashboardApp = {
+  id?: string;
+  user_id?: string;
+  app_key: string;
+  created_at?: string | null;
+};
+
 const TRIAL_KEY = "smartacctg_trial";
 const TRIAL_TX_KEY = "smartacctg_trial_transactions";
 const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 const LANG_KEY = "smartacctg_lang";
+
+const DASHBOARD_APP_KEYS_LOCAL = "smartacctg_dashboard_app_keys";
+const DASHBOARD_APPS_INIT_LOCAL = "smartacctg_dashboard_apps_initialized";
+
+const DEFAULT_DASHBOARD_APP_KEYS = [
+  "records",
+  "customers",
+  "products",
+  "invoices",
+  "extension",
+  "nk_shop",
+];
+
+const DEFAULT_APPS: AppRegistry[] = [
+  {
+    app_key: "records",
+    title_zh: "记账系统",
+    title_en: "Accounting",
+    title_ms: "Sistem Akaun",
+    icon: "🧾",
+    app_path: "/dashboard/records",
+    sort_order: 10,
+    is_active: true,
+  },
+  {
+    app_key: "customers",
+    title_zh: "客户管理",
+    title_en: "Customers",
+    title_ms: "Pelanggan",
+    icon: "👥",
+    app_path: "/dashboard/customers",
+    sort_order: 20,
+    is_active: true,
+  },
+  {
+    app_key: "products",
+    title_zh: "产品管理",
+    title_en: "Products",
+    title_ms: "Produk",
+    icon: "📦",
+    app_path: "/dashboard/products",
+    sort_order: 30,
+    is_active: true,
+  },
+  {
+    app_key: "invoices",
+    title_zh: "发票系统",
+    title_en: "Invoices",
+    title_ms: "Invois",
+    icon: "🧾",
+    app_path: "/dashboard/invoices",
+    sort_order: 40,
+    is_active: true,
+  },
+  {
+    app_key: "extension",
+    title_zh: "扩展功能",
+    title_en: "Extensions",
+    title_ms: "Fungsi Tambahan",
+    icon: "🧩",
+    app_path: "__extension__",
+    sort_order: 50,
+    is_active: true,
+  },
+  {
+    app_key: "nk_shop",
+    title_zh: "NK网店",
+    title_en: "NK Shop",
+    title_ms: "NK Kedai",
+    icon: "🛒",
+    app_path: "__shop__",
+    sort_order: 60,
+    is_active: true,
+  },
+];
 
 const TXT = {
   zh: {
@@ -118,14 +200,7 @@ const TXT = {
     balance: "当前余额",
     monthIncome: "本月收入",
     monthExpense: "本月支出",
-    appCenter: "App Center",
-    appCenterDesc: "这里可以管理控制台显示的 App。移除后只是从控制台隐藏，App Center 里还会保留。",
-    addToDashboard: "加到控制台",
-    removeFromDashboard: "从控制台移除",
-    added: "已显示",
-    hidden: "已隐藏",
-    open: "打开",
-    quick: "快速新增",
+    quick: "快速记录 / 开发票",
     quickAccounting: "记账",
     quickInvoice: "发票",
     quickCustomer: "客户",
@@ -151,20 +226,38 @@ const TXT = {
     save: "保存资料",
     updatePassword: "更新密码",
     saved: "保存成功",
+    noRecord: "暂无记录",
+    noDebt: "暂无欠款",
     back: "返回",
     close: "关闭",
+    open: "打开",
+    addToDashboard: "加到控制台",
+    removeFromDashboard: "从控制台移除",
+    alreadyAdded: "已在控制台",
+    appCenter: "App Center",
+    appCenterDesc: "这里可以管理控制台显示的 App。移除后只会从控制台隐藏，App Center 里面还会保留。",
+    longPressRemove: "长按 App 图标可从控制台移除",
+    removeAppTitle: "移除控制台 App",
+    removeAppMessage: "确定要从控制台移除这个 App 吗？App Center 里还会保留。",
+    confirm: "确定",
+    cancel: "取消",
     freeTrialCannotUpload: "免费试用不能上传头像",
     trialNoCloud: "免费试用资料不会保存到云端",
     trialNoPassword: "免费试用没有账号密码",
     passwordTooShort: "密码至少 6 位",
     pleaseLogin: "请先登录",
-    noApp: "还没有显示的 App，请打开 App Center 加入。",
-    loading: "加载中...",
-    appNotReady: "这个 App 还没有设置路径。",
+    electronicCard: "电子名片",
+    shopSystem: "网店系统",
+    comingSoon: "即将开放",
+    extensionDesc: "这里以后可以放新功能，用户可订阅后加入控制台。",
+    shopDesc: "未来可做自己的网店、订单系统、产品展示和客户下单入口。",
+    loadingApp: "正在打开 App...",
+    noApps: "控制台还没有 App，请到 App Center 添加。",
   },
   en: {
     dashboard: "Dashboard",
-    notice: "Notice: Welcome to SmartAcctg. Please check records, customer debts, stock and subscription expiry regularly.",
+    notice:
+      "Notice: Welcome to SmartAcctg. Please check records, customer debts, stock and subscription expiry regularly.",
     recordsOverview: "Records Overview",
     latestMonth: "Latest Month",
     customerDebt: "Customer Debt",
@@ -172,14 +265,7 @@ const TXT = {
     balance: "Balance",
     monthIncome: "Monthly Income",
     monthExpense: "Monthly Expense",
-    appCenter: "App Center",
-    appCenterDesc: "Manage apps shown on your dashboard. Removing an app only hides it from the dashboard. It remains in App Center.",
-    addToDashboard: "Add to Dashboard",
-    removeFromDashboard: "Remove from Dashboard",
-    added: "Shown",
-    hidden: "Hidden",
-    open: "Open",
-    quick: "Quick Add",
+    quick: "Quick Record / Invoice",
     quickAccounting: "Record",
     quickInvoice: "Invoice",
     quickCustomer: "Customer",
@@ -205,20 +291,39 @@ const TXT = {
     save: "Save",
     updatePassword: "Update Password",
     saved: "Saved",
+    noRecord: "No records",
+    noDebt: "No debt",
     back: "Back",
     close: "Close",
+    open: "Open",
+    addToDashboard: "Add to Dashboard",
+    removeFromDashboard: "Remove from Dashboard",
+    alreadyAdded: "Added",
+    appCenter: "App Center",
+    appCenterDesc:
+      "Manage which apps appear on your dashboard. Removed apps stay available in App Center.",
+    longPressRemove: "Long press an app icon to remove it from dashboard",
+    removeAppTitle: "Remove Dashboard App",
+    removeAppMessage: "Remove this app from dashboard? It will remain in App Center.",
+    confirm: "Confirm",
+    cancel: "Cancel",
     freeTrialCannotUpload: "Free trial cannot upload avatar",
     trialNoCloud: "Trial data will not be saved to cloud",
     trialNoPassword: "Trial mode has no account password",
     passwordTooShort: "Password must be at least 6 characters",
     pleaseLogin: "Please login first",
-    noApp: "No apps shown yet. Open App Center to add apps.",
-    loading: "Loading...",
-    appNotReady: "This app has no path yet.",
+    electronicCard: "Digital Name Card",
+    shopSystem: "Online Store System",
+    comingSoon: "Coming Soon",
+    extensionDesc: "Future features can be placed here. Users can subscribe and add them to dashboard.",
+    shopDesc: "Future online store, order system, product display and customer ordering entrance.",
+    loadingApp: "Opening app...",
+    noApps: "No dashboard apps yet. Add apps from App Center.",
   },
   ms: {
     dashboard: "Papan Pemuka",
-    notice: "Notis: Selamat menggunakan SmartAcctg. Sila semak rekod, hutang pelanggan, stok dan tarikh langganan secara berkala.",
+    notice:
+      "Notis: Selamat menggunakan SmartAcctg. Sila semak rekod, hutang pelanggan, stok dan tarikh langganan secara berkala.",
     recordsOverview: "Ringkasan Rekod",
     latestMonth: "Bulan Terkini",
     customerDebt: "Hutang Pelanggan",
@@ -226,14 +331,7 @@ const TXT = {
     balance: "Baki",
     monthIncome: "Pendapatan Bulan Ini",
     monthExpense: "Perbelanjaan Bulan Ini",
-    appCenter: "App Center",
-    appCenterDesc: "Urus App yang dipaparkan di dashboard. Jika dibuang, ia hanya disembunyikan dari dashboard. App masih ada di App Center.",
-    addToDashboard: "Tambah ke Dashboard",
-    removeFromDashboard: "Buang dari Dashboard",
-    added: "Dipaparkan",
-    hidden: "Disembunyikan",
-    open: "Buka",
-    quick: "Tambah Pantas",
+    quick: "Rekod Pantas / Invois",
     quickAccounting: "Rekod",
     quickInvoice: "Invois",
     quickCustomer: "Pelanggan",
@@ -259,16 +357,35 @@ const TXT = {
     save: "Simpan",
     updatePassword: "Kemas Kini Kata Laluan",
     saved: "Disimpan",
+    noRecord: "Tiada rekod",
+    noDebt: "Tiada hutang",
     back: "Kembali",
     close: "Tutup",
+    open: "Buka",
+    addToDashboard: "Tambah ke Dashboard",
+    removeFromDashboard: "Buang dari Dashboard",
+    alreadyAdded: "Sudah Ditambah",
+    appCenter: "App Center",
+    appCenterDesc:
+      "Urus app yang dipaparkan pada dashboard. App yang dibuang masih kekal dalam App Center.",
+    longPressRemove: "Tekan lama ikon app untuk buang dari dashboard",
+    removeAppTitle: "Buang App Dashboard",
+    removeAppMessage: "Buang app ini dari dashboard? App masih kekal dalam App Center.",
+    confirm: "Sahkan",
+    cancel: "Batal",
     freeTrialCannotUpload: "Percubaan percuma tidak boleh muat naik avatar",
     trialNoCloud: "Data percubaan tidak disimpan ke cloud",
     trialNoPassword: "Mod percubaan tiada kata laluan akaun",
     passwordTooShort: "Kata laluan sekurang-kurangnya 6 aksara",
     pleaseLogin: "Sila log masuk dahulu",
-    noApp: "Tiada app dipaparkan. Buka App Center untuk tambah app.",
-    loading: "Sedang memuatkan...",
-    appNotReady: "App ini belum ada path.",
+    electronicCard: "Kad Nama Digital",
+    shopSystem: "Sistem Kedai Online",
+    comingSoon: "Akan Datang",
+    extensionDesc:
+      "Fungsi baru boleh diletakkan di sini. Pengguna boleh langgan dan tambah ke dashboard.",
+    shopDesc: "Kedai online, sistem pesanan, paparan produk dan pintu masuk pesanan pelanggan.",
+    loadingApp: "Sedang buka app...",
+    noApps: "Belum ada app dashboard. Tambah app dari App Center.",
   },
 };
 
@@ -332,6 +449,24 @@ const DASHBOARD_FIX_CSS = `
     line-height: normal !important;
   }
 
+  .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit,
+  .smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit,
+  .smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit,
+  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit {
+    width: 100% !important;
+    text-align: center !important;
+    padding: 0 !important;
+  }
+
+  .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  .smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+  .smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
   @keyframes saNoticeMarquee {
     0% {
       transform: translateX(0%);
@@ -379,34 +514,64 @@ const DASHBOARD_FIX_CSS = `
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     border-radius: 0 !important;
-    border: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
     padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
   }
 
   .smartacctg-dashboard-page .sa-modal-top {
     position: sticky !important;
     top: 0 !important;
-    z-index: 30 !important;
+    z-index: 20 !important;
     background: inherit !important;
     padding-bottom: 12px !important;
     margin-bottom: 12px !important;
   }
 
-  .smartacctg-dashboard-page .sa-app-frame {
+  .smartacctg-dashboard-page .dashboard-app-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)) !important;
+    gap: 18px 14px !important;
+    align-items: start !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-app-icon-wrap {
     width: 100% !important;
-    height: calc(100dvh - 92px) !important;
+    display: grid !important;
+    justify-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-app-icon {
+    touch-action: manipulation !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-touch-callout: none !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-app-name {
+    text-align: center !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    font-size: clamp(13px, 3vw, 15px) !important;
+  }
+
+  .smartacctg-dashboard-page .app-iframe {
+    width: 100% !important;
+    height: calc(100dvh - 88px) !important;
     border: 0 !important;
-    border-radius: 18px !important;
+    border-radius: 0 !important;
     background: white !important;
   }
 
   @media (max-width: 680px) {
-    .smartacctg-dashboard-page .dashboard-summary-grid {
+    .smartacctg-dashboard-page .dashboard-summary-grid,
+    .smartacctg-dashboard-page .dashboard-feature-grid {
       grid-template-columns: 1fr !important;
-    }
-
-    .smartacctg-dashboard-page .dashboard-app-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     }
 
     .smartacctg-dashboard-page .dashboard-quick-grid {
@@ -414,19 +579,19 @@ const DASHBOARD_FIX_CSS = `
     }
   }
 
-  @media (max-width: 390px) {
+  @media (max-width: 430px) {
+    .smartacctg-dashboard-page .dashboard-top-card {
+      grid-template-columns: minmax(0, 1fr) auto !important;
+      gap: 8px !important;
+    }
+
+    .smartacctg-dashboard-page .dashboard-plan-text {
+      font-size: 13px !important;
+    }
+
     .smartacctg-dashboard-page .dashboard-app-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-      gap: 14px !important;
-    }
-
-    .smartacctg-dashboard-page .dashboard-app-icon {
-      width: 64px !important;
-      height: 64px !important;
-    }
-
-    .smartacctg-dashboard-page .dashboard-app-label {
-      font-size: 13px !important;
+      gap: 18px 10px !important;
     }
   }
 `;
@@ -486,7 +651,10 @@ function applyThemeEverywhere(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
   document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
   document.documentElement.style.setProperty("--sa-item-card", theme.itemCard || theme.itemBg || theme.card);
-  document.documentElement.style.setProperty("--sa-item-text", theme.itemText || theme.panelText || theme.text);
+  document.documentElement.style.setProperty(
+    "--sa-item-text",
+    theme.itemText || theme.panelText || theme.text
+  );
   document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
   document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
   document.documentElement.style.setProperty("--sa-border", theme.border);
@@ -535,21 +703,45 @@ function isInvoiceUnpaid(inv: Invoice) {
   return Number(inv.total || 0) > 0;
 }
 
-function appTitle(app: AppRegistry, lang: Lang) {
-  if (lang === "en") return app.title_en || app.title_zh || app.id;
-  if (lang === "ms") return app.title_ms || app.title_zh || app.id;
-  return app.title_zh || app.id;
+function isImageIcon(icon?: string | null) {
+  const raw = String(icon || "").trim();
+  return (
+    raw.startsWith("http://") ||
+    raw.startsWith("https://") ||
+    raw.startsWith("data:image") ||
+    raw.startsWith("/")
+  );
 }
 
-function appDesc(app: AppRegistry, lang: Lang) {
+function normalizeApp(row: any): AppRegistry {
+  return {
+    id: row?.id,
+    app_key: row?.app_key || row?.key || row?.slug || row?.id || "",
+    title_zh: row?.title_zh || row?.name_zh || row?.title || row?.name || "",
+    title_en: row?.title_en || row?.name_en || row?.title || row?.name || "",
+    title_ms: row?.title_ms || row?.name_ms || row?.title || row?.name || "",
+    name: row?.name || row?.title || "",
+    icon: row?.icon || row?.icon_url || row?.emoji || "📱",
+    app_path: row?.app_path || row?.path || row?.url || "",
+    description_zh: row?.description_zh || row?.description || "",
+    description_en: row?.description_en || row?.description || "",
+    description_ms: row?.description_ms || row?.description || "",
+    sort_order: Number(row?.sort_order || 999),
+    is_active: row?.is_active !== false,
+    is_system: Boolean(row?.is_system),
+  };
+}
+
+function appTitle(app: AppRegistry, lang: Lang) {
+  if (lang === "en") return app.title_en || app.title_zh || app.name || app.app_key;
+  if (lang === "ms") return app.title_ms || app.title_zh || app.name || app.app_key;
+  return app.title_zh || app.name || app.title_en || app.app_key;
+}
+
+function appDescription(app: AppRegistry, lang: Lang) {
   if (lang === "en") return app.description_en || app.description_zh || "";
   if (lang === "ms") return app.description_ms || app.description_zh || "";
-  return app.description_zh || "";
-}
-
-function isImageIcon(icon?: string | null) {
-  if (!icon) return false;
-  return icon.startsWith("http") || icon.startsWith("/") || icon.startsWith("data:image");
+  return app.description_zh || app.description_en || "";
 }
 
 export default function DashboardClient({ page }: { page: PageKey }) {
@@ -563,9 +755,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
-  const [apps, setApps] = useState<AppRegistry[]>([]);
-  const [userApps, setUserApps] = useState<UserDashboardApp[]>([]);
-  const [appsLoading, setAppsLoading] = useState(false);
+  const [allApps, setAllApps] = useState<AppRegistry[]>(DEFAULT_APPS);
+  const [dashboardAppKeys, setDashboardAppKeys] = useState<string[]>(DEFAULT_DASHBOARD_APP_KEYS);
 
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -574,9 +765,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [showDebtSummary, setShowDebtSummary] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [showAppCenter, setShowAppCenter] = useState(false);
+  const [showExtensionModal, setShowExtensionModal] = useState(false);
+  const [showShopModal, setShowShopModal] = useState(false);
 
   const [openApp, setOpenApp] = useState<AppRegistry | null>(null);
   const [openAppUrl, setOpenAppUrl] = useState("");
+  const [deleteAppTarget, setDeleteAppTarget] = useState<AppRegistry | null>(null);
+
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -620,6 +817,18 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       }) as ThemeKey[];
   }, []);
 
+  const dashboardApps = useMemo(() => {
+    const activeApps = allApps.filter((app) => app.is_active !== false);
+
+    return dashboardAppKeys
+      .map((key) => activeApps.find((app) => app.app_key === key))
+      .filter(Boolean) as AppRegistry[];
+  }, [allApps, dashboardAppKeys]);
+
+  const dashboardKeySet = useMemo(() => {
+    return new Set(dashboardAppKeys);
+  }, [dashboardAppKeys]);
+
   useEffect(() => {
     applyThemeEverywhere(themeKey);
   }, [themeKey]);
@@ -636,6 +845,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     applyThemeEverywhere(initialTheme);
 
     init(initialLang, initialTheme);
+
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -658,8 +873,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
           setInvoices(safeParseArray<Invoice>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
+          const localKeys = safeParseArray<string>(safeLocalGet(DASHBOARD_APP_KEYS_LOCAL));
+          setDashboardAppKeys(localKeys.length > 0 ? localKeys : DEFAULT_DASHBOARD_APP_KEYS);
+
+          await loadAppsForUser("trial", true);
+
           replaceUrlLangTheme(currentLang, currentTheme);
-          await loadApps(null);
           return;
         }
       } catch {
@@ -714,7 +933,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     applyThemeEverywhere(finalTheme);
     replaceUrlLangTheme(currentLang, finalTheme);
 
-    await Promise.all([loadAll(userId), loadApps(userId)]);
+    await loadAll(userId);
+    await loadAppsForUser(userId, false);
   }
 
   async function loadAll(userId: string) {
@@ -741,34 +961,61 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     setInvoices((invoiceData || []) as Invoice[]);
   }
 
-  async function loadApps(userId: string | null) {
-    setAppsLoading(true);
+  async function loadAppsForUser(userId: string, trialMode: boolean) {
+    let registry = DEFAULT_APPS;
 
-    const { data: appData } = await supabase
-      .from("app_registry")
-      .select("*")
-      .eq("enabled", true)
-      .order("sort_order", { ascending: true });
+    if (!trialMode) {
+      const { data: registryData, error } = await supabase
+        .from("app_registry")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
 
-    const registry = (appData || []) as AppRegistry[];
-    setApps(registry);
+      if (!error && registryData && registryData.length > 0) {
+        registry = registryData
+          .map(normalizeApp)
+          .filter((app) => app.app_key)
+          .sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
+      }
+    }
 
-    if (!userId) {
-      setUserApps([]);
-      setAppsLoading(false);
+    setAllApps(registry);
+
+    if (trialMode) {
+      const localKeys = safeParseArray<string>(safeLocalGet(DASHBOARD_APP_KEYS_LOCAL));
+      setDashboardAppKeys(localKeys.length > 0 ? localKeys : DEFAULT_DASHBOARD_APP_KEYS);
       return;
     }
 
-    await supabase.rpc("ensure_default_dashboard_apps");
+    const initKey = `${DASHBOARD_APPS_INIT_LOCAL}_${userId}`;
 
-    const { data: userAppData } = await supabase
+    const { data: dashboardData, error: dashboardError } = await supabase
       .from("user_dashboard_apps")
       .select("*")
       .eq("user_id", userId)
-      .order("sort_order", { ascending: true });
+      .order("created_at", { ascending: true });
 
-    setUserApps((userAppData || []) as UserDashboardApp[]);
-    setAppsLoading(false);
+    if (dashboardError) {
+      setDashboardAppKeys(DEFAULT_DASHBOARD_APP_KEYS);
+      return;
+    }
+
+    const rows = (dashboardData || []) as UserDashboardApp[];
+
+    if (rows.length === 0 && !safeLocalGet(initKey)) {
+      const defaultRows = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
+        user_id: userId,
+        app_key: key,
+      }));
+
+      await supabase.from("user_dashboard_apps").insert(defaultRows);
+      safeLocalSet(initKey, "1");
+      setDashboardAppKeys(DEFAULT_DASHBOARD_APP_KEYS);
+      return;
+    }
+
+    safeLocalSet(initKey, "1");
+    setDashboardAppKeys(rows.map((row) => row.app_key).filter(Boolean));
   }
 
   function buildUrl(path: string, extra?: string) {
@@ -935,87 +1182,151 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     setMsg(t.saved);
   }
 
-  function isPinned(appId: string) {
-    const row = userApps.find((x) => x.app_id === appId);
-    return Boolean(row?.pinned);
+  function openAppModal(app: AppRegistry, extra?: string) {
+    if (app.app_path === "__extension__") {
+      setShowExtensionModal(true);
+      return;
+    }
+
+    if (app.app_path === "__shop__") {
+      setShowShopModal(true);
+      return;
+    }
+
+    const path = app.app_path || "";
+    if (!path) return;
+
+    setOpenApp(app);
+    setOpenAppUrl(buildUrl(path, extra || "embed=1"));
+  }
+
+  function openQuick(path: string) {
+    const found = allApps.find((app) => app.app_path === path);
+
+    if (found) {
+      openAppModal(found, "open=new&fullscreen=1&return=dashboard&embed=1");
+      return;
+    }
+
+    setOpenApp({
+      app_key: path,
+      title_zh: path,
+      title_en: path,
+      title_ms: path,
+      icon: "📱",
+      app_path: path,
+    });
+
+    setOpenAppUrl(buildUrl(path, "open=new&fullscreen=1&return=dashboard&embed=1"));
+  }
+
+  function closeOpenApp() {
+    setOpenApp(null);
+    setOpenAppUrl("");
+  }
+
+  function openAppCenter() {
+    setShowAppCenter(true);
+  }
+
+  function startAppLongPress(app: AppRegistry) {
+    longPressTriggeredRef.current = false;
+
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate?.(25);
+      }
+
+      setDeleteAppTarget(app);
+    }, 650);
+  }
+
+  function cancelAppLongPress() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function handleAppIconClick(app: AppRegistry) {
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+
+    openAppModal(app);
   }
 
   async function setAppPinned(app: AppRegistry, pinned: boolean) {
+    if (!app.app_key) return;
+
     if (isTrial) {
-      setUserApps((prev) => {
-        const existing = prev.find((x) => x.app_id === app.id);
+      const next = pinned
+        ? Array.from(new Set([...dashboardAppKeys, app.app_key]))
+        : dashboardAppKeys.filter((key) => key !== app.app_key);
 
-        if (existing) {
-          return prev.map((x) => (x.app_id === app.id ? { ...x, pinned } : x));
-        }
-
-        return [
-          ...prev,
-          {
-            id: `trial-${app.id}`,
-            user_id: "trial",
-            app_id: app.id,
-            pinned,
-            sort_order: app.sort_order || 100,
-          },
-        ];
-      });
-
+      setDashboardAppKeys(next);
+      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(next));
+      setMsg(t.saved);
       return;
     }
 
     if (!session) return;
 
-    const existing = userApps.find((x) => x.app_id === app.id);
+    if (pinned) {
+      const exists = dashboardAppKeys.includes(app.app_key);
 
-    if (existing) {
-      const { error } = await supabase
-        .from("user_dashboard_apps")
-        .update({ pinned })
-        .eq("id", existing.id)
-        .eq("user_id", session.user.id);
+      if (!exists) {
+        const { error } = await supabase.from("user_dashboard_apps").insert({
+          user_id: session.user.id,
+          app_key: app.app_key,
+        });
 
-      if (error) {
-        setMsg(error.message);
-        return;
+        if (error && !String(error.message || "").toLowerCase().includes("duplicate")) {
+          setMsg(error.message);
+          return;
+        }
+
+        setDashboardAppKeys((prev) => Array.from(new Set([...prev, app.app_key])));
       }
-    } else {
-      const { error } = await supabase.from("user_dashboard_apps").insert({
-        user_id: session.user.id,
-        app_id: app.id,
-        pinned,
-        sort_order: app.sort_order || 100,
-      });
 
-      if (error) {
-        setMsg(error.message);
-        return;
-      }
-    }
-
-    await loadApps(session.user.id);
-  }
-
-  function openAppModal(app: AppRegistry, extra?: string) {
-    if (!app.app_path) {
-      setMsg(t.appNotReady);
+      setMsg(t.saved);
       return;
     }
 
-    setOpenApp(app);
-    setOpenAppUrl(buildUrl(app.app_path, extra));
+    const { error } = await supabase
+      .from("user_dashboard_apps")
+      .delete()
+      .eq("user_id", session.user.id)
+      .eq("app_key", app.app_key);
+
+    if (error) {
+      setMsg(error.message);
+      return;
+    }
+
+    setDashboardAppKeys((prev) => prev.filter((key) => key !== app.app_key));
+    setMsg(t.saved);
   }
 
-  function openQuick(appId: string) {
-    const app = apps.find((x) => x.id === appId);
-    if (!app) return;
+  async function confirmRemoveDashboardApp() {
+    if (!deleteAppTarget) return;
 
-    openAppModal(app, "open=new&fullscreen=1&return=dashboard");
+    await setAppPinned(deleteAppTarget, false);
+    setDeleteAppTarget(null);
   }
 
   const latestMonthKey = useMemo(() => {
     const months = transactions.map((tx) => getMonthKey(tx.txn_date)).filter(Boolean);
+
     if (months.length === 0) return new Date().toISOString().slice(0, 7);
+
     return months.sort().reverse()[0];
   }, [transactions]);
 
@@ -1035,8 +1346,13 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .reduce((s, x) => s + Number(x.amount || 0), 0);
   }, [latestMonthRecords]);
 
-  const balance = useMemo(() => monthIncome - monthExpense, [monthIncome, monthExpense]);
-  const estimatedProfit = useMemo(() => monthIncome, [monthIncome]);
+  const balance = useMemo(() => {
+    return monthIncome - monthExpense;
+  }, [monthIncome, monthExpense]);
+
+  const estimatedProfit = useMemo(() => {
+    return monthIncome;
+  }, [monthIncome]);
 
   const debtItems = useMemo<DebtItem[]>(() => {
     const customerDebtItems: DebtItem[] = customers
@@ -1084,14 +1400,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }, [debtItems]);
 
   const topDebtItem = debtItems[0] || null;
-
-  const visibleApps = useMemo(() => {
-    const pinnedIds = new Set(userApps.filter((x) => x.pinned).map((x) => x.app_id));
-
-    return apps
-      .filter((app) => pinnedIds.has(app.id))
-      .sort((a, b) => Number(a.sort_order || 100) - Number(b.sort_order || 100));
-  }, [apps, userApps]);
 
   const expiryText = isTrial
     ? t.trial
@@ -1167,6 +1475,36 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 >
                   {t.theme}
                 </button>
+
+                <div style={avatarLangBoxStyle}>
+                  <div style={avatarLangTitleStyle}>{t.language}</div>
+
+                  <div style={avatarLangBtnRowStyle}>
+                    <button
+                      type="button"
+                      onClick={() => switchLang("zh")}
+                      style={avatarLangBtnStyle(lang === "zh", theme)}
+                    >
+                      中文
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => switchLang("en")}
+                      style={avatarLangBtnStyle(lang === "en", theme)}
+                    >
+                      EN
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => switchLang("ms")}
+                      style={avatarLangBtnStyle(lang === "ms", theme)}
+                    >
+                      BM
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>
@@ -1194,6 +1532,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               borderColor: theme.border,
               boxShadow: theme.glow,
               color: theme.text,
+              marginBottom: 14,
             }}
           >
             <h1 style={titleStyle}>{t.dashboard}</h1>
@@ -1262,29 +1601,38 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
               {showDebtSummary ? (
                 <div style={summaryDetailListStyle}>
-                  <div style={summaryRowStyle}>
-                    <span>{t.customerDebt}</span>
-                    <strong style={{ color: "#dc2626" }}>{formatRM(totalCustomerDebt)}</strong>
-                  </div>
-
-                  {debtItems.slice(0, 8).map((item) => (
-                    <div key={item.id} style={debtRowStyle}>
-                      <div>
-                        <div>{item.name}</div>
-                        {item.dueDate ? (
-                          <small style={{ color: themeMuted }}>
-                            {item.source === "invoice" ? "Invoice" : "Customer"} · {item.dueDate}
-                          </small>
-                        ) : null}
+                  {debtItems.length === 0 ? (
+                    <div style={summaryRowStyle}>
+                      <span>{t.noDebt}</span>
+                      <strong>{formatRM(0)}</strong>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={summaryRowStyle}>
+                        <span>{t.customerDebt}</span>
+                        <strong style={{ color: "#dc2626" }}>{formatRM(totalCustomerDebt)}</strong>
                       </div>
 
-                      <strong style={{ color: "#dc2626" }}>{formatRM(item.amount)}</strong>
-                    </div>
-                  ))}
+                      {debtItems.slice(0, 8).map((item) => (
+                        <div key={item.id} style={debtRowStyle}>
+                          <div>
+                            <div>{item.name}</div>
+                            {item.dueDate ? (
+                              <small style={{ color: themeMuted }}>
+                                {item.source === "invoice" ? "Invoice" : "Customer"} · {item.dueDate}
+                              </small>
+                            ) : null}
+                          </div>
+
+                          <strong style={{ color: "#dc2626" }}>{formatRM(item.amount)}</strong>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               ) : (
                 <div style={summaryRowStyle}>
-                  <span>{topDebtItem?.name || "-"}</span>
+                  <span>{topDebtItem?.name || t.noDebt}</span>
                   <strong style={{ color: topDebtItem ? "#dc2626" : theme.accent }}>
                     {formatRM(topDebtItem?.amount || 0)}
                   </strong>
@@ -1293,7 +1641,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             </div>
           </section>
 
-          <section className="sa-card" style={{ ...quickCardStyle, ...themedCardStyle }}>
+          <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 14 }}>
             <button
               type="button"
               onClick={() => setShowQuickMenu(!showQuickMenu)}
@@ -1305,49 +1653,44 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
             {showQuickMenu ? (
               <div className="dashboard-quick-grid" style={quickGridStyle}>
-                <button type="button" onClick={() => openQuick("records")} style={quickBtnStyle(theme)}>
+                <button type="button" onClick={() => openQuick("/dashboard/records")} style={quickBtnStyle(theme)}>
                   {t.quickAccounting}
                 </button>
 
-                <button type="button" onClick={() => openQuick("invoices")} style={quickBtnStyle(theme)}>
+                <button type="button" onClick={() => openQuick("/dashboard/invoices")} style={quickBtnStyle(theme)}>
                   {t.quickInvoice}
                 </button>
 
-                <button type="button" onClick={() => openQuick("customers")} style={quickBtnStyle(theme)}>
+                <button type="button" onClick={() => openQuick("/dashboard/customers")} style={quickBtnStyle(theme)}>
                   {t.quickCustomer}
                 </button>
 
-                <button type="button" onClick={() => openQuick("products")} style={quickBtnStyle(theme)}>
+                <button type="button" onClick={() => openQuick("/dashboard/products")} style={quickBtnStyle(theme)}>
                   {t.quickProduct}
                 </button>
               </div>
             ) : null}
           </section>
 
-          <section className="sa-card" style={{ ...appSectionStyle, ...themedCardStyle }}>
-            <div style={appSectionTopStyle}>
-              <h2 style={sectionTitleStyle}>{t.appCenter}</h2>
+          <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 14 }}>
+            <p style={{ color: themeMuted, marginTop: 0, marginBottom: 14 }}>
+              {t.longPressRemove}
+            </p>
 
-              <button
-                type="button"
-                onClick={() => setShowAppCenter(true)}
-                style={appCenterMiniBtnStyle(theme)}
-              >
-                +
-              </button>
-            </div>
-
-            {appsLoading ? (
-              <p style={{ color: themeMuted }}>{t.loading}</p>
-            ) : visibleApps.length === 0 ? (
-              <p style={{ color: themeMuted }}>{t.noApp}</p>
+            {dashboardApps.length === 0 ? (
+              <p style={{ color: themeMuted }}>{t.noApps}</p>
             ) : (
               <div className="dashboard-app-grid" style={appGridStyle}>
-                {visibleApps.map((app) => (
-                  <div key={app.id} style={appIconWrapStyle}>
+                {dashboardApps.map((app) => (
+                  <div key={app.app_key} className="dashboard-app-icon-wrap">
                     <button
                       type="button"
-                      onClick={() => openAppModal(app)}
+                      onClick={() => handleAppIconClick(app)}
+                      onPointerDown={() => startAppLongPress(app)}
+                      onPointerUp={cancelAppLongPress}
+                      onPointerLeave={cancelAppLongPress}
+                      onPointerCancel={cancelAppLongPress}
+                      onContextMenu={(e) => e.preventDefault()}
                       className="dashboard-app-icon"
                       style={phoneAppIconStyle(theme)}
                     >
@@ -1358,31 +1701,23 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                       )}
                     </button>
 
-                    <div className="dashboard-app-label" style={appLabelStyle}>
+                    <div className="dashboard-app-name" style={{ color: theme.text }}>
                       {appTitle(app, lang)}
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setAppPinned(app, false)}
-                      style={removeSmallBtnStyle}
-                    >
-                      ×
-                    </button>
                   </div>
                 ))}
 
-                <div style={appIconWrapStyle}>
+                <div className="dashboard-app-icon-wrap">
                   <button
                     type="button"
-                    onClick={() => setShowAppCenter(true)}
+                    onClick={openAppCenter}
                     className="dashboard-app-icon"
-                    style={nkAppCenterIconStyle}
+                    style={appCenterIconStyle}
                   >
-                    NK
+                    <span style={appCenterLogoStyle}>NK</span>
                   </button>
 
-                  <div className="dashboard-app-label" style={appLabelStyle}>
+                  <div className="dashboard-app-name" style={{ color: theme.text }}>
                     {t.appCenter}
                   </div>
                 </div>
@@ -1392,9 +1727,42 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         </>
       ) : null}
 
+      {page !== "home" ? (
+        <section className="sa-card" style={{ ...themedCardStyle }}>
+          <button
+            type="button"
+            onClick={() => (window.location.href = buildUrl("/dashboard"))}
+            style={{
+              ...backBtnStyle,
+              borderColor: theme.border,
+              color: theme.accent,
+              background: theme.inputBg || "#ffffff",
+            }}
+          >
+            ← {t.back}
+          </button>
+
+          <h1 style={titleStyle}>
+            {page === "records" && appTitle(DEFAULT_APPS[0], lang)}
+            {page === "accounting" && appTitle(DEFAULT_APPS[0], lang)}
+            {page === "customers" && appTitle(DEFAULT_APPS[1], lang)}
+            {page === "products" && appTitle(DEFAULT_APPS[2], lang)}
+            {page === "invoices" && appTitle(DEFAULT_APPS[3], lang)}
+          </h1>
+        </section>
+      ) : null}
+
       {showSettings ? (
         <div className="sa-fullscreen-overlay">
-          <section className="sa-card sa-fullscreen-modal" style={themedCardStyle}>
+          <section
+            className="sa-card sa-fullscreen-modal"
+            style={{
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
             <div className="sa-modal-top" style={modalTopStyle}>
               <h1 style={modalTitleStyle}>{t.settings}</h1>
 
@@ -1428,15 +1796,49 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
             <h2 style={sectionTitleStyle}>{t.personal}</h2>
 
-            <input placeholder={t.name} value={fullName} onChange={(e) => setFullName(e.target.value)} style={themedInputStyle} />
-            <input placeholder={t.phone} value={phone} onChange={(e) => setPhone(e.target.value)} style={themedInputStyle} />
+            <input
+              placeholder={t.name}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <input
+              placeholder={t.phone}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={themedInputStyle}
+            />
 
             <h2 style={sectionTitleStyle}>{t.company}</h2>
 
-            <input placeholder={t.companyName} value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={themedInputStyle} />
-            <input placeholder={t.ssm} value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={themedInputStyle} />
-            <input placeholder={t.companyPhone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={themedInputStyle} />
-            <input placeholder={t.companyAddress} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={themedInputStyle} />
+            <input
+              placeholder={t.companyName}
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <input
+              placeholder={t.ssm}
+              value={companyRegNo}
+              onChange={(e) => setCompanyRegNo(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <input
+              placeholder={t.companyPhone}
+              value={companyPhone}
+              onChange={(e) => setCompanyPhone(e.target.value)}
+              style={themedInputStyle}
+            />
+
+            <input
+              placeholder={t.companyAddress}
+              value={companyAddress}
+              onChange={(e) => setCompanyAddress(e.target.value)}
+              style={themedInputStyle}
+            />
 
             <button type="button" onClick={saveSettings} style={{ ...primaryBtnStyle, background: theme.accent }}>
               {t.save}
@@ -1463,7 +1865,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
       {showThemes ? (
         <div className="sa-fullscreen-overlay">
-          <section className="sa-card sa-fullscreen-modal" style={themedCardStyle}>
+          <section
+            className="sa-card sa-fullscreen-modal"
+            style={{
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
             <div className="sa-modal-top" style={modalTopStyle}>
               <h1 style={modalTitleStyle}>{t.theme}</h1>
 
@@ -1509,7 +1919,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
       {showAppCenter ? (
         <div className="sa-fullscreen-overlay">
-          <section className="sa-card sa-fullscreen-modal" style={themedCardStyle}>
+          <section
+            className="sa-card sa-fullscreen-modal"
+            style={{
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
             <div className="sa-modal-top" style={modalTopStyle}>
               <h1 style={modalTitleStyle}>{t.appCenter}</h1>
 
@@ -1521,11 +1939,20 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             <p style={{ color: themeMuted }}>{t.appCenterDesc}</p>
 
             <div style={appCenterListStyle}>
-              {apps.map((app) => {
-                const pinned = isPinned(app.id);
+              {allApps.map((app) => {
+                const pinned = dashboardKeySet.has(app.app_key);
+                const desc = appDescription(app, lang);
 
                 return (
-                  <div key={app.id} style={{ ...appCenterCardStyle, borderColor: theme.border }}>
+                  <div
+                    key={app.app_key}
+                    style={{
+                      ...appCenterCardStyle,
+                      borderColor: theme.border,
+                      background: theme.panelBg || theme.card,
+                      color: theme.panelText || theme.text,
+                    }}
+                  >
                     <button
                       type="button"
                       onClick={() => openAppModal(app)}
@@ -1540,29 +1967,90 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
                     <div style={{ minWidth: 0 }}>
                       <h2 style={appCenterTitleStyle}>{appTitle(app, lang)}</h2>
-                      <p style={{ color: themeMuted, margin: "4px 0 10px" }}>{appDesc(app, lang)}</p>
+                      {desc ? <p style={{ margin: "6px 0 0", color: themeMuted }}>{desc}</p> : null}
+                    </div>
 
-                      <div style={appCenterActionRowStyle}>
+                    <div style={appCenterActionStyle}>
+                      <button
+                        type="button"
+                        onClick={() => openAppModal(app)}
+                        style={{ ...appCenterSmallBtnStyle, background: theme.accent, color: "#fff" }}
+                      >
+                        {t.open}
+                      </button>
+
+                      {pinned ? (
                         <button
                           type="button"
-                          onClick={() => openAppModal(app)}
-                          style={{ ...smallPrimaryBtnStyle, background: theme.accent }}
+                          onClick={() => setAppPinned(app, false)}
+                          style={appCenterRemoveBtnStyle}
                         >
-                          {t.open}
+                          {t.removeFromDashboard}
                         </button>
-
+                      ) : (
                         <button
                           type="button"
-                          onClick={() => setAppPinned(app, !pinned)}
-                          style={pinned ? smallDangerBtnStyle : smallOutlineBtnStyle(theme)}
+                          onClick={() => setAppPinned(app, true)}
+                          style={{
+                            ...appCenterSmallBtnStyle,
+                            borderColor: theme.border,
+                            color: theme.accent,
+                            background: theme.inputBg || "#fff",
+                          }}
                         >
-                          {pinned ? t.removeFromDashboard : t.addToDashboard}
+                          {t.addToDashboard}
                         </button>
-                      </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
+            </div>
+
+            {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
+          </section>
+        </div>
+      ) : null}
+
+      {deleteAppTarget ? (
+        <div className="sa-fullscreen-overlay">
+          <section
+            className="sa-card"
+            style={{
+              ...deleteAppModalStyle,
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <h1 style={modalTitleStyle}>{t.removeAppTitle}</h1>
+
+            <div style={deleteAppPreviewStyle}>
+              <button type="button" style={phoneAppIconStyle(theme)}>
+                {isImageIcon(deleteAppTarget.icon) ? (
+                  <img
+                    src={deleteAppTarget.icon || ""}
+                    alt={appTitle(deleteAppTarget, lang)}
+                    style={appImgStyle}
+                  />
+                ) : (
+                  <span style={appEmojiStyle}>{deleteAppTarget.icon || "📱"}</span>
+                )}
+              </button>
+
+              <h2 style={appCenterTitleStyle}>{appTitle(deleteAppTarget, lang)}</h2>
+              <p style={{ color: themeMuted }}>{t.removeAppMessage}</p>
+            </div>
+
+            <div style={deleteAppActionRowStyle}>
+              <button type="button" onClick={confirmRemoveDashboardApp} style={deleteAppConfirmBtnStyle}>
+                {t.confirm}
+              </button>
+
+              <button type="button" onClick={() => setDeleteAppTarget(null)} style={deleteAppCancelBtnStyle}>
+                {t.cancel}
+              </button>
             </div>
           </section>
         </div>
@@ -1570,29 +2058,102 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
       {openApp ? (
         <div className="sa-fullscreen-overlay">
-          <section className="sa-card sa-fullscreen-modal" style={themedCardStyle}>
-            <div className="sa-modal-top" style={modalTopStyle}>
+          <section
+            className="sa-card sa-fullscreen-modal"
+            style={{
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+              paddingLeft: 0,
+              paddingRight: 0,
+              paddingBottom: 0,
+            }}
+          >
+            <div className="sa-modal-top" style={{ ...modalTopStyle, paddingLeft: 16, paddingRight: 16 }}>
               <h1 style={modalTitleStyle}>{appTitle(openApp, lang)}</h1>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenApp(null);
-                  setOpenAppUrl("");
-                  if (session?.user?.id) loadAll(session.user.id);
-                }}
-                style={closeBtnStyle}
-              >
+              <button type="button" onClick={closeOpenApp} style={closeBtnStyle}>
                 {t.close}
               </button>
             </div>
 
-            <iframe
-              title={appTitle(openApp, lang)}
-              src={openAppUrl}
-              className="sa-app-frame"
-              style={appFrameStyle}
-            />
+            {openAppUrl ? (
+              <iframe
+                src={openAppUrl}
+                title={appTitle(openApp, lang)}
+                className="app-iframe"
+                style={appIframeStyle}
+              />
+            ) : (
+              <p style={{ padding: 16 }}>{t.loadingApp}</p>
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {showExtensionModal ? (
+        <div className="sa-fullscreen-overlay">
+          <section
+            className="sa-card sa-fullscreen-modal"
+            style={{
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <div className="sa-modal-top" style={modalTopStyle}>
+              <h1 style={modalTitleStyle}>{appTitle(DEFAULT_APPS[4], lang)}</h1>
+
+              <button type="button" onClick={() => setShowExtensionModal(false)} style={closeBtnStyle}>
+                {t.close}
+              </button>
+            </div>
+
+            <p style={{ color: themeMuted }}>{t.extensionDesc}</p>
+
+            <div style={extensionGridStyle}>
+              <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
+                <h2 style={sectionTitleStyle}>{t.electronicCard}</h2>
+                <p style={{ color: themeMuted }}>{t.comingSoon}</p>
+              </div>
+
+              <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
+                <h2 style={sectionTitleStyle}>{t.shopSystem}</h2>
+                <p style={{ color: themeMuted }}>{t.shopDesc}</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {showShopModal ? (
+        <div className="sa-fullscreen-overlay">
+          <section
+            className="sa-card sa-fullscreen-modal"
+            style={{
+              background: theme.card,
+              borderColor: theme.border,
+              boxShadow: theme.glow,
+              color: theme.text,
+            }}
+          >
+            <div className="sa-modal-top" style={modalTopStyle}>
+              <h1 style={modalTitleStyle}>{appTitle(DEFAULT_APPS[5], lang)}</h1>
+
+              <button type="button" onClick={() => setShowShopModal(false)} style={closeBtnStyle}>
+                {t.close}
+              </button>
+            </div>
+
+            <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
+              <h2 style={sectionTitleStyle}>{t.shopSystem}</h2>
+              <p style={{ color: themeMuted }}>{t.shopDesc}</p>
+              <button type="button" onClick={() => setShowShopModal(false)} style={{ ...primaryBtnStyle, background: theme.accent }}>
+                {t.comingSoon}
+              </button>
+            </div>
           </section>
         </div>
       ) : null}
@@ -1672,6 +2233,33 @@ const menuItemStyle: CSSProperties = {
   color: "#111827",
   fontSize: 16,
 };
+
+const avatarLangBoxStyle: CSSProperties = {
+  borderTop: "1px solid #e5e7eb",
+  marginTop: 8,
+  paddingTop: 8,
+};
+
+const avatarLangTitleStyle: CSSProperties = {
+  fontSize: 13,
+  color: "#64748b",
+  marginBottom: 8,
+};
+
+const avatarLangBtnRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const avatarLangBtnStyle = (active: boolean, theme: any): CSSProperties => ({
+  border: `2px solid ${theme.accent}`,
+  background: active ? theme.accent : theme.inputBg || "#fff",
+  color: active ? "#fff" : theme.accent,
+  borderRadius: 999,
+  minHeight: 38,
+  padding: "0 8px",
+});
 
 const planTextStyle: CSSProperties = {
   lineHeight: 1.25,
@@ -1758,10 +2346,6 @@ const debtRowStyle: CSSProperties = {
   lineHeight: 1.35,
 };
 
-const quickCardStyle: CSSProperties = {
-  marginBottom: 14,
-};
-
 const quickHeaderBtnStyle: CSSProperties = {
   width: "100%",
   display: "flex",
@@ -1792,86 +2376,29 @@ const quickBtnStyle = (theme: any): CSSProperties => ({
   padding: "0 12px",
 });
 
-const appSectionStyle: CSSProperties = {
-  marginBottom: 14,
-};
-
-const appSectionTopStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 12,
-};
-
-const sectionTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "var(--sa-fs-xl)",
-  fontWeight: 900,
-};
-
-const appCenterMiniBtnStyle = (theme: any): CSSProperties => ({
-  width: 46,
-  height: 46,
-  borderRadius: 999,
-  border: "none",
-  background: theme.accent,
-  color: "#fff",
-  fontSize: 28,
-  lineHeight: 1,
-});
-
 const appGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-  gap: 18,
-  alignItems: "start",
-};
-
-const appIconWrapStyle: CSSProperties = {
-  position: "relative",
-  display: "grid",
-  justifyItems: "center",
-  gap: 8,
-  minWidth: 0,
+  gridTemplateColumns: "repeat(auto-fill, minmax(86px, 1fr))",
+  gap: "18px 14px",
 };
 
 const phoneAppIconStyle = (theme: any): CSSProperties => ({
-  width: 76,
-  height: 76,
-  borderRadius: "28%",
+  width: 70,
+  height: 70,
+  minWidth: 70,
+  minHeight: 70,
+  borderRadius: 22,
   border: `2px solid ${theme.border}`,
-  background: `linear-gradient(145deg, ${theme.softBg || "#ccfbf1"}, ${theme.card || "#ffffff"})`,
-  color: theme.accent,
+  background:
+    "linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.72))",
   boxShadow:
-    "inset 0 2px 5px rgba(255,255,255,0.65), inset 0 -8px 18px rgba(0,0,0,0.12), 0 12px 26px rgba(0,0,0,0.2)",
+    "inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 22px rgba(15,23,42,0.16)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  overflow: "hidden",
   padding: 0,
+  overflow: "hidden",
 });
-
-const nkAppCenterIconStyle: CSSProperties = {
-  width: 76,
-  height: 76,
-  borderRadius: "50%",
-  border: "4px solid #d4af37",
-  background: "linear-gradient(145deg, #ffffff, #fef3c7)",
-  color: "#6d28d9",
-  fontWeight: 900,
-  fontSize: 26,
-  boxShadow:
-    "inset 0 2px 8px rgba(255,255,255,0.85), inset 0 -8px 18px rgba(0,0,0,0.16), 0 12px 28px rgba(0,0,0,0.22)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const appEmojiStyle: CSSProperties = {
-  fontSize: 34,
-  lineHeight: 1,
-};
 
 const appImgStyle: CSSProperties = {
   width: "100%",
@@ -1879,26 +2406,42 @@ const appImgStyle: CSSProperties = {
   objectFit: "cover",
 };
 
-const appLabelStyle: CSSProperties = {
-  textAlign: "center",
-  lineHeight: 1.2,
-  fontSize: "var(--sa-fs-sm)",
-  maxWidth: 90,
-  overflowWrap: "anywhere",
+const appEmojiStyle: CSSProperties = {
+  fontSize: 34,
+  lineHeight: 1,
 };
 
-const removeSmallBtnStyle: CSSProperties = {
-  position: "absolute",
-  top: -8,
-  right: "calc(50% - 45px)",
-  width: 24,
-  height: 24,
+const appCenterIconStyle: CSSProperties = {
+  width: 70,
+  height: 70,
+  minWidth: 70,
+  minHeight: 70,
   borderRadius: 999,
-  border: "none",
-  background: "#fee2e2",
-  color: "#dc2626",
-  lineHeight: "24px",
+  border: "2px solid rgba(45, 212, 191, 0.9)",
+  background:
+    "radial-gradient(circle at 30% 20%, #ffffff, #99f6e4 22%, #14b8a6 48%, #064e3b 100%)",
+  boxShadow:
+    "inset 0 2px 8px rgba(255,255,255,0.75), 0 0 0 2px rgba(45,212,191,0.22), 0 14px 30px rgba(20,184,166,0.36)",
+  color: "#ecfeff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
   padding: 0,
+};
+
+const appCenterLogoStyle: CSSProperties = {
+  fontSize: 24,
+  fontWeight: 900,
+  letterSpacing: 1,
+  textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+};
+
+const backBtnStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 var(--sa-control-x)",
+  minHeight: "var(--sa-control-h)",
+  marginBottom: 14,
 };
 
 const inputStyle: CSSProperties = {
@@ -1934,6 +2477,13 @@ const modalTopStyle: CSSProperties = {
 const modalTitleStyle: CSSProperties = {
   margin: 0,
   fontSize: "var(--sa-fs-2xl)",
+  fontWeight: 900,
+};
+
+const sectionTitleStyle: CSSProperties = {
+  marginTop: 18,
+  marginBottom: 12,
+  fontSize: "var(--sa-fs-xl)",
   fontWeight: 900,
 };
 
@@ -1975,7 +2525,7 @@ const themeBtnStyle: CSSProperties = {
 
 const appCenterListStyle: CSSProperties = {
   display: "grid",
-  gap: 14,
+  gap: 12,
   marginTop: 16,
 };
 
@@ -1995,42 +2545,89 @@ const appCenterTitleStyle: CSSProperties = {
   fontWeight: 900,
 };
 
-const appCenterActionRowStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
+const appCenterActionStyle: CSSProperties = {
+  gridColumn: "1 / -1",
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
   gap: 10,
 };
 
-const smallPrimaryBtnStyle: CSSProperties = {
-  minHeight: 42,
+const appCenterSmallBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  border: "var(--sa-border-w) solid transparent",
   borderRadius: "var(--sa-radius-control)",
-  border: "none",
-  color: "#fff",
-  padding: "0 14px",
+  padding: "0 12px",
+  fontWeight: 900,
 };
 
-const smallDangerBtnStyle: CSSProperties = {
-  minHeight: 42,
+const appCenterRemoveBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  border: "var(--sa-border-w) solid #fecaca",
   borderRadius: "var(--sa-radius-control)",
-  border: "none",
-  background: "#fee2e2",
-  color: "#dc2626",
-  padding: "0 14px",
-};
-
-const smallOutlineBtnStyle = (theme: any): CSSProperties => ({
-  minHeight: 42,
-  borderRadius: "var(--sa-radius-control)",
-  border: `var(--sa-border-w) solid ${theme.border}`,
-  background: theme.inputBg || "#fff",
-  color: theme.accent,
-  padding: "0 14px",
-});
-
-const appFrameStyle: CSSProperties = {
-  width: "100%",
-  height: "calc(100dvh - 92px)",
-  border: 0,
-  borderRadius: 18,
+  padding: "0 12px",
+  fontWeight: 900,
   background: "#fff",
+  color: "#dc2626",
+};
+
+const deleteAppModalStyle: CSSProperties = {
+  width: "min(92vw, 520px)",
+  margin: "18vh auto 0",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+};
+
+const deleteAppPreviewStyle: CSSProperties = {
+  display: "grid",
+  justifyItems: "center",
+  textAlign: "center",
+  gap: 12,
+  marginTop: 18,
+  marginBottom: 18,
+};
+
+const deleteAppActionRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 12,
+  marginTop: 16,
+};
+
+const deleteAppConfirmBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  background: "#dc2626",
+  color: "#fff",
+  fontWeight: 900,
+};
+
+const deleteAppCancelBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  border: "var(--sa-border-w) solid #cbd5e1",
+  borderRadius: "var(--sa-radius-control)",
+  background: "#fff",
+  color: "#111827",
+  fontWeight: 900,
+};
+
+const appIframeStyle: CSSProperties = {
+  width: "100%",
+  height: "calc(100dvh - 88px)",
+  border: 0,
+  background: "#fff",
+};
+
+const extensionGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 12,
+  marginTop: 16,
+};
+
+const extensionCardStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
 };
