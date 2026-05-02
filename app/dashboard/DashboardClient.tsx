@@ -104,7 +104,8 @@ type AppRegistry = {
 type UserDashboardApp = {
   id?: string;
   user_id?: string;
-  app_key: string;
+  app_key?: string | null;
+  app_id?: string | null;
   created_at?: string | null;
 };
 
@@ -114,6 +115,8 @@ const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 const LANG_KEY = "smartacctg_lang";
 
+const NK_LOGO_SRC = "/app-icons/nk-digital-hub-logo.png";
+
 const DASHBOARD_APP_KEYS_LOCAL = "smartacctg_dashboard_app_keys";
 const DASHBOARD_APPS_INIT_LOCAL = "smartacctg_dashboard_apps_initialized";
 
@@ -122,8 +125,8 @@ const DEFAULT_DASHBOARD_APP_KEYS = [
   "customers",
   "products",
   "invoices",
-  "extension",
-  "nk_shop",
+  "extensions",
+  "nkshop",
 ];
 
 const DEFAULT_APPS: AppRegistry[] = [
@@ -168,7 +171,7 @@ const DEFAULT_APPS: AppRegistry[] = [
     is_active: true,
   },
   {
-    app_key: "extension",
+    app_key: "extensions",
     title_zh: "扩展功能",
     title_en: "Extensions",
     title_ms: "Fungsi Tambahan",
@@ -178,7 +181,7 @@ const DEFAULT_APPS: AppRegistry[] = [
     is_active: true,
   },
   {
-    app_key: "nk_shop",
+    app_key: "nkshop",
     title_zh: "NK网店",
     title_en: "NK Shop",
     title_ms: "NK Kedai",
@@ -716,7 +719,7 @@ function isImageIcon(icon?: string | null) {
 function normalizeApp(row: any): AppRegistry {
   return {
     id: row?.id,
-    app_key: row?.app_key || row?.key || row?.slug || row?.id || "",
+    app_key: row?.app_key || row?.app_id || row?.key || row?.slug || row?.id || "",
     title_zh: row?.title_zh || row?.name_zh || row?.title || row?.name || "",
     title_en: row?.title_en || row?.name_en || row?.title || row?.name || "",
     title_ms: row?.title_ms || row?.name_ms || row?.title || row?.name || "",
@@ -732,6 +735,10 @@ function normalizeApp(row: any): AppRegistry {
   };
 }
 
+function getDashboardRowKey(row: UserDashboardApp) {
+  return String(row.app_key || row.app_id || "").trim();
+}
+
 function appTitle(app: AppRegistry, lang: Lang) {
   if (lang === "en") return app.title_en || app.title_zh || app.name || app.app_key;
   if (lang === "ms") return app.title_ms || app.title_zh || app.name || app.app_key;
@@ -742,6 +749,17 @@ function appDescription(app: AppRegistry, lang: Lang) {
   if (lang === "en") return app.description_en || app.description_zh || "";
   if (lang === "ms") return app.description_ms || app.description_zh || "";
   return app.description_zh || app.description_en || "";
+}
+
+function isSchemaColumnError(message?: string | null) {
+  const lower = String(message || "").toLowerCase();
+
+  return (
+    lower.includes("schema cache") ||
+    lower.includes("could not find") ||
+    lower.includes("column") ||
+    lower.includes("does not exist")
+  );
 }
 
 export default function DashboardClient({ page }: { page: PageKey }) {
@@ -1003,19 +1021,71 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const rows = (dashboardData || []) as UserDashboardApp[];
 
     if (rows.length === 0 && !safeLocalGet(initKey)) {
-      const defaultRows = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
-        user_id: userId,
-        app_key: key,
-      }));
-
-      await supabase.from("user_dashboard_apps").insert(defaultRows);
+      await insertDefaultDashboardApps(userId);
       safeLocalSet(initKey, "1");
       setDashboardAppKeys(DEFAULT_DASHBOARD_APP_KEYS);
       return;
     }
 
     safeLocalSet(initKey, "1");
-    setDashboardAppKeys(rows.map((row) => row.app_key).filter(Boolean));
+
+    const keys = rows.map(getDashboardRowKey).filter(Boolean);
+
+    setDashboardAppKeys(keys.length > 0 ? keys : DEFAULT_DASHBOARD_APP_KEYS);
+  }
+
+  async function insertDefaultDashboardApps(userId: string) {
+    const rowsWithAppKey = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
+      user_id: userId,
+      app_key: key,
+    }));
+
+    const first = await supabase.from("user_dashboard_apps").insert(rowsWithAppKey);
+
+    if (!first.error) return;
+
+    if (!isSchemaColumnError(first.error.message)) return;
+
+    const rowsWithAppId = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
+      user_id: userId,
+      app_id: key,
+    }));
+
+    await supabase.from("user_dashboard_apps").insert(rowsWithAppId);
+  }
+
+  async function insertDashboardApp(userId: string, appKey: string) {
+    const first = await supabase.from("user_dashboard_apps").insert({
+      user_id: userId,
+      app_key: appKey,
+    });
+
+    if (!first.error) return first;
+
+    if (!isSchemaColumnError(first.error.message)) return first;
+
+    return supabase.from("user_dashboard_apps").insert({
+      user_id: userId,
+      app_id: appKey,
+    });
+  }
+
+  async function deleteDashboardApp(userId: string, appKey: string) {
+    const first = await supabase
+      .from("user_dashboard_apps")
+      .delete()
+      .eq("user_id", userId)
+      .eq("app_key", appKey);
+
+    if (!first.error) return first;
+
+    if (!isSchemaColumnError(first.error.message)) return first;
+
+    return supabase
+      .from("user_dashboard_apps")
+      .delete()
+      .eq("user_id", userId)
+      .eq("app_id", appKey);
   }
 
   function buildUrl(path: string, extra?: string) {
@@ -1240,7 +1310,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       longPressTriggeredRef.current = true;
 
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate?.(25);
+        (navigator as any).vibrate?.(25);
       }
 
       setDeleteAppTarget(app);
@@ -1283,10 +1353,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       const exists = dashboardAppKeys.includes(app.app_key);
 
       if (!exists) {
-        const { error } = await supabase.from("user_dashboard_apps").insert({
-          user_id: session.user.id,
-          app_key: app.app_key,
-        });
+        const { error } = await insertDashboardApp(session.user.id, app.app_key);
 
         if (error && !String(error.message || "").toLowerCase().includes("duplicate")) {
           setMsg(error.message);
@@ -1300,11 +1367,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
-    const { error } = await supabase
-      .from("user_dashboard_apps")
-      .delete()
-      .eq("user_id", session.user.id)
-      .eq("app_key", app.app_key);
+    const { error } = await deleteDashboardApp(session.user.id, app.app_key);
 
     if (error) {
       setMsg(error.message);
@@ -1714,7 +1777,13 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                     className="dashboard-app-icon"
                     style={appCenterIconStyle}
                   >
-                    <span style={appCenterLogoStyle}>NK</span>
+                    <div style={appCenterLogoCircleStyle}>
+                      <img
+                        src={NK_LOGO_SRC}
+                        alt="NK DIGITAL HUB"
+                        style={appCenterLogoImgStyle}
+                      />
+                    </div>
                   </button>
 
                   <div className="dashboard-app-name" style={{ color: theme.text }}>
@@ -2412,28 +2481,42 @@ const appEmojiStyle: CSSProperties = {
 };
 
 const appCenterIconStyle: CSSProperties = {
-  width: 70,
-  height: 70,
-  minWidth: 70,
-  minHeight: 70,
-  borderRadius: 999,
-  border: "2px solid rgba(45, 212, 191, 0.9)",
+  width: 82,
+  height: 82,
+  minWidth: 82,
+  minHeight: 82,
+  borderRadius: 28,
+  border: "2px solid rgba(94, 255, 239, 0.95)",
   background:
-    "radial-gradient(circle at 30% 20%, #ffffff, #99f6e4 22%, #14b8a6 48%, #064e3b 100%)",
+    "linear-gradient(145deg, #ccfffa 0%, #46f0df 34%, #10b8aa 62%, #06675e 100%)",
   boxShadow:
-    "inset 0 2px 8px rgba(255,255,255,0.75), 0 0 0 2px rgba(45,212,191,0.22), 0 14px 30px rgba(20,184,166,0.36)",
-  color: "#ecfeff",
+    "inset 0 4px 10px rgba(255,255,255,0.78), inset 0 -12px 22px rgba(0,0,0,0.22), 0 0 0 2px rgba(45,212,191,0.22), 0 16px 34px rgba(20,184,166,0.48)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: 0,
+  padding: 6,
+  overflow: "hidden",
 };
 
-const appCenterLogoStyle: CSSProperties = {
-  fontSize: 24,
-  fontWeight: 900,
-  letterSpacing: 1,
-  textShadow: "0 2px 8px rgba(0,0,0,0.25)",
+const appCenterLogoCircleStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  borderRadius: 24,
+  background:
+    "radial-gradient(circle at 32% 22%, #ffffff 0%, #d7fff9 18%, #8cf7ea 34%, #25d7c8 62%, #08756d 100%)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+  boxShadow:
+    "inset 0 3px 8px rgba(255,255,255,0.8), inset 0 -9px 18px rgba(0,0,0,0.2), 0 5px 14px rgba(0,0,0,0.16)",
+};
+
+const appCenterLogoImgStyle: CSSProperties = {
+  width: "88%",
+  height: "88%",
+  objectFit: "contain",
+  filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.28))",
 };
 
 const backBtnStyle: CSSProperties = {
