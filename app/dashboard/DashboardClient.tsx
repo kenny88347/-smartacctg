@@ -29,7 +29,8 @@ type PageKey =
   | "invoices"
   | "records"
   | "extensions"
-  | "nkshop";
+  | "nkshop"
+  | "app_center";
 
 type Lang = "zh" | "en" | "ms";
 
@@ -142,6 +143,18 @@ const DEFAULT_DASHBOARD_APP_KEYS = [
   "nkshop",
 ];
 
+const APP_CENTER_APP: AppRegistry = {
+  app_key: "app_center",
+  title_zh: "App Center",
+  title_en: "App Center",
+  title_ms: "App Center",
+  icon: NK_LOGO_SRC,
+  app_path: "/dashboard/app-center",
+  sort_order: 999,
+  enabled: true,
+  is_active: true,
+};
+
 const DEFAULT_APPS: AppRegistry[] = [
   {
     app_key: "records",
@@ -248,14 +261,12 @@ const TXT = {
     save: "保存资料",
     updatePassword: "更新密码",
     saved: "保存成功",
-    noRecord: "暂无记录",
     noDebt: "暂无欠款",
     back: "返回",
     close: "关闭",
     open: "打开",
     addToDashboard: "加到控制台",
     removeFromDashboard: "从控制台移除",
-    alreadyAdded: "已在控制台",
     appCenter: "App Center",
     appCenterDesc: "这里可以管理控制台显示的 App。移除后只会从控制台隐藏，App Center 里面还会保留。",
     longPressRemove: "长按 App 图标可从控制台移除",
@@ -308,14 +319,12 @@ const TXT = {
     save: "Save",
     updatePassword: "Update Password",
     saved: "Saved",
-    noRecord: "No records",
     noDebt: "No debt",
     back: "Back",
     close: "Close",
     open: "Open",
     addToDashboard: "Add to Dashboard",
     removeFromDashboard: "Remove from Dashboard",
-    alreadyAdded: "Added",
     appCenter: "App Center",
     appCenterDesc:
       "Manage which apps appear on your dashboard. Removed apps stay available in App Center.",
@@ -369,14 +378,12 @@ const TXT = {
     save: "Simpan",
     updatePassword: "Kemas Kini Kata Laluan",
     saved: "Disimpan",
-    noRecord: "Tiada rekod",
     noDebt: "Tiada hutang",
     back: "Kembali",
     close: "Tutup",
     open: "Buka",
     addToDashboard: "Tambah ke Dashboard",
     removeFromDashboard: "Buang dari Dashboard",
-    alreadyAdded: "Sudah Ditambah",
     appCenter: "App Center",
     appCenterDesc:
       "Urus app yang dipaparkan pada dashboard. App yang dibuang masih kekal dalam App Center.",
@@ -455,31 +462,9 @@ const DASHBOARD_FIX_CSS = `
     line-height: normal !important;
   }
 
-  .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit,
-  .smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit,
-  .smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit,
-  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit {
-    width: 100% !important;
-    text-align: center !important;
-    padding: 0 !important;
-  }
-
-  .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
-    display: flex !important;
-    justify-content: center !important;
-    width: 100% !important;
-  }
-
   @keyframes saNoticeMarquee {
-    0% {
-      transform: translateX(0%);
-    }
-    100% {
-      transform: translateX(-120%);
-    }
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-120%); }
   }
 
   .smartacctg-dashboard-page .sa-dashboard-notice {
@@ -772,6 +757,7 @@ function isSchemaColumnError(message?: string | null) {
 export default function DashboardClient({ page }: { page: PageKey }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
+  const [isEmbed, setIsEmbed] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
@@ -789,7 +775,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [showRecordSummary, setShowRecordSummary] = useState(false);
   const [showDebtSummary, setShowDebtSummary] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
-  const [showAppCenter, setShowAppCenter] = useState(false);
 
   const [openApp, setOpenApp] = useState<AppRegistry | null>(null);
   const [openAppUrl, setOpenAppUrl] = useState("");
@@ -891,6 +876,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
     const trialRaw = safeLocalGet(TRIAL_KEY);
+
+    setIsEmbed(q.get("embed") === "1");
 
     if (mode === "trial" && trialRaw) {
       try {
@@ -1006,6 +993,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         registry = registryData
           .map(normalizeApp)
           .filter((app) => app.app_key)
+          .filter((app) => app.app_key !== "app_center")
           .filter((app) => app.enabled !== false && app.is_active !== false)
           .sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
       }
@@ -1046,7 +1034,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const keys = rows
       .filter((row) => row.pinned !== false)
       .map(getDashboardRowKey)
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter((key) => key !== "app_center");
 
     setDashboardAppKeys(keys.length > 0 ? keys : DEFAULT_DASHBOARD_APP_KEYS);
   }
@@ -1277,19 +1266,16 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const key = String(app.app_key || "").trim();
     const path = String(app.app_path || "").trim();
 
-    if (key === "app_center" || path === "__app_center__") {
-      setShowAppCenter(true);
-      return;
-    }
-
-    if (!path) return;
-
     const fixedPath =
-      path === "__extension__"
-        ? "/dashboard/extensions"
-        : path === "__shop__"
-          ? "/dashboard/nkshop"
-          : path;
+      key === "app_center" || path === "__app_center__"
+        ? "/dashboard/app-center"
+        : path === "__extension__"
+          ? "/dashboard/extensions"
+          : path === "__shop__"
+            ? "/dashboard/nkshop"
+            : path;
+
+    if (!fixedPath) return;
 
     setOpenApp({
       ...app,
@@ -1327,7 +1313,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   function openAppCenter() {
-    setShowAppCenter(true);
+    openAppModal(APP_CENTER_APP, "embed=1");
   }
 
   function startAppLongPress(app: AppRegistry) {
@@ -1365,7 +1351,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function setAppPinned(app: AppRegistry, pinned: boolean) {
-    if (!app.app_key) return;
+    if (!app.app_key || app.app_key === "app_center") return;
 
     if (isTrial) {
       const next = pinned
@@ -1510,112 +1496,114 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     >
       <style jsx global>{DASHBOARD_FIX_CSS}</style>
 
-      <header
-        className="sa-card dashboard-top-card"
-        style={{
-          ...topCardStyle,
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
-        <div style={leftTopStyle}>
-          <div style={{ position: "relative" }}>
-            <button
-              type="button"
-              onClick={() => setShowAvatarMenu(!showAvatarMenu)}
-              style={avatarBtnStyle}
-            >
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} />
-              ) : (
-                "👤"
-              )}
-            </button>
+      {!isEmbed ? (
+        <header
+          className="sa-card dashboard-top-card"
+          style={{
+            ...topCardStyle,
+            background: theme.card,
+            borderColor: theme.border,
+            boxShadow: theme.glow,
+            color: theme.text,
+          }}
+        >
+          <div style={leftTopStyle}>
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setShowAvatarMenu(!showAvatarMenu)}
+                style={avatarBtnStyle}
+              >
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} />
+                ) : (
+                  "👤"
+                )}
+              </button>
 
-            {showAvatarMenu ? (
-              <div style={avatarMenuStyle}>
-                <label style={menuItemStyle}>
-                  {t.changeAvatar}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={uploadAvatar}
-                    style={{ display: "none" }}
-                  />
-                </label>
+              {showAvatarMenu ? (
+                <div style={avatarMenuStyle}>
+                  <label style={menuItemStyle}>
+                    {t.changeAvatar}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={uploadAvatar}
+                      style={{ display: "none" }}
+                    />
+                  </label>
 
-                <button
-                  type="button"
-                  style={menuItemStyle}
-                  onClick={() => {
-                    setShowSettings(true);
-                    setShowThemes(false);
-                    setShowAvatarMenu(false);
-                  }}
-                >
-                  {t.settings}
-                </button>
+                  <button
+                    type="button"
+                    style={menuItemStyle}
+                    onClick={() => {
+                      setShowSettings(true);
+                      setShowThemes(false);
+                      setShowAvatarMenu(false);
+                    }}
+                  >
+                    {t.settings}
+                  </button>
 
-                <button
-                  type="button"
-                  style={menuItemStyle}
-                  onClick={() => {
-                    setShowThemes(true);
-                    setShowSettings(false);
-                    setShowAvatarMenu(false);
-                  }}
-                >
-                  {t.theme}
-                </button>
+                  <button
+                    type="button"
+                    style={menuItemStyle}
+                    onClick={() => {
+                      setShowThemes(true);
+                      setShowSettings(false);
+                      setShowAvatarMenu(false);
+                    }}
+                  >
+                    {t.theme}
+                  </button>
 
-                <div style={avatarLangBoxStyle}>
-                  <div style={avatarLangTitleStyle}>{t.language}</div>
+                  <div style={avatarLangBoxStyle}>
+                    <div style={avatarLangTitleStyle}>{t.language}</div>
 
-                  <div style={avatarLangBtnRowStyle}>
-                    <button
-                      type="button"
-                      onClick={() => switchLang("zh")}
-                      style={avatarLangBtnStyle(lang === "zh", theme)}
-                    >
-                      中文
-                    </button>
+                    <div style={avatarLangBtnRowStyle}>
+                      <button
+                        type="button"
+                        onClick={() => switchLang("zh")}
+                        style={avatarLangBtnStyle(lang === "zh", theme)}
+                      >
+                        中文
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => switchLang("en")}
-                      style={avatarLangBtnStyle(lang === "en", theme)}
-                    >
-                      EN
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => switchLang("en")}
+                        style={avatarLangBtnStyle(lang === "en", theme)}
+                      >
+                        EN
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => switchLang("ms")}
-                      style={avatarLangBtnStyle(lang === "ms", theme)}
-                    >
-                      BM
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => switchLang("ms")}
+                        style={avatarLangBtnStyle(lang === "ms", theme)}
+                      >
+                        BM
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
+
+            <div className="dashboard-plan-text" style={planTextStyle}>
+              {t.expiry}: {expiryText}
+            </div>
           </div>
 
-          <div className="dashboard-plan-text" style={planTextStyle}>
-            {t.expiry}: {expiryText}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={logout}
-          style={{ ...logoutBtnStyle, background: theme.accent }}
-        >
-          {t.logout}
-        </button>
-      </header>
+          <button
+            type="button"
+            onClick={logout}
+            style={{ ...logoutBtnStyle, background: theme.accent }}
+          >
+            {t.logout}
+          </button>
+        </header>
+      ) : null}
 
       {page === "home" ? (
         <>
@@ -1833,7 +1821,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         </>
       ) : null}
 
-      {page !== "home" ? (
+      {page !== "home" && page !== "app_center" && !isEmbed ? (
         <section className="sa-card" style={{ ...themedCardStyle }}>
           <button
             type="button"
@@ -1857,6 +1845,99 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             {page === "extensions" && appTitle(DEFAULT_APPS[4], lang)}
             {page === "nkshop" && appTitle(DEFAULT_APPS[5], lang)}
           </h1>
+        </section>
+      ) : null}
+
+      {page === "app_center" ? (
+        <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 14 }}>
+          {!isEmbed ? (
+            <button
+              type="button"
+              onClick={() => (window.location.href = buildUrl("/dashboard"))}
+              style={{
+                ...backBtnStyle,
+                borderColor: theme.border,
+                color: theme.accent,
+                background: theme.inputBg || "#ffffff",
+              }}
+            >
+              ← {t.back}
+            </button>
+          ) : null}
+
+          <h1 style={titleStyle}>{t.appCenter}</h1>
+          <p style={{ color: themeMuted }}>{t.appCenterDesc}</p>
+
+          <div style={appCenterListStyle}>
+            {appCenterApps.map((app) => {
+              const pinned = dashboardKeySet.has(app.app_key);
+              const desc = appDescription(app, lang);
+
+              return (
+                <div
+                  key={app.app_key}
+                  style={{
+                    ...appCenterCardStyle,
+                    borderColor: theme.border,
+                    background: theme.panelBg || theme.card,
+                    color: theme.panelText || theme.text,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => openAppModal(app)}
+                    style={phoneAppIconStyle(theme)}
+                  >
+                    {isImageIcon(app.icon) ? (
+                      <img src={app.icon || ""} alt={appTitle(app, lang)} style={appImgStyle} />
+                    ) : (
+                      <span style={appEmojiStyle}>{app.icon || "📱"}</span>
+                    )}
+                  </button>
+
+                  <div style={{ minWidth: 0 }}>
+                    <h2 style={appCenterTitleStyle}>{appTitle(app, lang)}</h2>
+                    {desc ? <p style={{ margin: "6px 0 0", color: themeMuted }}>{desc}</p> : null}
+                  </div>
+
+                  <div style={appCenterActionStyle}>
+                    <button
+                      type="button"
+                      onClick={() => openAppModal(app)}
+                      style={{ ...appCenterSmallBtnStyle, background: theme.accent, color: "#fff" }}
+                    >
+                      {t.open}
+                    </button>
+
+                    {pinned ? (
+                      <button
+                        type="button"
+                        onClick={() => setAppPinned(app, false)}
+                        style={appCenterRemoveBtnStyle}
+                      >
+                        {t.removeFromDashboard}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setAppPinned(app, true)}
+                        style={{
+                          ...appCenterSmallBtnStyle,
+                          borderColor: theme.border,
+                          color: theme.accent,
+                          background: theme.inputBg || "#fff",
+                        }}
+                      >
+                        {t.addToDashboard}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
         </section>
       ) : null}
 
@@ -2016,101 +2097,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   >
                     {item.name || key}
                   </button>
-                );
-              })}
-            </div>
-
-            {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
-          </section>
-        </div>
-      ) : null}
-
-      {showAppCenter ? (
-        <div className="sa-fullscreen-overlay">
-          <section
-            className="sa-card sa-fullscreen-modal"
-            style={{
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div className="sa-modal-top" style={modalTopStyle}>
-              <h1 style={modalTitleStyle}>{t.appCenter}</h1>
-
-              <button type="button" onClick={() => setShowAppCenter(false)} style={closeBtnStyle}>
-                {t.close}
-              </button>
-            </div>
-
-            <p style={{ color: themeMuted }}>{t.appCenterDesc}</p>
-
-            <div style={appCenterListStyle}>
-              {appCenterApps.map((app) => {
-                const pinned = dashboardKeySet.has(app.app_key);
-                const desc = appDescription(app, lang);
-
-                return (
-                  <div
-                    key={app.app_key}
-                    style={{
-                      ...appCenterCardStyle,
-                      borderColor: theme.border,
-                      background: theme.panelBg || theme.card,
-                      color: theme.panelText || theme.text,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => openAppModal(app)}
-                      style={phoneAppIconStyle(theme)}
-                    >
-                      {isImageIcon(app.icon) ? (
-                        <img src={app.icon || ""} alt={appTitle(app, lang)} style={appImgStyle} />
-                      ) : (
-                        <span style={appEmojiStyle}>{app.icon || "📱"}</span>
-                      )}
-                    </button>
-
-                    <div style={{ minWidth: 0 }}>
-                      <h2 style={appCenterTitleStyle}>{appTitle(app, lang)}</h2>
-                      {desc ? <p style={{ margin: "6px 0 0", color: themeMuted }}>{desc}</p> : null}
-                    </div>
-
-                    <div style={appCenterActionStyle}>
-                      <button
-                        type="button"
-                        onClick={() => openAppModal(app)}
-                        style={{ ...appCenterSmallBtnStyle, background: theme.accent, color: "#fff" }}
-                      >
-                        {t.open}
-                      </button>
-
-                      {pinned ? (
-                        <button
-                          type="button"
-                          onClick={() => setAppPinned(app, false)}
-                          style={appCenterRemoveBtnStyle}
-                        >
-                          {t.removeFromDashboard}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setAppPinned(app, true)}
-                          style={{
-                            ...appCenterSmallBtnStyle,
-                            borderColor: theme.border,
-                            color: theme.accent,
-                            background: theme.inputBg || "#fff",
-                          }}
-                        >
-                          {t.addToDashboard}
-                        </button>
-                      )}
-                    </div>
-                  </div>
                 );
               })}
             </div>
