@@ -3,6 +3,7 @@
 import { ChangeEvent, CSSProperties, useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import FullScreenPanel from "./components/FullScreenPanel";
 import {
   THEMES,
   THEME_KEY as SMARTACCTG_THEME_KEY,
@@ -16,6 +17,21 @@ import {
 
 type PageKey = "home" | "accounting" | "customers" | "products" | "invoices" | "records";
 type Lang = "zh" | "en" | "ms";
+
+type ActivePanel =
+  | null
+  | "records"
+  | "recordCreate"
+  | "customers"
+  | "customerCreate"
+  | "products"
+  | "productCreate"
+  | "invoices"
+  | "invoiceCreate"
+  | "extensions"
+  | "nkShop"
+  | "settings"
+  | "themes";
 
 type Profile = {
   id: string;
@@ -51,7 +67,6 @@ type Customer = {
   debt_amount?: number | null;
   paid_amount?: number | null;
   last_payment_date?: string | null;
-  note?: string | null;
 };
 
 type Invoice = {
@@ -126,9 +141,7 @@ const TXT = {
     save: "保存资料",
     updatePassword: "更新密码",
     saved: "保存成功",
-    noRecord: "暂无记录",
     noDebt: "暂无欠款",
-    back: "返回",
     close: "关闭",
     freeTrialCannotUpload: "免费试用不能上传头像",
     trialNoCloud: "免费试用资料不会保存到云端",
@@ -140,11 +153,16 @@ const TXT = {
     comingSoon: "即将开放",
     extensionDesc: "这里以后可以放新功能，用户可订阅后加入控制台。",
     shopDesc: "未来可做自己的网店、订单系统、产品展示和客户下单入口。",
-    open: "打开",
+    panelTip: "这个入口已经改成全屏弹窗。下一步把对应功能 file 接进这里即可。",
+    recordCreateTitle: "新增记账",
+    invoiceCreateTitle: "开发票",
+    customerCreateTitle: "新增客户",
+    productCreateTitle: "新增产品",
   },
   en: {
     dashboard: "Dashboard",
-    notice: "Notice: Welcome to SmartAcctg. Please check records, customer debts, stock and subscription expiry regularly.",
+    notice:
+      "Notice: Welcome to SmartAcctg. Please check records, customer debts, stock and subscription expiry regularly.",
     recordsOverview: "Records Overview",
     latestMonth: "Latest Month",
     customerDebt: "Customer Debt",
@@ -184,9 +202,7 @@ const TXT = {
     save: "Save",
     updatePassword: "Update Password",
     saved: "Saved",
-    noRecord: "No records",
     noDebt: "No debt",
-    back: "Back",
     close: "Close",
     freeTrialCannotUpload: "Free trial cannot upload avatar",
     trialNoCloud: "Trial data will not be saved to cloud",
@@ -198,11 +214,16 @@ const TXT = {
     comingSoon: "Coming Soon",
     extensionDesc: "Future features can be placed here. Users can subscribe and add them to dashboard.",
     shopDesc: "Future online store, order system, product display and customer ordering entrance.",
-    open: "Open",
+    panelTip: "This entrance now opens as a full-screen panel. Next, connect the related feature file here.",
+    recordCreateTitle: "Add Record",
+    invoiceCreateTitle: "Create Invoice",
+    customerCreateTitle: "Add Customer",
+    productCreateTitle: "Add Product",
   },
   ms: {
     dashboard: "Papan Pemuka",
-    notice: "Notis: Selamat menggunakan SmartAcctg. Sila semak rekod, hutang pelanggan, stok dan tarikh langganan secara berkala.",
+    notice:
+      "Notis: Selamat menggunakan SmartAcctg. Sila semak rekod, hutang pelanggan, stok dan tarikh langganan secara berkala.",
     recordsOverview: "Ringkasan Rekod",
     latestMonth: "Bulan Terkini",
     customerDebt: "Hutang Pelanggan",
@@ -242,9 +263,7 @@ const TXT = {
     save: "Simpan",
     updatePassword: "Kemas Kini Kata Laluan",
     saved: "Disimpan",
-    noRecord: "Tiada rekod",
     noDebt: "Tiada hutang",
-    back: "Kembali",
     close: "Tutup",
     freeTrialCannotUpload: "Percubaan percuma tidak boleh muat naik avatar",
     trialNoCloud: "Data percubaan tidak disimpan ke cloud",
@@ -256,7 +275,11 @@ const TXT = {
     comingSoon: "Akan Datang",
     extensionDesc: "Fungsi baru boleh diletakkan di sini. Pengguna boleh langgan dan tambah ke dashboard.",
     shopDesc: "Kedai online, sistem pesanan, paparan produk dan pintu masuk pesanan pelanggan.",
-    open: "Buka",
+    panelTip: "Pintu masuk ini kini dibuka sebagai panel skrin penuh. Selepas ini sambungkan fail fungsi berkaitan di sini.",
+    recordCreateTitle: "Tambah Rekod",
+    invoiceCreateTitle: "Buat Invois",
+    customerCreateTitle: "Tambah Pelanggan",
+    productCreateTitle: "Tambah Produk",
   },
 };
 
@@ -293,58 +316,9 @@ const DASHBOARD_FIX_CSS = `
     font-weight: 700 !important;
   }
 
-  .smartacctg-dashboard-page input[type="date"],
-  .smartacctg-dashboard-page input[type="month"],
-  .smartacctg-dashboard-page input[type="time"],
-  .smartacctg-dashboard-page input[type="datetime-local"] {
-    text-align: center !important;
-    text-align-last: center !important;
-    display: block !important;
-    width: 100% !important;
-    height: var(--sa-control-h, 54px) !important;
-    min-height: var(--sa-control-h, 54px) !important;
-    line-height: var(--sa-control-h, 54px) !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    -webkit-appearance: none !important;
-    appearance: none !important;
-  }
-
-  .smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
-  .smartacctg-dashboard-page input[type="month"]::-webkit-date-and-time-value,
-  .smartacctg-dashboard-page input[type="time"]::-webkit-date-and-time-value,
-  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-date-and-time-value {
-    text-align: center !important;
-    width: 100% !important;
-    margin: 0 auto !important;
-    line-height: normal !important;
-  }
-
-  .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit,
-  .smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit,
-  .smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit,
-  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit {
-    width: 100% !important;
-    text-align: center !important;
-    padding: 0 !important;
-  }
-
-  .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
-    display: flex !important;
-    justify-content: center !important;
-    width: 100% !important;
-  }
-
   @keyframes saNoticeMarquee {
-    0% {
-      transform: translateX(0%);
-    }
-    100% {
-      transform: translateX(-120%);
-    }
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-120%); }
   }
 
   .smartacctg-dashboard-page .sa-dashboard-notice {
@@ -360,45 +334,6 @@ const DASHBOARD_FIX_CSS = `
     animation: saNoticeMarquee 14s linear infinite !important;
     color: #dc2626 !important;
     font-weight: 700 !important;
-  }
-
-  .smartacctg-dashboard-page .sa-fullscreen-overlay {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 9999 !important;
-    width: 100vw !important;
-    height: 100dvh !important;
-    overflow: hidden !important;
-    background: rgba(15, 23, 42, 0.58) !important;
-    padding: 0 !important;
-  }
-
-  .smartacctg-dashboard-page .sa-fullscreen-modal {
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100dvh !important;
-    min-height: 100dvh !important;
-    max-height: 100dvh !important;
-    margin: 0 !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    border-radius: 0 !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-top: none !important;
-    border-bottom: none !important;
-    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
-  }
-
-  .smartacctg-dashboard-page .sa-modal-top {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 20 !important;
-    background: inherit !important;
-    padding-bottom: 12px !important;
-    margin-bottom: 12px !important;
   }
 
   @media (max-width: 680px) {
@@ -478,8 +413,6 @@ function applyThemeEverywhere(key: ThemeKey) {
   document.documentElement.style.setProperty("--sa-card-bg", theme.card);
   document.documentElement.style.setProperty("--sa-panel-bg", theme.panelBg || theme.card);
   document.documentElement.style.setProperty("--sa-item-bg", theme.itemBg || theme.card);
-  document.documentElement.style.setProperty("--sa-item-card", theme.itemCard || theme.itemBg || theme.card);
-  document.documentElement.style.setProperty("--sa-item-text", theme.itemText || theme.panelText || theme.text);
   document.documentElement.style.setProperty("--sa-input-bg", theme.inputBg || "#ffffff");
   document.documentElement.style.setProperty("--sa-input-text", theme.inputText || "#111827");
   document.documentElement.style.setProperty("--sa-border", theme.border);
@@ -518,6 +451,7 @@ function getMonthKey(date?: string | null) {
 
 function getDueTime(date?: string | null) {
   if (!date) return Number.MAX_SAFE_INTEGER;
+
   const time = new Date(`${date}T00:00:00`).getTime();
   return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
 }
@@ -533,6 +467,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [isTrial, setIsTrial] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Txn[]>([]);
@@ -540,13 +475,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showThemes, setShowThemes] = useState(false);
   const [showRecordSummary, setShowRecordSummary] = useState(false);
   const [showDebtSummary, setShowDebtSummary] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
-  const [showExtensionModal, setShowExtensionModal] = useState(false);
-  const [showShopModal, setShowShopModal] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -585,6 +516,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         const name = item.name || key;
 
         if (seen.has(name)) return false;
+
         seen.add(name);
         return true;
       }) as ThemeKey[];
@@ -710,30 +642,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     setInvoices((invoiceData || []) as Invoice[]);
   }
 
-  function buildUrl(path: string, extra?: string) {
-    const q = new URLSearchParams();
-    const fixedTheme = normalizeThemeKey(themeKey);
-
-    if (isTrial) q.set("mode", "trial");
-
-    q.set("lang", lang);
-    q.set("theme", fixedTheme);
-    q.set("refresh", String(Date.now()));
-
-    if (extra) {
-      const extraQuery = new URLSearchParams(extra);
-      extraQuery.forEach((value, key) => q.set(key, value));
-    }
-
-    return `${path}?${q.toString()}`;
+  function openPanel(panel: ActivePanel) {
+    setShowAvatarMenu(false);
+    setMsg("");
+    setActivePanel(panel);
   }
 
-  function go(path: string, extra?: string) {
-    window.location.href = buildUrl(path, extra);
-  }
-
-  function goQuick(path: string) {
-    go(path, "open=new&fullscreen=1&return=dashboard");
+  function closePanel() {
+    setActivePanel(null);
+    setMsg("");
   }
 
   function switchLang(next: Lang) {
@@ -775,10 +692,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     const { data } = supabase.storage.from("company-assets").getPublicUrl(path);
 
-    await supabase
-      .from("profiles")
-      .update({ avatar_url: data.publicUrl })
-      .eq("id", session.user.id);
+    await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", session.user.id);
 
     setProfile((p) => (p ? { ...p, avatar_url: data.publicUrl } : p));
     setMsg(t.saved);
@@ -884,9 +798,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
   const latestMonthKey = useMemo(() => {
     const months = transactions.map((tx) => getMonthKey(tx.txn_date)).filter(Boolean);
-
     if (months.length === 0) return new Date().toISOString().slice(0, 7);
-
     return months.sort().reverse()[0];
   }, [transactions]);
 
@@ -906,13 +818,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .reduce((s, x) => s + Number(x.amount || 0), 0);
   }, [latestMonthRecords]);
 
-  const balance = useMemo(() => {
-    return monthIncome - monthExpense;
-  }, [monthIncome, monthExpense]);
-
-  const estimatedProfit = useMemo(() => {
-    return monthIncome;
-  }, [monthIncome]);
+  const balance = monthIncome - monthExpense;
+  const estimatedProfit = monthIncome;
 
   const debtItems = useMemo<DebtItem[]>(() => {
     const customerDebtItems: DebtItem[] = customers
@@ -955,10 +862,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     });
   }, [customers, invoices]);
 
-  const totalCustomerDebt = useMemo(() => {
-    return debtItems.reduce((s, x) => s + Number(x.amount || 0), 0);
-  }, [debtItems]);
-
+  const totalCustomerDebt = debtItems.reduce((s, x) => s + Number(x.amount || 0), 0);
   const topDebtItem = debtItems[0] || null;
 
   const expiryText = isTrial
@@ -966,6 +870,160 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     : profile?.plan_expiry
       ? new Date(profile.plan_expiry).toLocaleDateString()
       : t.noSub;
+
+  function getPanelTitle(panel: ActivePanel) {
+    if (panel === "records") return t.accounting;
+    if (panel === "recordCreate") return t.recordCreateTitle;
+    if (panel === "customers") return t.customers;
+    if (panel === "customerCreate") return t.customerCreateTitle;
+    if (panel === "products") return t.products;
+    if (panel === "productCreate") return t.productCreateTitle;
+    if (panel === "invoices") return t.invoices;
+    if (panel === "invoiceCreate") return t.invoiceCreateTitle;
+    if (panel === "extensions") return t.extension;
+    if (panel === "nkShop") return t.nkShop;
+    if (panel === "settings") return t.settings;
+    if (panel === "themes") return t.theme;
+    return "";
+  }
+
+  function renderPlaceholder(title: string, desc?: string) {
+    return (
+      <div style={placeholderWrapStyle}>
+        <h2 style={sectionTitleStyle}>{title}</h2>
+        <p style={{ color: themeMuted, lineHeight: 1.6 }}>{desc || t.panelTip}</p>
+      </div>
+    );
+  }
+
+  function renderSettings() {
+    return (
+      <>
+        <h2 style={sectionTitleStyle}>{t.language}</h2>
+
+        <div style={modalLangRowStyle}>
+          <button type="button" onClick={() => switchLang("zh")} style={modalLangBtnStyle(lang === "zh", theme)}>
+            中文
+          </button>
+
+          <button type="button" onClick={() => switchLang("en")} style={modalLangBtnStyle(lang === "en", theme)}>
+            EN
+          </button>
+
+          <button type="button" onClick={() => switchLang("ms")} style={modalLangBtnStyle(lang === "ms", theme)}>
+            BM
+          </button>
+        </div>
+
+        <h2 style={sectionTitleStyle}>{t.personal}</h2>
+
+        <input placeholder={t.name} value={fullName} onChange={(e) => setFullName(e.target.value)} style={themedInputStyle} />
+
+        <input placeholder={t.phone} value={phone} onChange={(e) => setPhone(e.target.value)} style={themedInputStyle} />
+
+        <h2 style={sectionTitleStyle}>{t.company}</h2>
+
+        <input placeholder={t.companyName} value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={themedInputStyle} />
+
+        <input placeholder={t.ssm} value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={themedInputStyle} />
+
+        <input placeholder={t.companyPhone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={themedInputStyle} />
+
+        <input placeholder={t.companyAddress} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={themedInputStyle} />
+
+        <button type="button" onClick={saveSettings} style={{ ...primaryBtnStyle, background: theme.accent }}>
+          {t.save}
+        </button>
+
+        <h2 style={sectionTitleStyle}>{t.password}</h2>
+
+        <input
+          type="password"
+          placeholder={t.newPassword}
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          style={themedInputStyle}
+        />
+
+        <button type="button" onClick={changePassword} style={{ ...primaryBtnStyle, background: theme.accent }}>
+          {t.updatePassword}
+        </button>
+
+        {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
+      </>
+    );
+  }
+
+  function renderThemes() {
+    return (
+      <>
+        <div style={themeGridStyle}>
+          {themeChoices.map((key) => {
+            const item = (THEMES[key] || THEMES.deepTeal) as any;
+
+            return (
+              <button
+                type="button"
+                key={key}
+                onClick={() => changeTheme(key)}
+                style={{
+                  ...themeBtnStyle,
+                  borderColor: item.border,
+                  background: item.banner || item.card,
+                  color: item.text,
+                  boxShadow: item.glow,
+                }}
+              >
+                {item.name || key}
+              </button>
+            );
+          })}
+        </div>
+
+        {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
+      </>
+    );
+  }
+
+  function renderActivePanel() {
+    if (activePanel === "settings") return renderSettings();
+    if (activePanel === "themes") return renderThemes();
+
+    if (activePanel === "extensions") {
+      return (
+        <>
+          <p style={{ color: themeMuted }}>{t.extensionDesc}</p>
+
+          <div style={extensionGridStyle}>
+            <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
+              <h2 style={sectionTitleStyle}>{t.electronicCard}</h2>
+              <p style={{ color: themeMuted }}>{t.comingSoon}</p>
+            </div>
+
+            <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
+              <h2 style={sectionTitleStyle}>{t.shopSystem}</h2>
+              <p style={{ color: themeMuted }}>{t.shopDesc}</p>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    if (activePanel === "nkShop") {
+      return renderPlaceholder(t.shopSystem, t.shopDesc);
+    }
+
+    if (activePanel === "records") return renderPlaceholder(t.accounting);
+    if (activePanel === "recordCreate") return renderPlaceholder(t.recordCreateTitle);
+    if (activePanel === "customers") return renderPlaceholder(t.customers);
+    if (activePanel === "customerCreate") return renderPlaceholder(t.customerCreateTitle);
+    if (activePanel === "products") return renderPlaceholder(t.products);
+    if (activePanel === "productCreate") return renderPlaceholder(t.productCreateTitle);
+    if (activePanel === "invoices") return renderPlaceholder(t.invoices);
+    if (activePanel === "invoiceCreate") return renderPlaceholder(t.invoiceCreateTitle);
+
+    return null;
+  }
 
   return (
     <main
@@ -976,95 +1034,27 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     >
       <style jsx global>{DASHBOARD_FIX_CSS}</style>
 
-      <header
-        className="sa-card dashboard-top-card"
-        style={{
-          ...topCardStyle,
-          background: theme.card,
-          borderColor: theme.border,
-          boxShadow: theme.glow,
-          color: theme.text,
-        }}
-      >
+      <header className="sa-card dashboard-top-card" style={{ ...topCardStyle, ...themedCardStyle }}>
         <div style={leftTopStyle}>
           <div style={{ position: "relative" }}>
-            <button
-              type="button"
-              onClick={() => setShowAvatarMenu(!showAvatarMenu)}
-              style={avatarBtnStyle}
-            >
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} />
-              ) : (
-                "👤"
-              )}
+            <button type="button" onClick={() => setShowAvatarMenu(!showAvatarMenu)} style={avatarBtnStyle}>
+              {profile?.avatar_url ? <img src={profile.avatar_url} alt="avatar" style={avatarImgStyle} /> : "👤"}
             </button>
 
             {showAvatarMenu ? (
               <div style={avatarMenuStyle}>
                 <label style={menuItemStyle}>
                   {t.changeAvatar}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={uploadAvatar}
-                    style={{ display: "none" }}
-                  />
+                  <input type="file" accept="image/*" onChange={uploadAvatar} style={{ display: "none" }} />
                 </label>
 
-                <button
-                  type="button"
-                  style={menuItemStyle}
-                  onClick={() => {
-                    setShowSettings(true);
-                    setShowThemes(false);
-                    setShowAvatarMenu(false);
-                  }}
-                >
+                <button type="button" style={menuItemStyle} onClick={() => openPanel("settings")}>
                   {t.settings}
                 </button>
 
-                <button
-                  type="button"
-                  style={menuItemStyle}
-                  onClick={() => {
-                    setShowThemes(true);
-                    setShowSettings(false);
-                    setShowAvatarMenu(false);
-                  }}
-                >
+                <button type="button" style={menuItemStyle} onClick={() => openPanel("themes")}>
                   {t.theme}
                 </button>
-
-                <div style={avatarLangBoxStyle}>
-                  <div style={avatarLangTitleStyle}>{t.language}</div>
-
-                  <div style={avatarLangBtnRowStyle}>
-                    <button
-                      type="button"
-                      onClick={() => switchLang("zh")}
-                      style={avatarLangBtnStyle(lang === "zh", theme)}
-                    >
-                      中文
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => switchLang("en")}
-                      style={avatarLangBtnStyle(lang === "en", theme)}
-                    >
-                      EN
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => switchLang("ms")}
-                      style={avatarLangBtnStyle(lang === "ms", theme)}
-                    >
-                      BM
-                    </button>
-                  </div>
-                </div>
               </div>
             ) : null}
           </div>
@@ -1074,550 +1064,166 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={logout}
-          style={{ ...logoutBtnStyle, background: theme.accent }}
-        >
+        <button type="button" onClick={logout} style={{ ...logoutBtnStyle, background: theme.accent }}>
           {t.logout}
         </button>
       </header>
 
-      {page === "home" ? (
-        <>
-          <section
-            className="sa-card"
-            style={{
-              background: theme.banner || theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <h1 style={titleStyle}>{t.dashboard}</h1>
+      <section className="sa-card" style={{ ...themedCardStyle, background: theme.banner || theme.card }}>
+        <h1 style={titleStyle}>{t.dashboard}</h1>
 
-            <div className="sa-dashboard-notice" style={noticeWrapStyle}>
-              <div className="sa-dashboard-notice-text" style={noticeMarqueeStyle}>
-                {t.notice}
-              </div>
-            </div>
-          </section>
+        <div className="sa-dashboard-notice" style={noticeWrapStyle}>
+          <div className="sa-dashboard-notice-text">{t.notice}</div>
+        </div>
+      </section>
 
-          <section className="dashboard-summary-grid" style={summaryGridStyle}>
-            <div
-              className="sa-card dashboard-stat-card"
-              style={{
-                ...summaryBoxStyle,
-                ...themedCardStyle,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setShowRecordSummary(!showRecordSummary)}
-                style={summaryHeaderBtnStyle}
-              >
-                <span className="sa-title-bold">{t.recordsOverview}</span>
-                <strong>{showRecordSummary ? "▲" : "▼"}</strong>
-              </button>
-
-              <div style={{ ...smallMutedStyle, color: themeMuted }}>
-                {t.latestMonth}: {latestMonthKey}
-              </div>
-
-              {showRecordSummary ? (
-                <div style={summaryDetailListStyle}>
-                  <div style={summaryRowStyle}>
-                    <span>{t.balance}</span>
-                    <strong style={{ color: theme.accent }}>{formatRM(balance)}</strong>
-                  </div>
-
-                  <div style={summaryRowStyle}>
-                    <span>{t.monthIncome}</span>
-                    <strong style={{ color: "#16a34a" }}>{formatRM(monthIncome)}</strong>
-                  </div>
-
-                  <div style={summaryRowStyle}>
-                    <span>{t.monthExpense}</span>
-                    <strong style={{ color: "#dc2626" }}>{formatRM(monthExpense)}</strong>
-                  </div>
-
-                  <div style={summaryRowStyle}>
-                    <span>{t.estimatedProfit}</span>
-                    <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
-                  </div>
-                </div>
-              ) : (
-                <div style={summaryRowStyle}>
-                  <span>{t.estimatedProfit}</span>
-                  <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
-                </div>
-              )}
-            </div>
-
-            <div
-              className="sa-card dashboard-stat-card"
-              style={{
-                ...summaryBoxStyle,
-                ...themedCardStyle,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setShowDebtSummary(!showDebtSummary)}
-                style={summaryHeaderBtnStyle}
-              >
-                <span className="sa-title-bold">{t.customerDebt}</span>
-                <strong>{showDebtSummary ? "▲" : "▼"}</strong>
-              </button>
-
-              {showDebtSummary ? (
-                <div style={summaryDetailListStyle}>
-                  {debtItems.length === 0 ? (
-                    <div style={summaryRowStyle}>
-                      <span>{t.noDebt}</span>
-                      <strong>{formatRM(0)}</strong>
-                    </div>
-                  ) : (
-                    <>
-                      <div style={summaryRowStyle}>
-                        <span>{t.customerDebt}</span>
-                        <strong style={{ color: "#dc2626" }}>
-                          {formatRM(totalCustomerDebt)}
-                        </strong>
-                      </div>
-
-                      {debtItems.slice(0, 8).map((item) => (
-                        <div key={item.id} style={debtRowStyle}>
-                          <div>
-                            <div>{item.name}</div>
-                            {item.dueDate ? (
-                              <small style={{ color: themeMuted }}>
-                                {item.source === "invoice" ? "Invoice" : "Customer"} ·{" "}
-                                {item.dueDate}
-                              </small>
-                            ) : null}
-                          </div>
-
-                          <strong style={{ color: "#dc2626" }}>
-                            {formatRM(item.amount)}
-                          </strong>
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div style={summaryRowStyle}>
-                  <span>{topDebtItem?.name || t.noDebt}</span>
-                  <strong style={{ color: topDebtItem ? "#dc2626" : theme.accent }}>
-                    {formatRM(topDebtItem?.amount || 0)}
-                  </strong>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section
-            className="sa-card"
-            style={{
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-              marginBottom: 14,
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setShowQuickMenu(!showQuickMenu)}
-              style={quickHeaderBtnStyle}
-            >
-              <span className="sa-title-bold">{t.quick}</span>
-              <strong>{showQuickMenu ? "▲" : "▼"}</strong>
-            </button>
-
-            {showQuickMenu ? (
-              <div className="dashboard-quick-grid" style={quickGridStyle}>
-                <button
-                  type="button"
-                  onClick={() => goQuick("/dashboard/records")}
-                  style={quickBtnStyle(theme)}
-                >
-                  {t.quickAccounting}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => goQuick("/dashboard/invoices")}
-                  style={quickBtnStyle(theme)}
-                >
-                  {t.quickInvoice}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => goQuick("/dashboard/customers")}
-                  style={quickBtnStyle(theme)}
-                >
-                  {t.quickCustomer}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => goQuick("/dashboard/products")}
-                  style={quickBtnStyle(theme)}
-                >
-                  {t.quickProduct}
-                </button>
-              </div>
-            ) : null}
-          </section>
-
-          <section className="dashboard-feature-grid" style={featureGridStyle}>
-            <button
-              type="button"
-              onClick={() => go("/dashboard/records")}
-              className="sa-card"
-              style={featureBtnStyle(theme)}
-            >
-              {t.accounting}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => go("/dashboard/customers")}
-              className="sa-card"
-              style={featureBtnStyle(theme)}
-            >
-              {t.customers}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => go("/dashboard/products")}
-              className="sa-card"
-              style={featureBtnStyle(theme)}
-            >
-              {t.products}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => go("/dashboard/invoices")}
-              className="sa-card"
-              style={featureBtnStyle(theme)}
-            >
-              {t.invoices}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowExtensionModal(true)}
-              className="sa-card"
-              style={featureBtnStyle(theme)}
-            >
-              {t.extension}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowShopModal(true)}
-              className="sa-card"
-              style={featureBtnStyle(theme)}
-            >
-              {t.nkShop}
-            </button>
-          </section>
-        </>
-      ) : null}
-
-      {page !== "home" ? (
-        <section className="sa-card" style={{ ...themedCardStyle }}>
-          <button
-            type="button"
-            onClick={() => go("/dashboard")}
-            style={{
-              ...backBtnStyle,
-              borderColor: theme.border,
-              color: theme.accent,
-              background: theme.inputBg || "#ffffff",
-            }}
-          >
-            ← {t.back}
+      <section className="dashboard-summary-grid" style={summaryGridStyle}>
+        <div className="sa-card dashboard-stat-card" style={{ ...summaryBoxStyle, ...themedCardStyle }}>
+          <button type="button" onClick={() => setShowRecordSummary(!showRecordSummary)} style={summaryHeaderBtnStyle}>
+            <span className="sa-title-bold">{t.recordsOverview}</span>
+            <strong>{showRecordSummary ? "▲" : "▼"}</strong>
           </button>
 
-          <h1 style={titleStyle}>
-            {page === "records" && t.accounting}
-            {page === "accounting" && t.accounting}
-            {page === "customers" && t.customers}
-            {page === "products" && t.products}
-            {page === "invoices" && t.invoices}
-          </h1>
-        </section>
-      ) : null}
+          <div style={{ ...smallMutedStyle, color: themeMuted }}>
+            {t.latestMonth}: {latestMonthKey}
+          </div>
 
-      {showSettings ? (
-        <div className="sa-fullscreen-overlay">
-          <section
-            className="sa-card sa-fullscreen-modal"
-            style={{
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div className="sa-modal-top" style={modalTopStyle}>
-              <h1 style={modalTitleStyle}>{t.settings}</h1>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowSettings(false);
-                  setMsg("");
-                }}
-                style={closeBtnStyle}
-              >
-                {t.close}
-              </button>
-            </div>
-
-            <h2 style={sectionTitleStyle}>{t.language}</h2>
-
-            <div style={modalLangRowStyle}>
-              <button
-                type="button"
-                onClick={() => switchLang("zh")}
-                style={modalLangBtnStyle(lang === "zh", theme)}
-              >
-                中文
-              </button>
-
-              <button
-                type="button"
-                onClick={() => switchLang("en")}
-                style={modalLangBtnStyle(lang === "en", theme)}
-              >
-                EN
-              </button>
-
-              <button
-                type="button"
-                onClick={() => switchLang("ms")}
-                style={modalLangBtnStyle(lang === "ms", theme)}
-              >
-                BM
-              </button>
-            </div>
-
-            <h2 style={sectionTitleStyle}>{t.personal}</h2>
-
-            <input
-              placeholder={t.name}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
-              placeholder={t.phone}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <h2 style={sectionTitleStyle}>{t.company}</h2>
-
-            <input
-              placeholder={t.companyName}
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
-              placeholder={t.ssm}
-              value={companyRegNo}
-              onChange={(e) => setCompanyRegNo(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
-              placeholder={t.companyPhone}
-              value={companyPhone}
-              onChange={(e) => setCompanyPhone(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
-              placeholder={t.companyAddress}
-              value={companyAddress}
-              onChange={(e) => setCompanyAddress(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <button
-              type="button"
-              onClick={saveSettings}
-              style={{ ...primaryBtnStyle, background: theme.accent }}
-            >
-              {t.save}
-            </button>
-
-            <h2 style={sectionTitleStyle}>{t.password}</h2>
-
-            <input
-              type="password"
-              placeholder={t.newPassword}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <button
-              type="button"
-              onClick={changePassword}
-              style={{ ...primaryBtnStyle, background: theme.accent }}
-            >
-              {t.updatePassword}
-            </button>
-
-            {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
-          </section>
-        </div>
-      ) : null}
-
-      {showThemes ? (
-        <div className="sa-fullscreen-overlay">
-          <section
-            className="sa-card sa-fullscreen-modal"
-            style={{
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div className="sa-modal-top" style={modalTopStyle}>
-              <h1 style={modalTitleStyle}>{t.theme}</h1>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowThemes(false);
-                  setMsg("");
-                }}
-                style={closeBtnStyle}
-              >
-                {t.close}
-              </button>
-            </div>
-
-            <div style={themeGridStyle}>
-              {themeChoices.map((key) => {
-                const item = (THEMES[key] || THEMES.deepTeal) as any;
-
-                return (
-                  <button
-                    type="button"
-                    key={key}
-                    onClick={() => changeTheme(key)}
-                    style={{
-                      ...themeBtnStyle,
-                      borderColor: item.border,
-                      background: item.banner || item.card,
-                      color: item.text,
-                      boxShadow: item.glow,
-                    }}
-                  >
-                    {item.name || key}
-                  </button>
-                );
-              })}
-            </div>
-
-            {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
-          </section>
-        </div>
-      ) : null}
-
-      {showExtensionModal ? (
-        <div className="sa-fullscreen-overlay">
-          <section
-            className="sa-card sa-fullscreen-modal"
-            style={{
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div className="sa-modal-top" style={modalTopStyle}>
-              <h1 style={modalTitleStyle}>{t.extension}</h1>
-
-              <button
-                type="button"
-                onClick={() => setShowExtensionModal(false)}
-                style={closeBtnStyle}
-              >
-                {t.close}
-              </button>
-            </div>
-
-            <p style={{ color: themeMuted }}>{t.extensionDesc}</p>
-
-            <div style={extensionGridStyle}>
-              <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
-                <h2 style={sectionTitleStyle}>{t.electronicCard}</h2>
-                <p style={{ color: themeMuted }}>{t.comingSoon}</p>
+          {showRecordSummary ? (
+            <div style={summaryDetailListStyle}>
+              <div style={summaryRowStyle}>
+                <span>{t.balance}</span>
+                <strong style={{ color: theme.accent }}>{formatRM(balance)}</strong>
               </div>
 
-              <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
-                <h2 style={sectionTitleStyle}>{t.shopSystem}</h2>
-                <p style={{ color: themeMuted }}>{t.shopDesc}</p>
+              <div style={summaryRowStyle}>
+                <span>{t.monthIncome}</span>
+                <strong style={{ color: "#16a34a" }}>{formatRM(monthIncome)}</strong>
+              </div>
+
+              <div style={summaryRowStyle}>
+                <span>{t.monthExpense}</span>
+                <strong style={{ color: "#dc2626" }}>{formatRM(monthExpense)}</strong>
+              </div>
+
+              <div style={summaryRowStyle}>
+                <span>{t.estimatedProfit}</span>
+                <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
               </div>
             </div>
-          </section>
-        </div>
-      ) : null}
-
-      {showShopModal ? (
-        <div className="sa-fullscreen-overlay">
-          <section
-            className="sa-card sa-fullscreen-modal"
-            style={{
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-            }}
-          >
-            <div className="sa-modal-top" style={modalTopStyle}>
-              <h1 style={modalTitleStyle}>{t.nkShop}</h1>
-
-              <button
-                type="button"
-                onClick={() => setShowShopModal(false)}
-                style={closeBtnStyle}
-              >
-                {t.close}
-              </button>
+          ) : (
+            <div style={summaryRowStyle}>
+              <span>{t.estimatedProfit}</span>
+              <strong style={{ color: theme.accent }}>{formatRM(estimatedProfit)}</strong>
             </div>
-
-            <div style={{ ...extensionCardStyle, borderColor: theme.border }}>
-              <h2 style={sectionTitleStyle}>{t.shopSystem}</h2>
-              <p style={{ color: themeMuted }}>{t.shopDesc}</p>
-              <button
-                type="button"
-                onClick={() => setShowShopModal(false)}
-                style={{ ...primaryBtnStyle, background: theme.accent }}
-              >
-                {t.comingSoon}
-              </button>
-            </div>
-          </section>
+          )}
         </div>
-      ) : null}
+
+        <div className="sa-card dashboard-stat-card" style={{ ...summaryBoxStyle, ...themedCardStyle }}>
+          <button type="button" onClick={() => setShowDebtSummary(!showDebtSummary)} style={summaryHeaderBtnStyle}>
+            <span className="sa-title-bold">{t.customerDebt}</span>
+            <strong>{showDebtSummary ? "▲" : "▼"}</strong>
+          </button>
+
+          {showDebtSummary ? (
+            <div style={summaryDetailListStyle}>
+              {debtItems.length === 0 ? (
+                <div style={summaryRowStyle}>
+                  <span>{t.noDebt}</span>
+                  <strong>{formatRM(0)}</strong>
+                </div>
+              ) : (
+                <>
+                  <div style={summaryRowStyle}>
+                    <span>{t.customerDebt}</span>
+                    <strong style={{ color: "#dc2626" }}>{formatRM(totalCustomerDebt)}</strong>
+                  </div>
+
+                  {debtItems.slice(0, 8).map((item) => (
+                    <div key={item.id} style={debtRowStyle}>
+                      <div>
+                        <div>{item.name}</div>
+                        {item.dueDate ? <small style={{ color: themeMuted }}>{item.dueDate}</small> : null}
+                      </div>
+
+                      <strong style={{ color: "#dc2626" }}>{formatRM(item.amount)}</strong>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          ) : (
+            <div style={summaryRowStyle}>
+              <span>{topDebtItem?.name || t.noDebt}</span>
+              <strong style={{ color: topDebtItem ? "#dc2626" : theme.accent }}>
+                {formatRM(topDebtItem?.amount || 0)}
+              </strong>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 14 }}>
+        <button type="button" onClick={() => setShowQuickMenu(!showQuickMenu)} style={quickHeaderBtnStyle}>
+          <span className="sa-title-bold">{t.quick}</span>
+          <strong>{showQuickMenu ? "▲" : "▼"}</strong>
+        </button>
+
+        {showQuickMenu ? (
+          <div className="dashboard-quick-grid" style={quickGridStyle}>
+            <button type="button" onClick={() => openPanel("recordCreate")} style={quickBtnStyle(theme)}>
+              {t.quickAccounting}
+            </button>
+
+            <button type="button" onClick={() => openPanel("invoiceCreate")} style={quickBtnStyle(theme)}>
+              {t.quickInvoice}
+            </button>
+
+            <button type="button" onClick={() => openPanel("customerCreate")} style={quickBtnStyle(theme)}>
+              {t.quickCustomer}
+            </button>
+
+            <button type="button" onClick={() => openPanel("productCreate")} style={quickBtnStyle(theme)}>
+              {t.quickProduct}
+            </button>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="dashboard-feature-grid" style={featureGridStyle}>
+        <button type="button" onClick={() => openPanel("records")} className="sa-card" style={featureBtnStyle(theme)}>
+          {t.accounting}
+        </button>
+
+        <button type="button" onClick={() => openPanel("customers")} className="sa-card" style={featureBtnStyle(theme)}>
+          {t.customers}
+        </button>
+
+        <button type="button" onClick={() => openPanel("products")} className="sa-card" style={featureBtnStyle(theme)}>
+          {t.products}
+        </button>
+
+        <button type="button" onClick={() => openPanel("invoices")} className="sa-card" style={featureBtnStyle(theme)}>
+          {t.invoices}
+        </button>
+
+        <button type="button" onClick={() => openPanel("extensions")} className="sa-card" style={featureBtnStyle(theme)}>
+          {t.extension}
+        </button>
+
+        <button type="button" onClick={() => openPanel("nkShop")} className="sa-card" style={featureBtnStyle(theme)}>
+          {t.nkShop}
+        </button>
+      </section>
+
+      <FullScreenPanel
+        open={activePanel !== null}
+        title={getPanelTitle(activePanel)}
+        closeText={t.close}
+        onClose={closePanel}
+        theme={theme}
+      >
+        {renderActivePanel()}
+      </FullScreenPanel>
     </main>
   );
 }
@@ -1695,33 +1301,6 @@ const menuItemStyle: CSSProperties = {
   fontSize: 16,
 };
 
-const avatarLangBoxStyle: CSSProperties = {
-  borderTop: "1px solid #e5e7eb",
-  marginTop: 8,
-  paddingTop: 8,
-};
-
-const avatarLangTitleStyle: CSSProperties = {
-  fontSize: 13,
-  color: "#64748b",
-  marginBottom: 8,
-};
-
-const avatarLangBtnRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: 8,
-};
-
-const avatarLangBtnStyle = (active: boolean, theme: any): CSSProperties => ({
-  border: `2px solid ${theme.accent}`,
-  background: active ? theme.accent : theme.inputBg || "#fff",
-  color: active ? "#fff" : theme.accent,
-  borderRadius: 999,
-  minHeight: 38,
-  padding: "0 8px",
-});
-
 const planTextStyle: CSSProperties = {
   lineHeight: 1.25,
   overflowWrap: "anywhere",
@@ -1745,10 +1324,6 @@ const titleStyle: CSSProperties = {
 
 const noticeWrapStyle: CSSProperties = {
   marginTop: 12,
-};
-
-const noticeMarqueeStyle: CSSProperties = {
-  display: "inline-block",
 };
 
 const summaryGridStyle: CSSProperties = {
@@ -1857,14 +1432,6 @@ const featureBtnStyle = (theme: any): CSSProperties => ({
   padding: "var(--sa-card-pad)",
 });
 
-const backBtnStyle: CSSProperties = {
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 var(--sa-control-x)",
-  minHeight: "var(--sa-control-h)",
-  marginBottom: 14,
-};
-
 const inputStyle: CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
@@ -1888,32 +1455,11 @@ const primaryBtnStyle: CSSProperties = {
   marginBottom: 16,
 };
 
-const modalTopStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) auto",
-  alignItems: "center",
-  gap: 12,
-};
-
-const modalTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "var(--sa-fs-2xl)",
-  fontWeight: 900,
-};
-
 const sectionTitleStyle: CSSProperties = {
   marginTop: 18,
   marginBottom: 12,
   fontSize: "var(--sa-fs-xl)",
   fontWeight: 900,
-};
-
-const closeBtnStyle: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "#dc2626",
-  fontSize: "var(--sa-fs-base)",
-  padding: 8,
 };
 
 const modalLangRowStyle: CSSProperties = {
@@ -1953,6 +1499,12 @@ const extensionGridStyle: CSSProperties = {
 
 const extensionCardStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+};
+
+const placeholderWrapStyle: CSSProperties = {
+  border: "var(--sa-border-w) dashed rgba(148, 163, 184, 0.65)",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
 };
