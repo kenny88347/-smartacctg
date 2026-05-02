@@ -279,7 +279,6 @@ const TXT = {
     trialNoPassword: "免费试用没有账号密码",
     passwordTooShort: "密码至少 6 位",
     pleaseLogin: "请先登录",
-    loadingApp: "正在打开 App...",
     noApps: "控制台还没有 App，请到 App Center 添加。",
   },
   en: {
@@ -338,7 +337,6 @@ const TXT = {
     trialNoPassword: "Trial mode has no account password",
     passwordTooShort: "Password must be at least 6 characters",
     pleaseLogin: "Please login first",
-    loadingApp: "Opening app...",
     noApps: "No dashboard apps yet. Add apps from App Center.",
   },
   ms: {
@@ -397,7 +395,6 @@ const TXT = {
     trialNoPassword: "Mod percubaan tiada kata laluan akaun",
     passwordTooShort: "Kata laluan sekurang-kurangnya 6 aksara",
     pleaseLogin: "Sila log masuk dahulu",
-    loadingApp: "Sedang buka app...",
     noApps: "Belum ada app dashboard. Tambah app dari App Center.",
   },
 };
@@ -549,14 +546,6 @@ const DASHBOARD_FIX_CSS = `
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
     font-size: clamp(13px, 3vw, 15px) !important;
-  }
-
-  .smartacctg-dashboard-page .app-iframe {
-    width: 100% !important;
-    height: calc(100dvh - 88px) !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: white !important;
   }
 
   @media (max-width: 680px) {
@@ -758,6 +747,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
   const [isEmbed, setIsEmbed] = useState(false);
+  const [isFullscreenPage, setIsFullscreenPage] = useState(false);
   const [lang, setLang] = useState<Lang>("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
@@ -776,8 +766,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [showDebtSummary, setShowDebtSummary] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
 
-  const [openApp, setOpenApp] = useState<AppRegistry | null>(null);
-  const [openAppUrl, setOpenAppUrl] = useState("");
   const [deleteAppTarget, setDeleteAppTarget] = useState<AppRegistry | null>(null);
 
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -878,6 +866,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const trialRaw = safeLocalGet(TRIAL_KEY);
 
     setIsEmbed(q.get("embed") === "1");
+    setIsFullscreenPage(q.get("fullscreen") === "1");
 
     if (mode === "trial" && trialRaw) {
       try {
@@ -1277,43 +1266,22 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     if (!fixedPath) return;
 
-    setOpenApp({
-      ...app,
-      app_path: fixedPath,
-    });
-
-    setOpenAppUrl(buildUrl(fixedPath, extra || "embed=1"));
+    window.location.href = buildUrl(fixedPath, extra || "fullscreen=1&return=dashboard");
   }
 
   function openQuick(path: string) {
     const found = allApps.find((app) => app.app_path === path);
 
     if (found) {
-      openAppModal(found, "open=new&fullscreen=1&return=dashboard&embed=1");
+      openAppModal(found, "open=new&fullscreen=1&return=dashboard");
       return;
     }
 
-    setOpenApp({
-      app_key: path,
-      title_zh: path,
-      title_en: path,
-      title_ms: path,
-      icon: "📱",
-      app_path: path,
-      enabled: true,
-      is_active: true,
-    });
-
-    setOpenAppUrl(buildUrl(path, "open=new&fullscreen=1&return=dashboard&embed=1"));
-  }
-
-  function closeOpenApp() {
-    setOpenApp(null);
-    setOpenAppUrl("");
+    window.location.href = buildUrl(path, "open=new&fullscreen=1&return=dashboard");
   }
 
   function openAppCenter() {
-    openAppModal(APP_CENTER_APP, "embed=1");
+    openAppModal(APP_CENTER_APP, "fullscreen=1&return=dashboard");
   }
 
   function startAppLongPress(app: AppRegistry) {
@@ -1496,7 +1464,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     >
       <style jsx global>{DASHBOARD_FIX_CSS}</style>
 
-      {!isEmbed ? (
+      {!isEmbed && !isFullscreenPage ? (
         <header
           className="sa-card dashboard-top-card"
           style={{
@@ -2149,42 +2117,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </section>
         </div>
       ) : null}
-
-      {openApp ? (
-        <div className="sa-fullscreen-overlay">
-          <section
-            className="sa-card sa-fullscreen-modal"
-            style={{
-              background: theme.card,
-              borderColor: theme.border,
-              boxShadow: theme.glow,
-              color: theme.text,
-              paddingLeft: 0,
-              paddingRight: 0,
-              paddingBottom: 0,
-            }}
-          >
-            <div className="sa-modal-top" style={{ ...modalTopStyle, paddingLeft: 16, paddingRight: 16 }}>
-              <h1 style={modalTitleStyle}>{appTitle(openApp, lang)}</h1>
-
-              <button type="button" onClick={closeOpenApp} style={closeBtnStyle}>
-                {t.close}
-              </button>
-            </div>
-
-            {openAppUrl ? (
-              <iframe
-                src={openAppUrl}
-                title={appTitle(openApp, lang)}
-                className="app-iframe"
-                style={appIframeStyle}
-              />
-            ) : (
-              <p style={{ padding: 16 }}>{t.loadingApp}</p>
-            )}
-          </section>
-        </div>
-      ) : null}
     </main>
   );
 }
@@ -2652,11 +2584,4 @@ const deleteAppCancelBtnStyle: CSSProperties = {
   background: "#fff",
   color: "#111827",
   fontWeight: 900,
-};
-
-const appIframeStyle: CSSProperties = {
-  width: "100%",
-  height: "calc(100dvh - 88px)",
-  border: 0,
-  background: "#fff",
 };
