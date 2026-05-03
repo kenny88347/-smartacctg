@@ -1,19 +1,6 @@
 /* =========================================================
-   SmartAcctg COMPLETE Global UI Fix + Theme System
+   SmartAcctg Global UI + Theme System - Stable Version
    放在 app/globals.css 最下面
-
-   已包含：
-   1. 全局主题变量
-   2. data-sa-theme / data-smartacctg-theme 双兼容
-   3. futureForest / futureWorld 双兼容
-   4. 全页面日期框上下左右居中
-   5. iOS / Android / Samsung / Desktop 日期框适配
-   6. 标题粗体，普通文字正常字体
-   7. 控制台 / 发票 / 记账 / 客户 / 产品页面统一 UI
-   8. 全屏弹窗铺满手机
-   9. 发票公司资料不再一字一行
-   10. 发票预览按钮三列
-   11. 付款方式两个按钮同高同宽
 ========================================================= */
 
 /* =========================================================
@@ -42,7 +29,6 @@
 
   --sa-green: #16a34a;
   --sa-red: #dc2626;
-  --sa-red-dark: #991b1b;
 
   --sa-page-bg: #ecfdf5;
   --sa-card-bg: #ffffff;
@@ -58,36 +44,15 @@
   --sa-panel-text: #111827;
   --sa-muted: #64748b;
   --sa-sub-text: #64748b;
-  --sa-soft: #ccfbf1;
   --sa-soft-bg: #ccfbf1;
   --sa-banner-bg: #ffffff;
   --sa-glow: 0 0 0 1px rgba(20, 184, 166, 0.42),
     0 0 18px rgba(45, 212, 191, 0.55),
     0 18px 42px rgba(15, 118, 110, 0.25);
-
-  --sa-theme-page-bg: var(--sa-page-bg);
-  --sa-theme-banner: var(--sa-banner-bg);
-  --sa-theme-banner-bg: var(--sa-banner-bg);
-  --sa-theme-card: var(--sa-card-bg);
-  --sa-theme-panel-bg: var(--sa-panel-bg);
-  --sa-theme-item-bg: var(--sa-item-bg);
-  --sa-theme-item-card: var(--sa-item-card);
-  --sa-theme-item-text: var(--sa-item-text);
-  --sa-theme-input-bg: var(--sa-input-bg);
-  --sa-theme-input-text: var(--sa-input-text);
-  --sa-theme-border: var(--sa-border);
-  --sa-theme-accent: var(--sa-accent);
-  --sa-theme-text: var(--sa-text);
-  --sa-theme-panel-text: var(--sa-panel-text);
-  --sa-theme-muted: var(--sa-muted);
-  --sa-theme-sub-text: var(--sa-sub-text);
-  --sa-theme-soft: var(--sa-soft);
-  --sa-theme-soft-bg: var(--sa-soft-bg);
-  --sa-theme-glow: var(--sa-glow);
 }
 
 /* =========================================================
-   Theme: 深青色
+   Theme: Deep Teal
 ========================================================= */
 
 html[data-sa-theme="deepTeal"],
@@ -106,7 +71,6 @@ html[data-smartacctg-theme="deepTeal"] {
   --sa-panel-text: #111827;
   --sa-muted: #64748b;
   --sa-sub-text: #64748b;
-  --sa-soft: #ccfbf1;
   --sa-soft-bg: #ccfbf1;
   --sa-banner-bg: #ffffff;
   --sa-glow: 0 0 0 1px rgba(20, 184, 166, 0.42),
@@ -115,7 +79,7 @@ html[data-smartacctg-theme="deepTeal"] {
 }
 
 /* =========================================================
-   Theme: 可爱粉色
+   Theme: Pink
 ========================================================= */
 
 html[data-sa-theme="pink"],
@@ -134,7 +98,6 @@ html[data-smartacctg-theme="pink"] {
   --sa-panel-text: #111827;
   --sa-muted: #64748b;
   --sa-sub-text: #831843;
-  --sa-soft: #fce7f3;
   --sa-soft-bg: #fce7f3;
   --sa-banner-bg: linear-gradient(135deg, #ffd6e7, #fff1f2);
   --sa-glow: 0 0 0 1px rgba(244, 114, 182, 0.36),
@@ -143,7 +106,7 @@ html[data-smartacctg-theme="pink"] {
 }
 
 /* =========================================================
-   Theme: 黑金商务
+   Theme: Black Gold
 ========================================================= */
 
 html[data-sa-theme="blackGold"],
@@ -162,7 +125,6 @@ html[data-smartacctg-theme="blackGold"] {
   --sa-panel-text: #fff7ed;
   --sa-muted: #fef3c7;
   --sa-sub-text: #d6c8a4;
-  --sa-soft: #2a2112;
   --sa-soft-bg: #3b2f16;
   --sa-banner-bg: linear-gradient(135deg, #111111, #3b2f16);
   --sa-glow: 0 0 0 1px rgba(250, 204, 21, 0.5),
@@ -171,7 +133,7 @@ html[data-smartacctg-theme="blackGold"] {
 }
 
 /* =========================================================
-   Theme: 可爱浅红
+   Theme: Light Red
 ========================================================= */
 
 html[data-sa-theme="lightRed"],
@@ -190,7 +152,6 @@ html[data-smartacctg-theme="lightRed"] {
   --sa-panel-text: #111827;
   --sa-muted: #64748b;
   --sa-sub-text: #9f1239;
-  --sa-soft: #ffe4e6;
   --sa-soft-bg: #ffe4e6;
   --sa-banner-bg: linear-gradient(135deg, #fecdd3, #ffe4e6);
   --sa-glow: 0 0 0 1px rgba(251, 113, 133, 0.45),
@@ -199,7 +160,7 @@ html[data-smartacctg-theme="lightRed"] {
 }
 
 /* =========================================================
-   Theme: 风景自然系
+   Theme: Nature
 ========================================================= */
 
 html[data-sa-theme="nature"],
@@ -218,7 +179,6 @@ html[data-smartacctg-theme="nature"] {
   --sa-panel-text: #111827;
   --sa-muted: #64748b;
   --sa-sub-text: #166534;
-  --sa-soft: #dcfce7;
   --sa-soft-bg: #dcfce7;
   --sa-banner-bg: linear-gradient(135deg, #d9f99d, #bae6fd);
   --sa-glow: 0 0 0 1px rgba(34, 211, 238, 0.42),
@@ -227,7 +187,7 @@ html[data-smartacctg-theme="nature"] {
 }
 
 /* =========================================================
-   Theme: 天空蓝
+   Theme: Sky
 ========================================================= */
 
 html[data-sa-theme="sky"],
@@ -246,7 +206,6 @@ html[data-smartacctg-theme="sky"] {
   --sa-panel-text: #111827;
   --sa-muted: #64748b;
   --sa-sub-text: #0369a1;
-  --sa-soft: #dbeafe;
   --sa-soft-bg: #dbeafe;
   --sa-banner-bg: linear-gradient(135deg, #bfdbfe, #e0f2fe);
   --sa-glow: 0 0 0 1px rgba(56, 189, 248, 0.42),
@@ -255,7 +214,7 @@ html[data-smartacctg-theme="sky"] {
 }
 
 /* =========================================================
-   Theme: 未来世界 / 深林青色
+   Theme: Future Forest / Future World
 ========================================================= */
 
 html[data-sa-theme="futureForest"],
@@ -282,7 +241,6 @@ html[data-smartacctg-theme="futureWorld"] {
   --sa-panel-text: #ecfeff;
   --sa-muted: #99f6e4;
   --sa-sub-text: #99f6e4;
-  --sa-soft: rgba(20, 184, 166, 0.22);
   --sa-soft-bg: rgba(20, 184, 166, 0.22);
   --sa-banner-bg: linear-gradient(
       135deg,
@@ -296,7 +254,7 @@ html[data-smartacctg-theme="futureWorld"] {
 }
 
 /* =========================================================
-   同步 --sa-theme-* 变量
+   Legacy Theme Variable Compatibility
 ========================================================= */
 
 html[data-sa-theme],
@@ -317,28 +275,29 @@ html[data-smartacctg-theme] {
   --sa-theme-panel-text: var(--sa-panel-text);
   --sa-theme-muted: var(--sa-muted);
   --sa-theme-sub-text: var(--sa-sub-text);
-  --sa-theme-soft: var(--sa-soft);
+  --sa-theme-soft: var(--sa-soft-bg);
   --sa-theme-soft-bg: var(--sa-soft-bg);
   --sa-theme-glow: var(--sa-glow);
 }
 
 /* =========================================================
-   全站基础
+   Base
 ========================================================= */
 
-html {
+html,
+body {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
+}
+
+html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
   font-family: var(--sa-font-family);
   font-size: var(--sa-fs-base);
   line-height: 1.5;
@@ -349,7 +308,7 @@ body {
 }
 
 /* =========================================================
-   SmartAcctg 页面基础
+   SmartAcctg Page Base
 ========================================================= */
 
 .smartacctg-page,
@@ -361,16 +320,15 @@ body {
 .smartacctg-accounting-page,
 .smartacctg-settings-page,
 .smartacctg-app-page {
-  width: 100% !important;
-  max-width: 100vw !important;
-  min-height: 100vh !important;
-  overflow-x: hidden !important;
-  font-family: var(--sa-font-family) !important;
-  font-size: var(--sa-fs-base) !important;
-  line-height: 1.5 !important;
-  padding: clamp(10px, 3vw, 22px) !important;
-  background: var(--sa-page-bg) !important;
-  color: var(--sa-text) !important;
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: var(--sa-font-family);
+  font-size: var(--sa-fs-base);
+  line-height: 1.5;
+  background: var(--sa-page-bg);
+  color: var(--sa-text);
 }
 
 .smartacctg-page *,
@@ -382,12 +340,12 @@ body {
 .smartacctg-accounting-page *,
 .smartacctg-settings-page *,
 .smartacctg-app-page * {
-  box-sizing: border-box !important;
-  font-family: var(--sa-font-family) !important;
+  box-sizing: border-box;
+  font-family: var(--sa-font-family);
 }
 
 /* =========================================================
-   字体：标题粗体，其他普通
+   Typography
 ========================================================= */
 
 .smartacctg-page h1,
@@ -399,10 +357,10 @@ body {
 .smartacctg-accounting-page h1,
 .smartacctg-settings-page h1,
 .smartacctg-app-page h1 {
-  font-size: var(--sa-fs-2xl) !important;
-  line-height: 1.12 !important;
-  margin-top: 0 !important;
-  font-weight: 900 !important;
+  font-size: var(--sa-fs-2xl);
+  line-height: 1.12;
+  margin-top: 0;
+  font-weight: 900;
 }
 
 .smartacctg-page h2,
@@ -414,9 +372,9 @@ body {
 .smartacctg-accounting-page h2,
 .smartacctg-settings-page h2,
 .smartacctg-app-page h2 {
-  font-size: var(--sa-fs-xl) !important;
-  line-height: 1.2 !important;
-  font-weight: 900 !important;
+  font-size: var(--sa-fs-xl);
+  line-height: 1.2;
+  font-weight: 900;
 }
 
 .smartacctg-page h3,
@@ -428,9 +386,9 @@ body {
 .smartacctg-accounting-page h3,
 .smartacctg-settings-page h3,
 .smartacctg-app-page h3 {
-  font-size: var(--sa-fs-lg) !important;
-  line-height: 1.25 !important;
-  font-weight: 900 !important;
+  font-size: var(--sa-fs-lg);
+  line-height: 1.25;
+  font-weight: 900;
 }
 
 .smartacctg-page p,
@@ -438,48 +396,10 @@ body {
 .smartacctg-page span,
 .smartacctg-page label,
 .smartacctg-page td,
-.smartacctg-page th,
-.smartacctg-dashboard-page p,
-.smartacctg-dashboard-page div,
-.smartacctg-dashboard-page span,
-.smartacctg-dashboard-page label,
-.smartacctg-dashboard-page td,
-.smartacctg-dashboard-page th,
-.smartacctg-products-page p,
-.smartacctg-products-page div,
-.smartacctg-products-page span,
-.smartacctg-products-page label,
-.smartacctg-products-page td,
-.smartacctg-products-page th,
-.smartacctg-invoice-page p,
-.smartacctg-invoice-page div,
-.smartacctg-invoice-page span,
-.smartacctg-invoice-page label,
-.smartacctg-invoice-page td,
-.smartacctg-invoice-page th,
-.smartacctg-records-page p,
-.smartacctg-records-page div,
-.smartacctg-records-page span,
-.smartacctg-records-page label,
-.smartacctg-records-page td,
-.smartacctg-records-page th,
-.smartacctg-customers-page p,
-.smartacctg-customers-page div,
-.smartacctg-customers-page span,
-.smartacctg-customers-page label,
-.smartacctg-customers-page td,
-.smartacctg-customers-page th,
-.smartacctg-accounting-page p,
-.smartacctg-accounting-page div,
-.smartacctg-accounting-page span,
-.smartacctg-accounting-page label,
-.smartacctg-accounting-page td,
-.smartacctg-accounting-page th {
-  font-size: var(--sa-fs-base) !important;
-  font-weight: 400 !important;
+.smartacctg-page th {
+  font-weight: 400;
 }
 
-/* 需要强调的金额 / 标题按钮仍保持清楚 */
 .smartacctg-page strong,
 .smartacctg-dashboard-page strong,
 .smartacctg-products-page strong,
@@ -489,41 +409,40 @@ body {
 .smartacctg-accounting-page strong,
 .smartacctg-settings-page strong,
 .smartacctg-app-page strong {
-  font-weight: 700 !important;
+  font-weight: 800;
 }
 
 /* =========================================================
-   卡片 / 面板
+   Cards / Panels
 ========================================================= */
 
 .sa-card,
 .sa-panel,
 .sa-item-card {
-  max-width: 100% !important;
-  min-width: 0 !important;
-  border-style: solid !important;
-  border-width: var(--sa-border-w) !important;
-  border-color: var(--sa-border) !important;
-  border-radius: var(--sa-radius-card) !important;
-  background: var(--sa-card-bg) !important;
-  color: var(--sa-text) !important;
-  box-shadow: var(--sa-glow) !important;
-  padding: var(--sa-card-pad) !important;
-  overflow-wrap: anywhere !important;
+  max-width: 100%;
+  min-width: 0;
+  border-style: solid;
+  border-width: var(--sa-border-w);
+  border-color: var(--sa-border);
+  border-radius: var(--sa-radius-card);
+  background: var(--sa-card-bg);
+  color: var(--sa-text);
+  box-shadow: var(--sa-glow);
+  overflow-wrap: anywhere;
 }
 
 .sa-panel {
-  background: var(--sa-panel-bg) !important;
-  color: var(--sa-panel-text) !important;
+  background: var(--sa-panel-bg);
+  color: var(--sa-panel-text);
 }
 
 .sa-item-card {
-  background: var(--sa-item-card) !important;
-  color: var(--sa-item-text) !important;
+  background: var(--sa-item-card);
+  color: var(--sa-item-text);
 }
 
 /* =========================================================
-   输入框 / 选择框 / 文字区 / 按钮
+   Form Controls
 ========================================================= */
 
 .smartacctg-page input,
@@ -547,21 +466,19 @@ body {
 .smartacctg-accounting-page input,
 .smartacctg-accounting-page select,
 .smartacctg-accounting-page textarea {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  min-height: var(--sa-control-h) !important;
-  height: auto !important;
-  padding-left: var(--sa-control-x) !important;
-  padding-right: var(--sa-control-x) !important;
-  border-radius: var(--sa-radius-control) !important;
-  border: var(--sa-border-w) solid var(--sa-border) !important;
-  background: var(--sa-input-bg) !important;
-  color: var(--sa-input-text) !important;
-  outline: none !important;
-  font-size: 16px !important;
-  font-weight: 400 !important;
-  box-sizing: border-box !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: var(--sa-control-h);
+  padding-left: var(--sa-control-x);
+  padding-right: var(--sa-control-x);
+  border-radius: var(--sa-radius-control);
+  border: var(--sa-border-w) solid var(--sa-border);
+  background: var(--sa-input-bg);
+  color: var(--sa-input-text);
+  outline: none;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .smartacctg-page textarea,
@@ -571,10 +488,10 @@ body {
 .smartacctg-records-page textarea,
 .smartacctg-customers-page textarea,
 .smartacctg-accounting-page textarea {
-  min-height: 110px !important;
-  padding-top: 12px !important;
-  padding-bottom: 12px !important;
-  resize: vertical !important;
+  min-height: 110px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  resize: vertical;
 }
 
 .smartacctg-page button,
@@ -584,16 +501,15 @@ body {
 .smartacctg-records-page button,
 .smartacctg-customers-page button,
 .smartacctg-accounting-page button {
-  font-size: 16px !important;
-  font-family: var(--sa-font-family) !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  cursor: pointer !important;
-  -webkit-tap-highlight-color: transparent !important;
+  font-family: var(--sa-font-family);
+  max-width: 100%;
+  min-width: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* =========================================================
-   日期 / 时间输入框：自动适配 iOS / Android / Desktop
+   Date / Time Inputs
 ========================================================= */
 
 .smartacctg-page input[type="date"],
@@ -624,31 +540,18 @@ body {
 .smartacctg-accounting-page input[type="month"],
 .smartacctg-accounting-page input[type="time"],
 .smartacctg-accounting-page input[type="datetime-local"] {
-  width: 100% !important;
-  min-width: 0 !important;
-  height: var(--sa-control-h) !important;
-  min-height: var(--sa-control-h) !important;
-  max-height: var(--sa-control-h) !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  padding-left: var(--sa-control-x) !important;
-  padding-right: var(--sa-control-x) !important;
-  line-height: normal !important;
-  text-align: center !important;
-  text-align-last: center !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: var(--sa-radius-control) !important;
-  border: var(--sa-border-w) solid var(--sa-border) !important;
-  background: var(--sa-input-bg) !important;
-  color: var(--sa-input-text) !important;
-  font-size: 16px !important;
-  font-weight: 400 !important;
-  box-sizing: border-box !important;
-  outline: none !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
+  display: block;
+  width: 100%;
+  height: var(--sa-control-h);
+  min-height: var(--sa-control-h);
+  max-height: var(--sa-control-h);
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: var(--sa-control-h);
+  text-align: center;
+  text-align-last: center;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .smartacctg-page input[type="date"]::-webkit-date-and-time-value,
@@ -679,16 +582,10 @@ body {
 .smartacctg-accounting-page input[type="month"]::-webkit-date-and-time-value,
 .smartacctg-accounting-page input[type="time"]::-webkit-date-and-time-value,
 .smartacctg-accounting-page input[type="datetime-local"]::-webkit-date-and-time-value {
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
-  margin: 0 auto !important;
-  padding: 0 !important;
-  line-height: normal !important;
+  text-align: center;
+  width: 100%;
+  margin: 0 auto;
+  line-height: normal;
 }
 
 .smartacctg-page input[type="date"]::-webkit-datetime-edit,
@@ -719,15 +616,8 @@ body {
 .smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit,
 .smartacctg-accounting-page input[type="time"]::-webkit-datetime-edit,
 .smartacctg-accounting-page input[type="datetime-local"]::-webkit-datetime-edit {
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
-  padding: 0 !important;
-  line-height: normal !important;
+  width: 100%;
+  text-align: center;
 }
 
 .smartacctg-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
@@ -758,107 +648,75 @@ body {
 .smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
 .smartacctg-accounting-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
 .smartacctg-accounting-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0 !important;
-  margin: 0 auto !important;
-  line-height: normal !important;
-  text-align: center !important;
-}
-
-.smartacctg-page input[type="date"]::-webkit-calendar-picker-indicator,
-.smartacctg-page input[type="month"]::-webkit-calendar-picker-indicator,
-.smartacctg-page input[type="time"]::-webkit-calendar-picker-indicator,
-.smartacctg-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-.smartacctg-dashboard-page input[type="date"]::-webkit-calendar-picker-indicator,
-.smartacctg-dashboard-page input[type="month"]::-webkit-calendar-picker-indicator,
-.smartacctg-dashboard-page input[type="time"]::-webkit-calendar-picker-indicator,
-.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-.smartacctg-products-page input[type="date"]::-webkit-calendar-picker-indicator,
-.smartacctg-products-page input[type="month"]::-webkit-calendar-picker-indicator,
-.smartacctg-products-page input[type="time"]::-webkit-calendar-picker-indicator,
-.smartacctg-products-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-.smartacctg-invoice-page input[type="date"]::-webkit-calendar-picker-indicator,
-.smartacctg-invoice-page input[type="month"]::-webkit-calendar-picker-indicator,
-.smartacctg-invoice-page input[type="time"]::-webkit-calendar-picker-indicator,
-.smartacctg-invoice-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-.smartacctg-records-page input[type="date"]::-webkit-calendar-picker-indicator,
-.smartacctg-records-page input[type="month"]::-webkit-calendar-picker-indicator,
-.smartacctg-records-page input[type="time"]::-webkit-calendar-picker-indicator,
-.smartacctg-records-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-.smartacctg-customers-page input[type="date"]::-webkit-calendar-picker-indicator,
-.smartacctg-customers-page input[type="month"]::-webkit-calendar-picker-indicator,
-.smartacctg-customers-page input[type="time"]::-webkit-calendar-picker-indicator,
-.smartacctg-customers-page input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-.smartacctg-accounting-page input[type="date"]::-webkit-calendar-picker-indicator,
-.smartacctg-accounting-page input[type="month"]::-webkit-calendar-picker-indicator,
-.smartacctg-accounting-page input[type="time"]::-webkit-calendar-picker-indicator,
-.smartacctg-accounting-page input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-  margin-left: 6px !important;
-  padding: 0 !important;
-  cursor: pointer !important;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
 }
 
 /* =========================================================
-   Topbar / Language Row
+   Topbar / Language
 ========================================================= */
 
 .sa-topbar,
 .sa-user-toolbar {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  align-items: center !important;
-  gap: 12px !important;
-  width: 100% !important;
-  margin-bottom: 14px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin-bottom: 14px;
 }
 
+.sa-topbar::-webkit-scrollbar,
+.sa-user-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.sa-topbar-left,
+.sa-topbar-right,
+.sa-user-toolbar-left,
+.sa-user-toolbar-right,
 .sa-lang-row {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 8px !important;
-  flex-wrap: nowrap !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.sa-topbar-left,
+.sa-topbar-right,
+.sa-user-toolbar-left,
+.sa-user-toolbar-right {
+  min-width: max-content;
+}
+
+.sa-back-btn {
+  border-radius: 999px;
+  border: var(--sa-border-w) solid var(--sa-border);
+  background: var(--sa-input-bg);
+  color: var(--sa-accent);
+  min-height: 44px;
+  height: 44px;
+  padding: 0 14px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .sa-lang-btn {
-  min-width: 48px !important;
-  min-height: 48px !important;
-  border-radius: 999px !important;
-  border: var(--sa-border-w) solid var(--sa-accent) !important;
-  padding: 0 12px !important;
-  font-weight: 600 !important;
-}
-
-/* =========================================================
-   返回 / 关闭按钮
-========================================================= */
-
-.sa-back-btn {
-  border-radius: 999px !important;
-  border: var(--sa-border-w) solid var(--sa-border) !important;
-  background: var(--sa-input-bg) !important;
-  color: var(--sa-accent) !important;
-  min-height: var(--sa-control-h) !important;
-  padding: 0 var(--sa-control-x) !important;
-  font-weight: 600 !important;
-  white-space: nowrap !important;
-}
-
-.sa-close-x {
-  border: none !important;
-  background: transparent !important;
-  color: var(--sa-red) !important;
-  font-size: var(--sa-fs-base) !important;
-  font-weight: 700 !important;
-  padding: 0 4px !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  box-shadow: none !important;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: 999px;
+  border: var(--sa-border-w) solid var(--sa-accent);
+  padding: 0 10px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 /* =========================================================
@@ -866,39 +724,39 @@ body {
 ========================================================= */
 
 .smartacctg-dashboard-page .dashboard-summary-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 12px !important;
-  width: 100% !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
 }
 
 .smartacctg-dashboard-page .dashboard-stat-card {
-  min-width: 0 !important;
-  height: auto !important;
+  min-width: 0;
+  height: auto;
 }
 
 .smartacctg-dashboard-page .dashboard-feature-grid,
 .smartacctg-dashboard-page .feature-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 12px !important;
-  width: 100% !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
 }
 
 .smartacctg-dashboard-page .quick-grid,
 .smartacctg-dashboard-page .dashboard-quick-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-  width: 100% !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
 }
 
 .smartacctg-dashboard-page .summary-row,
 .smartacctg-dashboard-page .dashboard-summary-row {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  gap: 10px !important;
-  align-items: center !important;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
 }
 
 /* =========================================================
@@ -907,78 +765,73 @@ body {
 
 .smartacctg-records-page .records-summary-box,
 .smartacctg-accounting-page .records-summary-box {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 12px !important;
-  width: 100% !important;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  width: 100%;
 }
 
 .smartacctg-records-page .records-month-row,
 .smartacctg-accounting-page .records-month-row {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 10px !important;
-  align-items: center !important;
-  width: 100% !important;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  width: 100%;
 }
 
 .smartacctg-records-page .records-month-select-grid,
 .smartacctg-accounting-page .records-month-select-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-  width: 100% !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
 }
 
 .smartacctg-records-page .records-summary-line,
 .smartacctg-accounting-page .records-summary-line {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  gap: 10px !important;
-  align-items: center !important;
-  width: 100% !important;
-  line-height: 1.25 !important;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  line-height: 1.25;
 }
 
 .smartacctg-records-page .records-summary-line strong,
 .smartacctg-accounting-page .records-summary-line strong {
-  white-space: nowrap !important;
-}
-
-.smartacctg-records-page .records-debt-detail,
-.smartacctg-accounting-page .records-debt-detail {
-  margin-top: 2px !important;
-  padding-top: 4px !important;
-  display: grid !important;
-  gap: 4px !important;
-  line-height: 1.35 !important;
-  color: var(--sa-red) !important;
+  white-space: nowrap;
 }
 
 .smartacctg-records-page .records-list,
-.smartacctg-accounting-page .records-list {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 18px !important;
-  width: 100% !important;
+.smartacctg-accounting-page .records-list,
+.smartacctg-customers-page .customers-list,
+.smartacctg-products-page .products-list,
+.smartacctg-products-page .product-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  width: 100%;
 }
 
 .smartacctg-records-page .record-card,
-.smartacctg-accounting-page .record-card {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 14px !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  height: auto !important;
-  min-height: auto !important;
-  text-align: left !important;
-  overflow-wrap: anywhere !important;
+.smartacctg-accounting-page .record-card,
+.smartacctg-customers-page .customer-card,
+.smartacctg-products-page .product-card {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: auto;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .smartacctg-records-page .record-card *,
-.smartacctg-accounting-page .record-card * {
-  text-align: left !important;
+.smartacctg-accounting-page .record-card *,
+.smartacctg-customers-page .customer-card * {
+  text-align: left;
 }
 
 .smartacctg-records-page .record-card.debt-record,
@@ -991,263 +844,167 @@ body {
 }
 
 .smartacctg-records-page .records-action-row,
-.smartacctg-accounting-page .records-action-row {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 10px !important;
-  flex-wrap: wrap !important;
-  width: 100% !important;
-  margin-top: 6px !important;
+.smartacctg-accounting-page .records-action-row,
+.smartacctg-customers-page .customers-action-row,
+.smartacctg-products-page .product-action-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 6px;
 }
 
 .smartacctg-records-page .records-action-row button,
 .smartacctg-accounting-page .records-action-row button {
-  width: auto !important;
-  min-width: 110px !important;
-  flex: 0 1 auto !important;
-  white-space: nowrap !important;
+  width: auto;
+  min-width: 105px;
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+
+.smartacctg-customers-page .customers-action-row button {
+  flex: 0 1 calc(33.333% - 8px);
+  min-width: 108px;
+  max-width: 190px;
+  width: auto;
+  text-align: center;
 }
 
 .smartacctg-records-page .category-add-row,
 .smartacctg-accounting-page .category-add-row {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  gap: 10px !important;
-  align-items: center !important;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
 }
 
 /* =========================================================
-   Customers
+   Invoice
 ========================================================= */
-
-.smartacctg-customers-page .customers-list {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 18px !important;
-  width: 100% !important;
-}
-
-.smartacctg-customers-page .customer-card {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 14px !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  height: auto !important;
-  min-height: auto !important;
-  text-align: left !important;
-  overflow-wrap: anywhere !important;
-  border-width: var(--sa-border-w) !important;
-  border-style: solid !important;
-  border-radius: var(--sa-radius-card) !important;
-  padding: var(--sa-card-pad) !important;
-}
-
-.smartacctg-customers-page .customer-card * {
-  text-align: left !important;
-}
-
-.smartacctg-customers-page .customer-status-badge {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 4px 12px !important;
-  border-radius: 999px !important;
-  font-size: var(--sa-fs-sm) !important;
-  font-weight: 600 !important;
-  line-height: 1.15 !important;
-  white-space: nowrap !important;
-  vertical-align: middle !important;
-  margin-left: 6px !important;
-}
-
-.smartacctg-customers-page .customers-action-row {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 10px !important;
-  flex-wrap: wrap !important;
-  width: 100% !important;
-  margin-top: 8px !important;
-}
-
-.smartacctg-customers-page .customers-action-row button {
-  flex: 0 1 calc(33.333% - 8px) !important;
-  min-width: 108px !important;
-  max-width: 190px !important;
-  width: auto !important;
-  white-space: normal !important;
-  text-align: center !important;
-}
-
-/* =========================================================
-   Products
-========================================================= */
-
-.smartacctg-products-page .products-list,
-.smartacctg-products-page .product-list {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 18px !important;
-  width: 100% !important;
-}
-
-.smartacctg-products-page .product-card {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  gap: 14px !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  overflow-wrap: anywhere !important;
-  border-width: var(--sa-border-w) !important;
-  border-style: solid !important;
-  border-radius: var(--sa-radius-card) !important;
-  padding: var(--sa-card-pad) !important;
-}
-
-.smartacctg-products-page .product-action-row {
-  display: flex !important;
-  gap: 10px !important;
-  flex-wrap: wrap !important;
-  justify-content: flex-start !important;
-}
-
-/* =========================================================
-   Invoice Page
-========================================================= */
-
-.smartacctg-invoice-page {
-  --sa-btn-fs: 16px;
-}
-
-.smartacctg-invoice-page .invoice-date-field {
-  width: 100% !important;
-  min-width: 0 !important;
-}
 
 .smartacctg-invoice-page .same-size-action-row,
 .smartacctg-invoice-page .payment-action-row,
 .smartacctg-invoice-page .two-payment-button-row {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-  width: 100% !important;
-  align-items: stretch !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  align-items: stretch;
 }
 
 .smartacctg-invoice-page .same-size-action-row button,
 .smartacctg-invoice-page .payment-action-row button,
 .smartacctg-invoice-page .two-payment-button-row button {
-  width: 100% !important;
-  min-width: 0 !important;
-  min-height: var(--sa-control-h) !important;
-  height: var(--sa-control-h) !important;
-  margin: 0 !important;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--sa-control-h);
+  height: var(--sa-control-h);
+  margin: 0;
 }
 
-/* 公司资料：防止其他手机一字一行 */
 .smartacctg-invoice-page .company-info-box {
-  display: grid !important;
-  grid-template-columns: auto minmax(0, 1fr) auto !important;
-  align-items: center !important;
-  gap: 14px !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .smartacctg-invoice-page .company-info-text,
 .smartacctg-invoice-page .company-info-box > div {
-  min-width: 0 !important;
-  width: 100% !important;
-  overflow-wrap: anywhere !important;
-  word-break: break-word !important;
-  white-space: normal !important;
-  line-height: 1.45 !important;
+  min-width: 0;
+  width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.45;
 }
 
-.smartacctg-invoice-page .company-info-text *,
-.smartacctg-invoice-page .company-info-box > div * {
-  overflow-wrap: anywhere !important;
-  word-break: break-word !important;
-  white-space: normal !important;
-}
-
-/* 发票记录按钮 */
 .smartacctg-invoice-page .invoice-record-action-row {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-  width: 100% !important;
-  margin-top: 14px !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
 }
 
 .smartacctg-invoice-page .invoice-record-action-row button {
-  width: 100% !important;
-  min-width: 0 !important;
-  min-height: 52px !important;
-  border-radius: var(--sa-radius-control) !important;
-  padding: 0 12px !important;
-  font-weight: 600 !important;
-  white-space: nowrap !important;
-  line-height: 1.15 !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  border-radius: var(--sa-radius-control);
+  padding: 0 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-/* 正式发票预览下方按钮：列印 / 下载 PDF / 分享 同一行 */
 .smartacctg-invoice-page .invoice-preview-action-row,
 .smartacctg-invoice-page .invoice-final-action-row {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-  width: 100% !important;
-  margin-top: 12px !important;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
 }
 
 .smartacctg-invoice-page .invoice-preview-action-row button,
 .smartacctg-invoice-page .invoice-final-action-row button {
-  width: 100% !important;
-  min-width: 0 !important;
-  min-height: 50px !important;
-  padding: 0 8px !important;
-  white-space: nowrap !important;
-  font-weight: 600 !important;
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  padding: 0 8px;
+  white-space: nowrap;
+  font-weight: 700;
 }
 
-/* 发票签名 */
 .smartacctg-invoice-page .signature-canvas {
-  width: 100% !important;
-  height: 220px !important;
-  background: #fff !important;
-  border: 3px solid var(--sa-border) !important;
-  border-radius: 18px !important;
-  touch-action: none !important;
+  width: 100%;
+  height: 220px;
+  background: #fff;
+  border: 3px solid var(--sa-border);
+  border-radius: 18px;
+  touch-action: none;
 }
 
-.smartacctg-invoice-page .negative-amount {
-  color: var(--sa-red) !important;
-}
-
-/* 发票预览防止手机撑爆 */
 .smartacctg-invoice-page #printInvoiceArea {
-  max-width: 100% !important;
+  max-width: 100%;
 }
 
 .smartacctg-invoice-page .screen-preview-wrap,
 .smartacctg-invoice-page .invoice-screen-preview,
 .smartacctg-invoice-page .official-preview-wrap {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* =========================================================
-   全屏弹窗：控制台快速新增打开后铺满手机
+   Fullscreen Modals
 ========================================================= */
 
+.sa-fullscreen-overlay,
+.customers-fullscreen-overlay,
+.products-fullscreen-overlay,
+.records-fullscreen-overlay,
+.invoice-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  width: 100vw;
+  height: 100dvh;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.sa-fullscreen-modal,
 .fullscreen-invoice-modal,
 .customers-fullscreen-modal,
 .products-fullscreen-modal,
@@ -1257,83 +1014,147 @@ body {
 .smartacctg-products-page .products-fullscreen-modal,
 .smartacctg-records-page .records-fullscreen-modal,
 .smartacctg-accounting-page .records-fullscreen-modal {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 9999 !important;
-  width: 100vw !important;
-  max-width: 100vw !important;
-  height: 100dvh !important;
-  min-height: 100dvh !important;
-  max-height: 100dvh !important;
-  margin: 0 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch !important;
-  border-radius: 0 !important;
-  border-left: none !important;
-  border-right: none !important;
-  border-top: none !important;
-  border-bottom: none !important;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
   padding: max(16px, env(safe-area-inset-top)) 16px
-    max(24px, env(safe-area-inset-bottom)) !important;
-  box-sizing: border-box !important;
+    max(24px, env(safe-area-inset-bottom));
 }
 
+.sa-modal-header,
+.sa-modal-top,
+.sa-titlebar,
+.records-modal-header,
 .fullscreen-invoice-modal .sa-titlebar,
 .customers-fullscreen-modal .sa-modal-header,
 .products-fullscreen-modal .sa-modal-header,
-.records-fullscreen-modal .sa-modal-header,
-.smartacctg-invoice-page .fullscreen-invoice-modal .sa-titlebar {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 20 !important;
-  background: inherit !important;
-  padding-bottom: 12px !important;
-  margin-bottom: 12px !important;
+.records-fullscreen-modal .sa-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  background: inherit;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
 }
 
-/* 全屏弹窗背景 */
-.customers-fullscreen-overlay,
-.products-fullscreen-overlay,
-.records-fullscreen-overlay,
-.invoice-fullscreen-overlay {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 9998 !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-  background: rgba(15, 23, 42, 0.58) !important;
+.sa-close-x {
+  border: none;
+  background: transparent;
+  color: var(--sa-red);
+  font-size: clamp(18px, 4vw, 24px);
+  font-weight: 900;
+  padding: 8px;
+  min-width: auto;
+  min-height: auto;
+  box-shadow: none;
 }
 
 /* =========================================================
-   通用 Grid
+   Delete Modal
+========================================================= */
+
+.sa-delete-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  width: 100vw;
+  height: 100dvh;
+  background: rgba(15, 23, 42, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.sa-delete-modal {
+  width: 100%;
+  max-width: 520px;
+  border-radius: var(--sa-radius-card);
+  border: var(--sa-border-w) solid var(--sa-border);
+  background: var(--sa-card-bg);
+  color: var(--sa-text);
+  box-shadow: var(--sa-glow);
+  padding: var(--sa-card-pad);
+}
+
+.sa-delete-detail {
+  margin: 12px 0 18px;
+  padding: 14px;
+  border-radius: var(--sa-radius-control);
+  background: var(--sa-soft-bg);
+  color: var(--sa-text);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.sa-delete-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sa-delete-confirm-btn,
+.sa-delete-cancel-btn {
+  min-height: var(--sa-control-h);
+  border-radius: var(--sa-radius-control);
+  border: none;
+  font-weight: 900;
+}
+
+.sa-delete-confirm-btn {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.sa-delete-cancel-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+/* =========================================================
+   Utility Grids
 ========================================================= */
 
 .sa-grid-2,
 .sa-two-col,
 .date-two-col-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-  width: 100% !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
 }
 
 .sa-grid-auto {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
-  gap: 12px !important;
-  width: 100% !important;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  width: 100%;
 }
 
 .sa-action-row {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 10px !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 /* =========================================================
@@ -1374,402 +1195,114 @@ body {
 }
 
 /* =========================================================
-   Mobile Responsive
+   Mobile
 ========================================================= */
 
 @media (max-width: 768px) {
   .smartacctg-dashboard-page .dashboard-summary-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 
   .smartacctg-dashboard-page .dashboard-feature-grid,
   .smartacctg-dashboard-page .feature-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .smartacctg-invoice-page .company-info-box {
-    grid-template-columns: auto minmax(0, 1fr) !important;
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .smartacctg-invoice-page .company-info-box button {
-    grid-column: 1 / -1 !important;
-    width: 100% !important;
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .smartacctg-invoice-page .invoice-preview-action-row,
   .smartacctg-invoice-page .invoice-final-action-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 8px !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .smartacctg-invoice-page .invoice-preview-action-row button,
   .smartacctg-invoice-page .invoice-final-action-row button {
-    font-size: 14px !important;
-    padding: 0 6px !important;
+    font-size: 14px;
+    padding: 0 6px;
   }
 
   .smartacctg-invoice-page .invoice-record-action-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
-  .smartacctg-customers-page .customers-search-row {
-    grid-template-columns: 1fr !important;
-  }
-
-  .smartacctg-customers-page .customers-search-row select {
-    width: 100% !important;
-  }
-
-  .smartacctg-products-page .product-action-row {
-    flex-direction: row !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sa-grid-auto {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 520px) {
-  .sa-topbar,
-  .sa-user-toolbar {
-    grid-template-columns: 1fr !important;
-  }
-
-  .sa-lang-row {
-    justify-content: flex-start !important;
-  }
-
   .smartacctg-records-page .records-month-select-grid,
   .smartacctg-accounting-page .records-month-select-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-  }
-
-  .smartacctg-records-page .records-list,
-  .smartacctg-accounting-page .records-list,
-  .smartacctg-customers-page .customers-list,
-  .smartacctg-products-page .products-list {
-    gap: 16px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .smartacctg-records-page .records-action-row,
   .smartacctg-accounting-page .records-action-row,
   .smartacctg-customers-page .customers-action-row {
-    gap: 8px !important;
-    justify-content: flex-start !important;
+    gap: 8px;
   }
 
   .smartacctg-records-page .records-action-row button,
   .smartacctg-accounting-page .records-action-row button {
-    min-width: 105px !important;
-    flex: 0 1 auto !important;
+    min-width: 105px;
   }
 
   .smartacctg-customers-page .customers-action-row button {
-    flex: 0 1 calc(33.333% - 6px) !important;
-    min-width: 96px !important;
-    max-width: none !important;
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    font-size: 15px !important;
+    flex: 0 1 calc(33.333% - 6px);
+    min-width: 96px;
+    max-width: none;
+    padding-left: 8px;
+    padding-right: 8px;
+    font-size: 15px;
   }
 
   .smartacctg-records-page .category-add-row,
   .smartacctg-accounting-page .category-add-row {
-    grid-template-columns: 1fr !important;
-  }
-
-  .smartacctg-invoice-page .same-size-action-row,
-  .smartacctg-invoice-page .payment-action-row,
-  .smartacctg-invoice-page .two-payment-button-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 390px) {
-  .smartacctg-invoice-page .invoice-preview-action-row,
-  .smartacctg-invoice-page .invoice-final-action-row {
-    grid-template-columns: 1fr !important;
+  .sa-lang-btn {
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 8px;
+    font-size: 14px;
   }
 
+  .sa-back-btn {
+    height: 40px;
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .sa-delete-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .smartacctg-invoice-page .invoice-preview-action-row,
+  .smartacctg-invoice-page .invoice-final-action-row,
   .smartacctg-invoice-page .same-size-action-row,
   .smartacctg-invoice-page .payment-action-row,
   .smartacctg-invoice-page .two-payment-button-row {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 
   .smartacctg-dashboard-page .dashboard-feature-grid,
   .smartacctg-dashboard-page .feature-grid,
   .smartacctg-dashboard-page .quick-grid,
   .smartacctg-dashboard-page .dashboard-quick-grid {
-    grid-template-columns: 1fr !important;
-  }
-}
-/* =========================================================
-   SmartAcctg Page Common Fix
-   用于 records / invoices / customers / products
-   放在 app/globals.css 最下面
-========================================================= */
-
-/* 页面文字：标题粗体，普通内容不要全部粗体 */
-.smartacctg-page,
-.smartacctg-page p,
-.smartacctg-page div,
-.smartacctg-page span,
-.smartacctg-page label,
-.smartacctg-page input,
-.smartacctg-page select,
-.smartacctg-page textarea {
-  font-weight: 400 !important;
-}
-
-.smartacctg-page h1,
-.smartacctg-page h2,
-.smartacctg-page h3,
-.smartacctg-page strong,
-.smartacctg-page button {
-  font-weight: 900 !important;
-}
-
-/* 返回控制台 + 语言按钮同一行 */
-.smartacctg-page .sa-topbar,
-.smartacctg-page .sa-user-toolbar {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 10px !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: auto !important;
-  overflow-y: visible !important;
-  -webkit-overflow-scrolling: touch !important;
-  scrollbar-width: none !important;
-  margin-bottom: 14px !important;
-}
-
-.smartacctg-page .sa-topbar::-webkit-scrollbar,
-.smartacctg-page .sa-user-toolbar::-webkit-scrollbar {
-  display: none !important;
-}
-
-.smartacctg-page .sa-topbar-left,
-.smartacctg-page .sa-topbar-right,
-.smartacctg-page .sa-user-toolbar-left,
-.smartacctg-page .sa-user-toolbar-right {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  flex-wrap: nowrap !important;
-  min-width: max-content !important;
-}
-
-.smartacctg-page .sa-back-btn {
-  border-radius: 999px !important;
-  min-height: 44px !important;
-  height: 44px !important;
-  padding: 0 14px !important;
-  white-space: nowrap !important;
-}
-
-.smartacctg-page .sa-lang-row {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  flex-wrap: nowrap !important;
-}
-
-.smartacctg-page .sa-lang-btn {
-  min-width: 44px !important;
-  height: 44px !important;
-  min-height: 44px !important;
-  border-radius: 999px !important;
-  padding: 0 10px !important;
-  white-space: nowrap !important;
-}
-
-/* iOS / Android 日期框上下左右居中 */
-.smartacctg-page input[type="date"],
-.smartacctg-page input[type="month"],
-.smartacctg-page input[type="time"],
-.smartacctg-page input[type="datetime-local"] {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  width: 100% !important;
-  min-width: 0 !important;
-  height: var(--sa-control-h, 54px) !important;
-  min-height: var(--sa-control-h, 54px) !important;
-
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  line-height: normal !important;
-
-  text-align: center !important;
-  text-align-last: center !important;
-
-  -webkit-appearance: none !important;
-  appearance: none !important;
-}
-
-/* iPhone Safari 日期文字内部居中 */
-.smartacctg-page input[type="date"]::-webkit-date-and-time-value,
-.smartacctg-page input[type="month"]::-webkit-date-and-time-value,
-.smartacctg-page input[type="time"]::-webkit-date-and-time-value,
-.smartacctg-page input[type="datetime-local"]::-webkit-date-and-time-value {
-  text-align: center !important;
-  width: 100% !important;
-  min-height: 1.4em !important;
-  line-height: normal !important;
-  margin: 0 auto !important;
-}
-
-/* iPhone Safari 日期字段 wrapper 居中 */
-.smartacctg-page input[type="date"]::-webkit-datetime-edit,
-.smartacctg-page input[type="month"]::-webkit-datetime-edit,
-.smartacctg-page input[type="time"]::-webkit-datetime-edit,
-.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit {
-  width: 100% !important;
-  text-align: center !important;
-}
-
-.smartacctg-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-.smartacctg-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
-.smartacctg-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
-.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
-  width: 100% !important;
-  display: flex !important;
-  justify-content: center !important;
-}
-
-/* 全屏新增弹窗：records / invoices / customers / products 可共用 */
-.smartacctg-page .sa-fullscreen-overlay {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 9999 !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  background: rgba(15, 23, 42, 0.58) !important;
-  overflow: hidden !important;
-}
-
-.smartacctg-page .sa-fullscreen-modal {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  max-width: 100vw !important;
-  height: 100dvh !important;
-  max-height: 100dvh !important;
-  min-height: 100dvh !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
-}
-
-.smartacctg-page .sa-modal-header,
-.smartacctg-page .sa-titlebar {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 20 !important;
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  align-items: center !important;
-  gap: 12px !important;
-  background: inherit !important;
-  padding-bottom: 12px !important;
-  margin-bottom: 12px !important;
-}
-
-.smartacctg-page .sa-close-x {
-  border: none !important;
-  background: transparent !important;
-  color: #dc2626 !important;
-  font-size: clamp(18px, 4vw, 24px) !important;
-  font-weight: 900 !important;
-  padding: 8px !important;
-  min-width: auto !important;
-  min-height: auto !important;
-}
-
-/* 自定义删除弹窗，不用 window.confirm */
-.smartacctg-page .sa-delete-overlay {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 10000 !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  background: rgba(15, 23, 42, 0.62) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 18px !important;
-}
-
-.smartacctg-page .sa-delete-modal {
-  width: 100% !important;
-  max-width: 520px !important;
-  border-radius: var(--sa-radius-card, 28px) !important;
-  border: var(--sa-border-w, 2px) solid var(--sa-border, #14b8a6) !important;
-  background: var(--sa-card-bg, #ffffff) !important;
-  color: var(--sa-text, #111827) !important;
-  box-shadow: var(--sa-glow, 0 18px 42px rgba(15, 118, 110, 0.25)) !important;
-  padding: var(--sa-card-pad, 22px) !important;
-}
-
-.smartacctg-page .sa-delete-detail {
-  margin: 12px 0 18px !important;
-  padding: 14px !important;
-  border-radius: var(--sa-radius-control, 16px) !important;
-  background: var(--sa-soft-bg, #ccfbf1) !important;
-  color: var(--sa-text, #111827) !important;
-  line-height: 1.55 !important;
-  overflow-wrap: anywhere !important;
-}
-
-.smartacctg-page .sa-delete-actions {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-}
-
-.smartacctg-page .sa-delete-confirm-btn,
-.smartacctg-page .sa-delete-cancel-btn {
-  min-height: var(--sa-control-h, 54px) !important;
-  border-radius: var(--sa-radius-control, 16px) !important;
-  border: none !important;
-  font-weight: 900 !important;
-}
-
-.smartacctg-page .sa-delete-confirm-btn {
-  background: #dc2626 !important;
-  color: #ffffff !important;
-}
-
-.smartacctg-page .sa-delete-cancel-btn {
-  background: #e5e7eb !important;
-  color: #111827 !important;
-}
-
-/* 手机窄屏 */
-@media (max-width: 390px) {
-  .smartacctg-page .sa-lang-btn {
-    min-width: 40px !important;
-    height: 40px !important;
-    min-height: 40px !important;
-    padding: 0 8px !important;
-    font-size: 14px !important;
-  }
-
-  .smartacctg-page .sa-back-btn {
-    height: 40px !important;
-    min-height: 40px !important;
-    padding: 0 12px !important;
-    font-size: 14px !important;
-  }
-
-  .smartacctg-page .sa-delete-actions {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 }
