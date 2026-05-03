@@ -716,6 +716,57 @@ function normalizeApp(row: any): AppRegistry {
   };
 }
 
+function mergeAppsWithDefaults(remoteRows: any[] = []) {
+  const map = new Map<string, AppRegistry>();
+  const defaultKeySet = new Set(DEFAULT_APPS.map((app) => app.app_key));
+
+  DEFAULT_APPS.forEach((app) => {
+    map.set(app.app_key, {
+      ...app,
+      enabled: true,
+      is_active: true,
+    });
+  });
+
+  remoteRows
+    .map(normalizeApp)
+    .filter((app) => app.app_key)
+    .filter((app) => app.app_key !== "app_center")
+    .forEach((remoteApp) => {
+      const oldApp = map.get(remoteApp.app_key);
+      const isDefaultApp = defaultKeySet.has(remoteApp.app_key);
+
+      map.set(remoteApp.app_key, {
+        ...(oldApp || {}),
+        ...remoteApp,
+        app_key: remoteApp.app_key,
+        title_zh: remoteApp.title_zh || oldApp?.title_zh || remoteApp.app_key,
+        title_en:
+          remoteApp.title_en ||
+          oldApp?.title_en ||
+          remoteApp.title_zh ||
+          oldApp?.title_zh ||
+          remoteApp.app_key,
+        title_ms:
+          remoteApp.title_ms ||
+          oldApp?.title_ms ||
+          remoteApp.title_zh ||
+          oldApp?.title_zh ||
+          remoteApp.app_key,
+        icon: remoteApp.icon || oldApp?.icon || "📱",
+        app_path: remoteApp.app_path || oldApp?.app_path || "",
+        sort_order: Number(remoteApp.sort_order || oldApp?.sort_order || 999),
+        enabled: isDefaultApp ? true : remoteApp.enabled !== false,
+        is_active: isDefaultApp ? true : remoteApp.is_active !== false,
+      });
+    });
+
+  return Array.from(map.values())
+    .filter((app) => app.app_key !== "app_center")
+    .filter((app) => app.enabled !== false && app.is_active !== false)
+    .sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
+}
+
 function getDashboardRowKey(row: UserDashboardApp) {
   return String(row.app_key || row.app_id || "").trim();
 }
@@ -881,9 +932,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           setCustomers(safeParseArray<Customer>(safeLocalGet(TRIAL_CUSTOMERS_KEY)));
           setInvoices(safeParseArray<Invoice>(safeLocalGet(TRIAL_INVOICES_KEY)));
 
-          const localKeys = safeParseArray<string>(safeLocalGet(DASHBOARD_APP_KEYS_LOCAL));
-          setDashboardAppKeys(localKeys.length > 0 ? localKeys : DEFAULT_DASHBOARD_APP_KEYS);
-
           await loadAppsForUser("trial", true);
 
           replaceUrlLangTheme(currentLang, currentTheme);
@@ -970,29 +1018,33 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function loadAppsForUser(userId: string, trialMode: boolean) {
-    let registry = DEFAULT_APPS;
+    let registry = mergeAppsWithDefaults([]);
 
     if (!trialMode) {
-      const { data: registryData, error } = await supabase
+      const { data: registryData } = await supabase
         .from("app_registry")
         .select("*")
         .order("sort_order", { ascending: true });
 
-      if (!error && registryData && registryData.length > 0) {
-        registry = registryData
-          .map(normalizeApp)
-          .filter((app) => app.app_key)
-          .filter((app) => app.app_key !== "app_center")
-          .filter((app) => app.enabled !== false && app.is_active !== false)
-          .sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
-      }
+      registry = mergeAppsWithDefaults(registryData || []);
     }
 
     setAllApps(registry);
 
+    const availableKeySet = new Set(registry.map((app) => app.app_key));
+
     if (trialMode) {
       const localKeys = safeParseArray<string>(safeLocalGet(DASHBOARD_APP_KEYS_LOCAL));
-      setDashboardAppKeys(localKeys.length > 0 ? localKeys : DEFAULT_DASHBOARD_APP_KEYS);
+
+      const fixedLocalKeys = Array.from(
+        new Set([
+          ...(localKeys.length > 0 ? localKeys : DEFAULT_DASHBOARD_APP_KEYS),
+          ...DEFAULT_DASHBOARD_APP_KEYS,
+        ])
+      ).filter((key) => key !== "app_center" && availableKeySet.has(key));
+
+      setDashboardAppKeys(fixedLocalKeys);
+      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(fixedLocalKeys));
       return;
     }
 
@@ -1005,7 +1057,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .order("created_at", { ascending: true });
 
     if (dashboardError) {
-      setDashboardAppKeys(DEFAULT_DASHBOARD_APP_KEYS);
+      const fallbackKeys = DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
+      setDashboardAppKeys(fallbackKeys);
       return;
     }
 
@@ -1014,19 +1067,25 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     if (rows.length === 0 && !safeLocalGet(initKey)) {
       await insertDefaultDashboardApps(userId);
       safeLocalSet(initKey, "1");
-      setDashboardAppKeys(DEFAULT_DASHBOARD_APP_KEYS);
+
+      const fallbackKeys = DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
+      setDashboardAppKeys(fallbackKeys);
       return;
     }
 
     safeLocalSet(initKey, "1");
 
-    const keys = rows
+    const dbKeys = rows
       .filter((row) => row.pinned !== false)
       .map(getDashboardRowKey)
       .filter(Boolean)
       .filter((key) => key !== "app_center");
 
-    setDashboardAppKeys(keys.length > 0 ? keys : DEFAULT_DASHBOARD_APP_KEYS);
+    const fixedKeys = Array.from(new Set([...dbKeys, ...DEFAULT_DASHBOARD_APP_KEYS])).filter(
+      (key) => availableKeySet.has(key)
+    );
+
+    setDashboardAppKeys(fixedKeys.length > 0 ? fixedKeys : DEFAULT_DASHBOARD_APP_KEYS);
   }
 
   async function insertDefaultDashboardApps(userId: string) {
@@ -1326,8 +1385,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         ? Array.from(new Set([...dashboardAppKeys, app.app_key]))
         : dashboardAppKeys.filter((key) => key !== app.app_key);
 
-      setDashboardAppKeys(next);
-      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(next));
+      const fixedNext = Array.from(new Set([...next, ...DEFAULT_DASHBOARD_APP_KEYS])).filter(
+        (key) => key !== "app_center"
+      );
+
+      setDashboardAppKeys(fixedNext);
+      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(fixedNext));
       setMsg(t.saved);
       return;
     }
@@ -1345,7 +1408,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           return;
         }
 
-        setDashboardAppKeys((prev) => Array.from(new Set([...prev, app.app_key])));
+        setDashboardAppKeys((prev) =>
+          Array.from(new Set([...prev, app.app_key, ...DEFAULT_DASHBOARD_APP_KEYS]))
+        );
       }
 
       setMsg(t.saved);
@@ -1359,7 +1424,11 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
-    setDashboardAppKeys((prev) => prev.filter((key) => key !== app.app_key));
+    setDashboardAppKeys((prev) => {
+      const next = prev.filter((key) => key !== app.app_key);
+      return Array.from(new Set([...next, ...DEFAULT_DASHBOARD_APP_KEYS]));
+    });
+
     setMsg(t.saved);
   }
 
