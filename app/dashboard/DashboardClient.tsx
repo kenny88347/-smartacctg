@@ -268,7 +268,8 @@ const TXT = {
     addToDashboard: "加到控制台",
     removeFromDashboard: "从控制台移除",
     appCenter: "App Center",
-    appCenterDesc: "这里可以管理控制台显示的 App。移除后只会从控制台隐藏，App Center 里面还会保留。",
+    appCenterDesc:
+      "这里可以管理控制台显示的 App。移除后只会从控制台隐藏，App Center 里面还会保留。",
     longPressRemove: "长按 App 图标可从控制台移除",
     removeAppTitle: "移除控制台 App",
     removeAppMessage: "确定要从控制台移除这个 App 吗？App Center 里还会保留。",
@@ -807,8 +808,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
+  const [appsLoaded, setAppsLoaded] = useState(false);
   const [allApps, setAllApps] = useState<AppRegistry[]>(DEFAULT_APPS);
-  const [dashboardAppKeys, setDashboardAppKeys] = useState<string[]>(DEFAULT_DASHBOARD_APP_KEYS);
+  const [dashboardAppKeys, setDashboardAppKeys] = useState<string[]>([]);
 
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -865,6 +867,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }, []);
 
   const dashboardApps = useMemo(() => {
+    if (!appsLoaded) return [];
+
     const activeApps = allApps.filter(
       (app) => app.is_active !== false && app.enabled !== false && app.app_key !== "app_center"
     );
@@ -873,7 +877,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .filter((key) => key !== "app_center")
       .map((key) => activeApps.find((app) => app.app_key === key))
       .filter(Boolean) as AppRegistry[];
-  }, [allApps, dashboardAppKeys]);
+  }, [appsLoaded, allApps, dashboardAppKeys]);
 
   const appCenterApps = useMemo(() => {
     return allApps.filter(
@@ -1018,6 +1022,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function loadAppsForUser(userId: string, trialMode: boolean) {
+    setAppsLoaded(false);
+
     let registry = mergeAppsWithDefaults([]);
 
     if (!trialMode) {
@@ -1036,15 +1042,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     if (trialMode) {
       const localKeys = safeParseArray<string>(safeLocalGet(DASHBOARD_APP_KEYS_LOCAL));
 
-      const fixedLocalKeys = Array.from(
-        new Set([
-          ...(localKeys.length > 0 ? localKeys : DEFAULT_DASHBOARD_APP_KEYS),
-          ...DEFAULT_DASHBOARD_APP_KEYS,
-        ])
-      ).filter((key) => key !== "app_center" && availableKeySet.has(key));
+      const sourceKeys = localKeys.length > 0 ? localKeys : DEFAULT_DASHBOARD_APP_KEYS;
+
+      const fixedLocalKeys = Array.from(new Set(sourceKeys)).filter(
+        (key) => key !== "app_center" && availableKeySet.has(key)
+      );
 
       setDashboardAppKeys(fixedLocalKeys);
       safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(fixedLocalKeys));
+      setAppsLoaded(true);
       return;
     }
 
@@ -1059,33 +1065,39 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     if (dashboardError) {
       const fallbackKeys = DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
       setDashboardAppKeys(fallbackKeys);
+      setAppsLoaded(true);
       return;
     }
 
     const rows = (dashboardData || []) as UserDashboardApp[];
 
-    if (rows.length === 0 && !safeLocalGet(initKey)) {
-      await insertDefaultDashboardApps(userId);
-      safeLocalSet(initKey, "1");
-
+    if (rows.length === 0) {
       const fallbackKeys = DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
+
+      if (!safeLocalGet(initKey)) {
+        await insertDefaultDashboardApps(userId);
+        safeLocalSet(initKey, "1");
+      }
+
       setDashboardAppKeys(fallbackKeys);
+      setAppsLoaded(true);
       return;
     }
 
     safeLocalSet(initKey, "1");
 
-    const dbKeys = rows
-      .filter((row) => row.pinned !== false)
-      .map(getDashboardRowKey)
-      .filter(Boolean)
-      .filter((key) => key !== "app_center");
+    const dbKeys = Array.from(
+      new Set(
+        rows
+          .filter((row) => row.pinned !== false)
+          .map(getDashboardRowKey)
+          .filter(Boolean)
+          .filter((key) => key !== "app_center")
+      )
+    ).filter((key) => availableKeySet.has(key));
 
-    const fixedKeys = Array.from(new Set([...dbKeys, ...DEFAULT_DASHBOARD_APP_KEYS])).filter(
-      (key) => availableKeySet.has(key)
-    );
-
-    setDashboardAppKeys(fixedKeys.length > 0 ? fixedKeys : DEFAULT_DASHBOARD_APP_KEYS);
+    setDashboardAppKeys(dbKeys);
+    setAppsLoaded(true);
   }
 
   async function insertDefaultDashboardApps(userId: string) {
@@ -1110,40 +1122,80 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     await supabase.from("user_dashboard_apps").insert(rowsWithAppId);
   }
 
-  async function insertDashboardApp(userId: string, appKey: string) {
-    const first = await supabase.from("user_dashboard_apps").insert({
+  async function updateDashboardAppPinned(userId: string, appKey: string, pinned: boolean) {
+    let updated = false;
+
+    const byAppKey = await supabase
+      .from("user_dashboard_apps")
+      .update({ pinned })
+      .eq("user_id", userId)
+      .eq("app_key", appKey)
+      .select("id");
+
+    if (!byAppKey.error && byAppKey.data && byAppKey.data.length > 0) {
+      updated = true;
+    }
+
+    if (byAppKey.error && !isSchemaColumnError(byAppKey.error.message)) {
+      return byAppKey;
+    }
+
+    const byAppId = await supabase
+      .from("user_dashboard_apps")
+      .update({ pinned })
+      .eq("user_id", userId)
+      .eq("app_id", appKey)
+      .select("id");
+
+    if (!byAppId.error && byAppId.data && byAppId.data.length > 0) {
+      updated = true;
+    }
+
+    if (byAppId.error && !isSchemaColumnError(byAppId.error.message) && !updated) {
+      return byAppId;
+    }
+
+    if (updated) {
+      return { error: null };
+    }
+
+    const insertWithAppKey = await supabase.from("user_dashboard_apps").insert({
       user_id: userId,
       app_key: appKey,
-      pinned: true,
+      pinned,
     });
 
-    if (!first.error) return first;
+    if (!insertWithAppKey.error) return insertWithAppKey;
 
-    if (!isSchemaColumnError(first.error.message)) return first;
+    const lower = String(insertWithAppKey.error.message || "").toLowerCase();
+    if (lower.includes("duplicate")) {
+      return { error: null };
+    }
 
-    return supabase.from("user_dashboard_apps").insert({
+    if (!isSchemaColumnError(insertWithAppKey.error.message)) return insertWithAppKey;
+
+    const insertWithAppId = await supabase.from("user_dashboard_apps").insert({
       user_id: userId,
       app_id: appKey,
-      pinned: true,
+      pinned,
     });
+
+    if (insertWithAppId.error) {
+      const lower2 = String(insertWithAppId.error.message || "").toLowerCase();
+      if (lower2.includes("duplicate")) {
+        return { error: null };
+      }
+    }
+
+    return insertWithAppId;
+  }
+
+  async function insertDashboardApp(userId: string, appKey: string) {
+    return updateDashboardAppPinned(userId, appKey, true);
   }
 
   async function deleteDashboardApp(userId: string, appKey: string) {
-    const first = await supabase
-      .from("user_dashboard_apps")
-      .delete()
-      .eq("user_id", userId)
-      .eq("app_key", appKey);
-
-    if (!first.error) return first;
-
-    if (!isSchemaColumnError(first.error.message)) return first;
-
-    return supabase
-      .from("user_dashboard_apps")
-      .delete()
-      .eq("user_id", userId)
-      .eq("app_id", appKey);
+    return updateDashboardAppPinned(userId, appKey, false);
   }
 
   function buildUrl(path: string, extra?: string) {
@@ -1385,9 +1437,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         ? Array.from(new Set([...dashboardAppKeys, app.app_key]))
         : dashboardAppKeys.filter((key) => key !== app.app_key);
 
-      const fixedNext = Array.from(new Set([...next, ...DEFAULT_DASHBOARD_APP_KEYS])).filter(
-        (key) => key !== "app_center"
-      );
+      const fixedNext = Array.from(new Set(next)).filter((key) => key !== "app_center");
 
       setDashboardAppKeys(fixedNext);
       safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(fixedNext));
@@ -1398,21 +1448,14 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     if (!session) return;
 
     if (pinned) {
-      const exists = dashboardAppKeys.includes(app.app_key);
+      const { error } = await insertDashboardApp(session.user.id, app.app_key);
 
-      if (!exists) {
-        const { error } = await insertDashboardApp(session.user.id, app.app_key);
-
-        if (error && !String(error.message || "").toLowerCase().includes("duplicate")) {
-          setMsg(error.message);
-          return;
-        }
-
-        setDashboardAppKeys((prev) =>
-          Array.from(new Set([...prev, app.app_key, ...DEFAULT_DASHBOARD_APP_KEYS]))
-        );
+      if (error && !String(error.message || "").toLowerCase().includes("duplicate")) {
+        setMsg(error.message);
+        return;
       }
 
+      setDashboardAppKeys((prev) => Array.from(new Set([...prev, app.app_key])));
       setMsg(t.saved);
       return;
     }
@@ -1424,11 +1467,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
-    setDashboardAppKeys((prev) => {
-      const next = prev.filter((key) => key !== app.app_key);
-      return Array.from(new Set([...next, ...DEFAULT_DASHBOARD_APP_KEYS]));
-    });
-
+    setDashboardAppKeys((prev) => prev.filter((key) => key !== app.app_key));
     setMsg(t.saved);
   }
 
@@ -1796,7 +1835,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               {t.longPressRemove}
             </p>
 
-            {dashboardApps.length === 0 ? (
+            {appsLoaded && dashboardApps.length === 0 ? (
               <p style={{ color: themeMuted }}>{t.noApps}</p>
             ) : null}
 
