@@ -11,14 +11,12 @@ import {
   normalizeThemeKey,
   saveThemeKey,
 } from "@/lib/smartacctgTheme";
-import AccountRecords from "./AccountRecords";
-import AddRecordModal from "./AddRecordModal";
-import { RelatedFeaturesPanel } from "./LinkedDataPanel";
+import AddRecordForm from "./components/AddRecordForm";
+import RecordsList from "./components/RecordsList";
 import {
   CATEGORY_KEY,
   DEFAULT_CATEGORY_KEYS,
   LANG_KEY,
-  RECORDS_PAGE_CSS,
   TRIAL_CUSTOMERS_KEY,
   TRIAL_INVOICES_KEY,
   TRIAL_KEY,
@@ -28,16 +26,13 @@ import {
   Customer,
   DebtItem,
   Invoice,
-  Lang,
   Product,
   Profile,
   RecordFormState,
   Txn,
   TxnType,
   applyThemeEverywhere,
-  displayRecordNote,
   formatRM,
-  getBlankForm,
   getDueTime,
   getInitialFullscreen,
   getInitialLang,
@@ -53,15 +48,178 @@ import {
   safeLocalRemove,
   safeLocalSet,
   safeParseArray,
-  styles,
   today,
   uniqueCleanList,
-} from "./recordsShared";
+} from "./types";
+
+const RECORDS_PAGE_CSS = `
+  .smartacctg-records-page,
+  .smartacctg-records-page * {
+    box-sizing: border-box !important;
+  }
+
+  .smartacctg-records-page h1,
+  .smartacctg-records-page h2,
+  .smartacctg-records-page h3,
+  .smartacctg-records-page strong,
+  .smartacctg-records-page button {
+    font-weight: 900 !important;
+  }
+
+  .smartacctg-records-page p,
+  .smartacctg-records-page div,
+  .smartacctg-records-page span,
+  .smartacctg-records-page label,
+  .smartacctg-records-page input,
+  .smartacctg-records-page select,
+  .smartacctg-records-page textarea {
+    font-weight: 400 !important;
+  }
+
+  .smartacctg-records-page input[type="date"],
+  .smartacctg-records-page input[type="month"] {
+    display: block !important;
+    width: 100% !important;
+    height: var(--sa-control-h, 54px) !important;
+    min-height: var(--sa-control-h, 54px) !important;
+    line-height: var(--sa-control-h, 54px) !important;
+    text-align: center !important;
+    text-align-last: center !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+
+  .smartacctg-records-page input[type="date"]::-webkit-date-and-time-value,
+  .smartacctg-records-page input[type="month"]::-webkit-date-and-time-value {
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    line-height: normal !important;
+  }
+
+  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit,
+  .smartacctg-records-page input[type="month"]::-webkit-datetime-edit {
+    width: 100% !important;
+    text-align: center !important;
+    padding: 0 !important;
+  }
+
+  .smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  .smartacctg-records-page input[type="month"]::-webkit-datetime-edit-fields-wrapper {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .smartacctg-records-page .records-month-select-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .smartacctg-records-page .records-summary-line {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+    align-items: center !important;
+    line-height: 1.25 !important;
+  }
+
+  .smartacctg-records-page .records-list {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .smartacctg-records-page .record-card {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .smartacctg-records-page .record-card.debt-record {
+    background: #fee2e2 !important;
+    color: #7f1d1d !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35),
+      0 12px 28px rgba(220, 38, 38, 0.22) !important;
+  }
+
+  .smartacctg-records-page .records-action-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+
+  .smartacctg-records-page .records-action-row button {
+    flex: 0 1 auto !important;
+    min-width: 105px !important;
+  }
+
+  .smartacctg-records-page .records-fullscreen-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    background: rgba(15, 23, 42, 0.58) !important;
+  }
+
+  .smartacctg-records-page .records-fullscreen-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .smartacctg-records-page .records-modal-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    background: inherit !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 12px !important;
+    align-items: center !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  @media (max-width: 520px) {
+    .smartacctg-records-page .records-month-select-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 8px !important;
+    }
+
+    .smartacctg-records-page .records-action-row button {
+      min-width: 96px !important;
+    }
+  }
+`;
 
 export default function RecordsClient() {
   const [session, setSession] = useState<Session | null>(null);
   const [isTrial, setIsTrial] = useState(false);
-  const [lang, setLang] = useState<Lang>("zh");
+  const [lang, setLang] = useState<"zh" | "en" | "ms">("zh");
   const [themeKey, setThemeKey] = useState<ThemeKey>("deepTeal");
 
   const [transactions, setTransactions] = useState<Txn[]>([]);
@@ -80,18 +238,28 @@ export default function RecordsClient() {
   const [filterEndDate, setFilterEndDate] = useState("");
 
   const [showForm, setShowForm] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => getInitialFullscreen());
-  const [returnTo, setReturnTo] = useState<string>(() => getInitialReturn());
+  const [isFullscreen, setIsFullscreen] = useState(getInitialFullscreen);
+  const [returnTo, setReturnTo] = useState(getInitialReturn);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Txn | null>(null);
   const [msg, setMsg] = useState("");
 
   const [relatedPath, setRelatedPath] = useState("/dashboard/customers");
 
-  const [form, setForm] = useState<RecordFormState>(() => getBlankForm());
+  const [form, setForm] = useState<RecordFormState>({
+    txn_date: today(),
+    txn_type: "income",
+    amount: "",
+    category_name: "",
+    debt_amount: "",
+    note: "",
+    customer_id: "",
+    product_id: "",
+    invoice_id: "",
+  });
 
   const t = TXT[lang];
-  const theme = THEMES[themeKey] || THEMES.deepTeal;
+  const theme = (THEMES[themeKey] || THEMES.deepTeal) as any;
   const themeSubText = theme.subText || theme.muted || "#64748b";
 
   const currentYear = new Date().getFullYear();
@@ -99,22 +267,14 @@ export default function RecordsClient() {
   const monthOptions = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
 
   const themedInputStyle: CSSProperties = {
-    ...styles.inputStyle,
+    ...inputStyle,
     borderColor: theme.border,
     background: theme.inputBg || "#ffffff",
     color: theme.inputText || "#111827",
   };
 
   const themedDateInputStyle: CSSProperties = {
-    ...styles.inputStyle,
-    appearance: "none",
-    WebkitAppearance: "none",
-    textAlign: "center",
-    textAlignLast: "center" as any,
-    display: "block",
-    lineHeight: "var(--sa-control-h)",
-    paddingTop: 0,
-    paddingBottom: 0,
+    ...dateInputStyle,
     borderColor: theme.border,
     background: theme.inputBg || "#ffffff",
     color: theme.inputText || "#111827",
@@ -136,7 +296,6 @@ export default function RecordsClient() {
     const initialTheme = getThemeKeyFromUrlOrLocalStorage("deepTeal");
 
     const savedCategories = safeParseArray<string>(safeLocalGet(CATEGORY_KEY));
-
     if (savedCategories.length > 0) {
       setCategories(uniqueCleanList(savedCategories.map(normalizeCategory)));
     } else {
@@ -172,7 +331,7 @@ export default function RecordsClient() {
     return value || t.noData;
   }
 
-  async function init(currentLang: Lang, currentTheme: ThemeKey) {
+  async function init(currentLang: "zh" | "en" | "ms", currentTheme: ThemeKey) {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
     const openParam = q.get("open");
@@ -360,7 +519,17 @@ export default function RecordsClient() {
   function openNewForm(forceFullscreen = false) {
     setEditingId(null);
     setIsFullscreen(forceFullscreen);
-    setForm(getBlankForm());
+    setForm({
+      txn_date: today(),
+      txn_type: "income",
+      amount: "",
+      category_name: "",
+      debt_amount: "",
+      note: "",
+      customer_id: "",
+      product_id: "",
+      invoice_id: "",
+    });
     setShowForm(true);
   }
 
@@ -376,7 +545,17 @@ export default function RecordsClient() {
     setEditingId(null);
     setShowForm(false);
     setIsFullscreen(false);
-    setForm(getBlankForm());
+    setForm({
+      txn_date: today(),
+      txn_type: "income",
+      amount: "",
+      category_name: "",
+      debt_amount: "",
+      note: "",
+      customer_id: "",
+      product_id: "",
+      invoice_id: "",
+    });
 
     q.delete("open");
     q.delete("fullscreen");
@@ -397,7 +576,7 @@ export default function RecordsClient() {
       amount: String(tx.amount || ""),
       category_name: normalizeCategory(tx.category_name),
       debt_amount: String(tx.debt_amount || ""),
-      note: displayRecordNote(tx.note || "", t),
+      note: tx.note || "",
       customer_id: "",
       product_id: "",
       invoice_id: tx.source_type === "invoice" && tx.source_id ? tx.source_id : "",
@@ -425,9 +604,9 @@ export default function RecordsClient() {
   function buildFinalNote() {
     const parts: string[] = [];
 
-    if (form.customer_id) parts.push(`Customer: ${selectedCustomerName()}`);
-    if (form.product_id) parts.push(`Product: ${selectedProductName()}`);
-    if (form.invoice_id) parts.push(`Invoice: ${selectedInvoiceText()}`);
+    if (form.customer_id) parts.push(`${t.customer}: ${selectedCustomerName()}`);
+    if (form.product_id) parts.push(`${t.product}: ${selectedProductName()}`);
+    if (form.invoice_id) parts.push(`${t.invoice}: ${selectedInvoiceText()}`);
     if (form.note.trim()) parts.push(form.note.trim());
 
     return parts.join("｜") || null;
@@ -641,7 +820,9 @@ export default function RecordsClient() {
         const customerName = inv.customer_name || customer?.name || t.noData;
         const companyName = inv.customer_company || customer?.company_name || "";
 
-        const customerLabel = companyName ? `${customerName} / ${companyName}` : customerName;
+        const customerLabel = companyName
+          ? `${customerName} / ${companyName}`
+          : customerName;
 
         const dueDate = inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10) || "-";
 
@@ -694,7 +875,7 @@ export default function RecordsClient() {
         tx.amount,
         displayCategory(tx.category_name),
         tx.category_name,
-        displayRecordNote(tx.note, t),
+        tx.note,
         invoice?.invoice_no,
         invoice?.customer_name,
         invoice?.customer_company,
@@ -722,32 +903,22 @@ export default function RecordsClient() {
     lang,
   ]);
 
-  function getInvoice(tx: Txn) {
-    if (tx.source_type !== "invoice" || !tx.source_id) return null;
-    return invoices.find((x) => x.id === tx.source_id) || null;
-  }
-
-  function isDebtRecord(tx: Txn) {
-    const invoice = getInvoice(tx);
-    return Number(tx.debt_amount || 0) > 0 || Boolean(invoice && isInvoiceUnpaid(invoice));
-  }
-
   return (
     <main
       className="smartacctg-page smartacctg-records-page"
       data-sa-theme={themeKey}
       data-smartacctg-theme={themeKey}
-      style={{ ...styles.pageStyle, background: theme.pageBg, color: theme.text }}
+      style={{ ...pageStyle, background: theme.pageBg, color: theme.text }}
     >
       <style jsx global>{RECORDS_PAGE_CSS}</style>
 
-      <div style={styles.topbarStyle}>
+      <div style={topbarStyle}>
         <button
           type="button"
           onClick={backToDashboard}
           className="sa-back-btn"
           style={{
-            ...styles.backBtnStyle,
+            ...backBtnStyle,
             color: theme.accent,
             borderColor: theme.border,
             background: theme.inputBg || "#fff",
@@ -757,12 +928,12 @@ export default function RecordsClient() {
         </button>
       </div>
 
-      {isTrial ? <div style={styles.trialMsgStyle}>{t.trialMode}</div> : null}
+      {isTrial ? <div style={trialMsgStyle}>{t.trialMode}</div> : null}
 
       {msg ? (
         <div
           style={{
-            ...styles.msgStyle,
+            ...msgStyle,
             background: theme.softBg || theme.soft || theme.card,
             color: theme.text,
           }}
@@ -771,94 +942,249 @@ export default function RecordsClient() {
         </div>
       ) : null}
 
-      <AccountRecords
+      <section className="sa-card" style={{ ...cardStyle, ...themedCardStyle }}>
+        <div style={recordHeaderStyle}>
+          <h1 style={titleStyle}>{t.title}</h1>
+
+          <button
+            type="button"
+            onClick={() => openNewForm(false)}
+            aria-label={t.add}
+            style={{
+              ...plusBtnStyle,
+              background: theme.accent,
+            }}
+          >
+            +
+          </button>
+        </div>
+
+        <div style={summaryBoxStyle}>
+          <div style={monthRowStyle}>
+            <strong style={{ color: theme.text }}>
+              {t.summaryMonth}: {activeMonthKey}
+            </strong>
+
+            <div className="records-month-select-grid" style={monthSelectGridStyle}>
+              <div style={dateWrapStyle}>
+                <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.year}</label>
+                <select
+                  value={activeMonthKey.slice(0, 4)}
+                  onChange={(e) => {
+                    const nextYear = e.target.value;
+                    const currentMonthValue = activeMonthKey.slice(5, 7) || "01";
+                    setSummaryMonth(`${nextYear}-${currentMonthValue}`);
+                  }}
+                  style={themedInputStyle}
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={dateWrapStyle}>
+                <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.month}</label>
+                <select
+                  value={activeMonthKey.slice(5, 7)}
+                  onChange={(e) => {
+                    const currentYearValue = activeMonthKey.slice(0, 4) || String(currentYear);
+                    setSummaryMonth(`${currentYearValue}-${e.target.value}`);
+                  }}
+                  style={themedInputStyle}
+                >
+                  {monthOptions.map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style={summaryDividerStyle} />
+
+          <div className="records-summary-line">
+            <span>{t.balance}</span>
+            <strong style={{ color: theme.accent }}>{formatRM(summaryBalance)}</strong>
+          </div>
+
+          <div className="records-summary-line">
+            <span>{t.monthIncome}</span>
+            <strong style={{ color: "#16a34a" }}>{formatRM(summaryIncome)}</strong>
+          </div>
+
+          <div className="records-summary-line">
+            <span>{t.monthExpense}</span>
+            <strong style={{ color: "#dc2626" }}>{formatRM(summaryExpense)}</strong>
+          </div>
+
+          <div className="records-summary-line">
+            <span>{t.monthProfit}</span>
+            <strong style={{ color: summaryProfit < 0 ? "#dc2626" : "#16a34a" }}>
+              {formatRM(summaryProfit)}
+            </strong>
+          </div>
+
+          <div className="records-summary-line">
+            <span style={{ color: "#dc2626" }}>{t.customerDebt}</span>
+            <strong style={{ color: "#dc2626" }}>{formatRM(totalCustomerDebt)}</strong>
+          </div>
+
+          <div style={{ ...debtDetailStyle, color: "#dc2626" }}>
+            {nearestDebt ? (
+              <>
+                <div>{nearestDebt.customerLabel}</div>
+                <div>{formatRM(nearestDebt.amount)}</div>
+                <div>
+                  {t.dueDate}: {nearestDebt.dueDate}
+                </div>
+              </>
+            ) : (
+              <div>{t.noDebt}</div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="sa-card" style={{ ...cardStyle, ...themedCardStyle }}>
+        <h2 style={sectionTitleStyle}>{t.searchTitle}</h2>
+
+        <div style={responsiveGridStyle}>
+          <input
+            placeholder={t.search}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={themedInputStyle}
+          />
+
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as "all" | TxnType)}
+            style={themedInputStyle}
+          >
+            <option value="all">{t.all}</option>
+            <option value="income">{t.income}</option>
+            <option value="expense">{t.expense}</option>
+          </select>
+
+          <select
+            value={filterCustomerId}
+            onChange={(e) => setFilterCustomerId(e.target.value)}
+            style={themedInputStyle}
+          >
+            <option value="">{t.filterCustomer}</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name || "-"}
+              </option>
+            ))}
+          </select>
+
+          <div style={dateWrapStyle}>
+            <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.startDate}</label>
+            <input
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              style={themedDateInputStyle}
+            />
+          </div>
+
+          <div style={dateWrapStyle}>
+            <label style={{ ...dateLabelStyle, color: themeSubText }}>{t.endDate}</label>
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              style={themedDateInputStyle}
+            />
+          </div>
+        </div>
+      </section>
+
+      <RecordsList
+        filteredRecords={filteredRecords}
+        invoices={invoices}
         t={t}
         theme={theme}
         themeSubText={themeSubText}
-        activeMonthKey={activeMonthKey}
-        currentYear={currentYear}
-        yearOptions={yearOptions}
-        monthOptions={monthOptions}
-        setSummaryMonth={setSummaryMonth}
-        summaryBalance={summaryBalance}
-        summaryIncome={summaryIncome}
-        summaryExpense={summaryExpense}
-        summaryProfit={summaryProfit}
-        totalCustomerDebt={totalCustomerDebt}
-        nearestDebt={nearestDebt}
-        search={search}
-        setSearch={setSearch}
-        filterType={filterType}
-        setFilterType={setFilterType}
-        filterCustomerId={filterCustomerId}
-        setFilterCustomerId={setFilterCustomerId}
-        filterStartDate={filterStartDate}
-        setFilterStartDate={setFilterStartDate}
-        filterEndDate={filterEndDate}
-        setFilterEndDate={setFilterEndDate}
-        customers={customers}
-        filteredRecords={filteredRecords}
-        getInvoice={getInvoice}
-        isDebtRecord={isDebtRecord}
         displayCategory={displayCategory}
-        openNewForm={() => openNewForm(false)}
         editTransaction={editTransaction}
         setDeleteTarget={setDeleteTarget}
-        themedInputStyle={themedInputStyle}
-        themedDateInputStyle={themedDateInputStyle}
-        themedCardStyle={themedCardStyle}
       />
 
-      <RelatedFeaturesPanel
-        t={t}
-        theme={theme}
-        themeSubText={themeSubText}
-        relatedPath={relatedPath}
-        setRelatedPath={setRelatedPath}
-        goRelatedFeature={goRelatedFeature}
-        themedInputStyle={themedInputStyle}
-        themedCardStyle={themedCardStyle}
-      />
+      <section className="sa-card" style={{ ...cardStyle, ...themedCardStyle }}>
+        <h2 style={sectionTitleStyle}>{t.related}</h2>
 
-      <AddRecordModal
-        showForm={showForm}
-        isFullscreen={isFullscreen}
-        editingId={editingId}
-        t={t}
-        theme={theme}
-        themeSubText={themeSubText}
-        form={form}
-        setForm={setForm}
-        categories={categories}
-        newCategory={newCategory}
-        setNewCategory={setNewCategory}
-        addCategory={addCategory}
-        removeCategory={removeCategory}
-        displayCategory={displayCategory}
-        customers={customers}
-        products={products}
-        invoices={invoices}
-        saveTransaction={saveTransaction}
-        closeForm={closeForm}
-        themedInputStyle={themedInputStyle}
-        themedDateInputStyle={themedDateInputStyle}
-      />
+        <div style={relatedMenuRowStyle}>
+          <select
+            value={relatedPath}
+            onChange={(e) => setRelatedPath(e.target.value)}
+            style={themedInputStyle}
+          >
+            <option value="/dashboard/customers">{t.customers}</option>
+            <option value="/dashboard/products">{t.products}</option>
+            <option value="/dashboard/invoices">{t.invoices}</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={goRelatedFeature}
+            style={{
+              ...primaryBtnStyle,
+              background: theme.accent,
+              marginTop: 0,
+            }}
+          >
+            {t.goFeature}
+          </button>
+        </div>
+      </section>
+
+      {showForm ? (
+        <AddRecordForm
+          isFullscreen={isFullscreen}
+          editingId={editingId}
+          form={form}
+          setForm={setForm}
+          categories={categories}
+          newCategory={newCategory}
+          setNewCategory={setNewCategory}
+          addCategory={addCategory}
+          removeCategory={removeCategory}
+          displayCategory={displayCategory}
+          customers={customers}
+          products={products}
+          invoices={invoices}
+          t={t}
+          theme={theme}
+          themeSubText={themeSubText}
+          themedInputStyle={themedInputStyle}
+          themedDateInputStyle={themedDateInputStyle}
+          saveTransaction={saveTransaction}
+          closeForm={closeForm}
+        />
+      ) : null}
 
       {deleteTarget ? (
-        <div style={styles.overlayStyle}>
+        <div style={overlayStyle}>
           <section
             className="sa-modal"
             style={{
-              ...styles.deleteModalStyle,
+              ...deleteModalStyle,
               background: theme.card,
               borderColor: theme.border,
               boxShadow: theme.glow,
               color: theme.text,
             }}
           >
-            <h2 style={styles.modalTitleStyle}>{t.deletePreview}</h2>
+            <h2 style={modalTitleStyle}>{t.deletePreview}</h2>
 
-            <div style={styles.deleteInfoBoxStyle}>
+            <div style={deleteInfoBoxStyle}>
               <p>
                 <strong>{t.type}:</strong>{" "}
                 {deleteTarget.txn_type === "income" ? t.income : t.expense}
@@ -872,29 +1198,27 @@ export default function RecordsClient() {
               <p>
                 <strong>{t.amount}:</strong> {formatRM(Number(deleteTarget.amount || 0))}
               </p>
-
               {Number(deleteTarget.debt_amount || 0) > 0 ? (
                 <p>
                   <strong>{t.debtAmount}:</strong>{" "}
                   {formatRM(Number(deleteTarget.debt_amount || 0))}
                 </p>
               ) : null}
-
               {deleteTarget.note ? (
                 <p>
-                  <strong>{t.note}:</strong> {displayRecordNote(deleteTarget.note, t)}
+                  <strong>{t.note}:</strong> {deleteTarget.note}
                 </p>
               ) : null}
             </div>
 
             <p style={{ color: "#dc2626", fontWeight: 900 }}>{t.confirmDelete}</p>
 
-            <div style={styles.deleteConfirmRowStyle}>
-              <button type="button" onClick={confirmDeleteTransaction} style={styles.confirmDeleteBtnStyle}>
+            <div style={deleteConfirmRowStyle}>
+              <button type="button" onClick={confirmDeleteTransaction} style={confirmDeleteBtnStyle}>
                 {t.confirm}
               </button>
 
-              <button type="button" onClick={() => setDeleteTarget(null)} style={styles.cancelDeleteBtnStyle}>
+              <button type="button" onClick={() => setDeleteTarget(null)} style={cancelDeleteBtnStyle}>
                 {t.cancelDelete}
               </button>
             </div>
@@ -904,3 +1228,231 @@ export default function RecordsClient() {
     </main>
   );
 }
+
+const pageStyle: CSSProperties = {
+  minHeight: "100vh",
+  width: "100%",
+  maxWidth: "100vw",
+  overflowX: "hidden",
+  padding: "clamp(10px, 2vw, 24px)",
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
+};
+
+const topbarStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  marginBottom: 14,
+};
+
+const backBtnStyle: CSSProperties = {
+  border: "2px solid",
+  borderRadius: "999px",
+  padding: "0 var(--sa-control-x)",
+  minHeight: "var(--sa-control-h)",
+  whiteSpace: "nowrap",
+};
+
+const cardStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+  marginBottom: 14,
+};
+
+const recordHeaderStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 14,
+};
+
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-2xl)",
+  fontWeight: 900,
+  lineHeight: 1.12,
+};
+
+const sectionTitleStyle: CSSProperties = {
+  marginTop: 0,
+  marginBottom: 14,
+  fontSize: "var(--sa-fs-xl)",
+  fontWeight: 900,
+};
+
+const plusBtnStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  minWidth: 52,
+  minHeight: 52,
+  borderRadius: 999,
+  color: "#fff",
+  border: "none",
+  fontSize: 30,
+  fontWeight: 900,
+  lineHeight: 1,
+  padding: 0,
+};
+
+const summaryBoxStyle: CSSProperties = {
+  display: "grid",
+  gap: 12,
+  width: "100%",
+  marginTop: 8,
+};
+
+const monthRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr",
+  gap: 10,
+  alignItems: "center",
+};
+
+const monthSelectGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  width: "100%",
+};
+
+const summaryDividerStyle: CSSProperties = {
+  height: 1,
+  width: "100%",
+  background: "rgba(148, 163, 184, 0.38)",
+};
+
+const debtDetailStyle: CSSProperties = {
+  marginTop: 2,
+  paddingTop: 4,
+  display: "grid",
+  gap: 4,
+  lineHeight: 1.35,
+};
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
+  minHeight: "var(--sa-control-h)",
+  padding: "0 var(--sa-control-x)",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid",
+  outline: "none",
+  fontSize: 16,
+};
+
+const dateInputStyle: CSSProperties = {
+  ...inputStyle,
+  appearance: "none",
+  WebkitAppearance: "none",
+  textAlign: "center",
+  textAlignLast: "center" as any,
+  display: "block",
+  lineHeight: "var(--sa-control-h)",
+  paddingTop: 0,
+  paddingBottom: 0,
+};
+
+const responsiveGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 12,
+};
+
+const relatedMenuRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 12,
+  alignItems: "center",
+};
+
+const primaryBtnStyle: CSSProperties = {
+  color: "#fff",
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 18px",
+  minHeight: "var(--sa-control-h)",
+};
+
+const msgStyle: CSSProperties = {
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+};
+
+const trialMsgStyle: CSSProperties = {
+  background: "#fef3c7",
+  color: "#92400e",
+  padding: 12,
+  borderRadius: "var(--sa-radius-control)",
+  marginBottom: 14,
+};
+
+const overlayStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15, 23, 42, 0.52)",
+  padding: "clamp(12px, 3vw, 24px)",
+  zIndex: 999,
+  overflowY: "auto",
+};
+
+const modalTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "var(--sa-fs-xl)",
+  fontWeight: 900,
+};
+
+const dateWrapStyle: CSSProperties = {
+  width: "100%",
+};
+
+const dateLabelStyle: CSSProperties = {
+  display: "block",
+  marginBottom: 6,
+};
+
+const deleteModalStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 680,
+  margin: "0 auto",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+};
+
+const deleteInfoBoxStyle: CSSProperties = {
+  border: "1px solid rgba(148, 163, 184, 0.55)",
+  borderRadius: 18,
+  padding: 14,
+  marginTop: 14,
+  marginBottom: 14,
+};
+
+const deleteConfirmRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 10,
+  marginTop: 16,
+};
+
+const confirmDeleteBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  background: "#dc2626",
+  color: "#fff",
+};
+
+const cancelDeleteBtnStyle: CSSProperties = {
+  minHeight: "var(--sa-control-h)",
+  border: "var(--sa-border-w) solid #cbd5e1",
+  borderRadius: "var(--sa-radius-control)",
+  background: "#fff",
+  color: "#111827",
+};
