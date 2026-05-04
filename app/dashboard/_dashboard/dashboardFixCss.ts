@@ -15,6 +15,22 @@ export const DASHBOARD_FIX_CSS = `
     padding: clamp(14px, 3.4vw, 20px) !important;
   }
 
+  .smartacctg-dashboard-page .dashboard-top-card.sa-card {
+    overflow: visible !important;
+    position: relative !important;
+    z-index: 200 !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-avatar-wrap {
+    position: relative !important;
+    z-index: 300 !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-avatar-menu {
+    overflow: visible !important;
+    z-index: 99999 !important;
+  }
+
   .smartacctg-dashboard-page h1 {
     font-size: clamp(26px, 7vw, 36px) !important;
     line-height: 1.12 !important;
