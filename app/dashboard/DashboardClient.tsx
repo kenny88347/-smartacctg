@@ -328,7 +328,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     if (trialMode) {
       const localKeys = safeParseArray<string>(safeLocalGet(DASHBOARD_APP_KEYS_LOCAL));
-
       const sourceKeys = localKeys.length > 0 ? localKeys : DEFAULT_DASHBOARD_APP_KEYS;
 
       const fixedLocalKeys = Array.from(new Set(sourceKeys)).filter(
@@ -351,6 +350,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     if (dashboardError) {
       const fallbackKeys = DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
+
       setDashboardAppKeys(fallbackKeys);
       setAppsLoaded(true);
       return;
@@ -383,6 +383,18 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       )
     ).filter((key) => availableKeySet.has(key));
 
+    if (dbKeys.length === 0) {
+      const fallbackKeys = DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
+
+      for (const key of fallbackKeys) {
+        await updateDashboardAppPinned(userId, key, true);
+      }
+
+      setDashboardAppKeys(fallbackKeys);
+      setAppsLoaded(true);
+      return;
+    }
+
     setDashboardAppKeys(dbKeys);
     setAppsLoaded(true);
   }
@@ -397,6 +409,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const first = await supabase.from("user_dashboard_apps").insert(rowsWithAppKey);
 
     if (!first.error) return;
+
+    const lower = String(first.error.message || "").toLowerCase();
+    if (lower.includes("duplicate")) return;
 
     if (!isSchemaColumnError(first.error.message)) return;
 
@@ -455,8 +470,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     if (!insertWithAppKey.error) return insertWithAppKey;
 
     const lower = String(insertWithAppKey.error.message || "").toLowerCase();
+
     if (lower.includes("duplicate")) {
-      return { error: null };
+      return updateDashboardAppPinned(userId, appKey, pinned);
     }
 
     if (!isSchemaColumnError(insertWithAppKey.error.message)) return insertWithAppKey;
@@ -469,6 +485,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     if (insertWithAppId.error) {
       const lower2 = String(insertWithAppId.error.message || "").toLowerCase();
+
       if (lower2.includes("duplicate")) {
         return { error: null };
       }
@@ -742,7 +759,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         return;
       }
 
-      setDashboardAppKeys((prev) => Array.from(new Set([...prev, app.app_key])));
+      setDashboardAppKeys((prev) =>
+        Array.from(new Set([...prev, app.app_key || ""])).filter(Boolean)
+      );
       setMsg(t.saved);
       return;
     }
@@ -754,7 +773,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
-    setDashboardAppKeys((prev) => prev.filter((key) => key !== app.app_key));
+    setDashboardAppKeys((prev) => prev.filter((key) => key !== app.app_key && key !== ""));
     setMsg(t.saved);
   }
 
@@ -871,7 +890,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           }}
         >
           <div style={leftTopStyle}>
-            <div style={{ position: "relative" }}>
+            <div className="dashboard-avatar-wrap" style={{ position: "relative", zIndex: 300 }}>
               <button
                 type="button"
                 onClick={() => setShowAvatarMenu(!showAvatarMenu)}
@@ -885,7 +904,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               </button>
 
               {showAvatarMenu ? (
-                <div style={avatarMenuStyle}>
+                <div className="dashboard-avatar-menu" style={avatarMenuStyle}>
                   <label style={menuItemStyle}>
                     {t.changeAvatar}
                     <input
@@ -949,6 +968,19 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                       </button>
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    style={{
+                      ...menuItemStyle,
+                      marginTop: 8,
+                      color: "#dc2626",
+                      fontWeight: 900,
+                    }}
+                    onClick={logout}
+                  >
+                    {t.logout}
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -1566,15 +1598,16 @@ const avatarImgStyle: CSSProperties = {
 
 const avatarMenuStyle: CSSProperties = {
   position: "absolute",
-  top: 60,
+  top: 62,
   left: 0,
-  width: 230,
+  width: 250,
   background: "#fff",
   color: "#111827",
-  borderRadius: 16,
+  borderRadius: 18,
   padding: 10,
-  zIndex: 99,
-  boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+  zIndex: 99999,
+  boxShadow: "0 18px 46px rgba(0,0,0,0.28)",
+  border: "1px solid rgba(15,23,42,0.1)",
 };
 
 const menuItemStyle: CSSProperties = {
