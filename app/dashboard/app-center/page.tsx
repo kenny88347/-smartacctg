@@ -1,5 +1,5 @@
-import DashboardClient from "../DashboardClient";
+import AppCenterPanel from "./AppCenterPanel";
 
 export default function AppCenterPage() {
-  return <DashboardClient page="app_center" />;
+  return <AppCenterPanel />;
 }
