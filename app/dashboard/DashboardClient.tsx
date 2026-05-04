@@ -414,11 +414,7 @@ const DASHBOARD_FIX_CSS = `
 
   .smartacctg-dashboard-page .sa-card {
     overflow: hidden !important;
-    padding: clamp(16px, 4vw, 22px) !important;
-  }
-
-  .smartacctg-dashboard-page .dashboard-compact-card {
-    padding: 14px 16px !important;
+    padding: clamp(14px, 3.4vw, 20px) !important;
   }
 
   .smartacctg-dashboard-page h1 {
@@ -434,7 +430,7 @@ const DASHBOARD_FIX_CSS = `
   .smartacctg-dashboard-page h3,
   .smartacctg-dashboard-page .sa-title-bold {
     font-size: clamp(20px, 5.2vw, 28px) !important;
-    line-height: 1.2 !important;
+    line-height: 1.15 !important;
     font-weight: 900 !important;
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
@@ -448,7 +444,7 @@ const DASHBOARD_FIX_CSS = `
   .smartacctg-dashboard-page select,
   .smartacctg-dashboard-page textarea {
     font-weight: 400 !important;
-    line-height: 1.42 !important;
+    line-height: 1.32 !important;
   }
 
   .smartacctg-dashboard-page button,
@@ -462,13 +458,11 @@ const DASHBOARD_FIX_CSS = `
   .smartacctg-dashboard-page input[type="datetime-local"] {
     text-align: center !important;
     text-align-last: center !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    display: block !important;
     width: 100% !important;
     height: var(--sa-control-h, 54px) !important;
     min-height: var(--sa-control-h, 54px) !important;
-    line-height: normal !important;
+    line-height: var(--sa-control-h, 54px) !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     -webkit-appearance: none !important;
@@ -485,27 +479,6 @@ const DASHBOARD_FIX_CSS = `
     line-height: normal !important;
   }
 
-  .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit,
-  .smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit,
-  .smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit,
-  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit {
-    width: 100% !important;
-    text-align: center !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
-  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
-    width: 100% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
   @keyframes saNoticeMarquee {
     0% { transform: translateX(0%); }
     100% { transform: translateX(-120%); }
@@ -517,7 +490,7 @@ const DASHBOARD_FIX_CSS = `
     overflow: hidden !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin-top: 10px !important;
+    margin-top: 8px !important;
   }
 
   .smartacctg-dashboard-page .sa-dashboard-notice-text {
@@ -527,7 +500,7 @@ const DASHBOARD_FIX_CSS = `
     color: #dc2626 !important;
     font-weight: 800 !important;
     font-size: clamp(15px, 4vw, 18px) !important;
-    line-height: 1.3 !important;
+    line-height: 1.25 !important;
     white-space: nowrap !important;
   }
 
@@ -566,8 +539,8 @@ const DASHBOARD_FIX_CSS = `
     top: 0 !important;
     z-index: 20 !important;
     background: inherit !important;
-    padding-bottom: 12px !important;
-    margin-bottom: 12px !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 10px !important;
   }
 
   .smartacctg-dashboard-page .dashboard-top-card {
@@ -579,7 +552,7 @@ const DASHBOARD_FIX_CSS = `
 
   .smartacctg-dashboard-page .dashboard-plan-text {
     font-size: clamp(15px, 3.8vw, 18px) !important;
-    line-height: 1.3 !important;
+    line-height: 1.25 !important;
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
   }
@@ -594,12 +567,14 @@ const DASHBOARD_FIX_CSS = `
   .smartacctg-dashboard-page .dashboard-stat-card {
     min-width: 0 !important;
     height: auto !important;
-    padding: 14px 16px !important;
+    min-height: 0 !important;
+    padding: clamp(12px, 3vw, 16px) !important;
+    border-radius: 22px !important;
   }
 
   .smartacctg-dashboard-page .dashboard-stat-card strong {
     font-size: clamp(17px, 4.3vw, 22px) !important;
-    line-height: 1.2 !important;
+    line-height: 1.15 !important;
   }
 
   .smartacctg-dashboard-page .dashboard-quick-grid,
@@ -613,11 +588,11 @@ const DASHBOARD_FIX_CSS = `
 
   .smartacctg-dashboard-page .dashboard-quick-grid button,
   .smartacctg-dashboard-page .quick-grid button {
-    min-height: 58px !important;
+    min-height: 54px !important;
     height: auto !important;
-    padding: 8px 12px !important;
-    font-size: clamp(15px, 4vw, 18px) !important;
-    line-height: 1.2 !important;
+    padding: 8px 10px !important;
+    font-size: clamp(15px, 4vw, 17px) !important;
+    line-height: 1.15 !important;
     white-space: normal !important;
     word-break: break-word !important;
     text-align: center !important;
@@ -653,35 +628,11 @@ const DASHBOARD_FIX_CSS = `
   .smartacctg-dashboard-page .dashboard-app-name {
     width: 100% !important;
     text-align: center !important;
-    line-height: 1.25 !important;
+    line-height: 1.2 !important;
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
     font-size: clamp(15px, 3.8vw, 17px) !important;
     font-weight: 700 !important;
-  }
-
-  .smartacctg-dashboard-page .app-center-action-btn {
-    min-height: 52px !important;
-    height: auto !important;
-    padding: 8px 10px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    line-height: 1.18 !important;
-  }
-
-  .smartacctg-dashboard-page .dashboard-back-btn {
-    min-height: 48px !important;
-    height: auto !important;
-    padding: 8px 16px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    white-space: nowrap !important;
-    line-height: 1.15 !important;
   }
 
   @media (max-width: 680px) {
@@ -727,21 +678,11 @@ const DASHBOARD_FIX_CSS = `
     .smartacctg-dashboard-page .dashboard-app-name {
       font-size: 14px !important;
     }
-
-    .smartacctg-dashboard-page .app-center-action-btn {
-      min-height: 50px !important;
-      font-size: 14px !important;
-      padding: 8px 8px !important;
-    }
   }
 
   @media (max-width: 360px) {
     .smartacctg-dashboard-page .dashboard-app-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-
-    .smartacctg-dashboard-page .dashboard-quick-grid {
-      grid-template-columns: 1fr !important;
     }
   }
 `;
@@ -1860,7 +1801,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               borderColor: theme.border,
               boxShadow: theme.glow,
               color: theme.text,
-              marginBottom: 14,
+              marginBottom: 12,
             }}
           >
             <h1 style={titleStyle}>{t.dashboard}</h1>
@@ -1873,10 +1814,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           </section>
 
           <section className="dashboard-summary-grid" style={summaryGridStyle}>
-            <div
-              className="sa-card dashboard-stat-card dashboard-compact-card"
-              style={{ ...compactCardStyle, ...themedCardStyle }}
-            >
+            <div className="sa-card dashboard-stat-card" style={{ ...summaryBoxStyle, ...themedCardStyle }}>
               <button
                 type="button"
                 onClick={() => setShowRecordSummary(!showRecordSummary)}
@@ -1920,10 +1858,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
               )}
             </div>
 
-            <div
-              className="sa-card dashboard-stat-card dashboard-compact-card"
-              style={{ ...compactCardStyle, ...themedCardStyle }}
-            >
+            <div className="sa-card dashboard-stat-card" style={{ ...summaryBoxStyle, ...themedCardStyle }}>
               <button
                 type="button"
                 onClick={() => setShowDebtSummary(!showDebtSummary)}
@@ -1975,10 +1910,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             </div>
           </section>
 
-          <section
-            className="sa-card dashboard-compact-card"
-            style={{ ...compactCardStyle, ...themedCardStyle, marginBottom: 14 }}
-          >
+          <section className="sa-card" style={{ ...quickCardStyle, ...themedCardStyle }}>
             <button
               type="button"
               onClick={() => setShowQuickMenu(!showQuickMenu)}
@@ -2009,7 +1941,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             ) : null}
           </section>
 
-          <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 14 }}>
+          <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 12 }}>
             <p style={{ color: themeMuted, marginTop: 0, marginBottom: 14 }}>
               {t.longPressRemove}
             </p>
@@ -2080,7 +2012,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         <section className="sa-card" style={{ ...themedCardStyle }}>
           <button
             type="button"
-            className="dashboard-back-btn"
             onClick={() => (window.location.href = buildUrl("/dashboard"))}
             style={{
               ...backBtnStyle,
@@ -2105,11 +2036,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       ) : null}
 
       {page === "app_center" ? (
-        <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 14 }}>
+        <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 12 }}>
           {!isEmbed ? (
             <button
               type="button"
-              className="dashboard-back-btn"
               onClick={() => (window.location.href = buildUrl("/dashboard"))}
               style={{
                 ...backBtnStyle,
@@ -2160,7 +2090,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   <div style={appCenterActionStyle}>
                     <button
                       type="button"
-                      className="app-center-action-btn"
                       onClick={() => openAppModal(app)}
                       style={{ ...appCenterSmallBtnStyle, background: theme.accent, color: "#fff" }}
                     >
@@ -2170,7 +2099,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                     {pinned ? (
                       <button
                         type="button"
-                        className="app-center-action-btn"
                         onClick={() => setAppPinned(app, false)}
                         style={appCenterRemoveBtnStyle}
                       >
@@ -2179,7 +2107,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                     ) : (
                       <button
                         type="button"
-                        className="app-center-action-btn"
                         onClick={() => setAppPinned(app, true)}
                         style={{
                           ...appCenterSmallBtnStyle,
@@ -2428,7 +2355,7 @@ const topCardStyle: CSSProperties = {
   gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
   gap: 12,
-  marginBottom: 14,
+  marginBottom: 12,
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "clamp(16px, 4vw, 22px)",
@@ -2538,7 +2465,7 @@ const titleStyle: CSSProperties = {
 };
 
 const noticeWrapStyle: CSSProperties = {
-  marginTop: 10,
+  marginTop: 8,
   overflow: "hidden",
   width: "100%",
 };
@@ -2555,75 +2482,74 @@ const summaryGridStyle: CSSProperties = {
   marginBottom: 12,
 };
 
-const compactCardStyle: CSSProperties = {
-  padding: "14px 16px",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-};
-
 const summaryBoxStyle: CSSProperties = {
   minHeight: 0,
-  padding: "14px 16px",
+  padding: "clamp(12px, 3vw, 16px)",
   border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
+  borderRadius: 22,
 };
 
 const summaryHeaderBtnStyle: CSSProperties = {
   width: "100%",
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
-  gap: 8,
+  justifyContent: "center",
+  gap: 10,
   border: "none",
   background: "transparent",
   color: "inherit",
   padding: 0,
   minHeight: 0,
-  fontSize: "clamp(17px, 4.6vw, 22px)",
-  lineHeight: 1.15,
+  fontSize: "clamp(20px, 5.2vw, 26px)",
+  lineHeight: 1.12,
 };
 
 const smallMutedStyle: CSSProperties = {
-  marginTop: 4,
-  fontSize: "clamp(14px, 3.7vw, 16px)",
-  lineHeight: 1.25,
+  marginTop: 8,
+  fontSize: "clamp(15px, 3.8vw, 17px)",
 };
 
 const summaryDetailListStyle: CSSProperties = {
   display: "grid",
-  gap: 8,
-  marginTop: 10,
+  gap: 7,
+  marginTop: 8,
 };
 
 const summaryRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 8,
+  gap: 10,
   alignItems: "center",
-  lineHeight: 1.2,
+  lineHeight: 1.18,
 };
 
 const debtRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
-  gap: 8,
+  gap: 10,
   alignItems: "start",
   lineHeight: 1.25,
+};
+
+const quickCardStyle: CSSProperties = {
+  marginBottom: 12,
+  padding: "clamp(12px, 3vw, 16px)",
+  borderRadius: 22,
 };
 
 const quickHeaderBtnStyle: CSSProperties = {
   width: "100%",
   display: "flex",
-  justifyContent: "space-between",
+  justifyContent: "center",
   alignItems: "center",
-  gap: 8,
+  gap: 10,
   border: "none",
   background: "transparent",
   color: "inherit",
   padding: 0,
   minHeight: 0,
-  fontSize: "clamp(18px, 4.8vw, 24px)",
-  lineHeight: 1.15,
+  fontSize: "clamp(20px, 5.2vw, 26px)",
+  lineHeight: 1.12,
 };
 
 const quickGridStyle: CSSProperties = {
@@ -2637,11 +2563,11 @@ const quickBtnStyle = (theme: any): CSSProperties => ({
   background: theme.inputBg || "#fff",
   border: `var(--sa-border-w) solid ${theme.border}`,
   color: theme.accent,
-  borderRadius: "var(--sa-radius-control)",
-  minHeight: 58,
-  padding: "8px 12px",
-  fontSize: "clamp(15px, 4vw, 18px)",
-  lineHeight: 1.2,
+  borderRadius: 18,
+  minHeight: 54,
+  padding: "8px 10px",
+  fontSize: "clamp(15px, 4vw, 17px)",
+  lineHeight: 1.15,
   whiteSpace: "normal",
   textAlign: "center",
 });
@@ -2841,23 +2767,21 @@ const appCenterActionStyle: CSSProperties = {
 };
 
 const appCenterSmallBtnStyle: CSSProperties = {
-  minHeight: 52,
+  minHeight: "var(--sa-control-h)",
   border: "var(--sa-border-w) solid transparent",
   borderRadius: "var(--sa-radius-control)",
-  padding: "8px 10px",
+  padding: "0 12px",
   fontWeight: 900,
-  lineHeight: 1.18,
 };
 
 const appCenterRemoveBtnStyle: CSSProperties = {
-  minHeight: 52,
+  minHeight: "var(--sa-control-h)",
   border: "var(--sa-border-w) solid #fecaca",
   borderRadius: "var(--sa-radius-control)",
-  padding: "8px 10px",
+  padding: "0 12px",
   fontWeight: 900,
   background: "#fff",
   color: "#dc2626",
-  lineHeight: 1.18,
 };
 
 const deleteAppModalStyle: CSSProperties = {
