@@ -1478,3 +1478,294 @@ body {
     font-size: 15px !important;
   }
 }
+/* =========================================================
+   SmartAcctg Mobile Button + Date Center Fix
+   修复：
+   1. 返回按钮所有页面自动适配
+   2. App Center 打开 / 加到控制台 / 从控制台移除按钮自动适配
+   3. iOS / Android 日期框上下左右居中
+   4. 手机卡片内容不顶边、不超框
+   放在 app/globals.css 最下面
+========================================================= */
+
+/* 全页面按钮基础：手机自动适配 */
+.smartacctg-page button,
+.smartacctg-dashboard-page button,
+.smartacctg-records-page button,
+.smartacctg-invoice-page button,
+.smartacctg-customers-page button,
+.smartacctg-products-page button,
+.smartacctg-accounting-page button {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 52px !important;
+  height: auto !important;
+  padding: 10px 14px !important;
+  font-size: clamp(14px, 3.7vw, 17px) !important;
+  line-height: 1.22 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  text-align: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 返回按钮：所有页面统一，不会太大，不会超出 */
+.smartacctg-page .sa-back-btn,
+.smartacctg-dashboard-page .sa-back-btn,
+.smartacctg-records-page .sa-back-btn,
+.smartacctg-invoice-page .sa-back-btn,
+.smartacctg-customers-page .sa-back-btn,
+.smartacctg-products-page .sa-back-btn,
+.smartacctg-accounting-page .sa-back-btn {
+  width: auto !important;
+  min-width: 96px !important;
+  max-width: 180px !important;
+  min-height: 52px !important;
+  height: 52px !important;
+  padding: 0 16px !important;
+  border-radius: 18px !important;
+  font-size: clamp(14px, 3.8vw, 17px) !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* Dashboard / App Center 外层卡片：手机不要顶边 */
+.smartacctg-dashboard-page .sa-card {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  padding: clamp(18px, 4.5vw, 26px) !important;
+}
+
+/* App Center 卡片：图标 + 文字不会挤爆 */
+.smartacctg-dashboard-page .app-center-card,
+.smartacctg-dashboard-page [data-app-center-card="1"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: center !important;
+}
+
+/* App Center 标题和说明文字自动换行 */
+.smartacctg-dashboard-page .app-center-card h2,
+.smartacctg-dashboard-page [data-app-center-card="1"] h2,
+.smartacctg-dashboard-page .app-center-card p,
+.smartacctg-dashboard-page [data-app-center-card="1"] p {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+}
+
+/* App Center 打开 / 移除 / 加到控制台 按钮行 */
+.smartacctg-dashboard-page .app-center-action-row,
+.smartacctg-dashboard-page [data-app-center-action="1"] {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  align-items: stretch !important;
+}
+
+/* App Center 按钮统一高度，中文字不会超 */
+.smartacctg-dashboard-page .app-center-action-row button,
+.smartacctg-dashboard-page [data-app-center-action="1"] button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 56px !important;
+  height: auto !important;
+  padding: 10px 10px !important;
+  border-radius: 18px !important;
+  font-size: clamp(13px, 3.5vw, 16px) !important;
+  line-height: 1.18 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  text-align: center !important;
+}
+
+/* 很窄手机：App Center 按钮改一行一个，避免挤 */
+@media (max-width: 360px) {
+  .smartacctg-dashboard-page .app-center-action-row,
+  .smartacctg-dashboard-page [data-app-center-action="1"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
+   iOS / Android 日期框上下左右居中
+========================================================= */
+
+.smartacctg-page input[type="date"],
+.smartacctg-page input[type="month"],
+.smartacctg-page input[type="time"],
+.smartacctg-page input[type="datetime-local"],
+.smartacctg-dashboard-page input[type="date"],
+.smartacctg-dashboard-page input[type="month"],
+.smartacctg-dashboard-page input[type="time"],
+.smartacctg-dashboard-page input[type="datetime-local"],
+.smartacctg-records-page input[type="date"],
+.smartacctg-records-page input[type="month"],
+.smartacctg-records-page input[type="time"],
+.smartacctg-records-page input[type="datetime-local"],
+.smartacctg-invoice-page input[type="date"],
+.smartacctg-invoice-page input[type="month"],
+.smartacctg-invoice-page input[type="time"],
+.smartacctg-invoice-page input[type="datetime-local"],
+.smartacctg-customers-page input[type="date"],
+.smartacctg-customers-page input[type="month"],
+.smartacctg-customers-page input[type="time"],
+.smartacctg-customers-page input[type="datetime-local"],
+.smartacctg-products-page input[type="date"],
+.smartacctg-products-page input[type="month"],
+.smartacctg-products-page input[type="time"],
+.smartacctg-products-page input[type="datetime-local"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+
+  height: var(--sa-control-h, 54px) !important;
+  min-height: var(--sa-control-h, 54px) !important;
+  max-height: var(--sa-control-h, 54px) !important;
+
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: var(--sa-control-x, 16px) !important;
+  padding-right: var(--sa-control-x, 16px) !important;
+
+  line-height: var(--sa-control-h, 54px) !important;
+  text-align: center !important;
+  text-align-last: center !important;
+
+  display: block !important;
+  vertical-align: middle !important;
+
+  border-radius: var(--sa-radius-control, 18px) !important;
+  box-sizing: border-box !important;
+
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+/* iPhone Safari 日期内容上下居中 */
+.smartacctg-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-date-and-time-value {
+  width: 100% !important;
+  height: var(--sa-control-h, 54px) !important;
+  min-height: var(--sa-control-h, 54px) !important;
+  line-height: var(--sa-control-h, 54px) !important;
+  text-align: center !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+}
+
+/* iPhone Safari 日期内部字段居中 */
+.smartacctg-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-datetime-edit {
+  width: 100% !important;
+  height: var(--sa-control-h, 54px) !important;
+  line-height: var(--sa-control-h, 54px) !important;
+  text-align: center !important;
+  padding: 0 !important;
+}
+
+/* iPhone Safari 日期 fields wrapper */
+.smartacctg-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+  width: 100% !important;
+  height: var(--sa-control-h, 54px) !important;
+  line-height: var(--sa-control-h, 54px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  text-align: center !important;
+}
+
+/* 日期 icon 不要挤压文字 */
+.smartacctg-page input[type="date"]::-webkit-calendar-picker-indicator,
+.smartacctg-page input[type="month"]::-webkit-calendar-picker-indicator,
+.smartacctg-page input[type="time"]::-webkit-calendar-picker-indicator,
+.smartacctg-page input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  margin-left: 6px !important;
+  padding: 0 !important;
+}
