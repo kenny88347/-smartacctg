@@ -405,17 +405,35 @@ const DASHBOARD_FIX_CSS = `
     width: 100% !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
+    padding: clamp(12px, 3vw, 22px) !important;
   }
 
   .smartacctg-dashboard-page * {
     box-sizing: border-box !important;
   }
 
-  .smartacctg-dashboard-page h1,
+  .smartacctg-dashboard-page .sa-card {
+    overflow: hidden !important;
+    padding: clamp(16px, 4vw, 22px) !important;
+  }
+
+  .smartacctg-dashboard-page h1 {
+    font-size: clamp(26px, 7vw, 36px) !important;
+    line-height: 1.12 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.03em !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
   .smartacctg-dashboard-page h2,
   .smartacctg-dashboard-page h3,
   .smartacctg-dashboard-page .sa-title-bold {
+    font-size: clamp(20px, 5.2vw, 28px) !important;
+    line-height: 1.2 !important;
     font-weight: 900 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
   }
 
   .smartacctg-dashboard-page p,
@@ -426,11 +444,12 @@ const DASHBOARD_FIX_CSS = `
   .smartacctg-dashboard-page select,
   .smartacctg-dashboard-page textarea {
     font-weight: 400 !important;
+    line-height: 1.42 !important;
   }
 
   .smartacctg-dashboard-page button,
   .smartacctg-dashboard-page strong {
-    font-weight: 700 !important;
+    font-weight: 800 !important;
   }
 
   .smartacctg-dashboard-page input[type="date"],
@@ -470,14 +489,19 @@ const DASHBOARD_FIX_CSS = `
     white-space: nowrap !important;
     overflow: hidden !important;
     width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 10px !important;
   }
 
   .smartacctg-dashboard-page .sa-dashboard-notice-text {
     display: inline-block !important;
     padding-left: 100% !important;
-    animation: saNoticeMarquee 14s linear infinite !important;
+    animation: saNoticeMarquee 15s linear infinite !important;
     color: #dc2626 !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
+    font-size: clamp(15px, 4vw, 18px) !important;
+    line-height: 1.3 !important;
+    white-space: nowrap !important;
   }
 
   .smartacctg-dashboard-page .sa-fullscreen-overlay {
@@ -519,11 +543,65 @@ const DASHBOARD_FIX_CSS = `
     margin-bottom: 12px !important;
   }
 
+  .smartacctg-dashboard-page .dashboard-top-card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 10px !important;
+    align-items: center !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-plan-text {
+    font-size: clamp(15px, 3.8vw, 18px) !important;
+    line-height: 1.3 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-summary-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-stat-card {
+    min-width: 0 !important;
+    height: auto !important;
+    padding: clamp(16px, 4vw, 22px) !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-stat-card strong {
+    font-size: clamp(17px, 4.3vw, 22px) !important;
+    line-height: 1.2 !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-quick-grid,
+  .smartacctg-dashboard-page .quick-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin-top: 14px !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-quick-grid button,
+  .smartacctg-dashboard-page .quick-grid button {
+    min-height: 70px !important;
+    height: auto !important;
+    padding: 10px 12px !important;
+    font-size: clamp(15px, 4vw, 18px) !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    text-align: center !important;
+  }
+
   .smartacctg-dashboard-page .dashboard-app-grid {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)) !important;
-    gap: 18px 14px !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 18px 10px !important;
     align-items: start !important;
+    width: 100% !important;
   }
 
   .smartacctg-dashboard-page .dashboard-app-icon-wrap {
@@ -535,6 +613,10 @@ const DASHBOARD_FIX_CSS = `
   }
 
   .smartacctg-dashboard-page .dashboard-app-icon {
+    width: 76px !important;
+    height: 76px !important;
+    min-width: 76px !important;
+    min-height: 76px !important;
     touch-action: manipulation !important;
     user-select: none !important;
     -webkit-user-select: none !important;
@@ -542,11 +624,13 @@ const DASHBOARD_FIX_CSS = `
   }
 
   .smartacctg-dashboard-page .dashboard-app-name {
+    width: 100% !important;
     text-align: center !important;
-    line-height: 1.2 !important;
+    line-height: 1.25 !important;
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
-    font-size: clamp(13px, 3vw, 15px) !important;
+    font-size: clamp(15px, 3.8vw, 17px) !important;
+    font-weight: 700 !important;
   }
 
   @media (max-width: 680px) {
@@ -560,18 +644,43 @@ const DASHBOARD_FIX_CSS = `
   }
 
   @media (max-width: 430px) {
+    .smartacctg-dashboard-page {
+      padding: 12px !important;
+    }
+
     .smartacctg-dashboard-page .dashboard-top-card {
       grid-template-columns: minmax(0, 1fr) auto !important;
       gap: 8px !important;
     }
 
+    .smartacctg-dashboard-page h1 {
+      font-size: clamp(24px, 7vw, 32px) !important;
+    }
+
     .smartacctg-dashboard-page .dashboard-plan-text {
-      font-size: 13px !important;
+      font-size: 15px !important;
     }
 
     .smartacctg-dashboard-page .dashboard-app-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-      gap: 18px 10px !important;
+      gap: 18px 8px !important;
+    }
+
+    .smartacctg-dashboard-page .dashboard-app-icon {
+      width: 72px !important;
+      height: 72px !important;
+      min-width: 72px !important;
+      min-height: 72px !important;
+    }
+
+    .smartacctg-dashboard-page .dashboard-app-name {
+      font-size: 14px !important;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .smartacctg-dashboard-page .dashboard-app-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
   }
 `;
@@ -2234,7 +2343,7 @@ const pageStyle: CSSProperties = {
   width: "100%",
   maxWidth: "100vw",
   overflowX: "hidden",
-  padding: "clamp(10px, 3vw, 22px)",
+  padding: "clamp(12px, 3vw, 22px)",
   fontFamily:
     '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
 };
@@ -2247,7 +2356,7 @@ const topCardStyle: CSSProperties = {
   marginBottom: 14,
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
+  padding: "clamp(16px, 4vw, 22px)",
 };
 
 const leftTopStyle: CSSProperties = {
@@ -2330,8 +2439,9 @@ const avatarLangBtnStyle = (active: boolean, theme: any): CSSProperties => ({
 });
 
 const planTextStyle: CSSProperties = {
-  lineHeight: 1.25,
+  lineHeight: 1.3,
   overflowWrap: "anywhere",
+  fontSize: "clamp(15px, 3.8vw, 18px)",
 };
 
 const logoutBtnStyle: CSSProperties = {
@@ -2345,13 +2455,17 @@ const logoutBtnStyle: CSSProperties = {
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "var(--sa-fs-2xl)",
-  lineHeight: 1.15,
+  fontSize: "clamp(26px, 7vw, 36px)",
+  lineHeight: 1.12,
   fontWeight: 900,
+  letterSpacing: "-0.03em",
+  overflowWrap: "anywhere",
 };
 
 const noticeWrapStyle: CSSProperties = {
-  marginTop: 12,
+  marginTop: 10,
+  overflow: "hidden",
+  width: "100%",
 };
 
 const noticeMarqueeStyle: CSSProperties = {
@@ -2368,7 +2482,7 @@ const summaryGridStyle: CSSProperties = {
 
 const summaryBoxStyle: CSSProperties = {
   minHeight: 0,
-  padding: "clamp(14px, 3vw, 22px)",
+  padding: "clamp(16px, 4vw, 22px)",
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
 };
@@ -2384,12 +2498,13 @@ const summaryHeaderBtnStyle: CSSProperties = {
   color: "inherit",
   padding: 0,
   minHeight: 0,
-  fontSize: "var(--sa-fs-base)",
+  fontSize: "clamp(18px, 4.8vw, 24px)",
+  lineHeight: 1.2,
 };
 
 const smallMutedStyle: CSSProperties = {
   marginTop: 8,
-  fontSize: "var(--sa-fs-sm)",
+  fontSize: "clamp(15px, 3.8vw, 17px)",
 };
 
 const summaryDetailListStyle: CSSProperties = {
@@ -2425,12 +2540,13 @@ const quickHeaderBtnStyle: CSSProperties = {
   color: "inherit",
   padding: 0,
   minHeight: 0,
-  fontSize: "var(--sa-fs-base)",
+  fontSize: "clamp(20px, 5.2vw, 28px)",
+  lineHeight: 1.2,
 };
 
 const quickGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 10,
   marginTop: 14,
 };
@@ -2440,21 +2556,26 @@ const quickBtnStyle = (theme: any): CSSProperties => ({
   border: `var(--sa-border-w) solid ${theme.border}`,
   color: theme.accent,
   borderRadius: "var(--sa-radius-control)",
-  minHeight: 56,
-  padding: "0 12px",
+  minHeight: 70,
+  padding: "10px 12px",
+  fontSize: "clamp(15px, 4vw, 18px)",
+  lineHeight: 1.2,
+  whiteSpace: "normal",
+  textAlign: "center",
 });
 
 const appGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(86px, 1fr))",
-  gap: "18px 14px",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "18px 10px",
+  width: "100%",
 };
 
 const phoneAppIconStyle = (theme: any): CSSProperties => ({
-  width: 70,
-  height: 70,
-  minWidth: 70,
-  minHeight: 70,
+  width: 76,
+  height: 76,
+  minWidth: 76,
+  minHeight: 76,
   borderRadius: 22,
   border: `2px solid ${theme.border}`,
   background:
@@ -2480,10 +2601,10 @@ const appEmojiStyle: CSSProperties = {
 };
 
 const appCenterIconStyle: CSSProperties = {
-  width: 82,
-  height: 82,
-  minWidth: 82,
-  minHeight: 82,
+  width: 86,
+  height: 86,
+  minWidth: 86,
+  minHeight: 86,
   borderRadius: 28,
   border: "2px solid rgba(94, 255, 239, 0.95)",
   background:
@@ -2558,15 +2679,17 @@ const modalTopStyle: CSSProperties = {
 
 const modalTitleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "var(--sa-fs-2xl)",
+  fontSize: "clamp(24px, 6vw, 34px)",
   fontWeight: 900,
+  lineHeight: 1.15,
 };
 
 const sectionTitleStyle: CSSProperties = {
   marginTop: 18,
   marginBottom: 12,
-  fontSize: "var(--sa-fs-xl)",
+  fontSize: "clamp(20px, 5.2vw, 28px)",
   fontWeight: 900,
+  lineHeight: 1.2,
 };
 
 const closeBtnStyle: CSSProperties = {
@@ -2623,8 +2746,9 @@ const appCenterCardStyle: CSSProperties = {
 
 const appCenterTitleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "var(--sa-fs-lg)",
+  fontSize: "clamp(20px, 5.2vw, 28px)",
   fontWeight: 900,
+  lineHeight: 1.2,
 };
 
 const appCenterActionStyle: CSSProperties = {
