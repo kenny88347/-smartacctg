@@ -48,9 +48,9 @@ import {
 } from "./_dashboard/constants";
 
 import { DASHBOARD_FIX_CSS } from "./_dashboard/dashboardFixCss";
+import AppCenterAppCard from "./_dashboard/AppCenterAppCard";
 
 import {
-  appDescription,
   appTitle,
   applyThemeEverywhere,
   formatRM,
@@ -750,7 +750,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       : dashboardAppKeys.filter((key) => key !== appKey && key !== "app_center" && key !== "");
 
     setDashboardAppKeys(nextKeys);
-    setMsg(pinned ? t.addToDashboard : t.removeFromDashboard);
 
     if (isTrial) {
       safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(nextKeys));
@@ -1266,84 +1265,20 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           <p style={{ color: themeMuted }}>{t.appCenterDesc}</p>
 
           <div style={appCenterListStyle}>
-            {appCenterApps.map((app) => {
-              const pinned = dashboardKeySet.has(app.app_key);
-              const desc = appDescription(app, lang);
-
-              return (
-                <div
-                  key={app.app_key}
-                  style={{
-                    ...appCenterCardStyle,
-                    borderColor: theme.border,
-                    background: theme.panelBg || theme.card,
-                    color: theme.panelText || theme.text,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openAppModal(app);
-                    }}
-                    style={phoneAppIconStyle(theme)}
-                  >
-                    {isImageIcon(app.icon) ? (
-                      <img src={app.icon || ""} alt={appTitle(app, lang)} style={appImgStyle} />
-                    ) : (
-                      <span style={appEmojiStyle}>{app.icon || "📱"}</span>
-                    )}
-                  </button>
-
-                  <div style={{ minWidth: 0 }}>
-                    <h2 style={appCenterTitleStyle}>{appTitle(app, lang)}</h2>
-                    {desc ? <p style={{ margin: "6px 0 0", color: themeMuted }}>{desc}</p> : null}
-                  </div>
-
-                  <div style={appCenterActionStyle}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAppModal(app);
-                      }}
-                      style={{ ...appCenterSmallBtnStyle, background: theme.accent, color: "#fff" }}
-                    >
-                      {t.open}
-                    </button>
-
-                    {pinned ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAppPinned(app, false);
-                        }}
-                        style={appCenterRemoveBtnStyle}
-                      >
-                        {t.removeFromDashboard}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAppPinned(app, true);
-                        }}
-                        style={{
-                          ...appCenterSmallBtnStyle,
-                          borderColor: theme.border,
-                          color: theme.accent,
-                          background: theme.inputBg || "#fff",
-                        }}
-                      >
-                        {t.addToDashboard}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {appCenterApps.map((app) => (
+              <AppCenterAppCard
+                key={app.app_key}
+                app={app}
+                lang={lang}
+                theme={theme}
+                pinned={dashboardKeySet.has(app.app_key)}
+                openText={t.open}
+                addText={t.addToDashboard}
+                removeText={t.removeFromDashboard}
+                onOpen={openAppModal}
+                onTogglePinned={setAppPinned}
+              />
+            ))}
           </div>
 
           {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
@@ -1965,46 +1900,11 @@ const appCenterListStyle: CSSProperties = {
   marginTop: 16,
 };
 
-const appCenterCardStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "auto minmax(0, 1fr)",
-  gap: 14,
-  alignItems: "center",
-  border: "var(--sa-border-w) solid",
-  borderRadius: "var(--sa-radius-card)",
-  padding: "var(--sa-card-pad)",
-};
-
 const appCenterTitleStyle: CSSProperties = {
   margin: 0,
   fontSize: "clamp(20px, 5.2vw, 28px)",
   fontWeight: 900,
   lineHeight: 1.2,
-};
-
-const appCenterActionStyle: CSSProperties = {
-  gridColumn: "1 / -1",
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 10,
-};
-
-const appCenterSmallBtnStyle: CSSProperties = {
-  minHeight: "var(--sa-control-h)",
-  border: "var(--sa-border-w) solid transparent",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 12px",
-  fontWeight: 900,
-};
-
-const appCenterRemoveBtnStyle: CSSProperties = {
-  minHeight: "var(--sa-control-h)",
-  border: "var(--sa-border-w) solid #fecaca",
-  borderRadius: "var(--sa-radius-control)",
-  padding: "0 12px",
-  fontWeight: 900,
-  background: "#fff",
-  color: "#dc2626",
 };
 
 const deleteAppModalStyle: CSSProperties = {
