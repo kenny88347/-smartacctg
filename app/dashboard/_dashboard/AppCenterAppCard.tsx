@@ -29,7 +29,7 @@ export default function AppCenterAppCard({
 }: AppCenterAppCardProps) {
   const [localPinned, setLocalPinned] = useState(Boolean(pinned));
   const [busy, setBusy] = useState(false);
-  const lastActionAtRef = useRef(0);
+  const lockRef = useRef(false);
 
   useEffect(() => {
     setLocalPinned(Boolean(pinned));
@@ -43,23 +43,19 @@ export default function AppCenterAppCard({
     e?.stopPropagation?.();
   }
 
-  function canRunNow() {
-    const now = Date.now();
-
-    if (now - lastActionAtRef.current < 450) {
-      return false;
-    }
-
-    lastActionAtRef.current = now;
-    return true;
+  function unlockSoon() {
+    window.setTimeout(() => {
+      lockRef.current = false;
+    }, 500);
   }
 
   function handleOpen(e: any) {
     stopEvent(e);
 
-    if (!canRunNow()) return;
+    if (lockRef.current) return;
+    lockRef.current = true;
+    unlockSoon();
 
-    console.log("[AppCenterAppCard] open:", appKey);
     onOpen(app);
   }
 
@@ -67,16 +63,14 @@ export default function AppCenterAppCard({
     stopEvent(e);
 
     if (busy) return;
-    if (!canRunNow()) return;
+    if (lockRef.current) return;
+
+    lockRef.current = true;
+    unlockSoon();
 
     const nextPinned = !localPinned;
 
-    console.log("[AppCenterAppCard] toggle:", {
-      appKey,
-      from: localPinned,
-      to: nextPinned,
-    });
-
+    // 先马上改变文字，证明按钮有被按到
     setLocalPinned(nextPinned);
     setBusy(true);
 
@@ -102,7 +96,7 @@ export default function AppCenterAppCard({
       <button
         type="button"
         onClick={handleOpen}
-        onPointerUp={handleOpen}
+        onPointerDown={handleOpen}
         style={phoneAppIconStyle(theme)}
       >
         {isImageIcon(app.icon) ? (
@@ -126,13 +120,12 @@ export default function AppCenterAppCard({
         <button
           type="button"
           onClick={handleOpen}
-          onPointerUp={handleOpen}
+          onPointerDown={handleOpen}
           style={{
             ...appCenterSmallBtnStyle,
             background: theme.accent,
             color: "#fff",
             opacity: busy ? 0.75 : 1,
-            pointerEvents: busy ? "none" : "auto",
           }}
         >
           {openText}
@@ -141,15 +134,13 @@ export default function AppCenterAppCard({
         <button
           type="button"
           onClick={handleToggle}
-          onPointerUp={handleToggle}
-          onTouchEnd={handleToggle}
+          onPointerDown={handleToggle}
           disabled={busy}
           style={
             localPinned
               ? {
                   ...appCenterRemoveBtnStyle,
                   opacity: busy ? 0.75 : 1,
-                  pointerEvents: busy ? "none" : "auto",
                 }
               : {
                   ...appCenterSmallBtnStyle,
@@ -157,7 +148,6 @@ export default function AppCenterAppCard({
                   color: theme.accent,
                   background: theme.inputBg || "#fff",
                   opacity: busy ? 0.75 : 1,
-                  pointerEvents: busy ? "none" : "auto",
                 }
           }
         >
@@ -187,6 +177,8 @@ const phoneAppIconStyle = (theme: any): CSSProperties => ({
   cursor: "pointer",
   touchAction: "manipulation",
   WebkitTapHighlightColor: "transparent",
+  position: "relative",
+  zIndex: 10,
 });
 
 const appImgStyle: CSSProperties = {
@@ -225,7 +217,7 @@ const appCenterActionStyle: CSSProperties = {
   gridTemplateColumns: "1fr 1fr",
   gap: 10,
   position: "relative",
-  zIndex: 5,
+  zIndex: 20,
 };
 
 const appCenterSmallBtnStyle: CSSProperties = {
@@ -238,7 +230,7 @@ const appCenterSmallBtnStyle: CSSProperties = {
   touchAction: "manipulation",
   WebkitTapHighlightColor: "transparent",
   position: "relative",
-  zIndex: 10,
+  zIndex: 30,
 };
 
 const appCenterRemoveBtnStyle: CSSProperties = {
@@ -253,5 +245,5 @@ const appCenterRemoveBtnStyle: CSSProperties = {
   touchAction: "manipulation",
   WebkitTapHighlightColor: "transparent",
   position: "relative",
-  zIndex: 10,
+  zIndex: 30,
 };
