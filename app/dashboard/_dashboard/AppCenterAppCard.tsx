@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, useEffect, useState } from "react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
 import type { AppRegistry, Lang } from "./types";
 import { appDescription, appTitle, isImageIcon } from "./utils";
 
@@ -27,38 +27,63 @@ export default function AppCenterAppCard({
   onOpen,
   onTogglePinned,
 }: AppCenterAppCardProps) {
-  const [localPinned, setLocalPinned] = useState(pinned);
+  const [localPinned, setLocalPinned] = useState(Boolean(pinned));
   const [busy, setBusy] = useState(false);
+  const lastActionAtRef = useRef(0);
 
   useEffect(() => {
-    setLocalPinned(pinned);
+    setLocalPinned(Boolean(pinned));
   }, [pinned]);
 
   const desc = appDescription(app, lang);
+  const appKey = String(app.app_key || "").trim();
 
-  async function handleOpen(e: React.MouseEvent<HTMLButtonElement>) {
-    e.preventDefault();
-    e.stopPropagation();
+  function stopEvent(e: any) {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+  }
+
+  function canRunNow() {
+    const now = Date.now();
+
+    if (now - lastActionAtRef.current < 450) {
+      return false;
+    }
+
+    lastActionAtRef.current = now;
+    return true;
+  }
+
+  function handleOpen(e: any) {
+    stopEvent(e);
+
+    if (!canRunNow()) return;
+
+    console.log("[AppCenterAppCard] open:", appKey);
     onOpen(app);
   }
 
-  async function handleToggle(e: React.MouseEvent<HTMLButtonElement>) {
-    e.preventDefault();
-    e.stopPropagation();
+  async function handleToggle(e: any) {
+    stopEvent(e);
 
     if (busy) return;
+    if (!canRunNow()) return;
 
     const nextPinned = !localPinned;
 
-    // 先马上改变按钮文字，避免用户感觉没反应
+    console.log("[AppCenterAppCard] toggle:", {
+      appKey,
+      from: localPinned,
+      to: nextPinned,
+    });
+
     setLocalPinned(nextPinned);
     setBusy(true);
 
     try {
       await onTogglePinned(app, nextPinned);
     } catch (err) {
-      console.warn("App Center toggle failed:", err);
-      // 失败时退回原本状态
+      console.warn("[AppCenterAppCard] toggle failed:", err);
       setLocalPinned(!nextPinned);
     } finally {
       setBusy(false);
@@ -77,6 +102,7 @@ export default function AppCenterAppCard({
       <button
         type="button"
         onClick={handleOpen}
+        onPointerUp={handleOpen}
         style={phoneAppIconStyle(theme)}
       >
         {isImageIcon(app.icon) ? (
@@ -88,18 +114,25 @@ export default function AppCenterAppCard({
 
       <div style={{ minWidth: 0 }}>
         <h2 style={appCenterTitleStyle}>{appTitle(app, lang)}</h2>
-        {desc ? <p style={{ margin: "6px 0 0", color: theme.muted || theme.subText || "#64748b" }}>{desc}</p> : null}
+
+        {desc ? (
+          <p style={{ margin: "6px 0 0", color: theme.muted || theme.subText || "#64748b" }}>
+            {desc}
+          </p>
+        ) : null}
       </div>
 
       <div style={appCenterActionStyle}>
         <button
           type="button"
           onClick={handleOpen}
+          onPointerUp={handleOpen}
           style={{
             ...appCenterSmallBtnStyle,
             background: theme.accent,
             color: "#fff",
             opacity: busy ? 0.75 : 1,
+            pointerEvents: busy ? "none" : "auto",
           }}
         >
           {openText}
@@ -108,12 +141,15 @@ export default function AppCenterAppCard({
         <button
           type="button"
           onClick={handleToggle}
+          onPointerUp={handleToggle}
+          onTouchEnd={handleToggle}
           disabled={busy}
           style={
             localPinned
               ? {
                   ...appCenterRemoveBtnStyle,
                   opacity: busy ? 0.75 : 1,
+                  pointerEvents: busy ? "none" : "auto",
                 }
               : {
                   ...appCenterSmallBtnStyle,
@@ -121,10 +157,11 @@ export default function AppCenterAppCard({
                   color: theme.accent,
                   background: theme.inputBg || "#fff",
                   opacity: busy ? 0.75 : 1,
+                  pointerEvents: busy ? "none" : "auto",
                 }
           }
         >
-          {localPinned ? removeText : addText}
+          {busy ? "..." : localPinned ? removeText : addText}
         </button>
       </div>
     </div>
@@ -147,6 +184,9 @@ const phoneAppIconStyle = (theme: any): CSSProperties => ({
   justifyContent: "center",
   padding: 0,
   overflow: "hidden",
+  cursor: "pointer",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
 });
 
 const appImgStyle: CSSProperties = {
@@ -168,6 +208,8 @@ const appCenterCardStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
+  position: "relative",
+  zIndex: 1,
 };
 
 const appCenterTitleStyle: CSSProperties = {
@@ -182,6 +224,8 @@ const appCenterActionStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
   gap: 10,
+  position: "relative",
+  zIndex: 5,
 };
 
 const appCenterSmallBtnStyle: CSSProperties = {
@@ -190,6 +234,11 @@ const appCenterSmallBtnStyle: CSSProperties = {
   borderRadius: "var(--sa-radius-control)",
   padding: "0 12px",
   fontWeight: 900,
+  cursor: "pointer",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
+  position: "relative",
+  zIndex: 10,
 };
 
 const appCenterRemoveBtnStyle: CSSProperties = {
@@ -200,4 +249,9 @@ const appCenterRemoveBtnStyle: CSSProperties = {
   fontWeight: 900,
   background: "#fff",
   color: "#dc2626",
+  cursor: "pointer",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
+  position: "relative",
+  zIndex: 10,
 };
