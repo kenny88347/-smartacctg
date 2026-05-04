@@ -35,7 +35,6 @@ import type {
 import {
   APP_CENTER_APP,
   DASHBOARD_APP_KEYS_LOCAL,
-  DASHBOARD_APPS_INIT_LOCAL,
   DEFAULT_APPS,
   DEFAULT_DASHBOARD_APP_KEYS,
   LANG_KEY,
@@ -68,6 +67,10 @@ import {
   safeLocalSet,
   safeParseArray,
 } from "./_dashboard/utils";
+
+function getDashboardLocalKey(userId: string) {
+  return `${DASHBOARD_APP_KEYS_LOCAL}_${userId}`;
+}
 
 function getInitialLang(): Lang {
   if (typeof window === "undefined") return "zh";
@@ -340,7 +343,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       return;
     }
 
-    const initKey = `${DASHBOARD_APPS_INIT_LOCAL}_${userId}`;
+    const userLocalKey = getDashboardLocalKey(userId);
+    const localUserKeys = safeParseArray<string>(safeLocalGet(userLocalKey)).filter(
+      (key) => key !== "app_center" && availableKeySet.has(key)
+    );
 
     const { data: dashboardData, error: dashboardError } = await supabase
       .from("user_dashboard_apps")
@@ -349,9 +355,13 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .order("created_at", { ascending: true });
 
     if (dashboardError) {
-      const fallbackKeys = DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
+      const fallbackKeys =
+        localUserKeys.length > 0
+          ? localUserKeys
+          : DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
 
       setDashboardAppKeys(fallbackKeys);
+      safeLocalSet(userLocalKey, JSON.stringify(fallbackKeys));
       setAppsLoaded(true);
       return;
     }
@@ -359,19 +369,18 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     const rows = (dashboardData || []) as UserDashboardApp[];
 
     if (rows.length === 0) {
-      const fallbackKeys = DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
+      const fallbackKeys =
+        localUserKeys.length > 0
+          ? localUserKeys
+          : DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
 
-      if (!safeLocalGet(initKey)) {
-        await insertDefaultDashboardApps(userId);
-        safeLocalSet(initKey, "1");
-      }
+      await insertDefaultDashboardApps(userId);
 
       setDashboardAppKeys(fallbackKeys);
+      safeLocalSet(userLocalKey, JSON.stringify(fallbackKeys));
       setAppsLoaded(true);
       return;
     }
-
-    safeLocalSet(initKey, "1");
 
     const dbKeys = Array.from(
       new Set(
@@ -383,19 +392,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       )
     ).filter((key) => availableKeySet.has(key));
 
-    if (dbKeys.length === 0) {
-      const fallbackKeys = DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
+    const finalKeys =
+      dbKeys.length > 0
+        ? dbKeys
+        : localUserKeys.length > 0
+          ? localUserKeys
+          : DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
 
-      for (const key of fallbackKeys) {
-        await updateDashboardAppPinned(userId, key, true);
-      }
-
-      setDashboardAppKeys(fallbackKeys);
-      setAppsLoaded(true);
-      return;
-    }
-
-    setDashboardAppKeys(dbKeys);
+    setDashboardAppKeys(finalKeys);
+    safeLocalSet(userLocalKey, JSON.stringify(finalKeys));
     setAppsLoaded(true);
   }
 
@@ -734,46 +739,43 @@ export default function DashboardClient({ page }: { page: PageKey }) {
   }
 
   async function setAppPinned(app: AppRegistry, pinned: boolean) {
-    if (!app.app_key || app.app_key === "app_center") return;
+    const appKey = String(app.app_key || "").trim();
+
+    if (!appKey || appKey === "app_center") return;
+
+    const nextKeys = pinned
+      ? Array.from(new Set([...dashboardAppKeys, appKey])).filter(
+          (key) => key && key !== "app_center"
+        )
+      : dashboardAppKeys.filter((key) => key !== appKey && key !== "app_center" && key !== "");
+
+    setDashboardAppKeys(nextKeys);
+    setMsg(pinned ? t.addToDashboard : t.removeFromDashboard);
 
     if (isTrial) {
-      const next = pinned
-        ? Array.from(new Set([...dashboardAppKeys, app.app_key]))
-        : dashboardAppKeys.filter((key) => key !== app.app_key);
-
-      const fixedNext = Array.from(new Set(next)).filter((key) => key !== "app_center");
-
-      setDashboardAppKeys(fixedNext);
-      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(fixedNext));
+      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(nextKeys));
       setMsg(t.saved);
       return;
     }
 
-    if (!session) return;
-
-    if (pinned) {
-      const { error } = await insertDashboardApp(session.user.id, app.app_key);
-
-      if (error && !String(error.message || "").toLowerCase().includes("duplicate")) {
-        setMsg(error.message);
-        return;
-      }
-
-      setDashboardAppKeys((prev) =>
-        Array.from(new Set([...prev, app.app_key || ""])).filter(Boolean)
-      );
-      setMsg(t.saved);
+    if (!session) {
+      setMsg(t.pleaseLogin);
       return;
     }
 
-    const { error } = await deleteDashboardApp(session.user.id, app.app_key);
+    const userLocalKey = getDashboardLocalKey(session.user.id);
+    safeLocalSet(userLocalKey, JSON.stringify(nextKeys));
+
+    const { error } = pinned
+      ? await insertDashboardApp(session.user.id, appKey)
+      : await deleteDashboardApp(session.user.id, appKey);
 
     if (error) {
-      setMsg(error.message);
+      console.warn("Dashboard app pin update failed:", error.message);
+      setMsg(`${t.saved}（本地已更新）`);
       return;
     }
 
-    setDashboardAppKeys((prev) => prev.filter((key) => key !== app.app_key && key !== ""));
     setMsg(t.saved);
   }
 
@@ -1280,7 +1282,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                 >
                   <button
                     type="button"
-                    onClick={() => openAppModal(app)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openAppModal(app);
+                    }}
                     style={phoneAppIconStyle(theme)}
                   >
                     {isImageIcon(app.icon) ? (
@@ -1298,7 +1303,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   <div style={appCenterActionStyle}>
                     <button
                       type="button"
-                      onClick={() => openAppModal(app)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openAppModal(app);
+                      }}
                       style={{ ...appCenterSmallBtnStyle, background: theme.accent, color: "#fff" }}
                     >
                       {t.open}
@@ -1307,7 +1315,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                     {pinned ? (
                       <button
                         type="button"
-                        onClick={() => setAppPinned(app, false)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAppPinned(app, false);
+                        }}
                         style={appCenterRemoveBtnStyle}
                       >
                         {t.removeFromDashboard}
@@ -1315,7 +1326,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setAppPinned(app, true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAppPinned(app, true);
+                        }}
                         style={{
                           ...appCenterSmallBtnStyle,
                           borderColor: theme.border,
