@@ -1,0 +1,102 @@
+/* =========================================================
+   Invoice
+========================================================= */
+
+.smartacctg-invoice-page .same-size-action-row,
+.smartacctg-invoice-page .payment-action-row,
+.smartacctg-invoice-page .two-payment-button-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  align-items: stretch;
+}
+
+.smartacctg-invoice-page .same-size-action-row button,
+.smartacctg-invoice-page .payment-action-row button,
+.smartacctg-invoice-page .two-payment-button-row button {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--sa-control-h);
+  height: var(--sa-control-h);
+  margin: 0;
+}
+
+.smartacctg-invoice-page .company-info-box {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.smartacctg-invoice-page .company-info-text,
+.smartacctg-invoice-page .company-info-box > div {
+  min-width: 0;
+  width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.smartacctg-invoice-page .invoice-record-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
+}
+
+.smartacctg-invoice-page .invoice-record-action-row button {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  border-radius: var(--sa-radius-control);
+  padding: 0 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.smartacctg-invoice-page .invoice-preview-action-row,
+.smartacctg-invoice-page .invoice-final-action-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.smartacctg-invoice-page .invoice-preview-action-row button,
+.smartacctg-invoice-page .invoice-final-action-row button {
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  padding: 0 8px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.smartacctg-invoice-page .signature-canvas {
+  width: 100%;
+  height: 220px;
+  background: #fff;
+  border: 3px solid var(--sa-border);
+  border-radius: 18px;
+  touch-action: none;
+}
+
+.smartacctg-invoice-page #printInvoiceArea {
+  max-width: 100%;
+}
+
+.smartacctg-invoice-page .screen-preview-wrap,
+.smartacctg-invoice-page .invoice-screen-preview,
+.smartacctg-invoice-page .official-preview-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
