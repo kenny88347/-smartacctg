@@ -1,27 +1,20 @@
 "use client";
 
-import { CSSProperties, useEffect, useMemo, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   DASHBOARD_APP_KEYS_LOCAL,
+  DEFAULT_APPS,
   DEFAULT_DASHBOARD_APP_KEYS,
 } from "../_dashboard/constants";
 import {
+  isImageIcon,
   isSchemaColumnError,
   safeLocalGet,
   safeLocalSet,
   safeParseArray,
 } from "../_dashboard/utils";
-
-type Lang = "zh" | "en" | "ms";
-
-type AppItem = {
-  key: string;
-  title: Record<Lang, string>;
-  desc: Record<Lang, string>;
-  icon: string;
-  path: string;
-};
+import type { AppRegistry, Lang } from "../_dashboard/types";
 
 type UserDashboardAppRow = {
   id?: string;
@@ -32,100 +25,11 @@ type UserDashboardAppRow = {
   created_at?: string | null;
 };
 
-const APPS: AppItem[] = [
-  {
-    key: "records",
-    title: {
-      zh: "记账系统",
-      en: "Accounting",
-      ms: "Sistem Akaun",
-    },
-    desc: {
-      zh: "管理收入、支出、欠款和帐目记录",
-      en: "Manage income, expenses, debts and accounting records",
-      ms: "Urus pendapatan, perbelanjaan, hutang dan rekod akaun",
-    },
-    icon: "🧾",
-    path: "/dashboard/records",
-  },
-  {
-    key: "customers",
-    title: {
-      zh: "客户管理",
-      en: "Customers",
-      ms: "Pelanggan",
-    },
-    desc: {
-      zh: "管理客户资料、电话、公司和欠款",
-      en: "Manage customer info, phone, company and debt",
-      ms: "Urus maklumat pelanggan, telefon, syarikat dan hutang",
-    },
-    icon: "👥",
-    path: "/dashboard/customers",
-  },
-  {
-    key: "products",
-    title: {
-      zh: "产品管理",
-      en: "Products",
-      ms: "Produk",
-    },
-    desc: {
-      zh: "管理产品、成本、售价和库存",
-      en: "Manage products, cost, selling price and stock",
-      ms: "Urus produk, kos, harga jualan dan stok",
-    },
-    icon: "📦",
-    path: "/dashboard/products",
-  },
-  {
-    key: "invoices",
-    title: {
-      zh: "发票系统",
-      en: "Invoices",
-      ms: "Invois",
-    },
-    desc: {
-      zh: "建立发票、扣库存和保存销售记录",
-      en: "Create invoices, deduct stock and save sales records",
-      ms: "Buat invois, tolak stok dan simpan rekod jualan",
-    },
-    icon: "🧾",
-    path: "/dashboard/invoices",
-  },
-  {
-    key: "extensions",
-    title: {
-      zh: "扩展功能",
-      en: "Extensions",
-      ms: "Fungsi Tambahan",
-    },
-    desc: {
-      zh: "管理更多附加功能和未来模块",
-      en: "Manage add-ons and future modules",
-      ms: "Urus fungsi tambahan dan modul akan datang",
-    },
-    icon: "🧩",
-    path: "/dashboard/extensions",
-  },
-  {
-    key: "nkshop",
-    title: {
-      zh: "NK网店",
-      en: "NK Shop",
-      ms: "NK Kedai",
-    },
-    desc: {
-      zh: "网店、下单和商品展示功能",
-      en: "Shop, order and product display features",
-      ms: "Kedai, pesanan dan paparan produk",
-    },
-    icon: "🛒",
-    path: "/dashboard/nkshop",
-  },
-];
+const APPS: AppRegistry[] = DEFAULT_APPS.filter(
+  (app) => app.app_key !== "app_center" && app.enabled !== false && app.is_active !== false
+).sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
 
-const VALID_APP_KEYS = APPS.map((app) => app.key);
+const VALID_APP_KEYS = APPS.map((app) => app.app_key);
 
 function getDashboardLocalKey(userId: string) {
   return `${DASHBOARD_APP_KEYS_LOCAL}_${userId}`;
@@ -148,8 +52,22 @@ function getLang(): Lang {
   return "zh";
 }
 
-function buildUrl(path: string) {
-  if (typeof window === "undefined") return path;
+function getAppTitle(app: AppRegistry, lang: Lang) {
+  if (lang === "en") return app.title_en || app.title_zh || app.name || app.app_key;
+  if (lang === "ms") return app.title_ms || app.title_zh || app.name || app.app_key;
+  return app.title_zh || app.name || app.title_en || app.app_key;
+}
+
+function getAppDesc(app: AppRegistry, lang: Lang) {
+  if (lang === "en") return app.description_en || app.description_zh || "";
+  if (lang === "ms") return app.description_ms || app.description_zh || "";
+  return app.description_zh || app.description_en || "";
+}
+
+function buildUrl(path?: string | null) {
+  const fixedPath = String(path || "/dashboard").trim();
+
+  if (typeof window === "undefined") return fixedPath;
 
   const old = new URLSearchParams(window.location.search);
   const q = new URLSearchParams();
@@ -164,7 +82,7 @@ function buildUrl(path: string) {
     q.set("mode", "trial");
   }
 
-  return `${path}?${q.toString()}`;
+  return `${fixedPath}?${q.toString()}`;
 }
 
 function backToDashboard() {
@@ -288,39 +206,36 @@ export default function AppCenterPanel() {
   const [busyKey, setBusyKey] = useState("");
   const [msg, setMsg] = useState("");
 
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
+
   const text = {
     zh: {
       back: "返回",
       title: "App Center",
-      desc: "这里可以管理控制台显示的 App。移除后只会从控制台隐藏，App Center 里面还会保留。",
-      open: "打开",
-      add: "加到控制台",
-      remove: "从控制台移除",
+      desc: "点击图标打开 App，点击右上角 + / ✓ 加入或移除控制台。",
       saved: "已更新",
       localSaved: "已更新（本地保存）",
-      loginNeeded: "请先登录",
+      pinned: "已在控制台",
+      notPinned: "未加入",
     },
     en: {
       back: "Back",
       title: "App Center",
-      desc: "Manage which apps appear on your dashboard. Removed apps stay available in App Center.",
-      open: "Open",
-      add: "Add to Dashboard",
-      remove: "Remove from Dashboard",
+      desc: "Tap an icon to open. Tap + / ✓ to add or remove from dashboard.",
       saved: "Updated",
       localSaved: "Updated locally",
-      loginNeeded: "Please login first",
+      pinned: "On Dashboard",
+      notPinned: "Not Added",
     },
     ms: {
       back: "Kembali",
       title: "App Center",
-      desc: "Urus app yang dipaparkan pada dashboard. App yang dibuang masih kekal dalam App Center.",
-      open: "Buka",
-      add: "Tambah ke Dashboard",
-      remove: "Buang dari Dashboard",
+      desc: "Tekan ikon untuk buka. Tekan + / ✓ untuk tambah atau buang dari dashboard.",
       saved: "Dikemas kini",
       localSaved: "Dikemas kini secara lokal",
-      loginNeeded: "Sila log masuk dahulu",
+      pinned: "Di Dashboard",
+      notPinned: "Belum Tambah",
     },
   }[lang];
 
@@ -328,6 +243,13 @@ export default function AppCenterPanel() {
 
   useEffect(() => {
     loadPinnedApps();
+
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -438,6 +360,40 @@ export default function AppCenterPanel() {
     setBusyKey("");
   }
 
+  function startLongPress(appKey: string) {
+    longPressTriggeredRef.current = false;
+
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        (navigator as any).vibrate?.(25);
+      }
+
+      togglePinned(appKey);
+    }, 650);
+  }
+
+  function cancelLongPress() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function openApp(app: AppRegistry) {
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+
+    window.location.href = buildUrl(app.app_path || "/dashboard");
+  }
+
   return (
     <main className="smartacctg-page smartacctg-dashboard-page" style={pageStyle}>
       <style jsx global>{APP_CENTER_CSS}</style>
@@ -453,51 +409,66 @@ export default function AppCenterPanel() {
 
         {msg ? <p style={msgStyle}>{msg}</p> : null}
 
-        <div style={listStyle}>
+        <div className="app-icon-grid" style={iconGridStyle}>
           {APPS.map((app) => {
-            const isPinned = pinnedSet.has(app.key);
-            const busy = busyKey === app.key;
+            const isPinned = pinnedSet.has(app.app_key);
+            const busy = busyKey === app.app_key;
+            const title = getAppTitle(app, lang);
+            const desc = getAppDesc(app, lang);
+            const icon = app.icon || "📱";
+            const imageIcon = isImageIcon(icon);
 
             return (
-              <div key={app.key} className="app-center-card" style={appCardStyle}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.location.href = buildUrl(app.path);
-                  }}
-                  className="app-center-icon"
-                  style={iconButtonStyle}
-                >
-                  <span style={iconEmojiStyle}>{app.icon}</span>
-                </button>
-
-                <div style={appTextStyle}>
-                  <h2 style={appTitleStyle}>{app.title[lang]}</h2>
-                  <p style={appDescStyle}>{app.desc[lang]}</p>
-                </div>
-
-                <div style={actionRowStyle}>
+              <div key={app.app_key} className="app-icon-item" style={iconItemStyle}>
+                <div style={iconWrapStyle}>
                   <button
                     type="button"
-                    onClick={() => {
-                      window.location.href = buildUrl(app.path);
-                    }}
-                    style={openBtnStyle}
+                    onClick={() => openApp(app)}
+                    onPointerDown={() => startLongPress(app.app_key)}
+                    onPointerUp={cancelLongPress}
+                    onPointerLeave={cancelLongPress}
+                    onPointerCancel={cancelLongPress}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className="app-main-icon"
+                    style={appIconStyle}
+                    aria-label={title}
                   >
-                    {text.open}
+                    {imageIcon ? (
+                      <img src={icon} alt={title} style={appIconImgStyle} />
+                    ) : (
+                      <span style={appIconEmojiStyle}>{icon}</span>
+                    )}
                   </button>
 
                   <button
                     type="button"
                     disabled={loading || Boolean(busyKey)}
-                    onClick={() => togglePinned(app.key)}
+                    onClick={() => togglePinned(app.app_key)}
+                    className="app-pin-dot"
                     style={{
-                      ...(isPinned ? removeBtnStyle : addBtnStyle),
+                      ...pinDotStyle,
+                      background: isPinned ? "#22c55e" : "#ecfeff",
+                      color: isPinned ? "#ffffff" : "#0f766e",
+                      borderColor: isPinned ? "#86efac" : "#2dd4bf",
                       opacity: loading || busy ? 0.7 : 1,
                     }}
+                    aria-label={isPinned ? text.pinned : text.notPinned}
                   >
-                    {busy ? "..." : isPinned ? text.remove : text.add}
+                    {busy ? "…" : isPinned ? "✓" : "+"}
                   </button>
+                </div>
+
+                <div style={appNameStyle}>{title}</div>
+
+                {desc ? <div style={appMiniDescStyle}>{desc}</div> : null}
+
+                <div
+                  style={{
+                    ...appStatusStyle,
+                    color: isPinned ? "#5eead4" : "#bae6fd",
+                  }}
+                >
+                  {isPinned ? text.pinned : text.notPinned}
                 </div>
               </div>
             );
@@ -521,31 +492,39 @@ const APP_CENTER_CSS = `
     overflow-x: hidden !important;
   }
 
-  .smartacctg-page .app-center-card {
+  .app-icon-grid {
     width: 100% !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
   }
 
-  .smartacctg-page .app-center-icon {
-    width: 100% !important;
-    aspect-ratio: 1 / 1 !important;
-    height: auto !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
+  .app-main-icon,
+  .app-pin-dot {
+    -webkit-tap-highlight-color: transparent !important;
+    touch-action: manipulation !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-touch-callout: none !important;
   }
 
-  @media (max-width: 520px) {
-    .smartacctg-page .app-center-card {
-      grid-template-columns: minmax(110px, 30%) minmax(0, 1fr) !important;
-      gap: 14px !important;
+  @media (max-width: 430px) {
+    .app-icon-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 24px 10px !important;
+    }
+
+    .app-main-icon {
+      width: 82px !important;
+      height: 82px !important;
+      border-radius: 24px !important;
+    }
+
+    .app-icon-item {
+      min-width: 0 !important;
     }
   }
 
-  @media (max-width: 390px) {
-    .smartacctg-page .app-center-card {
-      grid-template-columns: minmax(92px, 30%) minmax(0, 1fr) !important;
-      gap: 12px !important;
+  @media (max-width: 360px) {
+    .app-icon-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
   }
 `;
@@ -593,11 +572,11 @@ const titleStyle: CSSProperties = {
 };
 
 const descStyle: CSSProperties = {
-  marginTop: 18,
-  marginBottom: 24,
+  marginTop: 16,
+  marginBottom: 18,
   color: "#99f6e4",
-  fontSize: "clamp(18px, 4.6vw, 24px)",
-  lineHeight: 1.5,
+  fontSize: "clamp(15px, 4vw, 18px)",
+  lineHeight: 1.45,
   fontWeight: 700,
 };
 
@@ -609,97 +588,108 @@ const msgStyle: CSSProperties = {
   fontWeight: 900,
 };
 
-const listStyle: CSSProperties = {
+const iconGridStyle: CSSProperties = {
   display: "grid",
-  gap: 18,
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "26px 12px",
+  alignItems: "start",
+  justifyItems: "center",
+  marginTop: 24,
 };
 
-const appCardStyle: CSSProperties = {
+const iconItemStyle: CSSProperties = {
+  width: "100%",
+  minWidth: 0,
   display: "grid",
-  gridTemplateColumns: "minmax(120px, 30%) minmax(0, 1fr)",
-  gap: 16,
-  alignItems: "center",
-  border: "2px solid #2dd4bf",
+  justifyItems: "center",
+  textAlign: "center",
+  gap: 8,
+};
+
+const iconWrapStyle: CSSProperties = {
+  position: "relative",
+  width: 92,
+  height: 92,
+};
+
+const appIconStyle: CSSProperties = {
+  width: 92,
+  height: 92,
+  border: "none",
   borderRadius: 28,
-  padding: "clamp(14px, 4vw, 22px)",
-  background: "rgba(8, 64, 57, 0.86)",
-  color: "#ecfeff",
-};
-
-const iconButtonStyle: CSSProperties = {
-  border: "2px solid #2dd4bf",
-  borderRadius: 22,
-  background:
-    "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(255,255,255,0.76))",
-  boxShadow:
-    "inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 22px rgba(15,23,42,0.16)",
+  background: "transparent",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   overflow: "hidden",
   padding: 0,
+  cursor: "pointer",
+  boxShadow: "0 18px 36px rgba(45, 212, 191, 0.32)",
 };
 
-const iconEmojiStyle: CSSProperties = {
-  fontSize: "clamp(38px, 11vw, 64px)",
+const appIconImgStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "contain",
+  display: "block",
+};
+
+const appIconEmojiStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  borderRadius: 28,
+  background:
+    "radial-gradient(circle at 28% 20%, #ffffff 0%, #dffdf8 20%, #5eead4 48%, #0f766e 100%)",
+  border: "2px solid rgba(94, 234, 212, 0.95)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: 42,
   lineHeight: 1,
+  filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.28))",
 };
 
-const appTextStyle: CSSProperties = {
-  minWidth: 0,
+const pinDotStyle: CSSProperties = {
+  position: "absolute",
+  top: -8,
+  right: -8,
+  width: 34,
+  height: 34,
+  borderRadius: 999,
+  border: "2px solid",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: 20,
+  fontWeight: 900,
+  lineHeight: 1,
+  boxShadow: "0 8px 18px rgba(0,0,0,0.26)",
+  cursor: "pointer",
 };
 
-const appTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(24px, 6vw, 36px)",
+const appNameStyle: CSSProperties = {
+  width: "100%",
+  color: "#ecfeff",
+  fontSize: "clamp(14px, 3.6vw, 16px)",
   lineHeight: 1.2,
   fontWeight: 900,
   overflowWrap: "anywhere",
 };
 
-const appDescStyle: CSSProperties = {
-  marginTop: 10,
-  marginBottom: 0,
+const appMiniDescStyle: CSSProperties = {
+  width: "100%",
   color: "#99f6e4",
-  fontSize: "clamp(17px, 4.6vw, 24px)",
-  lineHeight: 1.42,
+  fontSize: 11,
+  lineHeight: 1.2,
   fontWeight: 700,
+  opacity: 0.9,
   overflowWrap: "anywhere",
 };
 
-const actionRowStyle: CSSProperties = {
-  gridColumn: "1 / -1",
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 10,
-};
-
-const openBtnStyle: CSSProperties = {
-  minHeight: 58,
-  border: "none",
-  borderRadius: 18,
-  background: "#35d0c0",
-  color: "#ffffff",
-  fontSize: 17,
-  fontWeight: 900,
-};
-
-const addBtnStyle: CSSProperties = {
-  minHeight: 58,
-  border: "2px solid #2dd4bf",
-  borderRadius: 18,
-  background: "#ecfeff",
-  color: "#2dd4bf",
-  fontSize: 17,
-  fontWeight: 900,
-};
-
-const removeBtnStyle: CSSProperties = {
-  minHeight: 58,
-  border: "2px solid #fecaca",
-  borderRadius: 18,
-  background: "#ffffff",
-  color: "#dc2626",
-  fontSize: 17,
-  fontWeight: 900,
+const appStatusStyle: CSSProperties = {
+  width: "100%",
+  fontSize: 12,
+  lineHeight: 1.15,
+  fontWeight: 800,
+  opacity: 0.95,
 };
