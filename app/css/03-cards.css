@@ -1,0 +1,28 @@
+/* =========================================================
+   Cards / Panels
+========================================================= */
+
+.sa-card,
+.sa-panel,
+.sa-item-card {
+  max-width: 100%;
+  min-width: 0;
+  border-style: solid;
+  border-width: var(--sa-border-w);
+  border-color: var(--sa-border);
+  border-radius: var(--sa-radius-card);
+  background: var(--sa-card-bg);
+  color: var(--sa-text);
+  box-shadow: var(--sa-glow);
+  overflow-wrap: anywhere;
+}
+
+.sa-panel {
+  background: var(--sa-panel-bg);
+  color: var(--sa-panel-text);
+}
+
+.sa-item-card {
+  background: var(--sa-item-card);
+  color: var(--sa-item-text);
+}
