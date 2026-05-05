@@ -420,7 +420,7 @@ export default function AppCenterPanel() {
 
             return (
               <div key={app.app_key} className="app-icon-item" style={iconItemStyle}>
-                <div style={iconWrapStyle}>
+                <div className="app-icon-wrap" style={iconWrapStyle}>
                   <button
                     type="button"
                     onClick={() => openApp(app)}
@@ -434,7 +434,22 @@ export default function AppCenterPanel() {
                     aria-label={title}
                   >
                     {imageIcon ? (
-                      <img src={icon} alt={title} style={appIconImgStyle} />
+                      <img
+                        src={icon}
+                        alt={title}
+                        className="app-icon-img"
+                        style={appIconImgStyle}
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          img.style.display = "none";
+
+                          const parent = img.parentElement;
+                          if (parent) {
+                            parent.textContent = "📱";
+                            parent.style.fontSize = "42px";
+                          }
+                        }}
+                      />
                     ) : (
                       <span style={appIconEmojiStyle}>{icon}</span>
                     )}
@@ -505,16 +520,36 @@ const APP_CENTER_CSS = `
     -webkit-touch-callout: none !important;
   }
 
+  .app-main-icon {
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .app-icon-img {
+    background: transparent !important;
+  }
+
   @media (max-width: 430px) {
     .app-icon-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-      gap: 24px 10px !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 28px 16px !important;
+    }
+
+    .app-icon-wrap {
+      width: 96px !important;
+      height: 96px !important;
     }
 
     .app-main-icon {
-      width: 82px !important;
-      height: 82px !important;
+      width: 96px !important;
+      height: 96px !important;
       border-radius: 24px !important;
+    }
+
+    .app-icon-img {
+      width: 96px !important;
+      height: 96px !important;
     }
 
     .app-icon-item {
@@ -525,6 +560,14 @@ const APP_CENTER_CSS = `
   @media (max-width: 360px) {
     .app-icon-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 24px 12px !important;
+    }
+
+    .app-icon-wrap,
+    .app-main-icon,
+    .app-icon-img {
+      width: 88px !important;
+      height: 88px !important;
     }
   }
 `;
@@ -590,8 +633,8 @@ const msgStyle: CSSProperties = {
 
 const iconGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: "26px 12px",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "30px 18px",
   alignItems: "start",
   justifyItems: "center",
   marginTop: 24,
@@ -608,30 +651,32 @@ const iconItemStyle: CSSProperties = {
 
 const iconWrapStyle: CSSProperties = {
   position: "relative",
-  width: 92,
-  height: 92,
+  width: 106,
+  height: 106,
 };
 
 const appIconStyle: CSSProperties = {
-  width: 92,
-  height: 92,
+  width: 106,
+  height: 106,
   border: "none",
   borderRadius: 28,
   background: "transparent",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  overflow: "hidden",
+  overflow: "visible",
   padding: 0,
   cursor: "pointer",
-  boxShadow: "0 18px 36px rgba(45, 212, 191, 0.32)",
+  boxShadow: "none",
 };
 
 const appIconImgStyle: CSSProperties = {
-  width: "100%",
-  height: "100%",
+  width: "106px",
+  height: "106px",
   objectFit: "contain",
   display: "block",
+  borderRadius: 24,
+  background: "transparent",
 };
 
 const appIconEmojiStyle: CSSProperties = {
@@ -670,7 +715,7 @@ const pinDotStyle: CSSProperties = {
 const appNameStyle: CSSProperties = {
   width: "100%",
   color: "#ecfeff",
-  fontSize: "clamp(14px, 3.6vw, 16px)",
+  fontSize: "clamp(15px, 4vw, 18px)",
   lineHeight: 1.2,
   fontWeight: 900,
   overflowWrap: "anywhere",
@@ -678,11 +723,12 @@ const appNameStyle: CSSProperties = {
 
 const appMiniDescStyle: CSSProperties = {
   width: "100%",
+  maxWidth: 150,
   color: "#99f6e4",
-  fontSize: 11,
-  lineHeight: 1.2,
-  fontWeight: 700,
-  opacity: 0.9,
+  fontSize: 9,
+  lineHeight: 1.18,
+  fontWeight: 600,
+  opacity: 0.82,
   overflowWrap: "anywhere",
 };
 
