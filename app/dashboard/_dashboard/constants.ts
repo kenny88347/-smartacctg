@@ -6,8 +6,8 @@ export const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 export const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 export const LANG_KEY = "smartacctg_lang";
 
-export const NK_LOGO_SRC = "/app-icons/nk-digital-hub-logo.png.PNG";
-export const NK_LOGO_FALLBACK_SRC = "/app-icons/nk-digital-hub-logo.png";
+export const NK_LOGO_SRC = "/app-icons/nk-digital-hub-logo.PNG";
+export const NK_LOGO_FALLBACK_SRC = "/app-icons/nk-digital-hub-logo.PNG";
 
 export const DASHBOARD_APP_KEYS_LOCAL = "smartacctg_dashboard_app_keys";
 export const DASHBOARD_APPS_INIT_LOCAL = "smartacctg_dashboard_apps_initialized";
@@ -42,7 +42,7 @@ export const DEFAULT_APPS: AppRegistry[] = [
     description_zh: "管理收入、支出、欠款和账目记录",
     description_en: "Manage income, expenses, debts and accounting records",
     description_ms: "Urus pendapatan, perbelanjaan, hutang dan rekod akaun",
-    icon: "/app-icons/records.png",
+    icon: "/app-icons/records.PNG",
     app_path: "/dashboard/records",
     sort_order: 10,
     enabled: true,
@@ -56,7 +56,7 @@ export const DEFAULT_APPS: AppRegistry[] = [
     description_zh: "管理客户资料、电话、公司和欠款",
     description_en: "Manage customer info, phone, company and debt",
     description_ms: "Urus maklumat pelanggan, telefon, syarikat dan hutang",
-    icon: "/app-icons/customers.png",
+    icon: "/app-icons/customers.PNG",
     app_path: "/dashboard/customers",
     sort_order: 20,
     enabled: true,
@@ -70,7 +70,7 @@ export const DEFAULT_APPS: AppRegistry[] = [
     description_zh: "管理产品、成本、售价和库存",
     description_en: "Manage products, cost, selling price and stock",
     description_ms: "Urus produk, kos, harga jualan dan stok",
-    icon: "/app-icons/products.png",
+    icon: "/app-icons/products.PNG",
     app_path: "/dashboard/products",
     sort_order: 30,
     enabled: true,
@@ -84,7 +84,7 @@ export const DEFAULT_APPS: AppRegistry[] = [
     description_zh: "建立发票、扣库存和保存销售记录",
     description_en: "Create invoices, deduct stock and save sales records",
     description_ms: "Buat invois, tolak stok dan simpan rekod jualan",
-    icon: "/app-icons/invoices.png",
+    icon: "/app-icons/invoices.PNG",
     app_path: "/dashboard/invoices",
     sort_order: 40,
     enabled: true,
@@ -98,7 +98,7 @@ export const DEFAULT_APPS: AppRegistry[] = [
     description_zh: "管理更多附加功能和未来模块",
     description_en: "Manage add-ons and future modules",
     description_ms: "Urus fungsi tambahan dan modul akan datang",
-    icon: "/app-icons/extensions.png",
+    icon: "/app-icons/extensions.PNG",
     app_path: "/dashboard/extensions",
     sort_order: 50,
     enabled: true,
@@ -112,7 +112,7 @@ export const DEFAULT_APPS: AppRegistry[] = [
     description_zh: "网店、下单和商品展示功能",
     description_en: "Shop, order and product display features",
     description_ms: "Kedai, pesanan dan paparan produk",
-    icon: "/app-icons/nkshop.png",
+    icon: "/app-icons/nkshop.PNG",
     app_path: "/dashboard/nkshop",
     sort_order: 60,
     enabled: true,
@@ -222,7 +222,8 @@ export const TXT: Record<
     addToDashboard: "加到控制台",
     removeFromDashboard: "从控制台移除",
     appCenter: "App Center",
-    appCenterDesc: "这里可以管理控制台显示的 App。移除后只会从控制台隐藏，App Center 里面还会保留。",
+    appCenterDesc:
+      "这里可以管理控制台显示的 App。移除后只会从控制台隐藏，App Center 里面还会保留。",
     longPressRemove: "长按 App 图标可从控制台移除",
     removeAppTitle: "移除控制台 App",
     removeAppMessage: "确定要从控制台移除这个 App 吗？App Center 里还会保留。",
@@ -279,7 +280,8 @@ export const TXT: Record<
     addToDashboard: "Add to Dashboard",
     removeFromDashboard: "Remove from Dashboard",
     appCenter: "App Center",
-    appCenterDesc: "Manage which apps appear on your dashboard. Removed apps stay available in App Center.",
+    appCenterDesc:
+      "Manage which apps appear on your dashboard. Removed apps stay available in App Center.",
     longPressRemove: "Long press an app icon to remove it from dashboard",
     removeAppTitle: "Remove Dashboard App",
     removeAppMessage: "Remove this app from dashboard? It will remain in App Center.",
@@ -336,7 +338,8 @@ export const TXT: Record<
     addToDashboard: "Tambah ke Dashboard",
     removeFromDashboard: "Buang dari Dashboard",
     appCenter: "App Center",
-    appCenterDesc: "Urus app yang dipaparkan pada dashboard. App yang dibuang masih kekal dalam App Center.",
+    appCenterDesc:
+      "Urus app yang dipaparkan pada dashboard. App yang dibuang masih kekal dalam App Center.",
     longPressRemove: "Tekan lama ikon app untuk buang dari dashboard",
     removeAppTitle: "Buang App Dashboard",
     removeAppMessage: "Buang app ini dari dashboard? App masih kekal dalam App Center.",
