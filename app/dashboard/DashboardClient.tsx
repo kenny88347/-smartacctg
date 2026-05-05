@@ -204,8 +204,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function init(currentLang: Lang, currentTheme: ThemeKey) {
+    async function init(currentLang: Lang, currentTheme: ThemeKey) {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
     const trialRaw = safeLocalGet(TRIAL_KEY);
@@ -743,16 +742,23 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     if (!appKey || appKey === "app_center") return;
 
-    const nextKeys = pinned
-      ? Array.from(new Set([...dashboardAppKeys, appKey])).filter(
-          (key) => key && key !== "app_center"
-        )
-      : dashboardAppKeys.filter((key) => key !== appKey && key !== "app_center" && key !== "");
+    let nextKeysFinal: string[] = [];
 
-    setDashboardAppKeys(nextKeys);
+    setDashboardAppKeys((prev) => {
+      const fixedPrev = prev.filter((key) => key && key !== "app_center");
+
+      const nextKeys = pinned
+        ? Array.from(new Set([...fixedPrev, appKey]))
+        : fixedPrev.filter((key) => key !== appKey);
+
+      nextKeysFinal = nextKeys;
+      return nextKeys;
+    });
+
+    setMsg(pinned ? t.addToDashboard : t.removeFromDashboard);
 
     if (isTrial) {
-      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(nextKeys));
+      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(nextKeysFinal));
       setMsg(t.saved);
       return;
     }
@@ -763,7 +769,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     }
 
     const userLocalKey = getDashboardLocalKey(session.user.id);
-    safeLocalSet(userLocalKey, JSON.stringify(nextKeys));
+    safeLocalSet(userLocalKey, JSON.stringify(nextKeysFinal));
 
     const { error } = pinned
       ? await insertDashboardApp(session.user.id, appKey)
@@ -869,8 +875,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     : profile?.plan_expiry
       ? new Date(profile.plan_expiry).toLocaleDateString()
       : t.noSub;
-
-  return (
+    return (
     <main
       className="smartacctg-page smartacctg-dashboard-page"
       data-sa-theme={themeKey}
@@ -1496,7 +1501,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     </main>
   );
 }
-
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
   width: "100%",
