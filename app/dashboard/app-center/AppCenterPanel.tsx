@@ -1,6 +1,17 @@
 "use client";
 
-import { CSSProperties } from "react";
+import { CSSProperties, useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import {
+  DASHBOARD_APP_KEYS_LOCAL,
+  DEFAULT_DASHBOARD_APP_KEYS,
+} from "../_dashboard/constants";
+import {
+  isSchemaColumnError,
+  safeLocalGet,
+  safeLocalSet,
+  safeParseArray,
+} from "../_dashboard/utils";
 
 type Lang = "zh" | "en" | "ms";
 
@@ -10,6 +21,15 @@ type AppItem = {
   desc: Record<Lang, string>;
   icon: string;
   path: string;
+};
+
+type UserDashboardAppRow = {
+  id?: string;
+  user_id?: string;
+  app_key?: string | null;
+  app_id?: string | null;
+  pinned?: boolean | null;
+  created_at?: string | null;
 };
 
 const APPS: AppItem[] = [
@@ -105,6 +125,19 @@ const APPS: AppItem[] = [
   },
 ];
 
+const VALID_APP_KEYS = APPS.map((app) => app.key);
+
+function getDashboardLocalKey(userId: string) {
+  return `${DASHBOARD_APP_KEYS_LOCAL}_${userId}`;
+}
+
+function normalizeKeys(keys: string[]) {
+  return Array.from(new Set(keys))
+    .map((key) => String(key || "").trim())
+    .filter((key) => key && key !== "app_center")
+    .filter((key) => VALID_APP_KEYS.includes(key));
+}
+
 function getLang(): Lang {
   if (typeof window === "undefined") return "zh";
 
@@ -122,7 +155,7 @@ function buildUrl(path: string) {
   const q = new URLSearchParams();
 
   q.set("lang", old.get("lang") || "zh");
-  q.set("theme", old.get("theme") || "futureWorld");
+  q.set("theme", old.get("theme") || "deepTeal");
   q.set("fullscreen", "1");
   q.set("return", "dashboard");
   q.set("refresh", String(Date.now()));
@@ -141,7 +174,7 @@ function backToDashboard() {
   const q = new URLSearchParams();
 
   q.set("lang", old.get("lang") || "zh");
-  q.set("theme", old.get("theme") || "futureWorld");
+  q.set("theme", old.get("theme") || "deepTeal");
   q.set("refresh", String(Date.now()));
 
   if (old.get("mode") === "trial") {
@@ -151,8 +184,109 @@ function backToDashboard() {
   window.location.href = `/dashboard?${q.toString()}`;
 }
 
+async function insertDefaultDashboardApps(userId: string) {
+  const rowsWithAppKey = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
+    user_id: userId,
+    app_key: key,
+    pinned: true,
+  }));
+
+  const first = await supabase.from("user_dashboard_apps").insert(rowsWithAppKey);
+
+  if (!first.error) return;
+
+  const lower = String(first.error.message || "").toLowerCase();
+  if (lower.includes("duplicate")) return;
+
+  if (!isSchemaColumnError(first.error.message)) return;
+
+  const rowsWithAppId = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
+    user_id: userId,
+    app_id: key,
+    pinned: true,
+  }));
+
+  await supabase.from("user_dashboard_apps").insert(rowsWithAppId);
+}
+
+async function updateDashboardAppPinned(userId: string, appKey: string, pinned: boolean) {
+  let updated = false;
+
+  const byAppKey = await supabase
+    .from("user_dashboard_apps")
+    .update({ pinned })
+    .eq("user_id", userId)
+    .eq("app_key", appKey)
+    .select("id");
+
+  if (!byAppKey.error && byAppKey.data && byAppKey.data.length > 0) {
+    updated = true;
+  }
+
+  if (byAppKey.error && !isSchemaColumnError(byAppKey.error.message)) {
+    return byAppKey;
+  }
+
+  const byAppId = await supabase
+    .from("user_dashboard_apps")
+    .update({ pinned })
+    .eq("user_id", userId)
+    .eq("app_id", appKey)
+    .select("id");
+
+  if (!byAppId.error && byAppId.data && byAppId.data.length > 0) {
+    updated = true;
+  }
+
+  if (byAppId.error && !isSchemaColumnError(byAppId.error.message) && !updated) {
+    return byAppId;
+  }
+
+  if (updated) {
+    return { error: null };
+  }
+
+  const insertWithAppKey = await supabase.from("user_dashboard_apps").insert({
+    user_id: userId,
+    app_key: appKey,
+    pinned,
+  });
+
+  if (!insertWithAppKey.error) return insertWithAppKey;
+
+  const lower = String(insertWithAppKey.error.message || "").toLowerCase();
+
+  if (lower.includes("duplicate")) {
+    return updateDashboardAppPinned(userId, appKey, pinned);
+  }
+
+  if (!isSchemaColumnError(insertWithAppKey.error.message)) return insertWithAppKey;
+
+  const insertWithAppId = await supabase.from("user_dashboard_apps").insert({
+    user_id: userId,
+    app_id: appKey,
+    pinned,
+  });
+
+  if (insertWithAppId.error) {
+    const lower2 = String(insertWithAppId.error.message || "").toLowerCase();
+
+    if (lower2.includes("duplicate")) {
+      return { error: null };
+    }
+  }
+
+  return insertWithAppId;
+}
+
 export default function AppCenterPanel() {
   const lang = getLang();
+
+  const [userId, setUserId] = useState("");
+  const [pinnedKeys, setPinnedKeys] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyKey, setBusyKey] = useState("");
+  const [msg, setMsg] = useState("");
 
   const text = {
     zh: {
@@ -162,6 +296,9 @@ export default function AppCenterPanel() {
       open: "打开",
       add: "加到控制台",
       remove: "从控制台移除",
+      saved: "已更新",
+      localSaved: "已更新（本地保存）",
+      loginNeeded: "请先登录",
     },
     en: {
       back: "Back",
@@ -170,6 +307,9 @@ export default function AppCenterPanel() {
       open: "Open",
       add: "Add to Dashboard",
       remove: "Remove from Dashboard",
+      saved: "Updated",
+      localSaved: "Updated locally",
+      loginNeeded: "Please login first",
     },
     ms: {
       back: "Kembali",
@@ -178,8 +318,125 @@ export default function AppCenterPanel() {
       open: "Buka",
       add: "Tambah ke Dashboard",
       remove: "Buang dari Dashboard",
+      saved: "Dikemas kini",
+      localSaved: "Dikemas kini secara lokal",
+      loginNeeded: "Sila log masuk dahulu",
     },
   }[lang];
+
+  const pinnedSet = useMemo(() => new Set(pinnedKeys), [pinnedKeys]);
+
+  useEffect(() => {
+    loadPinnedApps();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function loadPinnedApps() {
+    setLoading(true);
+
+    const { data } = await supabase.auth.getSession();
+    const currentUserId = data.session?.user?.id || "";
+
+    setUserId(currentUserId);
+
+    const defaultKeys = normalizeKeys(DEFAULT_DASHBOARD_APP_KEYS);
+
+    if (!currentUserId) {
+      const localKeys = normalizeKeys(safeParseArray<string>(safeLocalGet(DASHBOARD_APP_KEYS_LOCAL)));
+      const finalKeys = localKeys.length > 0 ? localKeys : defaultKeys;
+
+      setPinnedKeys(finalKeys);
+      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(finalKeys));
+      setLoading(false);
+      return;
+    }
+
+    const userLocalKey = getDashboardLocalKey(currentUserId);
+    const localUserKeys = normalizeKeys(safeParseArray<string>(safeLocalGet(userLocalKey)));
+
+    const { data: dashboardData, error } = await supabase
+      .from("user_dashboard_apps")
+      .select("*")
+      .eq("user_id", currentUserId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      const finalKeys = localUserKeys.length > 0 ? localUserKeys : defaultKeys;
+
+      setPinnedKeys(finalKeys);
+      safeLocalSet(userLocalKey, JSON.stringify(finalKeys));
+      setLoading(false);
+      return;
+    }
+
+    const rows = (dashboardData || []) as UserDashboardAppRow[];
+
+    if (rows.length === 0) {
+      const finalKeys = localUserKeys.length > 0 ? localUserKeys : defaultKeys;
+
+      setPinnedKeys(finalKeys);
+      safeLocalSet(userLocalKey, JSON.stringify(finalKeys));
+      await insertDefaultDashboardApps(currentUserId);
+
+      setLoading(false);
+      return;
+    }
+
+    const dbKeys = normalizeKeys(
+      rows
+        .filter((row) => row.pinned !== false)
+        .map((row) => String(row.app_key || row.app_id || ""))
+    );
+
+    const finalKeys =
+      dbKeys.length > 0
+        ? dbKeys
+        : localUserKeys.length > 0
+          ? localUserKeys
+          : defaultKeys;
+
+    setPinnedKeys(finalKeys);
+    safeLocalSet(userLocalKey, JSON.stringify(finalKeys));
+    setLoading(false);
+  }
+
+  async function togglePinned(appKey: string) {
+    if (busyKey) return;
+
+    const fixedKey = String(appKey || "").trim();
+    if (!fixedKey) return;
+
+    const isPinned = pinnedKeys.includes(fixedKey);
+
+    const nextKeys = isPinned
+      ? pinnedKeys.filter((key) => key !== fixedKey)
+      : normalizeKeys([...pinnedKeys, fixedKey]);
+
+    setPinnedKeys(nextKeys);
+    setBusyKey(fixedKey);
+    setMsg("");
+
+    const localKey = userId ? getDashboardLocalKey(userId) : DASHBOARD_APP_KEYS_LOCAL;
+    safeLocalSet(localKey, JSON.stringify(nextKeys));
+
+    if (!userId) {
+      setMsg(text.localSaved);
+      setBusyKey("");
+      return;
+    }
+
+    const result = await updateDashboardAppPinned(userId, fixedKey, !isPinned);
+
+    if (result.error) {
+      console.warn("App Center update failed:", result.error.message);
+      setMsg(text.localSaved);
+      setBusyKey("");
+      return;
+    }
+
+    setMsg(text.saved);
+    setBusyKey("");
+  }
 
   return (
     <main className="smartacctg-page smartacctg-dashboard-page" style={pageStyle}>
@@ -194,9 +451,12 @@ export default function AppCenterPanel() {
 
         <p style={descStyle}>{text.desc}</p>
 
+        {msg ? <p style={msgStyle}>{msg}</p> : null}
+
         <div style={listStyle}>
-          {APPS.map((app, index) => {
-            const isFirst = index === 0;
+          {APPS.map((app) => {
+            const isPinned = pinnedSet.has(app.key);
+            const busy = busyKey === app.key;
 
             return (
               <div key={app.key} className="app-center-card" style={appCardStyle}>
@@ -227,8 +487,16 @@ export default function AppCenterPanel() {
                     {text.open}
                   </button>
 
-                  <button type="button" style={isFirst ? removeBtnStyle : addBtnStyle}>
-                    {isFirst ? text.remove : text.add}
+                  <button
+                    type="button"
+                    disabled={loading || Boolean(busyKey)}
+                    onClick={() => togglePinned(app.key)}
+                    style={{
+                      ...(isPinned ? removeBtnStyle : addBtnStyle),
+                      opacity: loading || busy ? 0.7 : 1,
+                    }}
+                  >
+                    {busy ? "..." : isPinned ? text.remove : text.add}
                   </button>
                 </div>
               </div>
@@ -331,6 +599,14 @@ const descStyle: CSSProperties = {
   fontSize: "clamp(18px, 4.6vw, 24px)",
   lineHeight: 1.5,
   fontWeight: 700,
+};
+
+const msgStyle: CSSProperties = {
+  marginTop: 0,
+  marginBottom: 18,
+  color: "#5eead4",
+  fontSize: 16,
+  fontWeight: 900,
 };
 
 const listStyle: CSSProperties = {
