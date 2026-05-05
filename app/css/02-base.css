@@ -1,0 +1,131 @@
+/* =========================================================
+   SmartAcctg Base
+========================================================= */
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sa-font-family);
+  font-size: var(--sa-fs-base);
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   SmartAcctg Page Base
+========================================================= */
+
+.smartacctg-page,
+.smartacctg-dashboard-page,
+.smartacctg-products-page,
+.smartacctg-invoice-page,
+.smartacctg-records-page,
+.smartacctg-customers-page,
+.smartacctg-accounting-page,
+.smartacctg-settings-page,
+.smartacctg-app-page {
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: var(--sa-font-family);
+  font-size: var(--sa-fs-base);
+  line-height: 1.5;
+  background: var(--sa-page-bg);
+  color: var(--sa-text);
+}
+
+.smartacctg-page *,
+.smartacctg-dashboard-page *,
+.smartacctg-products-page *,
+.smartacctg-invoice-page *,
+.smartacctg-records-page *,
+.smartacctg-customers-page *,
+.smartacctg-accounting-page *,
+.smartacctg-settings-page *,
+.smartacctg-app-page * {
+  box-sizing: border-box;
+  font-family: var(--sa-font-family);
+}
+
+/* =========================================================
+   Typography
+========================================================= */
+
+.smartacctg-page h1,
+.smartacctg-dashboard-page h1,
+.smartacctg-products-page h1,
+.smartacctg-invoice-page h1,
+.smartacctg-records-page h1,
+.smartacctg-customers-page h1,
+.smartacctg-accounting-page h1,
+.smartacctg-settings-page h1,
+.smartacctg-app-page h1 {
+  font-size: var(--sa-fs-2xl);
+  line-height: 1.12;
+  margin-top: 0;
+  font-weight: 900;
+}
+
+.smartacctg-page h2,
+.smartacctg-dashboard-page h2,
+.smartacctg-products-page h2,
+.smartacctg-invoice-page h2,
+.smartacctg-records-page h2,
+.smartacctg-customers-page h2,
+.smartacctg-accounting-page h2,
+.smartacctg-settings-page h2,
+.smartacctg-app-page h2 {
+  font-size: var(--sa-fs-xl);
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.smartacctg-page h3,
+.smartacctg-dashboard-page h3,
+.smartacctg-products-page h3,
+.smartacctg-invoice-page h3,
+.smartacctg-records-page h3,
+.smartacctg-customers-page h3,
+.smartacctg-accounting-page h3,
+.smartacctg-settings-page h3,
+.smartacctg-app-page h3 {
+  font-size: var(--sa-fs-lg);
+  line-height: 1.25;
+  font-weight: 900;
+}
+
+.smartacctg-page p,
+.smartacctg-page div,
+.smartacctg-page span,
+.smartacctg-page label,
+.smartacctg-page td,
+.smartacctg-page th {
+  font-weight: 400;
+}
+
+.smartacctg-page strong,
+.smartacctg-dashboard-page strong,
+.smartacctg-products-page strong,
+.smartacctg-invoice-page strong,
+.smartacctg-records-page strong,
+.smartacctg-customers-page strong,
+.smartacctg-accounting-page strong,
+.smartacctg-settings-page strong,
+.smartacctg-app-page strong {
+  font-weight: 800;
+}
