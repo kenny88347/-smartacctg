@@ -1,0 +1,39 @@
+/* =========================================================
+   Dashboard
+========================================================= */
+
+.smartacctg-dashboard-page .dashboard-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.smartacctg-dashboard-page .dashboard-stat-card {
+  min-width: 0;
+  height: auto;
+}
+
+.smartacctg-dashboard-page .dashboard-feature-grid,
+.smartacctg-dashboard-page .feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.smartacctg-dashboard-page .quick-grid,
+.smartacctg-dashboard-page .dashboard-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.smartacctg-dashboard-page .summary-row,
+.smartacctg-dashboard-page .dashboard-summary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
