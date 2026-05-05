@@ -64,6 +64,20 @@ function getAppDesc(app: AppRegistry, lang: Lang) {
   return app.description_zh || app.description_en || "";
 }
 
+function normalizeIconPath(src?: string | null) {
+  const raw = String(src || "").trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("/app-icons/")) {
+    const filename = raw.split("/").pop() || "";
+    const baseName = filename.replace(/\.(png|PNG|jpg|jpeg|webp|svg)$/i, "");
+
+    return `/app-icons/${baseName}.PNG`;
+  }
+
+  return raw;
+}
+
 function buildUrl(path?: string | null) {
   const fixedPath = String(path || "/dashboard").trim();
 
@@ -415,12 +429,12 @@ export default function AppCenterPanel() {
             const busy = busyKey === app.app_key;
             const title = getAppTitle(app, lang);
             const desc = getAppDesc(app, lang);
-            const icon = app.icon || "📱";
+            const icon = normalizeIconPath(app.icon || "📱");
             const imageIcon = isImageIcon(icon);
 
             return (
               <div key={app.app_key} className="app-icon-item" style={iconItemStyle}>
-                <div className="app-icon-wrap" style={iconWrapStyle}>
+                <div style={iconWrapStyle}>
                   <button
                     type="button"
                     onClick={() => openApp(app)}
@@ -437,16 +451,18 @@ export default function AppCenterPanel() {
                       <img
                         src={icon}
                         alt={title}
-                        className="app-icon-img"
                         style={appIconImgStyle}
                         onError={(e) => {
                           const img = e.currentTarget;
-                          img.style.display = "none";
+                          const current = img.getAttribute("src") || "";
 
-                          const parent = img.parentElement;
-                          if (parent) {
-                            parent.textContent = "📱";
-                            parent.style.fontSize = "42px";
+                          if (current.endsWith(".PNG")) {
+                            img.src = current.replace(/\.PNG$/i, ".png");
+                            return;
+                          }
+
+                          if (current.endsWith(".png")) {
+                            img.src = current.replace(/\.png$/i, ".PNG");
                           }
                         }}
                       />
@@ -520,36 +536,16 @@ const APP_CENTER_CSS = `
     -webkit-touch-callout: none !important;
   }
 
-  .app-main-icon {
-    background: transparent !important;
-    box-shadow: none !important;
-    overflow: visible !important;
-  }
-
-  .app-icon-img {
-    background: transparent !important;
-  }
-
   @media (max-width: 430px) {
     .app-icon-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 28px 16px !important;
-    }
-
-    .app-icon-wrap {
-      width: 96px !important;
-      height: 96px !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 22px 10px !important;
     }
 
     .app-main-icon {
-      width: 96px !important;
-      height: 96px !important;
-      border-radius: 24px !important;
-    }
-
-    .app-icon-img {
-      width: 96px !important;
-      height: 96px !important;
+      width: 70px !important;
+      height: 70px !important;
+      border-radius: 22px !important;
     }
 
     .app-icon-item {
@@ -560,14 +556,6 @@ const APP_CENTER_CSS = `
   @media (max-width: 360px) {
     .app-icon-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      gap: 24px 12px !important;
-    }
-
-    .app-icon-wrap,
-    .app-main-icon,
-    .app-icon-img {
-      width: 88px !important;
-      height: 88px !important;
     }
   }
 `;
@@ -596,7 +584,7 @@ const mainCardStyle: CSSProperties = {
 };
 
 const backBtnStyle: CSSProperties = {
-  minHeight: 54,
+  minHeight: 52,
   border: "2px solid #2dd4bf",
   borderRadius: 18,
   padding: "0 18px",
@@ -604,40 +592,40 @@ const backBtnStyle: CSSProperties = {
   color: "#2dd4bf",
   fontWeight: 900,
   fontSize: 16,
-  marginBottom: 22,
+  marginBottom: 20,
 };
 
 const titleStyle: CSSProperties = {
   margin: 0,
-  fontSize: "clamp(32px, 8vw, 46px)",
+  fontSize: "clamp(30px, 8vw, 44px)",
   lineHeight: 1.08,
   fontWeight: 900,
 };
 
 const descStyle: CSSProperties = {
-  marginTop: 16,
-  marginBottom: 18,
+  marginTop: 14,
+  marginBottom: 16,
   color: "#99f6e4",
-  fontSize: "clamp(15px, 4vw, 18px)",
+  fontSize: "clamp(14px, 3.8vw, 17px)",
   lineHeight: 1.45,
   fontWeight: 700,
 };
 
 const msgStyle: CSSProperties = {
   marginTop: 0,
-  marginBottom: 18,
+  marginBottom: 16,
   color: "#5eead4",
-  fontSize: 16,
+  fontSize: 14,
   fontWeight: 900,
 };
 
 const iconGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "30px 18px",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "24px 12px",
   alignItems: "start",
   justifyItems: "center",
-  marginTop: 24,
+  marginTop: 18,
 };
 
 const iconItemStyle: CSSProperties = {
@@ -646,76 +634,76 @@ const iconItemStyle: CSSProperties = {
   display: "grid",
   justifyItems: "center",
   textAlign: "center",
-  gap: 8,
+  gap: 6,
 };
 
 const iconWrapStyle: CSSProperties = {
   position: "relative",
-  width: 106,
-  height: 106,
+  width: 78,
+  height: 78,
 };
 
 const appIconStyle: CSSProperties = {
-  width: 106,
-  height: 106,
+  width: 78,
+  height: 78,
   border: "none",
-  borderRadius: 28,
+  borderRadius: 24,
   background: "transparent",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  overflow: "visible",
+  overflow: "hidden",
   padding: 0,
   cursor: "pointer",
-  boxShadow: "none",
+  boxShadow: "0 12px 26px rgba(45, 212, 191, 0.24)",
 };
 
 const appIconImgStyle: CSSProperties = {
-  width: "106px",
-  height: "106px",
-  objectFit: "contain",
-  display: "block",
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
   borderRadius: 24,
+  display: "block",
   background: "transparent",
 };
 
 const appIconEmojiStyle: CSSProperties = {
   width: "100%",
   height: "100%",
-  borderRadius: 28,
+  borderRadius: 24,
   background:
     "radial-gradient(circle at 28% 20%, #ffffff 0%, #dffdf8 20%, #5eead4 48%, #0f766e 100%)",
   border: "2px solid rgba(94, 234, 212, 0.95)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: 42,
+  fontSize: 34,
   lineHeight: 1,
   filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.28))",
 };
 
 const pinDotStyle: CSSProperties = {
   position: "absolute",
-  top: -8,
-  right: -8,
-  width: 34,
-  height: 34,
+  top: -6,
+  right: -6,
+  width: 32,
+  height: 32,
   borderRadius: 999,
   border: "2px solid",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: 20,
+  fontSize: 18,
   fontWeight: 900,
   lineHeight: 1,
-  boxShadow: "0 8px 18px rgba(0,0,0,0.26)",
+  boxShadow: "0 8px 16px rgba(0,0,0,0.22)",
   cursor: "pointer",
 };
 
 const appNameStyle: CSSProperties = {
   width: "100%",
   color: "#ecfeff",
-  fontSize: "clamp(15px, 4vw, 18px)",
+  fontSize: "clamp(13px, 3.4vw, 15px)",
   lineHeight: 1.2,
   fontWeight: 900,
   overflowWrap: "anywhere",
@@ -723,18 +711,17 @@ const appNameStyle: CSSProperties = {
 
 const appMiniDescStyle: CSSProperties = {
   width: "100%",
-  maxWidth: 150,
   color: "#99f6e4",
-  fontSize: 9,
-  lineHeight: 1.18,
-  fontWeight: 600,
-  opacity: 0.82,
+  fontSize: 10,
+  lineHeight: 1.25,
+  fontWeight: 700,
+  opacity: 0.9,
   overflowWrap: "anywhere",
 };
 
 const appStatusStyle: CSSProperties = {
   width: "100%",
-  fontSize: 12,
+  fontSize: 11,
   lineHeight: 1.15,
   fontWeight: 800,
   opacity: 0.95,
