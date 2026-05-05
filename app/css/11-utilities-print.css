@@ -1,0 +1,64 @@
+/* =========================================================
+   Utility Grids
+========================================================= */
+
+.sa-grid-2,
+.sa-two-col,
+.date-two-col-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.sa-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.sa-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* =========================================================
+   Print
+========================================================= */
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #printInvoiceArea,
+  #printInvoiceArea * {
+    visibility: visible !important;
+  }
+
+  #printInvoiceArea {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 12mm !important;
+    margin: 0 !important;
+    background: white !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
