@@ -1,0 +1,82 @@
+/* =========================================================
+   SmartAcctg Buttons / Topbar / Language
+========================================================= */
+
+.smartacctg-page button,
+.smartacctg-dashboard-page button,
+.smartacctg-products-page button,
+.smartacctg-invoice-page button,
+.smartacctg-records-page button,
+.smartacctg-customers-page button,
+.smartacctg-accounting-page button {
+  font-family: var(--sa-font-family);
+  max-width: 100%;
+  min-width: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* =========================================================
+   Topbar / Language
+========================================================= */
+
+.sa-topbar,
+.sa-user-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin-bottom: 14px;
+}
+
+.sa-topbar::-webkit-scrollbar,
+.sa-user-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.sa-topbar-left,
+.sa-topbar-right,
+.sa-user-toolbar-left,
+.sa-user-toolbar-right,
+.sa-lang-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.sa-topbar-left,
+.sa-topbar-right,
+.sa-user-toolbar-left,
+.sa-user-toolbar-right {
+  min-width: max-content;
+}
+
+.sa-back-btn {
+  border-radius: 999px;
+  border: var(--sa-border-w) solid var(--sa-border);
+  background: var(--sa-input-bg);
+  color: var(--sa-accent);
+  min-height: 44px;
+  height: 44px;
+  padding: 0 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sa-lang-btn {
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: 999px;
+  border: var(--sa-border-w) solid var(--sa-accent);
+  padding: 0 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
