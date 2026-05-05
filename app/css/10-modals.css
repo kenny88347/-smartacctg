@@ -1,0 +1,144 @@
+/* =========================================================
+   Fullscreen Modals
+========================================================= */
+
+.sa-fullscreen-overlay,
+.customers-fullscreen-overlay,
+.products-fullscreen-overlay,
+.records-fullscreen-overlay,
+.invoice-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  width: 100vw;
+  height: 100dvh;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.sa-fullscreen-modal,
+.fullscreen-invoice-modal,
+.customers-fullscreen-modal,
+.products-fullscreen-modal,
+.records-fullscreen-modal,
+.smartacctg-invoice-page .fullscreen-invoice-modal,
+.smartacctg-customers-page .customers-fullscreen-modal,
+.smartacctg-products-page .products-fullscreen-modal,
+.smartacctg-records-page .records-fullscreen-modal,
+.smartacctg-accounting-page .records-fullscreen-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+  padding: max(16px, env(safe-area-inset-top)) 16px
+    max(24px, env(safe-area-inset-bottom));
+}
+
+.sa-modal-header,
+.sa-modal-top,
+.sa-titlebar,
+.records-modal-header,
+.fullscreen-invoice-modal .sa-titlebar,
+.customers-fullscreen-modal .sa-modal-header,
+.products-fullscreen-modal .sa-modal-header,
+.records-fullscreen-modal .sa-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  background: inherit;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+.sa-close-x {
+  border: none;
+  background: transparent;
+  color: var(--sa-red);
+  font-size: clamp(18px, 4vw, 24px);
+  font-weight: 900;
+  padding: 8px;
+  min-width: auto;
+  min-height: auto;
+  box-shadow: none;
+}
+
+/* =========================================================
+   Delete Modal
+========================================================= */
+
+.sa-delete-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  width: 100vw;
+  height: 100dvh;
+  background: rgba(15, 23, 42, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.sa-delete-modal {
+  width: 100%;
+  max-width: 520px;
+  border-radius: var(--sa-radius-card);
+  border: var(--sa-border-w) solid var(--sa-border);
+  background: var(--sa-card-bg);
+  color: var(--sa-text);
+  box-shadow: var(--sa-glow);
+  padding: var(--sa-card-pad);
+}
+
+.sa-delete-detail {
+  margin: 12px 0 18px;
+  padding: 14px;
+  border-radius: var(--sa-radius-control);
+  background: var(--sa-soft-bg);
+  color: var(--sa-text);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.sa-delete-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sa-delete-confirm-btn,
+.sa-delete-cancel-btn {
+  min-height: var(--sa-control-h);
+  border-radius: var(--sa-radius-control);
+  border: none;
+  font-weight: 900;
+}
+
+.sa-delete-confirm-btn {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.sa-delete-cancel-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
