@@ -15,6 +15,11 @@ import {
   safeParseArray,
 } from "../_dashboard/utils";
 import type { AppRegistry, Lang } from "../_dashboard/types";
+import {
+  AppIconButton,
+  AppIconImage,
+  AppPinButton,
+} from "@/app/components/buttons/AppCenterButtons";
 
 type UserDashboardAppRow = {
   id?: string;
@@ -224,8 +229,6 @@ export default function AppCenterPanel() {
       desc: "点击图标打开 App，点击右上角 + / ✓ 加入或移除控制台。",
       saved: "已更新",
       localSaved: "已更新（本地保存）",
-      pinned: "已在控制台",
-      notPinned: "未加入",
     },
     en: {
       back: "Back",
@@ -233,8 +236,6 @@ export default function AppCenterPanel() {
       desc: "Tap an icon to open. Tap + / ✓ to add or remove from dashboard.",
       saved: "Updated",
       localSaved: "Updated locally",
-      pinned: "On Dashboard",
-      notPinned: "Not Added",
     },
     ms: {
       back: "Kembali",
@@ -242,8 +243,6 @@ export default function AppCenterPanel() {
       desc: "Tekan ikon untuk buka. Tekan + / ✓ untuk tambah atau buang dari dashboard.",
       saved: "Dikemas kini",
       localSaved: "Dikemas kini secara lokal",
-      pinned: "Di Dashboard",
-      notPinned: "Belum Tambah",
     },
   }[lang];
 
@@ -428,74 +427,27 @@ export default function AppCenterPanel() {
             return (
               <div key={app.app_key} className="app-icon-item" style={iconItemStyle}>
                 <div className="app-icon-wrap" style={iconWrapStyle}>
-                  <button
-                    type="button"
+                  <AppIconButton
+                    title={title}
                     onClick={() => openApp(app)}
                     onPointerDown={() => startLongPress(app.app_key)}
                     onPointerUp={cancelLongPress}
                     onPointerLeave={cancelLongPress}
                     onPointerCancel={cancelLongPress}
-                    onContextMenu={(e) => e.preventDefault()}
-                    className="app-main-icon"
-                    style={appIconStyle}
-                    aria-label={title}
                   >
                     {imageIcon ? (
-                      <img
-                        src={icon}
-                        alt={title}
-                        className="app-icon-img"
-                        style={appIconImgStyle}
-                        onError={(e) => {
-                          const img = e.currentTarget;
-                          const current = img.getAttribute("src") || "";
-                          const tried = img.getAttribute("data-tried") || "";
-
-                          if (tried === "1") {
-                            img.style.display = "none";
-
-                            const parent = img.parentElement;
-                            if (parent) {
-                              parent.textContent = "📱";
-                              parent.style.fontSize = "32px";
-                            }
-
-                            return;
-                          }
-
-                          img.setAttribute("data-tried", "1");
-
-                          if (current.endsWith(".PNG")) {
-                            img.src = current.replace(/\.PNG$/i, ".png");
-                            return;
-                          }
-
-                          if (current.endsWith(".png")) {
-                            img.src = current.replace(/\.png$/i, ".PNG");
-                          }
-                        }}
-                      />
+                      <AppIconImage src={icon} alt={title} />
                     ) : (
                       <span style={appIconEmojiStyle}>{icon}</span>
                     )}
-                  </button>
+                  </AppIconButton>
 
-                  <button
-                    type="button"
+                  <AppPinButton
+                    pinned={isPinned}
+                    busy={busy}
                     disabled={loading || Boolean(busyKey)}
                     onClick={() => togglePinned(app.app_key)}
-                    className="app-pin-dot"
-                    style={{
-                      ...pinDotStyle,
-                      background: isPinned ? "#22c55e" : "#ecfeff",
-                      color: isPinned ? "#ffffff" : "#0f766e",
-                      borderColor: isPinned ? "#86efac" : "#2dd4bf",
-                      opacity: loading || busy ? 0.7 : 1,
-                    }}
-                    aria-label={isPinned ? text.pinned : text.notPinned}
-                  >
-                    {busy ? "…" : isPinned ? "✓" : "+"}
-                  </button>
+                  />
                 </div>
 
                 <div className="app-name" style={appNameStyle}>
@@ -537,12 +489,39 @@ const APP_CENTER_CSS = `
   }
 
   .app-main-icon {
+    width: 70px !important;
+    height: 70px !important;
+    min-width: 70px !important;
+    min-height: 70px !important;
+    max-width: 70px !important;
+    max-height: 70px !important;
+    padding: 0 !important;
+    margin: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
   }
 
   .app-icon-img {
+    width: 70px !important;
+    height: 70px !important;
+    min-width: 70px !important;
+    min-height: 70px !important;
+    max-width: 70px !important;
+    max-height: 70px !important;
     background: transparent !important;
+  }
+
+  .app-pin-dot {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    min-height: 22px !important;
+    max-width: 22px !important;
+    max-height: 22px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
   }
 
   .app-name {
@@ -563,15 +542,14 @@ const APP_CENTER_CSS = `
       height: 64px !important;
     }
 
-    .app-main-icon {
-      width: 64px !important;
-      height: 64px !important;
-      border-radius: 18px !important;
-    }
-
+    .app-main-icon,
     .app-icon-img {
       width: 64px !important;
       height: 64px !important;
+      min-width: 64px !important;
+      min-height: 64px !important;
+      max-width: 64px !important;
+      max-height: 64px !important;
       border-radius: 18px !important;
     }
 
@@ -580,11 +558,17 @@ const APP_CENTER_CSS = `
     }
 
     .app-pin-dot {
-      width: 26px !important;
-      height: 26px !important;
-      font-size: 15px !important;
-      top: -5px !important;
-      right: -5px !important;
+      width: 21px !important;
+      height: 21px !important;
+      min-width: 21px !important;
+      min-height: 21px !important;
+      max-width: 21px !important;
+      max-height: 21px !important;
+      font-size: 12px !important;
+      top: -3px !important;
+      right: -3px !important;
+      border-width: 1.5px !important;
+      padding: 0 !important;
     }
   }
 
@@ -599,6 +583,24 @@ const APP_CENTER_CSS = `
     .app-icon-img {
       width: 58px !important;
       height: 58px !important;
+      min-width: 58px !important;
+      min-height: 58px !important;
+      max-width: 58px !important;
+      max-height: 58px !important;
+    }
+
+    .app-pin-dot {
+      width: 20px !important;
+      height: 20px !important;
+      min-width: 20px !important;
+      min-height: 20px !important;
+      max-width: 20px !important;
+      max-height: 20px !important;
+      font-size: 11px !important;
+      top: -3px !important;
+      right: -3px !important;
+      border-width: 1.4px !important;
+      padding: 0 !important;
     }
   }
 `;
@@ -686,30 +688,6 @@ const iconWrapStyle: CSSProperties = {
   height: 70,
 };
 
-const appIconStyle: CSSProperties = {
-  width: 70,
-  height: 70,
-  border: "none",
-  borderRadius: 20,
-  background: "transparent",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  overflow: "hidden",
-  padding: 0,
-  cursor: "pointer",
-  boxShadow: "none",
-};
-
-const appIconImgStyle: CSSProperties = {
-  width: "70px",
-  height: "70px",
-  objectFit: "contain",
-  borderRadius: 20,
-  display: "block",
-  background: "transparent",
-};
-
 const appIconEmojiStyle: CSSProperties = {
   width: "100%",
   height: "100%",
@@ -723,24 +701,6 @@ const appIconEmojiStyle: CSSProperties = {
   fontSize: 30,
   lineHeight: 1,
   filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.28))",
-};
-
-const pinDotStyle: CSSProperties = {
-  position: "absolute",
-  top: -6,
-  right: -6,
-  width: 28,
-  height: 28,
-  borderRadius: 999,
-  border: "2px solid",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 16,
-  fontWeight: 900,
-  lineHeight: 1,
-  boxShadow: "0 6px 12px rgba(0,0,0,0.22)",
-  cursor: "pointer",
 };
 
 const appNameStyle: CSSProperties = {
