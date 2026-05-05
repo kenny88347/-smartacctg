@@ -1769,3 +1769,75 @@ body {
   margin-left: 6px !important;
   padding: 0 !important;
 }
+/* =========================================================
+   SmartAcctg App Center 小圆点按钮修复
+   修复 + / ✓ 被全局 button min-height 拉成长框
+   放在 app/globals.css 最下面
+========================================================= */
+
+.smartacctg-page .app-pin-dot,
+.smartacctg-dashboard-page .app-pin-dot {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  max-width: 22px !important;
+  max-height: 22px !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  border-radius: 999px !important;
+  border-width: 1.5px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* App Center 图标不要被全局 button 样式影响 */
+.smartacctg-page .app-main-icon,
+.smartacctg-dashboard-page .app-main-icon {
+  padding: 0 !important;
+  min-height: auto !important;
+  height: 64px !important;
+  width: 64px !important;
+  min-width: 64px !important;
+  max-width: 64px !important;
+  max-height: 64px !important;
+}
+
+/* 手机更小一点 */
+@media (max-width: 430px) {
+  .smartacctg-page .app-pin-dot,
+  .smartacctg-dashboard-page .app-pin-dot {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+    font-size: 12px !important;
+    padding: 0 !important;
+  }
+
+  .smartacctg-page .app-main-icon,
+  .smartacctg-dashboard-page .app-main-icon {
+    width: 60px !important;
+    height: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    max-height: 60px !important;
+  }
+}
