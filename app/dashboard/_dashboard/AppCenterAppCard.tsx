@@ -1,162 +1,242 @@
-"use client";
-
-import { CSSProperties, useEffect, useRef, useState } from "react";
-import type { AppRegistry, Lang } from "./types";
-import { appDescription, appTitle, isImageIcon } from "./utils";
-
-type AppCenterAppCardProps = {
-  app: AppRegistry;
-  lang: Lang;
-  theme: any;
-  pinned: boolean;
-  openText: string;
-  addText: string;
-  removeText: string;
-  onOpen: (app: AppRegistry) => void;
-  onTogglePinned: (app: AppRegistry, pinned: boolean) => Promise<void> | void;
+const pageStyle: CSSProperties = {
+  minHeight: "100vh",
+  width: "100%",
+  maxWidth: "100vw",
+  overflowX: "hidden",
+  padding: "clamp(12px, 3vw, 22px)",
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
 };
 
-export default function AppCenterAppCard({
-  app,
-  lang,
-  theme,
-  pinned,
-  openText,
-  addText,
-  removeText,
-  onOpen,
-  onTogglePinned,
-}: AppCenterAppCardProps) {
-  const [localPinned, setLocalPinned] = useState(Boolean(pinned));
-  const [busy, setBusy] = useState(false);
-  const lockRef = useRef(false);
+const topCardStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 12,
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "clamp(16px, 4vw, 22px)",
+};
 
-  useEffect(() => {
-    setLocalPinned(Boolean(pinned));
-  }, [pinned]);
+const leftTopStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  minWidth: 0,
+};
 
-  const desc = appDescription(app, lang);
-  const appKey = String(app.app_key || "").trim();
+const avatarBtnStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  minWidth: 52,
+  minHeight: 52,
+  borderRadius: 999,
+  border: "none",
+  background: "#fff",
+  fontSize: 24,
+  overflow: "hidden",
+  boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
+  padding: 0,
+};
 
-  function stopEvent(e: any) {
-    e?.preventDefault?.();
-    e?.stopPropagation?.();
-  }
+const avatarImgStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+};
 
-  function unlockSoon() {
-    window.setTimeout(() => {
-      lockRef.current = false;
-    }, 500);
-  }
+const avatarMenuStyle: CSSProperties = {
+  position: "absolute",
+  top: 62,
+  left: 0,
+  width: 250,
+  background: "#fff",
+  color: "#111827",
+  borderRadius: 18,
+  padding: 10,
+  zIndex: 99999,
+  boxShadow: "0 18px 46px rgba(0,0,0,0.28)",
+  border: "1px solid rgba(15,23,42,0.1)",
+};
 
-  function handleOpen(e: any) {
-    stopEvent(e);
+const menuItemStyle: CSSProperties = {
+  display: "block",
+  width: "100%",
+  padding: "12px",
+  border: "none",
+  background: "transparent",
+  textAlign: "left",
+  borderRadius: 10,
+  color: "#111827",
+  fontSize: 16,
+};
 
-    if (lockRef.current) return;
-    lockRef.current = true;
-    unlockSoon();
+const avatarLangBoxStyle: CSSProperties = {
+  borderTop: "1px solid #e5e7eb",
+  marginTop: 8,
+  paddingTop: 8,
+};
 
-    onOpen(app);
-  }
+const avatarLangTitleStyle: CSSProperties = {
+  fontSize: 13,
+  color: "#64748b",
+  marginBottom: 8,
+};
 
-  async function handleToggle(e: any) {
-    stopEvent(e);
+const avatarLangBtnRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 8,
+};
 
-    if (busy) return;
-    if (lockRef.current) return;
+const avatarLangBtnStyle = (active: boolean, theme: any): CSSProperties => ({
+  border: `2px solid ${theme.accent}`,
+  background: active ? theme.accent : theme.inputBg || "#fff",
+  color: active ? "#fff" : theme.accent,
+  borderRadius: 999,
+  minHeight: 38,
+  padding: "0 8px",
+});
 
-    lockRef.current = true;
-    unlockSoon();
+const planTextStyle: CSSProperties = {
+  lineHeight: 1.3,
+  overflowWrap: "anywhere",
+  fontSize: "clamp(15px, 3.8vw, 18px)",
+};
 
-    const nextPinned = !localPinned;
+const logoutBtnStyle: CSSProperties = {
+  color: "#fff",
+  border: "none",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 14px",
+  minHeight: "var(--sa-control-h)",
+  whiteSpace: "nowrap",
+};
 
-    // 先马上改变文字，证明按钮有被按到
-    setLocalPinned(nextPinned);
-    setBusy(true);
+const titleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "clamp(26px, 7vw, 36px)",
+  lineHeight: 1.12,
+  fontWeight: 900,
+  letterSpacing: "-0.03em",
+  overflowWrap: "anywhere",
+};
 
-    try {
-      await onTogglePinned(app, nextPinned);
-    } catch (err) {
-      console.warn("[AppCenterAppCard] toggle failed:", err);
-      setLocalPinned(!nextPinned);
-    } finally {
-      setBusy(false);
-    }
-  }
+const noticeWrapStyle: CSSProperties = {
+  marginTop: 8,
+  overflow: "hidden",
+  width: "100%",
+};
 
-  return (
-    <div
-      style={{
-        ...appCenterCardStyle,
-        borderColor: theme.border,
-        background: theme.panelBg || theme.card,
-        color: theme.panelText || theme.text,
-      }}
-    >
-      <button
-        type="button"
-        onClick={handleOpen}
-        onPointerDown={handleOpen}
-        style={phoneAppIconStyle(theme)}
-      >
-        {isImageIcon(app.icon) ? (
-          <img src={app.icon || ""} alt={appTitle(app, lang)} style={appImgStyle} />
-        ) : (
-          <span style={appEmojiStyle}>{app.icon || "📱"}</span>
-        )}
-      </button>
+const noticeMarqueeStyle: CSSProperties = {
+  display: "inline-block",
+};
 
-      <div style={{ minWidth: 0 }}>
-        <h2 style={appCenterTitleStyle}>{appTitle(app, lang)}</h2>
+const summaryGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 10,
+  marginTop: 12,
+  marginBottom: 12,
+};
 
-        {desc ? (
-          <p style={{ margin: "6px 0 0", color: theme.muted || theme.subText || "#64748b" }}>
-            {desc}
-          </p>
-        ) : null}
-      </div>
+const summaryBoxStyle: CSSProperties = {
+  minHeight: 0,
+  padding: "clamp(12px, 3vw, 16px)",
+  border: "var(--sa-border-w) solid",
+  borderRadius: 22,
+};
 
-      <div style={appCenterActionStyle}>
-        <button
-          type="button"
-          onClick={handleOpen}
-          onPointerDown={handleOpen}
-          style={{
-            ...appCenterSmallBtnStyle,
-            background: theme.accent,
-            color: "#fff",
-            opacity: busy ? 0.75 : 1,
-          }}
-        >
-          {openText}
-        </button>
+const summaryHeaderBtnStyle: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 10,
+  border: "none",
+  background: "transparent",
+  color: "inherit",
+  padding: 0,
+  minHeight: 0,
+  fontSize: "clamp(20px, 5.2vw, 26px)",
+  lineHeight: 1.12,
+};
 
-        <button
-          type="button"
-          onClick={handleToggle}
-          onPointerDown={handleToggle}
-          disabled={busy}
-          style={
-            localPinned
-              ? {
-                  ...appCenterRemoveBtnStyle,
-                  opacity: busy ? 0.75 : 1,
-                }
-              : {
-                  ...appCenterSmallBtnStyle,
-                  borderColor: theme.border,
-                  color: theme.accent,
-                  background: theme.inputBg || "#fff",
-                  opacity: busy ? 0.75 : 1,
-                }
-          }
-        >
-          {busy ? "..." : localPinned ? removeText : addText}
-        </button>
-      </div>
-    </div>
-  );
-}
+const smallMutedStyle: CSSProperties = {
+  marginTop: 8,
+  fontSize: "clamp(15px, 3.8vw, 17px)",
+};
+
+const summaryDetailListStyle: CSSProperties = {
+  display: "grid",
+  gap: 7,
+  marginTop: 8,
+};
+
+const summaryRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 10,
+  alignItems: "center",
+  lineHeight: 1.18,
+};
+
+const debtRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  gap: 10,
+  alignItems: "start",
+  lineHeight: 1.25,
+};
+
+const quickCardStyle: CSSProperties = {
+  marginBottom: 12,
+  padding: "clamp(12px, 3vw, 16px)",
+  borderRadius: 22,
+};
+
+const quickHeaderBtnStyle: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  gap: 10,
+  border: "none",
+  background: "transparent",
+  color: "inherit",
+  padding: 0,
+  minHeight: 0,
+  fontSize: "clamp(20px, 5.2vw, 26px)",
+  lineHeight: 1.12,
+};
+
+const quickGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 8,
+  marginTop: 10,
+};
+
+const quickBtnStyle = (theme: any): CSSProperties => ({
+  background: theme.inputBg || "#fff",
+  border: `var(--sa-border-w) solid ${theme.border}`,
+  color: theme.accent,
+  borderRadius: 18,
+  minHeight: 54,
+  padding: "8px 10px",
+  fontSize: "clamp(15px, 4vw, 17px)",
+  lineHeight: 1.15,
+  whiteSpace: "normal",
+  textAlign: "center",
+});
+
+const appGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "18px 10px",
+  width: "100%",
+};
 
 const phoneAppIconStyle = (theme: any): CSSProperties => ({
   width: 76,
@@ -174,11 +254,6 @@ const phoneAppIconStyle = (theme: any): CSSProperties => ({
   justifyContent: "center",
   padding: 0,
   overflow: "hidden",
-  cursor: "pointer",
-  touchAction: "manipulation",
-  WebkitTapHighlightColor: "transparent",
-  position: "relative",
-  zIndex: 10,
 });
 
 const appImgStyle: CSSProperties = {
@@ -192,16 +267,138 @@ const appEmojiStyle: CSSProperties = {
   lineHeight: 1,
 };
 
-const appCenterCardStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "auto minmax(0, 1fr)",
-  gap: 14,
+const appCenterIconStyle: CSSProperties = {
+  width: 86,
+  height: 86,
+  minWidth: 86,
+  minHeight: 86,
+  borderRadius: 28,
+  border: "2px solid rgba(94, 255, 239, 0.95)",
+  background:
+    "linear-gradient(145deg, #ccfffa 0%, #46f0df 34%, #10b8aa 62%, #06675e 100%)",
+  boxShadow:
+    "inset 0 4px 10px rgba(255,255,255,0.78), inset 0 -12px 22px rgba(0,0,0,0.22), 0 0 0 2px rgba(45,212,191,0.22), 0 16px 34px rgba(20,184,166,0.48)",
+  display: "flex",
   alignItems: "center",
+  justifyContent: "center",
+  padding: 6,
+  overflow: "hidden",
+};
+
+const appCenterLogoCircleStyle: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  borderRadius: 24,
+  background:
+    "radial-gradient(circle at 32% 22%, #ffffff 0%, #d7fff9 18%, #8cf7ea 34%, #25d7c8 62%, #08756d 100%)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+  boxShadow:
+    "inset 0 3px 8px rgba(255,255,255,0.8), inset 0 -9px 18px rgba(0,0,0,0.2), 0 5px 14px rgba(0,0,0,0.16)",
+};
+
+const appCenterLogoImgStyle: CSSProperties = {
+  width: "88%",
+  height: "88%",
+  objectFit: "contain",
+  filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.28))",
+};
+
+const backBtnStyle: CSSProperties = {
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-control)",
+  padding: "0 var(--sa-control-x)",
+  minHeight: "var(--sa-control-h)",
+  marginBottom: 14,
+};
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  padding: "0 var(--sa-control-x)",
+  borderRadius: "var(--sa-radius-control)",
+  border: "var(--sa-border-w) solid",
+  minHeight: "var(--sa-control-h)",
+  marginBottom: 12,
+  fontSize: 16,
+  background: "#fff",
+  color: "#111827",
+  outline: "none",
+};
+
+const primaryBtnStyle: CSSProperties = {
+  border: "none",
+  color: "#fff",
+  padding: "0 18px",
+  borderRadius: "var(--sa-radius-control)",
+  minHeight: "var(--sa-control-h)",
+  marginBottom: 16,
+};
+
+const modalTopStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 12,
+};
+
+const modalTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "clamp(24px, 6vw, 34px)",
+  fontWeight: 900,
+  lineHeight: 1.15,
+};
+
+const sectionTitleStyle: CSSProperties = {
+  marginTop: 18,
+  marginBottom: 12,
+  fontSize: "clamp(20px, 5.2vw, 28px)",
+  fontWeight: 900,
+  lineHeight: 1.2,
+};
+
+const closeBtnStyle: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "#dc2626",
+  fontSize: "var(--sa-fs-base)",
+  padding: 8,
+};
+
+const modalLangRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 10,
+  marginBottom: 16,
+};
+
+const modalLangBtnStyle = (active: boolean, theme: any): CSSProperties => ({
+  minHeight: "var(--sa-control-h)",
+  borderRadius: "var(--sa-radius-control)",
+  border: `var(--sa-border-w) solid ${theme.accent}`,
+  background: active ? theme.accent : theme.inputBg || "#fff",
+  color: active ? "#fff" : theme.accent,
+});
+
+const themeGridStyle: CSSProperties = {
+  display: "grid",
+  gap: 12,
+};
+
+const themeBtnStyle: CSSProperties = {
   border: "var(--sa-border-w) solid",
   borderRadius: "var(--sa-radius-card)",
   padding: "var(--sa-card-pad)",
-  position: "relative",
-  zIndex: 1,
+  minHeight: 84,
+  textAlign: "left",
+};
+
+const appCenterListStyle: CSSProperties = {
+  display: "grid",
+  gap: 12,
+  marginTop: 16,
 };
 
 const appCenterTitleStyle: CSSProperties = {
@@ -211,39 +408,44 @@ const appCenterTitleStyle: CSSProperties = {
   lineHeight: 1.2,
 };
 
-const appCenterActionStyle: CSSProperties = {
-  gridColumn: "1 / -1",
+const deleteAppModalStyle: CSSProperties = {
+  width: "min(92vw, 520px)",
+  margin: "18vh auto 0",
+  border: "var(--sa-border-w) solid",
+  borderRadius: "var(--sa-radius-card)",
+  padding: "var(--sa-card-pad)",
+};
+
+const deleteAppPreviewStyle: CSSProperties = {
+  display: "grid",
+  justifyItems: "center",
+  textAlign: "center",
+  gap: 12,
+  marginTop: 18,
+  marginBottom: 18,
+};
+
+const deleteAppActionRowStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
-  gap: 10,
-  position: "relative",
-  zIndex: 20,
+  gap: 12,
+  marginTop: 16,
 };
 
-const appCenterSmallBtnStyle: CSSProperties = {
+const deleteAppConfirmBtnStyle: CSSProperties = {
   minHeight: "var(--sa-control-h)",
-  border: "var(--sa-border-w) solid transparent",
+  border: "none",
   borderRadius: "var(--sa-radius-control)",
-  padding: "0 12px",
+  background: "#dc2626",
+  color: "#fff",
   fontWeight: 900,
-  cursor: "pointer",
-  touchAction: "manipulation",
-  WebkitTapHighlightColor: "transparent",
-  position: "relative",
-  zIndex: 30,
 };
 
-const appCenterRemoveBtnStyle: CSSProperties = {
+const deleteAppCancelBtnStyle: CSSProperties = {
   minHeight: "var(--sa-control-h)",
-  border: "var(--sa-border-w) solid #fecaca",
+  border: "var(--sa-border-w) solid #cbd5e1",
   borderRadius: "var(--sa-radius-control)",
-  padding: "0 12px",
-  fontWeight: 900,
   background: "#fff",
-  color: "#dc2626",
-  cursor: "pointer",
-  touchAction: "manipulation",
-  WebkitTapHighlightColor: "transparent",
-  position: "relative",
-  zIndex: 30,
+  color: "#111827",
+  fontWeight: 900,
 };
