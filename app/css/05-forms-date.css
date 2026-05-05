@@ -1,0 +1,198 @@
+/* =========================================================
+   Form Controls
+========================================================= */
+
+.smartacctg-page input,
+.smartacctg-page select,
+.smartacctg-page textarea,
+.smartacctg-dashboard-page input,
+.smartacctg-dashboard-page select,
+.smartacctg-dashboard-page textarea,
+.smartacctg-products-page input,
+.smartacctg-products-page select,
+.smartacctg-products-page textarea,
+.smartacctg-invoice-page input,
+.smartacctg-invoice-page select,
+.smartacctg-invoice-page textarea,
+.smartacctg-records-page input,
+.smartacctg-records-page select,
+.smartacctg-records-page textarea,
+.smartacctg-customers-page input,
+.smartacctg-customers-page select,
+.smartacctg-customers-page textarea,
+.smartacctg-accounting-page input,
+.smartacctg-accounting-page select,
+.smartacctg-accounting-page textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: var(--sa-control-h);
+  padding-left: var(--sa-control-x);
+  padding-right: var(--sa-control-x);
+  border-radius: var(--sa-radius-control);
+  border: var(--sa-border-w) solid var(--sa-border);
+  background: var(--sa-input-bg);
+  color: var(--sa-input-text);
+  outline: none;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.smartacctg-page textarea,
+.smartacctg-dashboard-page textarea,
+.smartacctg-products-page textarea,
+.smartacctg-invoice-page textarea,
+.smartacctg-records-page textarea,
+.smartacctg-customers-page textarea,
+.smartacctg-accounting-page textarea {
+  min-height: 110px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  resize: vertical;
+}
+
+/* =========================================================
+   Date / Time Inputs
+========================================================= */
+
+.smartacctg-page input[type="date"],
+.smartacctg-page input[type="month"],
+.smartacctg-page input[type="time"],
+.smartacctg-page input[type="datetime-local"],
+.smartacctg-dashboard-page input[type="date"],
+.smartacctg-dashboard-page input[type="month"],
+.smartacctg-dashboard-page input[type="time"],
+.smartacctg-dashboard-page input[type="datetime-local"],
+.smartacctg-products-page input[type="date"],
+.smartacctg-products-page input[type="month"],
+.smartacctg-products-page input[type="time"],
+.smartacctg-products-page input[type="datetime-local"],
+.smartacctg-invoice-page input[type="date"],
+.smartacctg-invoice-page input[type="month"],
+.smartacctg-invoice-page input[type="time"],
+.smartacctg-invoice-page input[type="datetime-local"],
+.smartacctg-records-page input[type="date"],
+.smartacctg-records-page input[type="month"],
+.smartacctg-records-page input[type="time"],
+.smartacctg-records-page input[type="datetime-local"],
+.smartacctg-customers-page input[type="date"],
+.smartacctg-customers-page input[type="month"],
+.smartacctg-customers-page input[type="time"],
+.smartacctg-customers-page input[type="datetime-local"],
+.smartacctg-accounting-page input[type="date"],
+.smartacctg-accounting-page input[type="month"],
+.smartacctg-accounting-page input[type="time"],
+.smartacctg-accounting-page input[type="datetime-local"] {
+  display: block;
+  width: 100%;
+  height: var(--sa-control-h);
+  min-height: var(--sa-control-h);
+  max-height: var(--sa-control-h);
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: var(--sa-control-h);
+  text-align: center;
+  text-align-last: center;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.smartacctg-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="date"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="month"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="time"]::-webkit-date-and-time-value,
+.smartacctg-accounting-page input[type="datetime-local"]::-webkit-date-and-time-value {
+  text-align: center;
+  width: 100%;
+  margin: 0 auto;
+  line-height: normal;
+}
+
+.smartacctg-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-datetime-edit,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit,
+.smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit,
+.smartacctg-accounting-page input[type="time"]::-webkit-datetime-edit,
+.smartacctg-accounting-page input[type="datetime-local"]::-webkit-datetime-edit {
+  width: 100%;
+  text-align: center;
+}
+
+.smartacctg-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-dashboard-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-products-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-invoice-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-records-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-customers-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.smartacctg-accounting-page input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}
