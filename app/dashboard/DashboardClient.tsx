@@ -48,7 +48,7 @@ import {
 } from "./_dashboard/constants";
 
 import { DASHBOARD_FIX_CSS } from "./_dashboard/dashboardFixCss";
-import AppCenterAppCard from "./_dashboard/AppCenterAppCard";
+import AppCenterPanel from "./app-center/AppCenterPanel";
 
 import {
   appTitle,
@@ -169,16 +169,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .filter(Boolean) as AppRegistry[];
   }, [appsLoaded, allApps, dashboardAppKeys]);
 
-  const appCenterApps = useMemo(() => {
-    return allApps.filter(
-      (app) => app.app_key !== "app_center" && app.is_active !== false && app.enabled !== false
-    );
-  }, [allApps]);
-
-  const dashboardKeySet = useMemo(() => {
-    return new Set(dashboardAppKeys);
-  }, [dashboardAppKeys]);
-
   useEffect(() => {
     applyThemeEverywhere(themeKey);
   }, [themeKey]);
@@ -204,7 +194,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-    async function init(currentLang: Lang, currentTheme: ThemeKey) {
+
+  async function init(currentLang: Lang, currentTheme: ThemeKey) {
     const q = new URLSearchParams(window.location.search);
     const mode = q.get("mode");
     const trialRaw = safeLocalGet(TRIAL_KEY);
@@ -875,7 +866,12 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     : profile?.plan_expiry
       ? new Date(profile.plan_expiry).toLocaleDateString()
       : t.noSub;
-    return (
+
+  if (page === "app_center") {
+    return <AppCenterPanel />;
+  }
+
+  return (
     <main
       className="smartacctg-page smartacctg-dashboard-page"
       data-sa-theme={themeKey}
@@ -1222,7 +1218,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
         </>
       ) : null}
 
-      {page !== "home" && page !== "app_center" && !isEmbed ? (
+      {page !== "home" && !isEmbed ? (
         <section className="sa-card" style={{ ...themedCardStyle }}>
           <button
             type="button"
@@ -1246,47 +1242,6 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             {page === "extensions" && appTitle(DEFAULT_APPS[4], lang)}
             {page === "nkshop" && appTitle(DEFAULT_APPS[5], lang)}
           </h1>
-        </section>
-      ) : null}
-
-      {page === "app_center" ? (
-        <section className="sa-card" style={{ ...themedCardStyle, marginBottom: 12 }}>
-          {!isEmbed ? (
-            <button
-              type="button"
-              onClick={() => (window.location.href = buildUrl("/dashboard"))}
-              style={{
-                ...backBtnStyle,
-                borderColor: theme.border,
-                color: theme.accent,
-                background: theme.inputBg || "#ffffff",
-              }}
-            >
-              ← {t.back}
-            </button>
-          ) : null}
-
-          <h1 style={titleStyle}>{t.appCenter}</h1>
-          <p style={{ color: themeMuted }}>{t.appCenterDesc}</p>
-
-          <div style={appCenterListStyle}>
-            {appCenterApps.map((app) => (
-              <AppCenterAppCard
-                key={app.app_key}
-                app={app}
-                lang={lang}
-                theme={theme}
-                pinned={dashboardKeySet.has(app.app_key)}
-                openText={t.open}
-                addText={t.addToDashboard}
-                removeText={t.removeFromDashboard}
-                onOpen={openAppModal}
-                onTogglePinned={setAppPinned}
-              />
-            ))}
-          </div>
-
-          {msg ? <p style={{ color: theme.accent }}>{msg}</p> : null}
         </section>
       ) : null}
 
@@ -1501,6 +1456,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     </main>
   );
 }
+
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
   width: "100%",
@@ -1896,12 +1852,6 @@ const themeBtnStyle: CSSProperties = {
   padding: "var(--sa-card-pad)",
   minHeight: 84,
   textAlign: "left",
-};
-
-const appCenterListStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-  marginTop: 16,
 };
 
 const appCenterTitleStyle: CSSProperties = {
