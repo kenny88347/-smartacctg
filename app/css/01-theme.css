@@ -1,0 +1,276 @@
+/* =========================================================
+   SmartAcctg Theme Variables
+========================================================= */
+
+:root {
+  --sa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", Arial, sans-serif;
+
+  --sa-fs-xs: clamp(12px, 2.5vw, 14px);
+  --sa-fs-sm: clamp(14px, 2.8vw, 16px);
+  --sa-fs-base: clamp(16px, 3.2vw, 18px);
+  --sa-fs-md: clamp(18px, 3.6vw, 21px);
+  --sa-fs-lg: clamp(21px, 4.2vw, 25px);
+  --sa-fs-xl: clamp(25px, 5vw, 31px);
+  --sa-fs-2xl: clamp(30px, 6vw, 40px);
+
+  --sa-control-h: clamp(48px, 10vw, 58px);
+  --sa-control-x: clamp(12px, 3vw, 18px);
+
+  --sa-border-w: 2px;
+  --sa-radius-control: clamp(14px, 3vw, 18px);
+  --sa-radius-card: clamp(22px, 5vw, 32px);
+  --sa-card-pad: clamp(16px, 4vw, 26px);
+
+  --sa-green: #16a34a;
+  --sa-red: #dc2626;
+
+  --sa-page-bg: #ecfdf5;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #f8fafc;
+  --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #064e3b;
+  --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
+  --sa-border: #14b8a6;
+  --sa-accent: #0f766e;
+  --sa-text: #064e3b;
+  --sa-panel-text: #111827;
+  --sa-muted: #64748b;
+  --sa-sub-text: #64748b;
+  --sa-soft-bg: #ccfbf1;
+  --sa-banner-bg: #ffffff;
+  --sa-glow: 0 0 0 1px rgba(20, 184, 166, 0.42),
+    0 0 18px rgba(45, 212, 191, 0.55),
+    0 18px 42px rgba(15, 118, 110, 0.25);
+}
+
+/* =========================================================
+   Theme: Deep Teal
+========================================================= */
+
+html[data-sa-theme="deepTeal"],
+html[data-smartacctg-theme="deepTeal"] {
+  --sa-page-bg: #ecfdf5;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #f8fafc;
+  --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #064e3b;
+  --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
+  --sa-border: #14b8a6;
+  --sa-accent: #0f766e;
+  --sa-text: #064e3b;
+  --sa-panel-text: #111827;
+  --sa-muted: #64748b;
+  --sa-sub-text: #64748b;
+  --sa-soft-bg: #ccfbf1;
+  --sa-banner-bg: #ffffff;
+  --sa-glow: 0 0 0 1px rgba(20, 184, 166, 0.42),
+    0 0 18px rgba(45, 212, 191, 0.55),
+    0 18px 42px rgba(15, 118, 110, 0.25);
+}
+
+/* =========================================================
+   Theme: Pink
+========================================================= */
+
+html[data-sa-theme="pink"],
+html[data-smartacctg-theme="pink"] {
+  --sa-page-bg: #fff7fb;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #fdf2f8;
+  --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #4a044e;
+  --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
+  --sa-border: #f472b6;
+  --sa-accent: #db2777;
+  --sa-text: #4a044e;
+  --sa-panel-text: #111827;
+  --sa-muted: #64748b;
+  --sa-sub-text: #831843;
+  --sa-soft-bg: #fce7f3;
+  --sa-banner-bg: linear-gradient(135deg, #ffd6e7, #fff1f2);
+  --sa-glow: 0 0 0 1px rgba(244, 114, 182, 0.36),
+    0 0 18px rgba(244, 114, 182, 0.45),
+    0 18px 38px rgba(244, 114, 182, 0.22);
+}
+
+/* =========================================================
+   Theme: Black Gold
+========================================================= */
+
+html[data-sa-theme="blackGold"],
+html[data-smartacctg-theme="blackGold"] {
+  --sa-page-bg: #111111;
+  --sa-card-bg: #1f1f1f;
+  --sa-panel-bg: #2a2a2a;
+  --sa-item-bg: #1f1f1f;
+  --sa-item-card: #1f1f1f;
+  --sa-item-text: #fff7ed;
+  --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
+  --sa-border: #facc15;
+  --sa-accent: #d4af37;
+  --sa-text: #fff7ed;
+  --sa-panel-text: #fff7ed;
+  --sa-muted: #fef3c7;
+  --sa-sub-text: #d6c8a4;
+  --sa-soft-bg: #3b2f16;
+  --sa-banner-bg: linear-gradient(135deg, #111111, #3b2f16);
+  --sa-glow: 0 0 0 1px rgba(250, 204, 21, 0.5),
+    0 0 20px rgba(250, 204, 21, 0.45),
+    0 18px 42px rgba(250, 204, 21, 0.22);
+}
+
+/* =========================================================
+   Theme: Light Red
+========================================================= */
+
+html[data-sa-theme="lightRed"],
+html[data-smartacctg-theme="lightRed"] {
+  --sa-page-bg: #fff1f2;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #fff1f2;
+  --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #881337;
+  --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
+  --sa-border: #fb7185;
+  --sa-accent: #e11d48;
+  --sa-text: #881337;
+  --sa-panel-text: #111827;
+  --sa-muted: #64748b;
+  --sa-sub-text: #9f1239;
+  --sa-soft-bg: #ffe4e6;
+  --sa-banner-bg: linear-gradient(135deg, #fecdd3, #ffe4e6);
+  --sa-glow: 0 0 0 1px rgba(251, 113, 133, 0.45),
+    0 0 20px rgba(251, 113, 133, 0.5),
+    0 18px 38px rgba(251, 113, 133, 0.26);
+}
+
+/* =========================================================
+   Theme: Nature
+========================================================= */
+
+html[data-sa-theme="nature"],
+html[data-smartacctg-theme="nature"] {
+  --sa-page-bg: #f0fdf4;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #f8fafc;
+  --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #14532d;
+  --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
+  --sa-border: #22d3ee;
+  --sa-accent: #0f766e;
+  --sa-text: #14532d;
+  --sa-panel-text: #111827;
+  --sa-muted: #64748b;
+  --sa-sub-text: #166534;
+  --sa-soft-bg: #dcfce7;
+  --sa-banner-bg: linear-gradient(135deg, #d9f99d, #bae6fd);
+  --sa-glow: 0 0 0 1px rgba(34, 211, 238, 0.42),
+    0 0 18px rgba(34, 211, 238, 0.42),
+    0 18px 38px rgba(34, 211, 238, 0.22);
+}
+
+/* =========================================================
+   Theme: Sky
+========================================================= */
+
+html[data-sa-theme="sky"],
+html[data-smartacctg-theme="sky"] {
+  --sa-page-bg: #eff6ff;
+  --sa-card-bg: #ffffff;
+  --sa-panel-bg: #f8fafc;
+  --sa-item-bg: #ffffff;
+  --sa-item-card: #ffffff;
+  --sa-item-text: #0f172a;
+  --sa-input-bg: #ffffff;
+  --sa-input-text: #111827;
+  --sa-border: #38bdf8;
+  --sa-accent: #0284c7;
+  --sa-text: #0f172a;
+  --sa-panel-text: #111827;
+  --sa-muted: #64748b;
+  --sa-sub-text: #0369a1;
+  --sa-soft-bg: #dbeafe;
+  --sa-banner-bg: linear-gradient(135deg, #bfdbfe, #e0f2fe);
+  --sa-glow: 0 0 0 1px rgba(56, 189, 248, 0.42),
+    0 0 18px rgba(56, 189, 248, 0.48),
+    0 18px 38px rgba(56, 189, 248, 0.24);
+}
+
+/* =========================================================
+   Theme: Future Forest / Future World
+========================================================= */
+
+html[data-sa-theme="futureForest"],
+html[data-sa-theme="futureWorld"],
+html[data-smartacctg-theme="futureForest"],
+html[data-smartacctg-theme="futureWorld"] {
+  --sa-page-bg: radial-gradient(
+      circle at 8% 0%,
+      rgba(45, 212, 191, 0.32),
+      transparent 30%
+    ),
+    radial-gradient(circle at 92% 8%, rgba(20, 184, 166, 0.22), transparent 32%),
+    linear-gradient(135deg, #011c1a 0%, #032b29 38%, #064e3b 100%);
+  --sa-card-bg: rgba(6, 47, 42, 0.94);
+  --sa-panel-bg: rgba(8, 64, 57, 0.92);
+  --sa-item-bg: rgba(8, 64, 57, 0.92);
+  --sa-item-card: rgba(6, 47, 42, 0.94);
+  --sa-item-text: #ecfeff;
+  --sa-input-bg: #ecfeff;
+  --sa-input-text: #042f2e;
+  --sa-border: #2dd4bf;
+  --sa-accent: #2dd4bf;
+  --sa-text: #ecfeff;
+  --sa-panel-text: #ecfeff;
+  --sa-muted: #99f6e4;
+  --sa-sub-text: #99f6e4;
+  --sa-soft-bg: rgba(20, 184, 166, 0.22);
+  --sa-banner-bg: linear-gradient(
+      135deg,
+      rgba(1, 28, 26, 0.98),
+      rgba(6, 78, 59, 0.96)
+    ),
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.32), transparent 34%);
+  --sa-glow: 0 0 0 1px rgba(45, 212, 191, 0.55),
+    0 0 26px rgba(45, 212, 191, 0.42),
+    0 22px 58px rgba(6, 78, 59, 0.62);
+}
+
+/* =========================================================
+   Legacy Theme Variable Compatibility
+========================================================= */
+
+html[data-sa-theme],
+html[data-smartacctg-theme] {
+  --sa-theme-page-bg: var(--sa-page-bg);
+  --sa-theme-banner: var(--sa-banner-bg);
+  --sa-theme-banner-bg: var(--sa-banner-bg);
+  --sa-theme-card: var(--sa-card-bg);
+  --sa-theme-panel-bg: var(--sa-panel-bg);
+  --sa-theme-item-bg: var(--sa-item-bg);
+  --sa-theme-item-card: var(--sa-item-card);
+  --sa-theme-item-text: var(--sa-item-text);
+  --sa-theme-input-bg: var(--sa-input-bg);
+  --sa-theme-input-text: var(--sa-input-text);
+  --sa-theme-border: var(--sa-border);
+  --sa-theme-accent: var(--sa-accent);
+  --sa-theme-text: var(--sa-text);
+  --sa-theme-panel-text: var(--sa-panel-text);
+  --sa-theme-muted: var(--sa-muted);
+  --sa-theme-sub-text: var(--sa-sub-text);
+  --sa-theme-soft: var(--sa-soft-bg);
+  --sa-theme-soft-bg: var(--sa-soft-bg);
+  --sa-theme-glow: var(--sa-glow);
+}
