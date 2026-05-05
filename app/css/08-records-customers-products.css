@@ -1,0 +1,121 @@
+/* =========================================================
+   Records / Accounting / Customers / Products
+========================================================= */
+
+.smartacctg-records-page .records-summary-box,
+.smartacctg-accounting-page .records-summary-box {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+.smartacctg-records-page .records-month-row,
+.smartacctg-accounting-page .records-month-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.smartacctg-records-page .records-month-select-grid,
+.smartacctg-accounting-page .records-month-select-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.smartacctg-records-page .records-summary-line,
+.smartacctg-accounting-page .records-summary-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  line-height: 1.25;
+}
+
+.smartacctg-records-page .records-summary-line strong,
+.smartacctg-accounting-page .records-summary-line strong {
+  white-space: nowrap;
+}
+
+.smartacctg-records-page .records-list,
+.smartacctg-accounting-page .records-list,
+.smartacctg-customers-page .customers-list,
+.smartacctg-products-page .products-list,
+.smartacctg-products-page .product-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  width: 100%;
+}
+
+.smartacctg-records-page .record-card,
+.smartacctg-accounting-page .record-card,
+.smartacctg-customers-page .customer-card,
+.smartacctg-products-page .product-card {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: auto;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.smartacctg-records-page .record-card *,
+.smartacctg-accounting-page .record-card *,
+.smartacctg-customers-page .customer-card * {
+  text-align: left;
+}
+
+.smartacctg-records-page .record-card.debt-record,
+.smartacctg-accounting-page .record-card.debt-record {
+  background: #fee2e2 !important;
+  color: #7f1d1d !important;
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.35),
+    0 12px 28px rgba(220, 38, 38, 0.22) !important;
+}
+
+.smartacctg-records-page .records-action-row,
+.smartacctg-accounting-page .records-action-row,
+.smartacctg-customers-page .customers-action-row,
+.smartacctg-products-page .product-action-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.smartacctg-records-page .records-action-row button,
+.smartacctg-accounting-page .records-action-row button {
+  width: auto;
+  min-width: 105px;
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+
+.smartacctg-customers-page .customers-action-row button {
+  flex: 0 1 calc(33.333% - 8px);
+  min-width: 108px;
+  max-width: 190px;
+  width: auto;
+  text-align: center;
+}
+
+.smartacctg-records-page .category-add-row,
+.smartacctg-accounting-page .category-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
