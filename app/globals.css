@@ -1,6 +1,6 @@
 /* =========================================================
    SmartAcctg CSS Entry
-   只负责引入分开的 CSS 文件
+   负责引入分开的 CSS 文件
 ========================================================= */
 
 @import "./css/01-theme.css";
@@ -10,6 +10,7 @@
 @import "./css/05-forms-date.css";
 @import "./css/06-dashboard.css";
 @import "./css/07-app-center.css";
+@import "./css/07-app-icons.css";
 @import "./css/08-records-customers-products.css";
 @import "./css/09-invoice.css";
 @import "./css/10-modals.css";
