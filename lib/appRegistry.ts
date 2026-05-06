@@ -2,10 +2,6 @@ import type { AppRegistry, Lang } from "@/app/dashboard/_dashboard/types";
 
 export const APP_ICON_BASE = "/app-icons";
 
-/**
- * 你的 GitHub 里面是大写 .PNG
- * 所以这里必须写 .PNG
- */
 export const APP_ICON_PATHS = {
   records: `${APP_ICON_BASE}/records.PNG`,
   customers: `${APP_ICON_BASE}/customers.PNG`,
@@ -20,14 +16,14 @@ export const NK_LOGO_SRC = APP_ICON_PATHS.appCenter;
 export const NK_LOGO_FALLBACK_SRC = APP_ICON_PATHS.appCenter;
 
 /**
- * 新版本 localStorage key
- * 用 v2 是为了避开你之前旧的「全部 App 自动显示」缓存
+ * 用 v2 是为了避开你之前旧缓存：
+ * 旧缓存会导致控制台自动显示全部 App。
  */
 export const DASHBOARD_APP_KEYS_LOCAL = "smartacctg_dashboard_app_keys_v2";
 export const DASHBOARD_APPS_INIT_LOCAL = "smartacctg_dashboard_apps_v2_initialized";
 
 /**
- * 这里留空 = 用户没按 + 之前，控制台不会自动显示全部 App
+ * 空数组 = 用户没有按 + 之前，控制台不会自动显示 App。
  */
 export const DEFAULT_DASHBOARD_APP_KEYS: string[] = [];
 
@@ -164,14 +160,26 @@ export function getAppByKey(appKey: string) {
 }
 
 export function getAppTitle(app: AppRegistry, lang: Lang) {
-  if (lang === "en") return app.title_en || app.title_zh || app.name || app.app_key;
-  if (lang === "ms") return app.title_ms || app.title_zh || app.name || app.app_key;
+  if (lang === "en") {
+    return app.title_en || app.title_zh || app.name || app.app_key;
+  }
+
+  if (lang === "ms") {
+    return app.title_ms || app.title_zh || app.name || app.app_key;
+  }
+
   return app.title_zh || app.name || app.title_en || app.app_key;
 }
 
 export function getAppDescription(app: AppRegistry, lang: Lang) {
-  if (lang === "en") return app.description_en || app.description_zh || "";
-  if (lang === "ms") return app.description_ms || app.description_zh || "";
+  if (lang === "en") {
+    return app.description_en || app.description_zh || "";
+  }
+
+  if (lang === "ms") {
+    return app.description_ms || app.description_zh || "";
+  }
+
   return app.description_zh || app.description_en || "";
 }
 
@@ -183,6 +191,7 @@ export function isAppImageIcon(icon?: string | null) {
     value.startsWith("/") ||
     value.startsWith("http://") ||
     value.startsWith("https://") ||
+    value.startsWith("data:image") ||
     lower.endsWith(".png") ||
     lower.endsWith(".jpg") ||
     lower.endsWith(".jpeg") ||
