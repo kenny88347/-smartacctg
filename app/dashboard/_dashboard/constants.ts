@@ -1,124 +1,20 @@
-import type { AppRegistry, Lang } from "./types";
+import type { Lang } from "./types";
+
+export {
+  APP_CENTER_APP,
+  DASHBOARD_APP_KEYS_LOCAL,
+  DASHBOARD_APPS_INIT_LOCAL,
+  DEFAULT_APPS,
+  DEFAULT_DASHBOARD_APP_KEYS,
+  NK_LOGO_FALLBACK_SRC,
+  NK_LOGO_SRC,
+} from "@/lib/appRegistry";
 
 export const TRIAL_KEY = "smartacctg_trial";
 export const TRIAL_TX_KEY = "smartacctg_trial_transactions";
 export const TRIAL_CUSTOMERS_KEY = "smartacctg_trial_customers";
 export const TRIAL_INVOICES_KEY = "smartacctg_trial_invoices";
 export const LANG_KEY = "smartacctg_lang";
-
-export const NK_LOGO_SRC = "/app-icons/nk-digital-hub-logo.PNG";
-export const NK_LOGO_FALLBACK_SRC = "/app-icons/nk-digital-hub-logo.PNG";
-
-export const DASHBOARD_APP_KEYS_LOCAL = "smartacctg_dashboard_app_keys";
-export const DASHBOARD_APPS_INIT_LOCAL = "smartacctg_dashboard_apps_initialized";
-
-export const DEFAULT_DASHBOARD_APP_KEYS = [
-  "records",
-  "customers",
-  "products",
-  "invoices",
-  "extensions",
-  "nkshop",
-];
-
-export const APP_CENTER_APP: AppRegistry = {
-  app_key: "app_center",
-  title_zh: "App Center",
-  title_en: "App Center",
-  title_ms: "App Center",
-  icon: NK_LOGO_SRC,
-  app_path: "/dashboard/app-center",
-  sort_order: 999,
-  enabled: true,
-  is_active: true,
-};
-
-export const DEFAULT_APPS: AppRegistry[] = [
-  {
-    app_key: "records",
-    title_zh: "记账系统",
-    title_en: "Accounting",
-    title_ms: "Sistem Akaun",
-    description_zh: "管理收入、支出、欠款和账目记录",
-    description_en: "Manage income, expenses, debts and accounting records",
-    description_ms: "Urus pendapatan, perbelanjaan, hutang dan rekod akaun",
-    icon: "/app-icons/records.PNG",
-    app_path: "/dashboard/records",
-    sort_order: 10,
-    enabled: true,
-    is_active: true,
-  },
-  {
-    app_key: "customers",
-    title_zh: "客户管理",
-    title_en: "Customers",
-    title_ms: "Pelanggan",
-    description_zh: "管理客户资料、电话、公司和欠款",
-    description_en: "Manage customer info, phone, company and debt",
-    description_ms: "Urus maklumat pelanggan, telefon, syarikat dan hutang",
-    icon: "/app-icons/customers.PNG",
-    app_path: "/dashboard/customers",
-    sort_order: 20,
-    enabled: true,
-    is_active: true,
-  },
-  {
-    app_key: "products",
-    title_zh: "产品管理",
-    title_en: "Products",
-    title_ms: "Produk",
-    description_zh: "管理产品、成本、售价和库存",
-    description_en: "Manage products, cost, selling price and stock",
-    description_ms: "Urus produk, kos, harga jualan dan stok",
-    icon: "/app-icons/products.PNG",
-    app_path: "/dashboard/products",
-    sort_order: 30,
-    enabled: true,
-    is_active: true,
-  },
-  {
-    app_key: "invoices",
-    title_zh: "发票系统",
-    title_en: "Invoices",
-    title_ms: "Invois",
-    description_zh: "建立发票、扣库存和保存销售记录",
-    description_en: "Create invoices, deduct stock and save sales records",
-    description_ms: "Buat invois, tolak stok dan simpan rekod jualan",
-    icon: "/app-icons/invoices.PNG",
-    app_path: "/dashboard/invoices",
-    sort_order: 40,
-    enabled: true,
-    is_active: true,
-  },
-  {
-    app_key: "extensions",
-    title_zh: "扩展功能",
-    title_en: "Extensions",
-    title_ms: "Fungsi Tambahan",
-    description_zh: "管理更多附加功能和未来模块",
-    description_en: "Manage add-ons and future modules",
-    description_ms: "Urus fungsi tambahan dan modul akan datang",
-    icon: "/app-icons/extensions.PNG",
-    app_path: "/dashboard/extensions",
-    sort_order: 50,
-    enabled: true,
-    is_active: true,
-  },
-  {
-    app_key: "nkshop",
-    title_zh: "NK网店",
-    title_en: "NK Shop",
-    title_ms: "NK Kedai",
-    description_zh: "网店、下单和商品展示功能",
-    description_en: "Shop, order and product display features",
-    description_ms: "Kedai, pesanan dan paparan produk",
-    icon: "/app-icons/nkshop.PNG",
-    app_path: "/dashboard/nkshop",
-    sort_order: 60,
-    enabled: true,
-    is_active: true,
-  },
-];
 
 export const TXT: Record<
   Lang,
