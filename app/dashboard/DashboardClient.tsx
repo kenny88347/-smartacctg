@@ -19,6 +19,17 @@ import {
   normalizeThemeKey,
   saveThemeKey,
 } from "@/lib/smartacctgTheme";
+import {
+  APP_CENTER_APP,
+  DEFAULT_APPS,
+  DEFAULT_DASHBOARD_APP_KEYS,
+  DASHBOARD_APP_KEYS_LOCAL,
+  NK_LOGO_FALLBACK_SRC,
+  NK_LOGO_SRC,
+  getDashboardInitLocalKey,
+  getDashboardLocalKey,
+  normalizeDashboardKeys,
+} from "@/lib/appRegistry";
 
 import type {
   AppRegistry,
@@ -33,13 +44,7 @@ import type {
 } from "./_dashboard/types";
 
 import {
-  APP_CENTER_APP,
-  DASHBOARD_APP_KEYS_LOCAL,
-  DEFAULT_APPS,
-  DEFAULT_DASHBOARD_APP_KEYS,
   LANG_KEY,
-  NK_LOGO_FALLBACK_SRC,
-  NK_LOGO_SRC,
   TRIAL_CUSTOMERS_KEY,
   TRIAL_INVOICES_KEY,
   TRIAL_KEY,
@@ -48,7 +53,6 @@ import {
 } from "./_dashboard/constants";
 
 import { DASHBOARD_FIX_CSS } from "./_dashboard/dashboardFixCss";
-import AppCenterPanel from "./app-center/AppCenterPanel";
 
 import {
   appTitle,
@@ -60,17 +64,12 @@ import {
   isImageIcon,
   isInvoiceUnpaid,
   isSchemaColumnError,
-  mergeAppsWithDefaults,
   replaceUrlLangTheme,
   safeLocalGet,
   safeLocalRemove,
   safeLocalSet,
   safeParseArray,
 } from "./_dashboard/utils";
-
-function getDashboardLocalKey(userId: string) {
-  return `${DASHBOARD_APP_KEYS_LOCAL}_${userId}`;
-}
 
 function getInitialLang(): Lang {
   if (typeof window === "undefined") return "zh";
@@ -160,7 +159,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     if (!appsLoaded) return [];
 
     const activeApps = allApps.filter(
-      (app) => app.is_active !== false && app.enabled !== false && app.app_key !== "app_center"
+      (app) =>
+        app.is_active !== false &&
+        app.enabled !== false &&
+        app.app_key !== "app_center"
     );
 
     return dashboardAppKeys
@@ -301,42 +303,83 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     setInvoices((invoiceData || []) as Invoice[]);
   }
 
+  async function resetAllDashboardAppsInDb(userId: string, pinnedKeys: string[]) {
+    const pinnedSet = new Set(normalizeDashboardKeys(pinnedKeys));
+
+    await Promise.all(
+      DEFAULT_APPS.map((app) =>
+        updateDashboardAppPinned(userId, app.app_key, pinnedSet.has(app.app_key))
+      )
+    );
+  }
+
   async function loadAppsForUser(userId: string, trialMode: boolean) {
     setAppsLoaded(false);
 
-    let registry = mergeAppsWithDefaults([]);
-
-    if (!trialMode) {
-      const { data: registryData } = await supabase
-        .from("app_registry")
-        .select("*")
-        .order("sort_order", { ascending: true });
-
-      registry = mergeAppsWithDefaults(registryData || []);
-    }
+    /**
+     * 重点：
+     * 这里不再读取 Supabase app_registry，
+     * 避免旧 app_registry 图标覆盖你 public/app-icons 的新图标。
+     */
+    const registry = DEFAULT_APPS.filter(
+      (app) =>
+        app.app_key !== "app_center" &&
+        app.enabled !== false &&
+        app.is_active !== false
+    ).sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
 
     setAllApps(registry);
 
     const availableKeySet = new Set(registry.map((app) => app.app_key));
 
-    if (trialMode) {
-      const localKeys = safeParseArray<string>(safeLocalGet(DASHBOARD_APP_KEYS_LOCAL));
-      const sourceKeys = localKeys.length > 0 ? localKeys : DEFAULT_DASHBOARD_APP_KEYS;
+    const fixedDefaultKeys = normalizeDashboardKeys(DEFAULT_DASHBOARD_APP_KEYS).filter((key) =>
+      availableKeySet.has(key)
+    );
 
-      const fixedLocalKeys = Array.from(new Set(sourceKeys)).filter(
-        (key) => key !== "app_center" && availableKeySet.has(key)
-      );
+    const localKey = trialMode ? getDashboardLocalKey("trial") : getDashboardLocalKey(userId);
+    const initKey = trialMode
+      ? getDashboardInitLocalKey("trial")
+      : getDashboardInitLocalKey(userId);
 
-      setDashboardAppKeys(fixedLocalKeys);
-      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(fixedLocalKeys));
+    const initialized = safeLocalGet(initKey) === "1";
+    const localRaw = safeLocalGet(localKey);
+
+    /**
+     * 第一次使用 v2：
+     * 控制台默认不显示任何 App。
+     */
+    if (!initialized) {
+      setDashboardAppKeys(fixedDefaultKeys);
+      safeLocalSet(localKey, JSON.stringify(fixedDefaultKeys));
+      safeLocalSet(initKey, "1");
+
+      if (!trialMode) {
+        await resetAllDashboardAppsInDb(userId, fixedDefaultKeys);
+      }
+
       setAppsLoaded(true);
       return;
     }
 
-    const userLocalKey = getDashboardLocalKey(userId);
-    const localUserKeys = safeParseArray<string>(safeLocalGet(userLocalKey)).filter(
-      (key) => key !== "app_center" && availableKeySet.has(key)
-    );
+    /**
+     * 有本地记录，就以本地为准。
+     */
+    if (localRaw !== null) {
+      const localKeys = normalizeDashboardKeys(safeParseArray<string>(localRaw)).filter((key) =>
+        availableKeySet.has(key)
+      );
+
+      setDashboardAppKeys(localKeys);
+      setAppsLoaded(true);
+      return;
+    }
+
+    if (trialMode) {
+      setDashboardAppKeys(fixedDefaultKeys);
+      safeLocalSet(localKey, JSON.stringify(fixedDefaultKeys));
+      setAppsLoaded(true);
+      return;
+    }
 
     const { data: dashboardData, error: dashboardError } = await supabase
       .from("user_dashboard_apps")
@@ -345,56 +388,29 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       .order("created_at", { ascending: true });
 
     if (dashboardError) {
-      const fallbackKeys =
-        localUserKeys.length > 0
-          ? localUserKeys
-          : DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
-
-      setDashboardAppKeys(fallbackKeys);
-      safeLocalSet(userLocalKey, JSON.stringify(fallbackKeys));
+      setDashboardAppKeys(fixedDefaultKeys);
+      safeLocalSet(localKey, JSON.stringify(fixedDefaultKeys));
       setAppsLoaded(true);
       return;
     }
 
     const rows = (dashboardData || []) as UserDashboardApp[];
 
-    if (rows.length === 0) {
-      const fallbackKeys =
-        localUserKeys.length > 0
-          ? localUserKeys
-          : DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
-
-      await insertDefaultDashboardApps(userId);
-
-      setDashboardAppKeys(fallbackKeys);
-      safeLocalSet(userLocalKey, JSON.stringify(fallbackKeys));
-      setAppsLoaded(true);
-      return;
-    }
-
-    const dbKeys = Array.from(
-      new Set(
-        rows
-          .filter((row) => row.pinned !== false)
-          .map(getDashboardRowKey)
-          .filter(Boolean)
-          .filter((key) => key !== "app_center")
-      )
+    const dbKeys = normalizeDashboardKeys(
+      rows
+        .filter((row) => row.pinned === true)
+        .map(getDashboardRowKey)
+        .filter(Boolean)
     ).filter((key) => availableKeySet.has(key));
 
-    const finalKeys =
-      dbKeys.length > 0
-        ? dbKeys
-        : localUserKeys.length > 0
-          ? localUserKeys
-          : DEFAULT_DASHBOARD_APP_KEYS.filter((key) => availableKeySet.has(key));
-
-    setDashboardAppKeys(finalKeys);
-    safeLocalSet(userLocalKey, JSON.stringify(finalKeys));
+    setDashboardAppKeys(dbKeys);
+    safeLocalSet(localKey, JSON.stringify(dbKeys));
     setAppsLoaded(true);
   }
 
   async function insertDefaultDashboardApps(userId: string) {
+    if (DEFAULT_DASHBOARD_APP_KEYS.length === 0) return;
+
     const rowsWithAppKey = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
       user_id: userId,
       app_key: key,
@@ -733,23 +749,20 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
     if (!appKey || appKey === "app_center") return;
 
-    let nextKeysFinal: string[] = [];
+    const currentKeys = normalizeDashboardKeys(dashboardAppKeys);
 
-    setDashboardAppKeys((prev) => {
-      const fixedPrev = prev.filter((key) => key && key !== "app_center");
+    const nextKeys = pinned
+      ? normalizeDashboardKeys([...currentKeys, appKey])
+      : currentKeys.filter((key) => key !== appKey);
 
-      const nextKeys = pinned
-        ? Array.from(new Set([...fixedPrev, appKey]))
-        : fixedPrev.filter((key) => key !== appKey);
-
-      nextKeysFinal = nextKeys;
-      return nextKeys;
-    });
-
-    setMsg(pinned ? t.addToDashboard : t.removeFromDashboard);
+    setDashboardAppKeys(nextKeys);
 
     if (isTrial) {
-      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(nextKeysFinal));
+      const trialLocalKey = getDashboardLocalKey("trial");
+      const trialInitKey = getDashboardInitLocalKey("trial");
+
+      safeLocalSet(trialLocalKey, JSON.stringify(nextKeys));
+      safeLocalSet(trialInitKey, "1");
       setMsg(t.saved);
       return;
     }
@@ -760,7 +773,10 @@ export default function DashboardClient({ page }: { page: PageKey }) {
     }
 
     const userLocalKey = getDashboardLocalKey(session.user.id);
-    safeLocalSet(userLocalKey, JSON.stringify(nextKeysFinal));
+    const userInitKey = getDashboardInitLocalKey(session.user.id);
+
+    safeLocalSet(userLocalKey, JSON.stringify(nextKeys));
+    safeLocalSet(userInitKey, "1");
 
     const { error } = pinned
       ? await insertDashboardApp(session.user.id, appKey)
@@ -825,7 +841,9 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           source: "customer" as const,
           amount,
           dueDate: c.last_payment_date || "",
-          sortTime: c.last_payment_date ? getDueTime(c.last_payment_date) : Number.MAX_SAFE_INTEGER,
+          sortTime: c.last_payment_date
+            ? getDueTime(c.last_payment_date)
+            : Number.MAX_SAFE_INTEGER,
         };
       })
       .filter((x) => x.amount > 0);
@@ -837,7 +855,8 @@ export default function DashboardClient({ page }: { page: PageKey }) {
           ? `${inv.customer_name || "-"} / ${inv.customer_company}`
           : inv.customer_name || "-";
 
-        const dueDate = inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10) || "";
+        const dueDate =
+          inv.due_date || inv.invoice_date || inv.created_at?.slice(0, 10) || "";
 
         return {
           id: `invoice-${inv.id}`,
@@ -868,7 +887,11 @@ export default function DashboardClient({ page }: { page: PageKey }) {
       : t.noSub;
 
   if (page === "app_center") {
-    return <AppCenterPanel />;
+    if (typeof window !== "undefined") {
+      window.location.href = buildUrl("/dashboard/app-center", "fullscreen=1&return=dashboard");
+    }
+
+    return null;
   }
 
   return (
@@ -1172,7 +1195,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                     onPointerCancel={cancelAppLongPress}
                     onContextMenu={(e) => e.preventDefault()}
                     className="dashboard-app-icon"
-                    style={phoneAppIconStyle(theme)}
+                    style={phoneAppIconStyle}
                   >
                     {isImageIcon(app.icon) ? (
                       <img src={app.icon || ""} alt={appTitle(app, lang)} style={appImgStyle} />
@@ -1192,21 +1215,16 @@ export default function DashboardClient({ page }: { page: PageKey }) {
                   type="button"
                   onClick={openAppCenter}
                   className="dashboard-app-icon"
-                  style={appCenterIconStyle}
+                  style={phoneAppIconStyle}
                 >
-                  <div style={appCenterLogoCircleStyle}>
-                    <img
-                      src={NK_LOGO_SRC}
-                      alt="NK DIGITAL HUB"
-                      style={appCenterLogoImgStyle}
-                      onError={(e) => {
-                        const img = e.currentTarget;
-                        if (img.src.includes("png.PNG")) {
-                          img.src = NK_LOGO_FALLBACK_SRC;
-                        }
-                      }}
-                    />
-                  </div>
+                  <img
+                    src={NK_LOGO_SRC}
+                    alt="NK DIGITAL HUB"
+                    style={appImgStyle}
+                    onError={(e) => {
+                      e.currentTarget.src = NK_LOGO_FALLBACK_SRC;
+                    }}
+                  />
                 </button>
 
                 <div className="dashboard-app-name" style={{ color: theme.text }}>
@@ -1289,49 +1307,15 @@ export default function DashboardClient({ page }: { page: PageKey }) {
 
             <h2 style={sectionTitleStyle}>{t.personal}</h2>
 
-            <input
-              placeholder={t.name}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
-              placeholder={t.phone}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              style={themedInputStyle}
-            />
+            <input placeholder={t.name} value={fullName} onChange={(e) => setFullName(e.target.value)} style={themedInputStyle} />
+            <input placeholder={t.phone} value={phone} onChange={(e) => setPhone(e.target.value)} style={themedInputStyle} />
 
             <h2 style={sectionTitleStyle}>{t.company}</h2>
 
-            <input
-              placeholder={t.companyName}
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
-              placeholder={t.ssm}
-              value={companyRegNo}
-              onChange={(e) => setCompanyRegNo(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
-              placeholder={t.companyPhone}
-              value={companyPhone}
-              onChange={(e) => setCompanyPhone(e.target.value)}
-              style={themedInputStyle}
-            />
-
-            <input
-              placeholder={t.companyAddress}
-              value={companyAddress}
-              onChange={(e) => setCompanyAddress(e.target.value)}
-              style={themedInputStyle}
-            />
+            <input placeholder={t.companyName} value={companyName} onChange={(e) => setCompanyName(e.target.value)} style={themedInputStyle} />
+            <input placeholder={t.ssm} value={companyRegNo} onChange={(e) => setCompanyRegNo(e.target.value)} style={themedInputStyle} />
+            <input placeholder={t.companyPhone} value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} style={themedInputStyle} />
+            <input placeholder={t.companyAddress} value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} style={themedInputStyle} />
 
             <button type="button" onClick={saveSettings} style={{ ...primaryBtnStyle, background: theme.accent }}>
               {t.save}
@@ -1425,7 +1409,7 @@ export default function DashboardClient({ page }: { page: PageKey }) {
             <h1 style={modalTitleStyle}>{t.removeAppTitle}</h1>
 
             <div style={deleteAppPreviewStyle}>
-              <button type="button" style={phoneAppIconStyle(theme)}>
+              <button type="button" style={phoneAppIconStyle}>
                 {isImageIcon(deleteAppTarget.icon) ? (
                   <img
                     src={deleteAppTarget.icon || ""}
@@ -1697,72 +1681,33 @@ const appGridStyle: CSSProperties = {
   width: "100%",
 };
 
-const phoneAppIconStyle = (theme: any): CSSProperties => ({
-  width: 76,
-  height: 76,
-  minWidth: 76,
-  minHeight: 76,
-  borderRadius: 22,
-  border: `2px solid ${theme.border}`,
-  background:
-    "linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.72))",
-  boxShadow:
-    "inset 0 1px 0 rgba(255,255,255,0.9), 0 10px 22px rgba(15,23,42,0.16)",
+const phoneAppIconStyle: CSSProperties = {
+  width: 64,
+  height: 64,
+  minWidth: 64,
+  minHeight: 64,
+  borderRadius: 20,
+  border: "none",
+  background: "transparent",
+  boxShadow: "none",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   padding: 0,
-  overflow: "hidden",
-});
+  overflow: "visible",
+};
 
 const appImgStyle: CSSProperties = {
   width: "100%",
   height: "100%",
-  objectFit: "cover",
+  objectFit: "contain",
+  display: "block",
+  background: "transparent",
 };
 
 const appEmojiStyle: CSSProperties = {
   fontSize: 34,
   lineHeight: 1,
-};
-
-const appCenterIconStyle: CSSProperties = {
-  width: 86,
-  height: 86,
-  minWidth: 86,
-  minHeight: 86,
-  borderRadius: 28,
-  border: "2px solid rgba(94, 255, 239, 0.95)",
-  background:
-    "linear-gradient(145deg, #ccfffa 0%, #46f0df 34%, #10b8aa 62%, #06675e 100%)",
-  boxShadow:
-    "inset 0 4px 10px rgba(255,255,255,0.78), inset 0 -12px 22px rgba(0,0,0,0.22), 0 0 0 2px rgba(45,212,191,0.22), 0 16px 34px rgba(20,184,166,0.48)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 6,
-  overflow: "hidden",
-};
-
-const appCenterLogoCircleStyle: CSSProperties = {
-  width: "100%",
-  height: "100%",
-  borderRadius: 24,
-  background:
-    "radial-gradient(circle at 32% 22%, #ffffff 0%, #d7fff9 18%, #8cf7ea 34%, #25d7c8 62%, #08756d 100%)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  overflow: "hidden",
-  boxShadow:
-    "inset 0 3px 8px rgba(255,255,255,0.8), inset 0 -9px 18px rgba(0,0,0,0.2), 0 5px 14px rgba(0,0,0,0.16)",
-};
-
-const appCenterLogoImgStyle: CSSProperties = {
-  width: "88%",
-  height: "88%",
-  objectFit: "contain",
-  filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.28))",
 };
 
 const backBtnStyle: CSSProperties = {
