@@ -66,33 +66,6 @@ export const DASHBOARD_FIX_CSS = `
     font-weight: 800 !important;
   }
 
-  .smartacctg-dashboard-page input[type="date"],
-  .smartacctg-dashboard-page input[type="month"],
-  .smartacctg-dashboard-page input[type="time"],
-  .smartacctg-dashboard-page input[type="datetime-local"] {
-    text-align: center !important;
-    text-align-last: center !important;
-    display: block !important;
-    width: 100% !important;
-    height: var(--sa-control-h, 54px) !important;
-    min-height: var(--sa-control-h, 54px) !important;
-    line-height: var(--sa-control-h, 54px) !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    -webkit-appearance: none !important;
-    appearance: none !important;
-  }
-
-  .smartacctg-dashboard-page input[type="date"]::-webkit-date-and-time-value,
-  .smartacctg-dashboard-page input[type="month"]::-webkit-date-and-time-value,
-  .smartacctg-dashboard-page input[type="time"]::-webkit-date-and-time-value,
-  .smartacctg-dashboard-page input[type="datetime-local"]::-webkit-date-and-time-value {
-    text-align: center !important;
-    width: 100% !important;
-    margin: 0 auto !important;
-    line-height: normal !important;
-  }
-
   @keyframes saNoticeMarquee {
     0% { transform: translateX(0%); }
     100% { transform: translateX(-120%); }
@@ -229,14 +202,33 @@ export const DASHBOARD_FIX_CSS = `
   }
 
   .smartacctg-dashboard-page .dashboard-app-icon {
-    width: 76px !important;
-    height: 76px !important;
-    min-width: 76px !important;
-    min-height: 76px !important;
+    width: 64px !important;
+    height: 64px !important;
+    min-width: 64px !important;
+    min-height: 64px !important;
+    max-width: 64px !important;
+    max-height: 64px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
     touch-action: manipulation !important;
     user-select: none !important;
     -webkit-user-select: none !important;
     -webkit-touch-callout: none !important;
+  }
+
+  .smartacctg-dashboard-page .dashboard-app-icon img {
+    width: 64px !important;
+    height: 64px !important;
+    max-width: 64px !important;
+    max-height: 64px !important;
+    object-fit: contain !important;
+    display: block !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 
   .smartacctg-dashboard-page .dashboard-app-name {
@@ -246,7 +238,7 @@ export const DASHBOARD_FIX_CSS = `
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
     font-size: clamp(15px, 3.8vw, 17px) !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
   }
 
   @media (max-width: 680px) {
@@ -282,11 +274,14 @@ export const DASHBOARD_FIX_CSS = `
       gap: 18px 8px !important;
     }
 
-    .smartacctg-dashboard-page .dashboard-app-icon {
-      width: 72px !important;
-      height: 72px !important;
-      min-width: 72px !important;
-      min-height: 72px !important;
+    .smartacctg-dashboard-page .dashboard-app-icon,
+    .smartacctg-dashboard-page .dashboard-app-icon img {
+      width: 60px !important;
+      height: 60px !important;
+      min-width: 60px !important;
+      min-height: 60px !important;
+      max-width: 60px !important;
+      max-height: 60px !important;
     }
 
     .smartacctg-dashboard-page .dashboard-app-name {
