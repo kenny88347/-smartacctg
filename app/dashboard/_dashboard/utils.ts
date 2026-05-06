@@ -4,8 +4,8 @@ import {
   applyThemeToDocument,
   normalizeThemeKey,
 } from "@/lib/smartacctgTheme";
+import { DEFAULT_APPS } from "@/lib/appRegistry";
 import type { AppRegistry, Invoice, Lang, UserDashboardApp } from "./types";
-import { DEFAULT_APPS } from "./constants";
 
 export function safeLocalGet(key: string) {
   if (typeof window === "undefined") return null;
@@ -111,12 +111,18 @@ export function isInvoiceUnpaid(inv: Invoice) {
 
 export function isImageIcon(icon?: string | null) {
   const raw = String(icon || "").trim();
+  const lower = raw.toLowerCase();
 
   return (
+    raw.startsWith("/") ||
     raw.startsWith("http://") ||
     raw.startsWith("https://") ||
     raw.startsWith("data:image") ||
-    raw.startsWith("/")
+    lower.endsWith(".png") ||
+    lower.endsWith(".jpg") ||
+    lower.endsWith(".jpeg") ||
+    lower.endsWith(".webp") ||
+    lower.endsWith(".svg")
   );
 }
 
@@ -132,7 +138,9 @@ export function isSchemaColumnError(message?: string | null) {
 }
 
 export function normalizeApp(row: any): AppRegistry {
-  const appKey = String(row?.app_key || row?.app_id || row?.key || row?.slug || row?.id || "").trim();
+  const appKey = String(
+    row?.app_key || row?.app_id || row?.key || row?.slug || row?.id || ""
+  ).trim();
 
   return {
     id: row?.id,
@@ -154,6 +162,11 @@ export function normalizeApp(row: any): AppRegistry {
   };
 }
 
+/**
+ * 保留这个 function，是为了以后你要加入新的 App。
+ * 但是默认 6 个 App 的 icon 永远用 lib/appRegistry.ts 的图标，
+ * 不会再被 Supabase app_registry 旧 icon 覆盖。
+ */
 export function mergeAppsWithDefaults(remoteRows: any[] = []) {
   const map = new Map<string, AppRegistry>();
   const defaultKeySet = new Set(DEFAULT_APPS.map((app) => app.app_key));
@@ -191,7 +204,13 @@ export function mergeAppsWithDefaults(remoteRows: any[] = []) {
           remoteApp.title_zh ||
           oldApp?.title_zh ||
           remoteApp.app_key,
-        icon: remoteApp.icon || oldApp?.icon || "📱",
+
+        /**
+         * 重点：
+         * 默认 App 不给远端旧 icon 覆盖。
+         */
+        icon: isDefaultApp ? oldApp?.icon || remoteApp.icon || "📱" : remoteApp.icon || oldApp?.icon || "📱",
+
         app_path: remoteApp.app_path || oldApp?.app_path || "",
         sort_order: Number(remoteApp.sort_order || oldApp?.sort_order || 999),
         enabled: isDefaultApp ? true : remoteApp.enabled !== false,
