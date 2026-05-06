@@ -1,25 +1,24 @@
 "use client";
 
-import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
-  DASHBOARD_APP_KEYS_LOCAL,
-  DEFAULT_APPS,
   DEFAULT_DASHBOARD_APP_KEYS,
-} from "../_dashboard/constants";
+  getActiveApps,
+  getAppDescription,
+  getAppTitle,
+  getDashboardInitLocalKey,
+  getDashboardLocalKey,
+  isAppImageIcon,
+  normalizeDashboardKeys,
+} from "@/lib/appRegistry";
 import {
-  isImageIcon,
   isSchemaColumnError,
   safeLocalGet,
   safeLocalSet,
   safeParseArray,
 } from "../_dashboard/utils";
 import type { AppRegistry, Lang } from "../_dashboard/types";
-import {
-  AppIconButton,
-  AppIconImage,
-  AppPinButton,
-} from "@/app/components/buttons/AppCenterButtons";
 
 type UserDashboardAppRow = {
   id?: string;
@@ -30,22 +29,7 @@ type UserDashboardAppRow = {
   created_at?: string | null;
 };
 
-const APPS: AppRegistry[] = DEFAULT_APPS.filter(
-  (app) => app.app_key !== "app_center" && app.enabled !== false && app.is_active !== false
-).sort((a, b) => Number(a.sort_order || 999) - Number(b.sort_order || 999));
-
-const VALID_APP_KEYS = APPS.map((app) => app.app_key);
-
-function getDashboardLocalKey(userId: string) {
-  return `${DASHBOARD_APP_KEYS_LOCAL}_${userId}`;
-}
-
-function normalizeKeys(keys: string[]) {
-  return Array.from(new Set(keys))
-    .map((key) => String(key || "").trim())
-    .filter((key) => key && key !== "app_center")
-    .filter((key) => VALID_APP_KEYS.includes(key));
-}
+const APPS = getActiveApps();
 
 function getLang(): Lang {
   if (typeof window === "undefined") return "zh";
@@ -55,26 +39,6 @@ function getLang(): Lang {
 
   if (lang === "en" || lang === "ms" || lang === "zh") return lang;
   return "zh";
-}
-
-function getAppTitle(app: AppRegistry, lang: Lang) {
-  if (lang === "en") return app.title_en || app.title_zh || app.name || app.app_key;
-  if (lang === "ms") return app.title_ms || app.title_zh || app.name || app.app_key;
-  return app.title_zh || app.name || app.title_en || app.app_key;
-}
-
-function normalizeIconPath(src?: string | null) {
-  const raw = String(src || "").trim();
-  if (!raw) return "";
-
-  if (raw.startsWith("/app-icons/")) {
-    const filename = raw.split("/").pop() || "";
-    const baseName = filename.replace(/\.(png|PNG|jpg|jpeg|webp|svg)$/i, "");
-
-    return `/app-icons/${baseName}.PNG`;
-  }
-
-  return raw;
 }
 
 function buildUrl(path?: string | null) {
@@ -115,32 +79,11 @@ function backToDashboard() {
   window.location.href = `/dashboard?${q.toString()}`;
 }
 
-async function insertDefaultDashboardApps(userId: string) {
-  const rowsWithAppKey = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
-    user_id: userId,
-    app_key: key,
-    pinned: true,
-  }));
-
-  const first = await supabase.from("user_dashboard_apps").insert(rowsWithAppKey);
-
-  if (!first.error) return;
-
-  const lower = String(first.error.message || "").toLowerCase();
-  if (lower.includes("duplicate")) return;
-
-  if (!isSchemaColumnError(first.error.message)) return;
-
-  const rowsWithAppId = DEFAULT_DASHBOARD_APP_KEYS.map((key) => ({
-    user_id: userId,
-    app_id: key,
-    pinned: true,
-  }));
-
-  await supabase.from("user_dashboard_apps").insert(rowsWithAppId);
-}
-
-async function updateDashboardAppPinned(userId: string, appKey: string, pinned: boolean) {
+async function updateDashboardAppPinned(
+  userId: string,
+  appKey: string,
+  pinned: boolean
+) {
   let updated = false;
 
   const byAppKey = await supabase
@@ -191,7 +134,9 @@ async function updateDashboardAppPinned(userId: string, appKey: string, pinned: 
     return updateDashboardAppPinned(userId, appKey, pinned);
   }
 
-  if (!isSchemaColumnError(insertWithAppKey.error.message)) return insertWithAppKey;
+  if (!isSchemaColumnError(insertWithAppKey.error.message)) {
+    return insertWithAppKey;
+  }
 
   const insertWithAppId = await supabase.from("user_dashboard_apps").insert({
     user_id: userId,
@@ -208,6 +153,16 @@ async function updateDashboardAppPinned(userId: string, appKey: string, pinned: 
   }
 
   return insertWithAppId;
+}
+
+async function resetAllDashboardAppsInDb(userId: string, pinnedKeys: string[]) {
+  const pinnedSet = new Set(normalizeDashboardKeys(pinnedKeys));
+
+  await Promise.all(
+    APPS.map((app) =>
+      updateDashboardAppPinned(userId, app.app_key, pinnedSet.has(app.app_key))
+    )
+  );
 }
 
 export default function AppCenterPanel() {
@@ -229,6 +184,8 @@ export default function AppCenterPanel() {
       desc: "点击图标打开 App，点击右上角 + / ✓ 加入或移除控制台。",
       saved: "已更新",
       localSaved: "已更新（本地保存）",
+      pinned: "已在控制台",
+      notPinned: "未加入",
     },
     en: {
       back: "Back",
@@ -236,6 +193,8 @@ export default function AppCenterPanel() {
       desc: "Tap an icon to open. Tap + / ✓ to add or remove from dashboard.",
       saved: "Updated",
       localSaved: "Updated locally",
+      pinned: "On Dashboard",
+      notPinned: "Not Added",
     },
     ms: {
       back: "Kembali",
@@ -243,6 +202,8 @@ export default function AppCenterPanel() {
       desc: "Tekan ikon untuk buka. Tekan + / ✓ untuk tambah atau buang dari dashboard.",
       saved: "Dikemas kini",
       localSaved: "Dikemas kini secara lokal",
+      pinned: "Di Dashboard",
+      notPinned: "Belum Tambah",
     },
   }[lang];
 
@@ -263,69 +224,72 @@ export default function AppCenterPanel() {
   async function loadPinnedApps() {
     setLoading(true);
 
+    const q = new URLSearchParams(window.location.search);
+    const isTrialMode = q.get("mode") === "trial";
+
     const { data } = await supabase.auth.getSession();
-    const currentUserId = data.session?.user?.id || "";
+    const currentUserId = data.session?.user?.id || (isTrialMode ? "trial" : "guest");
 
     setUserId(currentUserId);
 
-    const defaultKeys = normalizeKeys(DEFAULT_DASHBOARD_APP_KEYS);
+    const localKey = getDashboardLocalKey(currentUserId);
+    const initKey = getDashboardInitLocalKey(currentUserId);
+    const initialized = safeLocalGet(initKey) === "1";
+    const localRaw = safeLocalGet(localKey);
 
-    if (!currentUserId) {
-      const localKeys = normalizeKeys(safeParseArray<string>(safeLocalGet(DASHBOARD_APP_KEYS_LOCAL)));
-      const finalKeys = localKeys.length > 0 ? localKeys : defaultKeys;
+    if (!initialized) {
+      const firstKeys = normalizeDashboardKeys(DEFAULT_DASHBOARD_APP_KEYS);
 
-      setPinnedKeys(finalKeys);
-      safeLocalSet(DASHBOARD_APP_KEYS_LOCAL, JSON.stringify(finalKeys));
+      setPinnedKeys(firstKeys);
+      safeLocalSet(localKey, JSON.stringify(firstKeys));
+      safeLocalSet(initKey, "1");
+
+      if (data.session?.user?.id) {
+        await resetAllDashboardAppsInDb(data.session.user.id, firstKeys);
+      }
+
       setLoading(false);
       return;
     }
 
-    const userLocalKey = getDashboardLocalKey(currentUserId);
-    const localUserKeys = normalizeKeys(safeParseArray<string>(safeLocalGet(userLocalKey)));
+    if (localRaw !== null) {
+      const localKeys = normalizeDashboardKeys(safeParseArray<string>(localRaw));
+
+      setPinnedKeys(localKeys);
+      setLoading(false);
+      return;
+    }
+
+    if (!data.session?.user?.id) {
+      setPinnedKeys([]);
+      safeLocalSet(localKey, JSON.stringify([]));
+      setLoading(false);
+      return;
+    }
 
     const { data: dashboardData, error } = await supabase
       .from("user_dashboard_apps")
       .select("*")
-      .eq("user_id", currentUserId)
+      .eq("user_id", data.session.user.id)
       .order("created_at", { ascending: true });
 
     if (error) {
-      const finalKeys = localUserKeys.length > 0 ? localUserKeys : defaultKeys;
-
-      setPinnedKeys(finalKeys);
-      safeLocalSet(userLocalKey, JSON.stringify(finalKeys));
+      setPinnedKeys([]);
+      safeLocalSet(localKey, JSON.stringify([]));
       setLoading(false);
       return;
     }
 
     const rows = (dashboardData || []) as UserDashboardAppRow[];
 
-    if (rows.length === 0) {
-      const finalKeys = localUserKeys.length > 0 ? localUserKeys : defaultKeys;
-
-      setPinnedKeys(finalKeys);
-      safeLocalSet(userLocalKey, JSON.stringify(finalKeys));
-      await insertDefaultDashboardApps(currentUserId);
-
-      setLoading(false);
-      return;
-    }
-
-    const dbKeys = normalizeKeys(
+    const dbKeys = normalizeDashboardKeys(
       rows
-        .filter((row) => row.pinned !== false)
+        .filter((row) => row.pinned === true)
         .map((row) => String(row.app_key || row.app_id || ""))
     );
 
-    const finalKeys =
-      dbKeys.length > 0
-        ? dbKeys
-        : localUserKeys.length > 0
-          ? localUserKeys
-          : defaultKeys;
-
-    setPinnedKeys(finalKeys);
-    safeLocalSet(userLocalKey, JSON.stringify(finalKeys));
+    setPinnedKeys(dbKeys);
+    safeLocalSet(localKey, JSON.stringify(dbKeys));
     setLoading(false);
   }
 
@@ -339,16 +303,20 @@ export default function AppCenterPanel() {
 
     const nextKeys = isPinned
       ? pinnedKeys.filter((key) => key !== fixedKey)
-      : normalizeKeys([...pinnedKeys, fixedKey]);
+      : normalizeDashboardKeys([...pinnedKeys, fixedKey]);
 
     setPinnedKeys(nextKeys);
     setBusyKey(fixedKey);
     setMsg("");
 
-    const localKey = userId ? getDashboardLocalKey(userId) : DASHBOARD_APP_KEYS_LOCAL;
-    safeLocalSet(localKey, JSON.stringify(nextKeys));
+    const fixedUserId = userId || "guest";
+    const localKey = getDashboardLocalKey(fixedUserId);
+    const initKey = getDashboardInitLocalKey(fixedUserId);
 
-    if (!userId) {
+    safeLocalSet(localKey, JSON.stringify(nextKeys));
+    safeLocalSet(initKey, "1");
+
+    if (!userId || userId === "guest" || userId === "trial") {
       setMsg(text.localSaved);
       setBusyKey("");
       return;
@@ -402,57 +370,72 @@ export default function AppCenterPanel() {
   }
 
   return (
-    <main className="smartacctg-page smartacctg-dashboard-page" style={pageStyle}>
-      <style jsx global>{APP_CENTER_CSS}</style>
-
-      <section className="sa-card" style={mainCardStyle}>
-        <button type="button" onClick={backToDashboard} className="sa-back-btn" style={backBtnStyle}>
+    <main className="smartacctg-page smartacctg-dashboard-page sa-app-center-page">
+      <section className="sa-card sa-app-center-card">
+        <button
+          type="button"
+          onClick={backToDashboard}
+          className="sa-back-btn sa-app-center-back"
+        >
           ← {text.back}
         </button>
 
-        <h1 style={titleStyle}>{text.title}</h1>
+        <h1 className="sa-app-center-title">{text.title}</h1>
 
-        <p style={descStyle}>{text.desc}</p>
+        <p className="sa-app-center-desc">{text.desc}</p>
 
-        {msg ? <p style={msgStyle}>{msg}</p> : null}
+        {msg ? <p className="sa-app-center-msg">{msg}</p> : null}
 
-        <div className="app-icon-grid" style={iconGridStyle}>
+        <div className="sa-app-icon-grid">
           {APPS.map((app) => {
             const isPinned = pinnedSet.has(app.app_key);
             const busy = busyKey === app.app_key;
             const title = getAppTitle(app, lang);
-            const icon = normalizeIconPath(app.icon || "📱");
-            const imageIcon = isImageIcon(icon);
+            const desc = getAppDescription(app, lang);
+            const icon = app.icon || "📱";
+            const imageIcon = isAppImageIcon(icon);
 
             return (
-              <div key={app.app_key} className="app-icon-item" style={iconItemStyle}>
-                <div className="app-icon-wrap" style={iconWrapStyle}>
-                  <AppIconButton
-                    title={title}
+              <div key={app.app_key} className="sa-app-icon-item">
+                <div className="sa-app-icon-wrap">
+                  <button
+                    type="button"
                     onClick={() => openApp(app)}
                     onPointerDown={() => startLongPress(app.app_key)}
                     onPointerUp={cancelLongPress}
                     onPointerLeave={cancelLongPress}
                     onPointerCancel={cancelLongPress}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className="app-main-icon sa-app-main-icon"
+                    aria-label={title}
                   >
                     {imageIcon ? (
-                      <AppIconImage src={icon} alt={title} />
+                      <img
+                        src={icon}
+                        alt={title}
+                        className="sa-app-icon-img"
+                      />
                     ) : (
-                      <span style={appIconEmojiStyle}>{icon}</span>
+                      <span className="sa-app-icon-emoji">{icon}</span>
                     )}
-                  </AppIconButton>
+                  </button>
 
-                  <AppPinButton
-                    pinned={isPinned}
-                    busy={busy}
+                  <button
+                    type="button"
                     disabled={loading || Boolean(busyKey)}
                     onClick={() => togglePinned(app.app_key)}
-                  />
+                    className={`app-pin-dot sa-app-pin-dot ${
+                      isPinned ? "is-pinned" : "is-not-pinned"
+                    }`}
+                    aria-label={isPinned ? text.pinned : text.notPinned}
+                  >
+                    {busy ? "…" : isPinned ? "✓" : "+"}
+                  </button>
                 </div>
 
-                <div className="app-name" style={appNameStyle}>
-                  {title}
-                </div>
+                <div className="sa-app-icon-name">{title}</div>
+
+                <div className="sa-app-icon-desc">{desc}</div>
               </div>
             );
           })}
@@ -461,254 +444,3 @@ export default function AppCenterPanel() {
     </main>
   );
 }
-
-const APP_CENTER_CSS = `
-  .smartacctg-page,
-  .smartacctg-page * {
-    box-sizing: border-box !important;
-  }
-
-  .smartacctg-page {
-    width: 100% !important;
-    max-width: 100vw !important;
-    min-height: 100vh !important;
-    overflow-x: hidden !important;
-  }
-
-  .app-icon-grid {
-    width: 100% !important;
-  }
-
-  .app-main-icon,
-  .app-pin-dot {
-    -webkit-tap-highlight-color: transparent !important;
-    touch-action: manipulation !important;
-    user-select: none !important;
-    -webkit-user-select: none !important;
-    -webkit-touch-callout: none !important;
-  }
-
-  .app-main-icon {
-    width: 70px !important;
-    height: 70px !important;
-    min-width: 70px !important;
-    min-height: 70px !important;
-    max-width: 70px !important;
-    max-height: 70px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
-  .app-icon-img {
-    width: 70px !important;
-    height: 70px !important;
-    min-width: 70px !important;
-    min-height: 70px !important;
-    max-width: 70px !important;
-    max-height: 70px !important;
-    background: transparent !important;
-  }
-
-  .app-pin-dot {
-    width: 22px !important;
-    height: 22px !important;
-    min-width: 22px !important;
-    min-height: 22px !important;
-    max-width: 22px !important;
-    max-height: 22px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    font-size: 13px !important;
-    line-height: 1 !important;
-  }
-
-  .app-name {
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
-    overflow: hidden !important;
-  }
-
-  @media (max-width: 430px) {
-    .app-icon-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-      gap: 26px 10px !important;
-    }
-
-    .app-icon-wrap {
-      width: 64px !important;
-      height: 64px !important;
-    }
-
-    .app-main-icon,
-    .app-icon-img {
-      width: 64px !important;
-      height: 64px !important;
-      min-width: 64px !important;
-      min-height: 64px !important;
-      max-width: 64px !important;
-      max-height: 64px !important;
-      border-radius: 18px !important;
-    }
-
-    .app-icon-item {
-      min-width: 0 !important;
-    }
-
-    .app-pin-dot {
-      width: 21px !important;
-      height: 21px !important;
-      min-width: 21px !important;
-      min-height: 21px !important;
-      max-width: 21px !important;
-      max-height: 21px !important;
-      font-size: 12px !important;
-      top: -3px !important;
-      right: -3px !important;
-      border-width: 1.5px !important;
-      padding: 0 !important;
-    }
-  }
-
-  @media (max-width: 360px) {
-    .app-icon-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-      gap: 24px 8px !important;
-    }
-
-    .app-icon-wrap,
-    .app-main-icon,
-    .app-icon-img {
-      width: 58px !important;
-      height: 58px !important;
-      min-width: 58px !important;
-      min-height: 58px !important;
-      max-width: 58px !important;
-      max-height: 58px !important;
-    }
-
-    .app-pin-dot {
-      width: 20px !important;
-      height: 20px !important;
-      min-width: 20px !important;
-      min-height: 20px !important;
-      max-width: 20px !important;
-      max-height: 20px !important;
-      font-size: 11px !important;
-      top: -3px !important;
-      right: -3px !important;
-      border-width: 1.4px !important;
-      padding: 0 !important;
-    }
-  }
-`;
-
-const pageStyle: CSSProperties = {
-  minHeight: "100vh",
-  width: "100%",
-  maxWidth: "100vw",
-  overflowX: "hidden",
-  padding: "clamp(12px, 3vw, 22px)",
-  background:
-    "radial-gradient(circle at 8% 0%, rgba(45, 212, 191, 0.32), transparent 30%), radial-gradient(circle at 92% 8%, rgba(20, 184, 166, 0.22), transparent 32%), linear-gradient(135deg, #011c1a 0%, #032b29 38%, #064e3b 100%)",
-  color: "#ecfeff",
-  fontFamily:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif',
-};
-
-const mainCardStyle: CSSProperties = {
-  border: "2px solid #2dd4bf",
-  borderRadius: "clamp(22px, 5vw, 32px)",
-  padding: "clamp(18px, 5vw, 28px)",
-  background: "rgba(6, 47, 42, 0.94)",
-  color: "#ecfeff",
-  boxShadow:
-    "0 0 0 1px rgba(45, 212, 191, 0.55), 0 0 26px rgba(45, 212, 191, 0.42), 0 22px 58px rgba(6, 78, 59, 0.62)",
-};
-
-const backBtnStyle: CSSProperties = {
-  minHeight: 50,
-  border: "2px solid #2dd4bf",
-  borderRadius: 18,
-  padding: "0 18px",
-  background: "#ecfeff",
-  color: "#2dd4bf",
-  fontWeight: 900,
-  fontSize: 16,
-  marginBottom: 20,
-};
-
-const titleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(30px, 8vw, 44px)",
-  lineHeight: 1.08,
-  fontWeight: 900,
-};
-
-const descStyle: CSSProperties = {
-  marginTop: 14,
-  marginBottom: 12,
-  color: "#99f6e4",
-  fontSize: "clamp(13px, 3.6vw, 16px)",
-  lineHeight: 1.42,
-  fontWeight: 700,
-};
-
-const msgStyle: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 12,
-  color: "#5eead4",
-  fontSize: 13,
-  fontWeight: 900,
-};
-
-const iconGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: "28px 12px",
-  alignItems: "start",
-  justifyItems: "center",
-  marginTop: 20,
-};
-
-const iconItemStyle: CSSProperties = {
-  width: "100%",
-  minWidth: 0,
-  display: "grid",
-  justifyItems: "center",
-  textAlign: "center",
-  gap: 8,
-};
-
-const iconWrapStyle: CSSProperties = {
-  position: "relative",
-  width: 70,
-  height: 70,
-};
-
-const appIconEmojiStyle: CSSProperties = {
-  width: "100%",
-  height: "100%",
-  borderRadius: 20,
-  background:
-    "radial-gradient(circle at 28% 20%, #ffffff 0%, #dffdf8 20%, #5eead4 48%, #0f766e 100%)",
-  border: "2px solid rgba(94, 234, 212, 0.95)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 30,
-  lineHeight: 1,
-  filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.28))",
-};
-
-const appNameStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 92,
-  color: "#ecfeff",
-  fontSize: "clamp(12px, 3.2vw, 14px)",
-  lineHeight: 1.18,
-  fontWeight: 900,
-  overflowWrap: "anywhere",
-};
